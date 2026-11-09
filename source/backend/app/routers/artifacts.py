@@ -36,6 +36,7 @@ _INSIGHT_TEXT_FIELDS = (
 )
 
 
+# formula guard marker
 def _stream_bytes(data: bytes):
     """Stream in-memory bytes — nothing ever touches disk."""
     with runtime_activity.track("artifact export"):
