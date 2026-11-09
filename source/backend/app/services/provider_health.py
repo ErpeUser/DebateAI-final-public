@@ -48,8 +48,16 @@ async def run_connection_test(provider: str, key: str, base_url: str = "") -> tu
             await client.aio.models.list(config={"page_size": 1})
         else:
             url = normalize_base_url(base_url) or fallback_base_url()
-            async with httpx.AsyncClient(timeout=15) as client:
+            timeout = httpx.Timeout(15, connect=5)
+            limits = httpx.Limits(max_connections=2, max_keepalive_connections=1)
+            async with httpx.AsyncClient(
+                timeout=timeout,
+                limits=limits,
+                follow_redirects=False,
+            ) as client:
                 resp = await client.get(f"{url}/models", headers=auth_headers(key))
+                if int(resp.headers.get("content-length", "0") or 0) > 1_048_576:
+                    raise ValueError("Provider model catalog is too large")
                 resp.raise_for_status()
         return True, "Connection successful"
     except Exception as e:
