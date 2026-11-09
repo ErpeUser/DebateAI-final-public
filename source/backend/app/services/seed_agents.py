@@ -287,8 +287,8 @@ async def configure_desktop_debate_runtime(db: AsyncSession) -> None:
         if raw_settings in known_old_defaults:
             await set_debate_settings(db, DebateSettings(
                 mode="persuasive",
-                research_enabled=True,
-                research_frequency="often",
+                research_enabled=False,
+                research_frequency="never",
                 always_analogy=False,
                 style_focus="natural",
                 voice_commands_enabled=True,
