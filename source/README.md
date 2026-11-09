@@ -97,9 +97,10 @@ action items you would otherwise reconstruct from memory afterwards.
   <img src="site/assets/shots/pii-preview.webp" alt="The PII Shield's try-a-sentence box: a sentence naming a person, a company, an email address and a phone number, the tokenized version a model actually receives, and a legend giving each token's real value and how it was detected." />
 </picture>
 
-**What the model actually reads.** With the PII Shield on, a name never reaches
-a model, local or cloud -- and the shield will show you, sentence by sentence,
-exactly what it hands over.
+**What the model actually reads.** With the PII Shield on, recognized PII is
+replaced before a protected model call. Review the preview and the deployment
+settings because unknown values, research queries, logs, and provider-side
+transcription have separate privacy boundaries.
 
 <table>
 <tr>
