@@ -1,4 +1,5 @@
 import logging
+import shutil
 import uuid
 from datetime import datetime, timezone
 
@@ -214,6 +215,14 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     await db.delete(session)
     await db.commit()
     shield.forget_session(session_id)
+    audio_root = (data_dir() / "audio").resolve()
+    session_audio = (audio_root / str(session_id)).resolve()
+    try:
+        session_audio.relative_to(audio_root)
+    except ValueError:
+        logger.error("Refusing to delete audio outside the session root: %s", session_audio)
+    else:
+        await run_in_threadpool(shutil.rmtree, session_audio, True)
 
 
 @router.post("/{session_id}/enhance-insights", response_model=EnhanceInsightsOut)
