@@ -141,8 +141,9 @@ async def get_settings_standalone() -> ShieldSettings:
         # which is the state a fresh install is in.
         if _settings_cache:
             return _settings_cache[1]
-        logger.warning("PII Shield settings could not be read; assuming the shield is off", exc_info=True)
-        return ShieldSettings()
+        logger.error("PII Shield settings could not be read; failing closed", exc_info=True)
+        # A database outage must never silently disable protection.
+        return ShieldSettings(enabled=True)
 
 
 async def is_enabled() -> bool:
