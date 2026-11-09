@@ -141,6 +141,8 @@ def is_on_prem(base_url: str) -> bool:
         return False
     if host in _DOCKER_HOST_ALIASES or host in {"localhost", "ip6-localhost"}:
         return True
+    if host.endswith(_PRIVATE_SUFFIXES):
+        return True
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
