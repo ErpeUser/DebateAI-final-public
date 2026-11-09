@@ -8,7 +8,6 @@ import re
 import shutil
 import stat
 import ssl
-import stat
 import subprocess
 import sys
 import tarfile
@@ -733,7 +732,7 @@ class UpdateService:
                     stderr=subprocess.DEVNULL,
                 )
             else:
-                extraction_root = _zip_extraction_root(self.stage_dir)
+                extraction_root = Path(_zip_extraction_root(self.stage_dir))
                 extraction_root.mkdir(parents=True, exist_ok=True)
                 with zipfile.ZipFile(archive_path) as archive:
                     root = extraction_root.resolve()
