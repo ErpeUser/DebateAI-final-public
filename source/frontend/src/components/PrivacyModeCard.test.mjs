@@ -23,7 +23,7 @@ test("every fixed light ground in this card declares a dark counterpart", () => 
 });
 
 test("the review panel keeps readable text on both themes", () => {
-  const panel = source.slice(source.indexOf("Review what changes before enabling"));
+  const panel = source.slice(source.indexOf("Prüfe vor dem Einschalten"));
   // The headings are fixed amber, so they need the dark pairing spelled out.
   assert.match(source, /text-amber-900 dark:text-amber-200/);
   // The status glyphs, likewise.
