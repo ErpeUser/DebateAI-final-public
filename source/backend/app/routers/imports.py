@@ -46,6 +46,8 @@ _parse_docx = parse_docx
 
 # Default colors for auto-created speakers during import
 _SPEAKER_COLORS = ["#0d9488", "#f59e0b", "#e74c3c", "#2ecc71", "#9b59b6", "#f39c12"]
+MAX_TRANSCRIPT_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_AUDIO_UPLOAD_BYTES = 250 * 1024 * 1024
 
 
 def import_segment_would_create_new_speaker(
@@ -365,7 +367,9 @@ async def import_transcript(
     if ext not in (".txt", ".md", ".docx"):
         raise HTTPException(400, f"Unsupported format: {ext}. Use .txt, .md, or .docx")
 
-    content = await file.read()
+    content = await file.read(MAX_TRANSCRIPT_UPLOAD_BYTES + 1)
+    if len(content) > MAX_TRANSCRIPT_UPLOAD_BYTES:
+        raise HTTPException(413, "Transcript exceeds the 10 MiB upload limit")
 
     if ext == ".docx":
         segments = _parse_docx(content)
@@ -408,7 +412,9 @@ async def import_audio(
     if ext not in (".m4a", ".mp3", ".wav", ".ogg", ".flac"):
         raise HTTPException(400, f"Unsupported audio format: {ext}")
 
-    content = await file.read()
+    content = await file.read(MAX_AUDIO_UPLOAD_BYTES + 1)
+    if len(content) > MAX_AUDIO_UPLOAD_BYTES:
+        raise HTTPException(413, "Audio exceeds the 250 MiB upload limit")
     source_format = ext.lstrip(".")
     config = await get_transcription_runtime_config(db)
     try:
