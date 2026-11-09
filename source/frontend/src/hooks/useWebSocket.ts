@@ -145,7 +145,6 @@ export function useWebSocket() {
     const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
     const instanceToken = getDesktopInstanceToken();
     const query = new URLSearchParams();
-    if (instanceToken) query.set("instance_token", instanceToken);
     if (lastSequenceRef.current > 0) {
       query.set("after_sequence", String(lastSequenceRef.current));
     }
@@ -154,7 +153,11 @@ export function useWebSocket() {
     }
     query.set("capture_id", captureIdRef.current);
     const suffix = query.size ? `?${query.toString()}` : "";
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/${sessionId}${suffix}`);
+    const wsUrl = `${protocol}//${window.location.host}/ws/${sessionId}${suffix}`;
+    // Keep the instance token out of URLs, browser history, and proxy logs.
+    const ws = instanceToken
+      ? new WebSocket(wsUrl, [`backchannel.instance.${instanceToken}`])
+      : new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
     wsRef.current = ws;
 
