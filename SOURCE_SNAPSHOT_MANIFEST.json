@@ -6,7 +6,7 @@
   "worktree_status_sha256": "afcd45972fc713db360e5d7f5cbc4271eac4829f6dea494b001e3636cbbc248a",
   "private_repo_snapshot_commit": "4678c76323b51250352eba7a58a9ff595a4cfac3",
   "included_files": 1004,
-  "included_bytes": 18966942,
+  "included_bytes": 18968174,
   "secret_scan": {
     "patterns_checked": "API keys, GitHub tokens, private-key PEM headers",
     "hits": [
@@ -38,6 +38,18 @@
     ],
     "decision": "synthetic test fixtures only; no live secrets included"
   },
+  "privacy_audit": {
+    "audited_at": "2026-11-09",
+    "current_tree_local_data_files": 0,
+    "historical_local_data_path_objects": 0,
+    "checks": [
+      "environment and provider/account configuration files",
+      "ChatGPT/Gemini browser profiles, cookies, OAuth state and token caches",
+      "local chat/conversation history, transcripts and session exports",
+      "database, SQLite, log, storage-state and temporary runtime files"
+    ],
+    "decision": "no per-machine login state or local user history included; source login handlers remain"
+  },
   "excluded_policy": [
     "Git metadata",
     "virtual environments",
@@ -45,14 +57,17 @@
     "build/dist/.astro/dist-site/generated docs/temp/test data",
     "model weights and native runtime binaries",
     "audio/database/session data",
-    "environment secret files"
+    "environment secret files",
+    "provider/account overrides and personal endpoints",
+    "browser profiles, cookies, OAuth/API login caches and local storage",
+    "chat/conversation history, transcripts, exports and logs"
   ],
   "copy_errors": [],
   "files": [
     {
       "path": ".ai/DEBATE_AI_OPTIMIERUNG.md",
-      "bytes": 128910,
-      "sha256": "936638de225d7757736140b4e998735f9b5e133602d00901cc57f317a80e9fea"
+      "bytes": 130142,
+      "sha256": "f370ef832c95b38fe3897724204a4cf685dc385757882eed453d215ee8a0cc8b"
     },
     {
       "path": ".ai/IMPLEMENTATION_AUDIT.md",

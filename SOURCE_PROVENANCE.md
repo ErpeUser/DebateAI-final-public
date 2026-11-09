@@ -12,6 +12,8 @@
 
 The development worktree contained pre-existing unrelated changes. The
 sanitized current source snapshot is included under `source/` with a complete
-per-file manifest; Git metadata, generated/runtime artifacts, user data and
-secrets were excluded. The release asset remains the authoritative tested
-Windows deliverable; the manifests define the integrity boundaries.
+per-file manifest; Git metadata, generated/runtime artifacts, user data,
+provider/account overrides, browser login state, local history and secrets
+were excluded. The release asset remains the authoritative tested Windows
+deliverable; the manifests and `PRIVACY_AUDIT.md` define the integrity and
+privacy boundaries.

@@ -36,6 +36,11 @@ including backend, desktop, frontend, docs-site, tests, scripts, prompts and
 release configuration. `SOURCE_SNAPSHOT_MANIFEST.json` lists every included
 file and hash. It deliberately excludes Git metadata, virtual environments,
 node_modules, generated build/dist folders, model/native binaries, audio,
-databases, session data and `.env` files. Synthetic credential strings used by
-redaction tests are retained as test fixtures and are explicitly listed in the
-manifest; no live secret was included.
+databases, session data and `.env` files. It also excludes provider/account
+overrides, browser profiles and cookies, OAuth/API login caches, local
+storage, chat/conversation history, transcripts, logs and other per-machine
+state. The current snapshot and its complete Git history were checked for
+those data classes; the result is zero matching local-data files. Synthetic
+credential strings used by redaction tests are retained as test fixtures and
+are explicitly listed in the manifest; no live secret was included. See
+`PRIVACY_AUDIT.md` for the exact checks and result.

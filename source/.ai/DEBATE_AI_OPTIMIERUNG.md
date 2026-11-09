@@ -2027,3 +2027,23 @@ damit das Inventar keine lokal vorhandenen, aber von `.gitignore` verworfenen
 generierten Dateien behauptet. Der bestehende Release-Tag und die vier
 Releaseartefakte bleiben unveraendert; der vollstaendige Code liegt auf dem
 privaten `master`-Branch.
+
+### Privacy-Nachlauf: Login-/Verlaufsdaten ausgeschlossen (2026-11-09)
+
+Der private Source-Snapshot wurde gezielt auf lokale GPT-/Gemini-/Google-
+Anmeldedaten und Nutzungsverlaeufe geprueft. In der aktuellen Baumstruktur
+und in allen erreichbaren Git-History-Objekten wurden keine Cookies,
+Browserprofile, `Login Data`, OAuth-/Access-/Refresh-Token-Dateien,
+Provider-/Account-Overrides, lokale Storage-State-Dateien, Chat-/Conversation-
+Verlaeufe, Transkripte, Datenbanken oder Logs gefunden. Die einzige `.env`
+Datei ist die neutrale `.env.example`; `ai/providers.json` ist bytegleich mit
+`ai/providers.default.json` und enthaelt keine persoenlichen Endpunkte oder
+Geheimnisse. Die Quellcode-Handler fuer Login/Cookies bleiben als Code
+enthalten, die per-Maschine-Zustaende jedoch nicht.
+
+Der Nachweis wurde in `build/v6-github-private-repo/PRIVACY_AUDIT.md`,
+`SOURCE_PROVENANCE.md` und `SOURCE_SNAPSHOT_MANIFEST.json` festgehalten. Der
+aktuelle Snapshot umfasst `1.004` Dateien und `18.966.942` Bytes; der
+Secretscan enthaelt weiterhin nur fuenf absichtlich synthetische Test-Fixtures.
+Naechster Schritt: den aktualisierten privaten Snapshot pushen und Remote-
+Baum sowie Historie erneut auf verbotene lokale Datenpfade pruefen.
