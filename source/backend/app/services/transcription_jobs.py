@@ -2,6 +2,7 @@
 
 from dataclasses import dataclass, field
 import uuid
+import threading
 
 
 ACTIVE_STATUSES = {"queued", "running", "canceling"}
@@ -81,6 +82,7 @@ class TranscriptionJob:
 # ponytail: one process owns the desktop API; persist jobs if multi-worker or
 # restart recovery becomes a requirement.
 _jobs: dict[uuid.UUID, TranscriptionJob] = {}
+_jobs_lock = threading.Lock()
 
 
 def create_job(
@@ -91,18 +93,19 @@ def create_job(
     *,
     filename: str | None = None,
 ) -> TranscriptionJob:
-    current = _jobs.get(session_id)
-    if current and current.status in ACTIVE_STATUSES:
-        raise JobAlreadyRunning(f"A {current.kind.replace('_', ' ')} job is already running")
-    job = TranscriptionJob(
-        session_id=session_id,
-        kind=kind,
-        model_id=model_id,
-        total_segments=max(1, total_segments),
-        filename=filename,
-    )
-    _jobs[session_id] = job
-    return job
+    with _jobs_lock:
+        current = _jobs.get(session_id)
+        if current and current.status in ACTIVE_STATUSES:
+            raise JobAlreadyRunning(f"A {current.kind.replace('_', ' ')} job is already running")
+        job = TranscriptionJob(
+            session_id=session_id,
+            kind=kind,
+            model_id=model_id,
+            total_segments=max(1, total_segments),
+            filename=filename,
+        )
+        _jobs[session_id] = job
+        return job
 
 
 def get_job(
@@ -111,7 +114,8 @@ def get_job(
     kind: str | None = None,
     job_id: uuid.UUID | None = None,
 ) -> TranscriptionJob | None:
-    job = _jobs.get(session_id)
-    if not job or (kind and job.kind != kind) or (job_id and job.id != job_id):
-        return None
-    return job
+    with _jobs_lock:
+        job = _jobs.get(session_id)
+        if not job or (kind and job.kind != kind) or (job_id and job.id != job_id):
+            return None
+        return job
