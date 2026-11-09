@@ -2555,7 +2555,7 @@ Build/Smoke durchgefuehrt wurde.
 
 Snapshot-Nachweis:
 
-- Remote-Commit: `c5bde12cab4221ccb811598e4df616002f3cd7c0`.
+- Remote-Commit: `949339d0bbe50b7f2dc7ab89f0fd43dbf178a960` (inklusive finaler Fortschrittsdatei).
 - `source/`: **1.027 Dateien**, **19.434.696 Bytes**; per-Datei-SHA-256 in
   `SOURCE_SNAPSHOT_MANIFEST.json`.
 - Ausgeschlossen: `.env`, Cookies, Browserprofile, Login-/OAuth-Zustaende,
@@ -2598,7 +2598,7 @@ Belastbarer Teilnachweis:
 
 Status: aktueller Onedir-Build/Smoke **BESTANDEN**, neue ZIP-/Release-
 Komprimierung **nicht nachgewiesen wegen Zeitlimit**. Der Remote-Source-
-Snapshot bleibt auf `c5bde12`; `v0.6.6` bleibt historisch. Keine manuelle
+Snapshot bleibt auf `949339d`; `v0.6.6` bleibt historisch. Keine manuelle
 Abnahme wurde simuliert.
 
 Nachtrag: Fuer den aktuellen Nutzerbedarf ist keine ZIP erforderlich. Die ZIP
@@ -2663,7 +2663,7 @@ Der erneute Chat-/Deep-Audit-Abgleich ist damit technisch abgeschlossen:
 - Desktop: 193/193 Tests bestanden, ein Plattform-Skip; aktueller Onedir-
   Kandidat und Health/ASR/Shutdown-Smoke bestanden.
 - Docs-Site: 206/206 Tests und 17-Seiten-Build bestanden.
-- Privater Source-Snapshot: auf Remote-`master` Commit `c5bde12` synchron,
+- Privater Source-Snapshot: auf Remote-`master` Commit `949339d` synchron,
   1.027 Dateien / 19.434.696 Bytes, Privacy-Scan ohne lokale Kontodaten.
 - Sentrux bleibt ein externer Werkzeug-Blocker, weil das in `AGENTS.md`
   angegebene Programm in dieser Umgebung nicht vorhanden ist.
