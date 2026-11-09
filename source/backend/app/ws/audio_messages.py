@@ -58,7 +58,16 @@ async def _handle_audio_frame(
     frame_metadata: dict[str, Any] | None = None,
     gateway_queue: asyncio.Queue[bytes | None] | None = None,
 ) -> bool:
-    track, pcm_data = _decode_audio_frame(raw_frame)
+    try:
+        track, pcm_data = _decode_audio_frame(raw_frame)
+    except (TypeError, ValueError) as exc:
+        await _send_status(
+            websocket,
+            "audio_error",
+            "One audio frame was rejected as malformed.",
+            details={"error": str(exc)[:200]},
+        )
+        return False
     try:
         metadata = frame_metadata or {}
         origin = str(metadata.get("origin") or "browser")[:20]
