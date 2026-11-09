@@ -19,6 +19,7 @@ scrubbed record could not show a leak. It never leaves the machine.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import logging
 import os
@@ -113,7 +114,10 @@ def record(entry: dict) -> None:
     try:
         path = _log_path()
         path.parent.mkdir(parents=True, exist_ok=True)
+        path.parent.chmod(0o700)
         _rotate_if_large(path)
+        if path.exists():
+            path.chmod(0o600)
         with open(path, "a", encoding="utf-8") as handle:
             handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except OSError:
@@ -163,6 +167,15 @@ def clear() -> int:
     return removed
 
 
+def _safe_prompt_for_log(text: str, leaks: list[tuple[str, str]]) -> str:
+    """Return diagnostic context without persisting any vault value."""
+    safe = text
+    for value, _category in sorted(leaks, key=lambda item: len(item[0]), reverse=True):
+        if value:
+            safe = safe.replace(value, "[REDACTED]")
+    return safe
+
+
 async def guard(
     prompt: str,
     *,
@@ -189,8 +202,15 @@ async def guard(
             "chars": len(text),
             "tokens_present": bool(vault.has_tokens(text)),
             "blocked": blocked,
-            "leaks": [{"category": category, "value": value} for value, category in leaks],
-            "prompt": text[:MAX_PROMPT_CHARS_STORED],
+            "leaks": [
+                {
+                    "category": category,
+                    "length": len(value),
+                    "fingerprint": hashlib.sha256(value.encode("utf-8")).hexdigest()[:16],
+                }
+                for value, category in leaks
+            ],
+            "prompt": _safe_prompt_for_log(text, leaks)[:MAX_PROMPT_CHARS_STORED],
             "truncated": len(text) > MAX_PROMPT_CHARS_STORED,
         })
     if blocked:
