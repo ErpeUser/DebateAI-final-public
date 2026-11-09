@@ -1,5 +1,6 @@
 """The model-call boundary: leak detection, the tripwire, and the prompt log."""
 
+import hashlib
 import json
 import os
 import tempfile
@@ -101,8 +102,8 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         entries = egress.recent()
         self.assertEqual(len(entries), 1)
         self.assertTrue(entries[0]["blocked"])
-        self.assertEqual(entries[0]["leaks"], [{"category": PERSON, "length": 12, "fingerprint": egress._fingerprint("Sarah Connor")}])
-        self.assertTrue(entries[0]["prompt"].startswith("sys\n\n[PERSON_1]"))
+        self.assertEqual(entries[0]["leaks"], [{"category": PERSON, "length": 12, "fingerprint": hashlib.sha256("Sarah Connor".encode()).hexdigest()[:16]}])
+        self.assertTrue(entries[0]["prompt"].startswith("sys\n\n[REDACTED]"))
         self.assertIsInstance(egress.PiiEgressBlocked("s", "m", []), ValueError)
 
     async def test_a_clean_prompt_passes_and_is_logged_with_tokens_noted(self):
