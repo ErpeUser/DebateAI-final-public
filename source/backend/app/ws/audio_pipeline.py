@@ -503,14 +503,25 @@ async def _run_audio_pipeline(
                         break
                     continue
             elif "text" in message:
-                await _handle_text_message(
-                    message["text"],
-                    session_id,
-                    orchestrator,
-                    state,
-                    requested_drain_mode,
-                    on_system_track_stopped=_flush_system_track_at_stop,
-                )
+                try:
+                    await _handle_text_message(
+                        message["text"],
+                        session_id,
+                        orchestrator,
+                        state,
+                        requested_drain_mode,
+                        on_system_track_stopped=_flush_system_track_at_stop,
+                    )
+                except (TypeError, ValueError, KeyError, OverflowError) as exc:
+                    # A malformed control frame must not tear down an otherwise
+                    # healthy audio call. Reject this message and continue.
+                    await _send_status(
+                        websocket,
+                        "control_error",
+                        "WebSocket control message was rejected.",
+                        details={"error": str(exc)[:200]},
+                    )
+                    continue
                 if state.stopped:
                     break
             await _maintain_audio_gateway(websocket, orchestrator, state)
