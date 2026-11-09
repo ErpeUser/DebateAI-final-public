@@ -19,12 +19,14 @@ scrubbed record could not show a leak. It never leaves the machine.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import logging
 import os
 import re
 import uuid
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -39,6 +41,7 @@ MAX_PROMPT_CHARS_STORED = 60_000
 # Values shorter than three characters are ignored; three-character roster values are still protected with whole-word matching.
 MIN_VALUE_LENGTH = 3
 _DIGIT_CATEGORIES = {PHONE, SSN, CARD, IP}
+_RECORD_LOCK = threading.Lock()
 
 
 class PiiEgressBlocked(ValueError):
@@ -112,14 +115,15 @@ def _rotate_if_large(path: Path) -> None:
 def record(entry: dict) -> None:
     """Append one outbound-prompt record. Never raises."""
     try:
-        path = _log_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.parent.chmod(0o700)
-        _rotate_if_large(path)
-        if path.exists():
-            path.chmod(0o600)
-        with open(path, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        with _RECORD_LOCK:
+            path = _log_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.parent.chmod(0o700)
+            _rotate_if_large(path)
+            if path.exists():
+                path.chmod(0o600)
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except OSError:
         logger.warning("Could not write the prompt log", exc_info=True)
 
@@ -194,7 +198,7 @@ async def guard(
     leaks = find_leaks(text) if settings.enabled else []
     blocked = bool(leaks)
     if settings.prompt_log:
-        record({
+        await asyncio.to_thread(record, {
             "at": datetime.now(timezone.utc).isoformat(),
             "source": source,
             "model_id": model_id,
