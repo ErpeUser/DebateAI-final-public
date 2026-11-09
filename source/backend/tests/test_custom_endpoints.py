@@ -481,6 +481,8 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         stream = mock.AsyncMock()
         stream.__aenter__.return_value = response
         client = mock.Mock()
+        client.__aenter__ = mock.AsyncMock(return_value=client)
+        client.__aexit__ = mock.AsyncMock(return_value=None)
         client.stream.return_value = stream
         with mock.patch.object(ce.httpx, "AsyncClient", mock.Mock(return_value=client)):
             ok, message, served = await ce.probe("http://localhost:1234/v1")
