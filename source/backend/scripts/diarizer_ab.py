@@ -537,7 +537,7 @@ def cached_embeddings(model_path, key, track, spans, audio, cache_dir):
     if not cache_dir:
         return embed_spans(audio, spans)
     os.makedirs(cache_dir, exist_ok=True)
-    digest = hashlib.sha1(
+    digest = hashlib.sha256(
         f"{os.path.basename(model_path)}|{key}|{track}|{spans}".encode()
     ).hexdigest()[:20]
     path = os.path.join(cache_dir, f"emb_{digest}.npy")
