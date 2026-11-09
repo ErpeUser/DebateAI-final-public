@@ -156,10 +156,11 @@ class MiddlewareTests(unittest.TestCase):
             self.assertEqual("hi", ws.receive_text())
             self.assertEqual("backchannel.instance.test-token", ws.accepted_subprotocol)
         with self.assertRaises(Exception):
-            self.client.websocket_connect(
+            with self.client.websocket_connect(
                 "/ws/echo?instance_token=test-token",
                 headers={"Host": "localhost:8474"},
-            )
+            ):
+                pass
 
     def test_websocket_from_foreign_origin_is_refused_even_with_loopback_host(self):
         # A hostile page can always put a loopback URL in new WebSocket(...);
