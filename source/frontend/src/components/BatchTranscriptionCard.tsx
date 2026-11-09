@@ -16,7 +16,7 @@ interface BatchTranscriptionCardProps {
   gatewayModelId?: string;
 }
 
-export default function BatchTranscriptionCard({ models, localOnly = false, lockLabel = "Privacy First", onLiveModelChanged, gatewayModelId }: BatchTranscriptionCardProps) {
+export default function BatchTranscriptionCard({ models, localOnly = false, lockLabel = "Datenschutzmodus", onLiveModelChanged, gatewayModelId }: BatchTranscriptionCardProps) {
   const [config, setConfig] = useState<TranscriptionConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -134,7 +134,7 @@ export default function BatchTranscriptionCard({ models, localOnly = false, lock
         <div className="rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 p-3">
           <p className="font-body text-[10px] uppercase text-brand-mid-gray">Live-Vorschaumodell</p>
           <p className="mt-1 truncate font-display text-sm font-bold text-brand-dark-gray" title={config?.live_preview_model_id ?? ""}>
-            {livePreviewOff ? "Aus (Privacy First)" : liveModel?.name || config?.live_preview_model_id || "Nicht ausgewählt"}
+            {livePreviewOff ? "Aus (Datenschutzmodus)" : liveModel?.name || config?.live_preview_model_id || "Nicht ausgewählt"}
           </p>
           <p className="mt-1 truncate font-mono text-[10px] text-brand-mid-gray">{config?.live_preview_model_id}</p>
         </div>
@@ -202,7 +202,7 @@ export default function BatchTranscriptionCard({ models, localOnly = false, lock
 
       {localOnly && (
         <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900">
-          {lockLabel === "Privacy First" ? "Privacy First" : "Der Schutz für personenbezogene Daten"} ist aktiv: Nur lokale ONNX-Modelle dürfen transkribieren. Cloud-Dienste für Live-Untertitel sind
+          {lockLabel === "Datenschutzmodus" ? "Der Datenschutzmodus" : "Der Schutz für personenbezogene Daten"} ist aktiv: Nur lokale ONNX-Modelle dürfen transkribieren. Cloud-Dienste für Live-Untertitel sind
           abgeschaltet; der experimentelle lokale Untertitler ({hasLocalLiveModel ? "Parakeet Live" : "falls verfügbar"})
           kann hier einsprachig oder mehrsprachig (Parakeet v3 Live) gewählt werden. Er belastet die CPU deutlich;
           bitte zuerst den Eignungstest für Live-Untertitel prüfen.

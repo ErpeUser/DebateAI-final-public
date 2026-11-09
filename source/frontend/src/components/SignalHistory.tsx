@@ -40,7 +40,7 @@ export default function SignalHistory({ sessionId, count, heading }: SignalHisto
       const synthesis = await api.getSynthesis(sessionId, "live", true);
       setItems(synthesis?.signal_history || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Signal history could not be loaded.");
+      setError(err instanceof Error ? err.message : "Der Signalverlauf konnte nicht geladen werden.");
     } finally {
       setLoading(false);
     }

@@ -63,7 +63,7 @@ new Function("require", "module", "exports", bundle.outputFiles[0].text)(
 const rendered = compiled.exports;
 
 test("live_chat has an operator-facing agent label", () => {
-  assert.match(src, /live_chat:\s*"You asked"/);
+  assert.match(src, /live_chat:\s*"Eigene Frage"/);
 });
 
 test("make directive is offered only on asked cards", () => {
@@ -73,14 +73,14 @@ test("make directive is offered only on asked cards", () => {
 
 test("asked slugs use the theme foreground at every card and section render point", () => {
   for (const [surface, markup] of [["live", rendered.live], ["post-call", rendered.postCall]]) {
-    const badge = markup.match(/<span[^>]*>You asked<\/span>/)?.[0];
+    const badge = markup.match(/<span[^>]*>Eigene Frage<\/span>/)?.[0];
     assert.ok(badge, `missing ${surface} asked badge`);
     assert.match(badge, /class="[^"]*\btext-brand-dark-gray\b[^"]*"/);
     assert.match(badge, /style="background-color:#47556915"/);
     assert.doesNotMatch(badge, /(?:style="|;)color:/);
   }
 
-  const section = rendered.postCall.match(/<h3[^>]*>.*?Asked.*?<\/h3>/)?.[0];
+  const section = rendered.postCall.match(/<h3[^>]*>.*?Eigene Fragen.*?<\/h3>/)?.[0];
   assert.ok(section, "missing asked section heading");
   assert.match(section, /^<h3 class="[^"]*\btext-brand-dark-gray\b[^"]*">/);
   assert.doesNotMatch(section, /style="color:#475569"/);

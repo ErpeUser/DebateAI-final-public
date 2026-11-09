@@ -178,7 +178,7 @@ export default function TranscriptReview({ transcripts, speakers, onRenameSpeake
           Vollständiges Transkript
         </h2>
         <p className="mt-1 text-xs text-brand-mid-gray">
-          {transcripts.length} {transcripts.length === 1 ? "entry" : "entries"}
+          {transcripts.length} {transcripts.length === 1 ? "Eintrag" : "Einträge"}
           {onRenameSpeaker && " \u00b7 Zum Umbenennen auf einen Sprechernamen klicken"}
         </p>
       </div>

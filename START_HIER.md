@@ -1,6 +1,6 @@
 # Debate AI V6 Windows-Paket
 
-Start: `Backchannel.exe`.
+Start: `Backchannel.exe` (historischer Dateiname des Debate-AI-Pakets).
 
 Die editierbaren AI-Dateien liegen im Ordner `ai` direkt neben der EXE. Die
 Dateien dort sind die wirksame externe Quelle; sie koennen ohne EXE-Neubau

@@ -25,6 +25,7 @@ from app.services.agents.orchestrator import (
     _manual_research_query,
     _materially_better_recommendation,
     _contains_unsupported_numeric_assertion,
+    _unicode_words,
     _bind_research_result,
 )
 from app.services.debate_research import ResearchResult, ResearchSource
@@ -168,6 +169,19 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
+
+    def test_german_unicode_number_words_are_checked_without_mojibake(self):
+        recommendation = DebateRecommendation(
+            answer_now="Die Quote liegt bei fünf Prozent.",
+            counterargument="Das ist die klare Mehrheit.",
+            target_claim="Die Quote liegt bei fünf Prozent.",
+            confidence="high",
+        )
+
+        self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
+
+    def test_unicode_word_tokenizer_keeps_german_umlauts(self):
+        self.assertEqual({"fünf", "grösserer", "massstab"}, _unicode_words("Fünf größerer Maßstab"))
 
     def test_unrelated_found_source_does_not_validate_a_number(self):
         recommendation = DebateRecommendation(
@@ -397,23 +411,13 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertLess(len(system), 2000)
         self.assertIs(generate.await_args.args[2], LiveDebateResponse)
 
-    async def test_semantically_empty_guidance_is_retried_once(self):
+    async def test_semantically_empty_guidance_is_not_retried(self):
         objection = ObjectionHandlerItem(
             question="Das ist zu teuer.",
             response_now="Lassen Sie uns die Gesamtkosten vergleichen.",
             bigger_picture="Die Sorge gilt dem Kostenrisiko.",
         )
-        recovered = ObjectionHandlerOutput(
-            recommendation=DebateRecommendation(
-                answer_now="Direkte Antwort.",
-                counterargument="Klares Gegenargument.",
-                counter_question="Welche Quelle?",
-                analogy="Das ist wie ein Urteil ohne Beweis.",
-            )
-        )
-        generate = AsyncMock(
-            side_effect=[ObjectionHandlerOutput(items=[objection]), recovered]
-        )
+        generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
         with patch(
@@ -423,23 +427,18 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
                 "[S1]: Nennen Sie Ihr Gegenargument.", [], SPEAKERS
             )
 
-        self.assertEqual(2, generate.await_count)
-        self.assertEqual(recovered.recommendation, agent.latest_recommendation)
-        self.assertIn("Fuellen Sie `answer_now`", generate.await_args.args[1])
+        self.assertEqual(1, generate.await_count)
+        self.assertEqual("", agent.latest_recommendation.answer_now)
+        self.assertEqual("no_guidance", agent.last_outcome["kind"])
         self.assertEqual("Das ist zu teuer.", items[0]["question"])
 
-    async def test_two_empty_guidance_replies_fail_without_losing_objections(self):
+    async def test_empty_guidance_does_not_fail_or_lose_objections(self):
         objection = ObjectionHandlerItem(
             question="Das ist zu teuer.",
             response_now="Lassen Sie uns die Gesamtkosten vergleichen.",
             bigger_picture="Die Sorge gilt dem Kostenrisiko.",
         )
-        generate = AsyncMock(
-            side_effect=[
-                ObjectionHandlerOutput(items=[objection]),
-                ObjectionHandlerOutput(items=[]),
-            ]
-        )
+        generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
         with patch(
@@ -448,21 +447,17 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             items = await agent.run_cycle("[S1]: Das ist zu teuer.", [], SPEAKERS)
 
         self.assertEqual("Das ist zu teuer.", items[0]["question"])
-        self.assertEqual("error", agent.last_outcome["kind"])
+        self.assertEqual(1, generate.await_count)
+        self.assertEqual("no_guidance", agent.last_outcome["kind"])
         self.assertEqual("", agent.latest_recommendation.answer_now)
 
-    async def test_guidance_retry_exception_does_not_lose_first_objections(self):
+    async def test_empty_guidance_does_not_trigger_retry_exception(self):
         objection = ObjectionHandlerItem(
             question="Das ist zu teuer.",
             response_now="Lassen Sie uns die Gesamtkosten vergleichen.",
             bigger_picture="Die Sorge gilt dem Kostenrisiko.",
         )
-        generate = AsyncMock(
-            side_effect=[
-                ObjectionHandlerOutput(items=[objection]),
-                TimeoutError("retry timed out"),
-            ]
-        )
+        generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
         with patch(
@@ -471,7 +466,8 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             items = await agent.run_cycle("[S1]: Das ist zu teuer.", [], SPEAKERS)
 
         self.assertEqual("Das ist zu teuer.", items[0]["question"])
-        self.assertEqual("error", agent.last_outcome["kind"])
+        self.assertEqual(1, generate.await_count)
+        self.assertEqual("no_guidance", agent.last_outcome["kind"])
         self.assertEqual("", agent.latest_recommendation.answer_now)
 
     async def test_uncertain_fact_requests_one_narrow_research_query(self):
@@ -1167,7 +1163,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(accepted)
         self.assertTrue(orchestrator._debate_diagnostics[-1]["ui_acknowledged"])
 
-    async def test_feed_is_nonblocking_and_new_speech_queues_latest_revision(self):
+    async def test_new_speech_cancels_stale_revision_and_runs_latest(self):
         class BlockingAgent:
             def __init__(self):
                 self.started = asyncio.Event()
@@ -1192,12 +1188,14 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(orchestrator.feed_transcript("Neuer Punkt", "Alex"), 0.1)
         await asyncio.sleep(0)
 
-        self.assertFalse(first.done())
-        self.assertEqual(1, orchestrator._debate_revision)
-        self.assertTrue(orchestrator._debate_pending)
+        self.assertTrue(first.cancelled())
+        second = orchestrator._objection_task
+        self.assertIsNot(first, second)
+        self.assertEqual(2, orchestrator._debate_revision)
+        self.assertFalse(orchestrator._debate_pending)
 
         agent.release.set()
-        await asyncio.wait_for(first, 0.5)
+        await asyncio.wait_for(second, 0.5)
 
         self.assertEqual(2, orchestrator._debate_revision)
         self.assertEqual(2, agent.calls)
@@ -1247,8 +1245,12 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             "Alex",
             utterance_id="utt-negation",
         )
+        latest_worker = orchestrator._objection_task
+        self.assertIsNot(worker, latest_worker)
         agent.release.set()
-        await asyncio.wait_for(worker, 0.5)
+        with self.assertRaises(asyncio.CancelledError):
+            await asyncio.wait_for(worker, 0.5)
+        await asyncio.wait_for(latest_worker, 0.5)
 
         model_updates = [
             call.args[0]["data"]

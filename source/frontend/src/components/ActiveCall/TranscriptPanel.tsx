@@ -9,6 +9,12 @@ interface TranscriptPanelProps {
   onToggleCollapse?: () => void;
 }
 
+/** Stable React identity for live entries; array indexes change when a
+ * provisional row is replaced or a persisted row is inserted. */
+export function transcriptEntryKey(entry: TranscriptEntry, index: number): string {
+  return entry.id || `${entry.timestamp}:${entry.speaker_id || "live"}:${index}`;
+}
+
 const PANEL_ID = "live-transcription-panel";
 
 const GHOST_BUTTON =
@@ -125,7 +131,7 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
         ? speaker.display_name
         : speaker.name;
     }
-    return entry.id ? "Unknown" : "Live";
+    return entry.id ? "Unbekannt" : "Live";
   }
 
   function speakerColor(entry: TranscriptEntry, speaker: Speaker | null): string {
@@ -271,12 +277,12 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
         onScroll={handleScroll}
         tabIndex={0}
         role="region"
-        aria-label="Live transcription entries"
+        aria-label="Live-Transkripteinträge"
         className="min-h-0 flex-1 overflow-y-auto p-4 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light"
       >
         {transcripts.length === 0 ? (
           <p className="py-8 text-center font-body text-sm text-brand-mid-gray">
-            Waiting for speech...
+            Warte auf Sprache ...
           </p>
         ) : (
           <div className="space-y-3">
@@ -288,7 +294,7 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
 
               if (isMarker) {
                 return (
-                  <div key={i} data-entry-index={i} className="text-center py-2">
+                  <div key={transcriptEntryKey(entry, i)} data-entry-index={i} className="text-center py-2">
                     <span className="text-xs font-medium text-brand-amber bg-orange-50 px-3 py-1 rounded-full">
                       {entry.text}
                     </span>
@@ -302,7 +308,7 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
 
               return (
                 <div
-                  key={i}
+                  key={transcriptEntryKey(entry, i)}
                   data-entry-index={i}
                   className={`${interim ? "opacity-50" : ""} ${
                     isCurrentMatch ? "-mx-2 rounded-md bg-brand-teal/5 px-2 py-1 ring-1 ring-brand-teal/20" : ""

@@ -100,11 +100,11 @@ export default function QuestionList({ questions, showEnhanced = false, emptyMes
   }, [questions, strategicExtras, activeFilters, showEnhanced]);
 
   const filters: { key: Filter; label: string }[] = [
-    { key: "all", label: "All" },
+    { key: "all", label: "Alle" },
     ...typeFilterDefs,
     { key: "starred", label: "Markiert" },
     { key: "answered", label: "Beantwortet" },
-    { key: "prioritized", label: "Prioritized" },
+    { key: "prioritized", label: "Priorisiert" },
     ...(showEnhanced ? [{ key: "enhanced", label: "Verbessert" }] : []),
   ];
 
@@ -176,7 +176,7 @@ export default function QuestionList({ questions, showEnhanced = false, emptyMes
             <p className="font-body text-sm text-brand-mid-gray">
               {activeFilters.has("all")
                 ? emptyMessage || "Noch keine Hinweise – die Analyse wartet auf den nächsten Beitrag."
-                : "No items match the selected filters."}
+                : "Keine Hinweise passen zu den gewählten Filtern."}
             </p>
           </div>
         ) : (

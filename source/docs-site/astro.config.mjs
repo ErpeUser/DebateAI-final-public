@@ -10,7 +10,7 @@ export default defineConfig({
   base: '/docs',
   integrations: [
     starlight({
-      title: 'Backchannel',
+      title: 'Debate AI',
       description:
         'Real-time meeting transcription with AI agents that surface questions, objections, opportunities, and action items as the conversation happens.',
       logo: { src: './src/assets/mark.svg' },
@@ -35,18 +35,18 @@ export default defineConfig({
       ],
       sidebar: [
         // ponytail: absolute path escapes the /docs base back to the landing page
-        { label: '← Back to homepage', link: 'https://backchannel.page/' },
+        { label: '← Zur Startseite', link: 'https://backchannel.page/' },
         {
-          label: 'Getting started',
+          label: 'Erste Schritte',
           items: [
-            { label: 'Overview', link: '/' },
+            { label: 'Übersicht', link: '/' },
             'quickstart',
             'api-keys',
             'architecture',
           ],
         },
         {
-          label: 'Reference',
+          label: 'Referenz',
           items: [
             'agents',
             'audio-pipeline',

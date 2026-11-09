@@ -176,7 +176,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
     } catch {
       // Non-JSON error body (e.g. a bare proxy error page); show it as-is.
     }
-    throw new Error(`API error ${res.status}: ${detail}`);
+    throw new Error(`API-Fehler ${res.status}: ${detail}`);
   }
   if (res.status === 204) return undefined as T;
   return res.json();
@@ -292,7 +292,7 @@ export const uploadDocument = async (sessionId: string, file: File): Promise<Doc
     } catch {
       // non-JSON error body
     }
-    throw new Error(detail || `Upload failed: ${res.status}`);
+    throw new Error(detail || `Hochladen fehlgeschlagen: ${res.status}`);
   }
   return res.json();
 };
@@ -398,7 +398,7 @@ export const importTranscript = async (sessionId: string, file: File): Promise<{
     method: "POST",
     body: form,
   });
-  if (!res.ok) throw new Error(`Import failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
@@ -409,7 +409,7 @@ export const importAudio = async (sessionId: string, file: File): Promise<Transc
     method: "POST",
     body: form,
   });
-  if (!res.ok) throw new Error(`Import failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
@@ -734,7 +734,7 @@ export const runSortformerBenchmark = async (file: File): Promise<DiarizationBen
   });
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(`Benchmark failed ${res.status}: ${text}`);
+    throw new Error(`Benchmark fehlgeschlagen (${res.status}): ${text}`);
   }
   return res.json();
 };
@@ -762,7 +762,7 @@ export const importOfferings = async (file: File): Promise<{ created: number; sk
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/offerings/import`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Import failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
@@ -801,7 +801,7 @@ export const importKnowledgeRecords = async (sourceId: string, file: File): Prom
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/knowledge/${sourceId}/records/import`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Import failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
@@ -809,7 +809,7 @@ export const uploadKnowledgeFile = async (sourceId: string, file: File): Promise
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/knowledge/${sourceId}/files`, { method: "POST", body: form });
-  if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+  if (!res.ok) throw new Error(`Hochladen fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 

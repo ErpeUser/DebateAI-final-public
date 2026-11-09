@@ -42,7 +42,7 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-base font-bold text-brand-dark-gray">Privacy First</h3>
+            <h3 className="font-display text-base font-bold text-brand-dark-gray">Datenschutzmodus</h3>
             <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
               enabled
                 ? "border-teal-600 bg-teal-700 text-white dark:border-teal-500 dark:bg-teal-900 dark:text-teal-100"
@@ -54,14 +54,14 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
           <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
             Hält Gesprächsaudio und Transkript vollständig auf diesem Gerät. Die Transkription wechselt
             zu lokalen ONNX-Modellen; Funktionen mit externen API-Aufrufen bleiben deaktiviert, bis
-            Privacy First wieder ausgeschaltet wird.
+            der Datenschutzmodus wieder ausgeschaltet wird.
           </p>
         </div>
         <button
           onClick={handleToggle}
           disabled={!config || saving}
           className={`h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed ${enabled ? "bg-brand-teal" : confirming ? "bg-amber-400" : "bg-brand-light-gray-1"}`}
-          title={enabled ? "Privacy First ausschalten" : "Privacy First einschalten"}
+          title={enabled ? "Datenschutzmodus ausschalten" : "Datenschutzmodus einschalten"}
         >
           <span className={`block h-5 w-5 rounded-full bg-surface shadow transition-transform ${enabled ? "translate-x-5" : confirming ? "translate-x-2.5" : "translate-x-0.5"}`} />
         </button>
@@ -69,7 +69,7 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
 
       {enabled && config && (
         <p className="mt-3 rounded border border-brand-teal/30 bg-brand-teal/5 px-3 py-2 font-body text-xs text-brand-dark-gray">
-          Active: transcription runs on <span className="font-mono">{config.batch_model_id}</span>.
+          Aktiv: Die Transkription läuft mit <span className="font-mono">{config.batch_model_id}</span>.
           Cloud-KI-Agenten, Live-Untertitel, Analysen, Chat und Dokumentzusammenfassungen sind aus.
           Beim Ausschalten werden die vorherigen Cloud-Modellwahlen wiederhergestellt.
         </p>
@@ -78,8 +78,8 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
       {confirming && !enabled && config && (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/40">
           <p className="mb-3 font-body text-xs font-medium text-amber-900 dark:text-amber-200">
-            Review what changes before enabling. These features stop working because they have no
-            local alternative:
+            Prüfe vor dem Einschalten, was sich ändert. Diese Funktionen werden deaktiviert,
+            weil keine lokale Alternative vorhanden ist:
           </p>
           <ul className="mb-4 space-y-2">
             {config.impact.disabled.map((item) => (

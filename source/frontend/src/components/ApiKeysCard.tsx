@@ -26,10 +26,10 @@ interface ApiKeysCardProps {
 // The backend answers a save with 503 when the credentials master key cannot
 // be used (an unwrappable DPAPI blob after a password reset, a corrupt file);
 // its detail carries the recovery steps, so show that text rather than the
-// "API error 503:" prefix the client wraps every failure in.
+// "API-Fehler 503:" prefix the client wraps every failure in.
 export function describeKeyError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
-  return err.message.replace(/^API error \d+:\s*/, "") || fallback;
+  return err.message.replace(/^API-Fehler \d+:\s*/, "") || fallback;
 }
 
 export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {

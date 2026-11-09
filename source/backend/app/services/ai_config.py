@@ -30,6 +30,33 @@ _REQUIRED_PLACEHOLDERS = {
         "meeting_context_text", "speakers_text", "insights_json", "transcript_text",
     },
 }
+# The application renders prompts with named values only.  Keeping this
+# allowlist at the validation boundary prevents an editable prompt from
+# introducing an unexpected field lookup (or a typo that silently renders as
+# an empty/incorrect value) when it is later formatted by an agent.
+_ALLOWED_PROMPT_PLACEHOLDERS = frozenset({
+    "claim",
+    "own_position",
+    "relevant_context",
+    "evidence",
+    "meeting_context_text",
+    "speakers_text",
+    "insights_json",
+    "transcript_text",
+    "transcript_window",
+    "directives_text",
+    "document_summaries",
+    "active_questions",
+    "lens_sections",
+    "item_type_values",
+    "recent_objections",
+    "knowledge_context",
+    "opportunities_json",
+    "insights_text",
+    "discovery_lens_json",
+    "meeting_lens_json",
+    "mode",
+})
 _TRUTHY = {"1", "true", "yes", "on"}
 
 
@@ -395,6 +422,12 @@ def _validate_prompt_content(name: str, content: str) -> str:
         }
     except ValueError as exc:
         raise ValueError("Der Prompt enthaelt ungueltige Template-Klammern.") from exc
+    unknown = placeholders - _ALLOWED_PROMPT_PLACEHOLDERS
+    if unknown:
+        raise ValueError(
+            "Unbekannte Promptplatzhalter: "
+            + ", ".join(f"{{{item}}}" for item in sorted(unknown))
+        )
     missing = _REQUIRED_PLACEHOLDERS.get(name, set()) - placeholders
     if missing:
         raise ValueError(

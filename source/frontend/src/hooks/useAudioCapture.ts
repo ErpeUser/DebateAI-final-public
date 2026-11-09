@@ -120,6 +120,7 @@ const WORKLET_CODE = `
 export function useAudioCapture() {
   const [isCapturing, setIsCapturing] = useState(false);
   const [systemAudioActive, setSystemAudioActive] = useState(false);
+  const [systemAudioWarning, setSystemAudioWarning] = useState<string | null>(null);
 
   // Meter levels are refs, not state: they change ~60 times a second and the
   // only consumer is one meter's width, so publishing them through React would
@@ -262,6 +263,7 @@ export function useAudioCapture() {
     if (contextRef.current) return;
 
     const generation = ++captureGenerationRef.current;
+    setSystemAudioWarning(null);
     onLevelRef.current = onLevel || null;
     onSystemAudioStateChangeRef.current = options?.onSystemAudioStateChange || null;
 
@@ -312,6 +314,7 @@ export function useAudioCapture() {
         } catch (err) {
           if (generation !== captureGenerationRef.current) return;
           // A declined or unavailable share falls back to mic-only capture.
+          setSystemAudioWarning("Systemaudio ist nicht verfügbar; es wird nur das Mikrofon aufgenommen.");
           console.warn("System audio capture unavailable:", err);
         }
       }
@@ -381,5 +384,6 @@ export function useAudioCapture() {
     audioLevelRef: audioLevelRef as AudioLevelSource,
     systemAudioLevelRef: systemAudioLevelRef as AudioLevelSource,
     systemAudioActive,
+    systemAudioWarning,
   };
 }

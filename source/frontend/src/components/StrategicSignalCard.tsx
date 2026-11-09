@@ -2,14 +2,14 @@ import type { SignalHistoryItem } from "../types";
 
 const SECTION_LABELS: Record<string, string> = {
   strategic_signals: "Signal",
-  risks_blockers: "Risk / Blocker",
-  unresolved_discovery_questions: "Discovery Question",
-  top_opportunities: "Opportunity",
-  action_plan: "Action",
+  risks_blockers: "Risiko / Blocker",
+  unresolved_discovery_questions: "Offene Frage",
+  top_opportunities: "Chance",
+  action_plan: "Aufgabe",
 };
 
 export function signalSectionLabel(section: string): string {
-  return SECTION_LABELS[section] || (section || "signal").replace(/_/g, " ");
+  return SECTION_LABELS[section] || (section || "Signal").replace(/_/g, " ");
 }
 
 export function signalKey(item: SignalHistoryItem, index = 0): string {
@@ -20,7 +20,7 @@ function historyTime(value: string): string {
   const time = new Date(value);
   return Number.isFinite(time.getTime())
     ? time.toLocaleString([], { dateStyle: "short", timeStyle: "short" })
-    : "Unknown";
+    : "Unbekannt";
 }
 
 /**
@@ -28,7 +28,7 @@ function historyTime(value: string): string {
  * live call view's Strategic insight filter so both read the same way.
  */
 export default function StrategicSignalCard({ item }: { item: SignalHistoryItem }) {
-  const title = item.title?.trim() || item.summary?.trim() || "Untitled signal";
+  const title = item.title?.trim() || item.summary?.trim() || "Unbenanntes Signal";
   const summary = item.summary?.trim() || "";
   const distinctSummary = Boolean(item.title?.trim() && summary);
 
@@ -39,7 +39,7 @@ export default function StrategicSignalCard({ item }: { item: SignalHistoryItem 
           {signalSectionLabel(item.section)}
         </span>
         <span className="font-body text-[11px] font-medium text-brand-mid-gray">
-          {item.count === 1 ? "Seen once" : `Seen ${item.count} times`}
+          {item.count === 1 ? "Einmal gesehen" : `${item.count}-mal gesehen`}
         </span>
       </div>
       <h4 className="mt-2 font-body text-sm font-semibold text-brand-dark-gray">{title}</h4>
@@ -50,7 +50,7 @@ export default function StrategicSignalCard({ item }: { item: SignalHistoryItem 
         <p className="mt-2 font-body text-xs leading-relaxed text-brand-mid-gray">{item.rationale}</p>
       )}
       <p className="mt-2 font-body text-[11px] text-brand-mid-gray">
-        First {historyTime(item.first_seen)} - Last {historyTime(item.last_seen)}
+        Erstmals {historyTime(item.first_seen)} – zuletzt {historyTime(item.last_seen)}
       </p>
     </article>
   );

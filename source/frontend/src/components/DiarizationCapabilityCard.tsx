@@ -110,7 +110,7 @@ export default function DiarizationCapabilityCard() {
       await load();
     } catch (err) {
       console.error("Benchmark failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Benchmark failed.");
+      setDiagnosticError(err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.");
     } finally {
       setBenchmarking(false);
     }
@@ -130,7 +130,7 @@ export default function DiarizationCapabilityCard() {
       setVoiceEnrolled(result.enrolled);
     } catch (err) {
       console.error("Voice enrollment failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Voice enrollment failed.");
+      setDiagnosticError(err instanceof Error ? err.message : "Stimmprofil konnte nicht gespeichert werden.");
     } finally {
       setVoiceSaving(false);
     }
@@ -159,7 +159,7 @@ export default function DiarizationCapabilityCard() {
 
   const startMicRecording = async (mode: RecordingMode) => {
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setDiagnosticError("Browser microphone recording is not available.");
+      setDiagnosticError("Mikrofonaufnahme ist in diesem Browser nicht verfügbar.");
       return;
     }
 
@@ -270,14 +270,14 @@ export default function DiarizationCapabilityCard() {
   const recommendation = benchmark?.recommended_live_diarizer ?? (enhancedUnlocked ? "sortformer" : diarization?.recommended_live_diarizer) ?? "lightweight";
   const deviceLabel = diarization
     ? `${diarization.device.toUpperCase()}${diarization.gpu_name ? ` - ${diarization.gpu_name}` : ""}`
-    : "Unknown";
+    : "Unbekannt";
   const gpuLabel = !diarization
-    ? "Unknown"
+    ? "Unbekannt"
     : diarization.gpu_backend === "rocm"
       ? "ROCm (AMD)"
       : diarization.gpu_backend === "cuda"
         ? "CUDA (NVIDIA)"
-        : "None (CPU)";
+        : "Keine (CPU)";
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
@@ -319,16 +319,16 @@ export default function DiarizationCapabilityCard() {
                 label="Erweitert"
             active={selectedMode === "sortformer"}
             disabled={!enhancedUnlocked || savingSelection}
-            title={enhancedUnlocked ? "Use Sortformer" : "Run a passing benchmark to unlock enhanced mode"}
+            title={enhancedUnlocked ? "Sortformer verwenden" : "Bestandenen Leistungstest ausführen, um den erweiterten Modus freizuschalten"}
             onClick={() => void selectDiarizer("sortformer")}
           />
         </div>
       </div>
 
       <div className="mb-4 grid gap-3 md:grid-cols-4">
-        <Metric label="Recommendation" value={recommendation} capitalize />
-        <Metric label="Device" value={deviceLabel} title={deviceLabel} />
-        <Metric label="GPU accel" value={gpuLabel} />
+        <Metric label="Empfehlung" value={recommendation} capitalize />
+        <Metric label="Gerät" value={deviceLabel} title={deviceLabel} />
+        <Metric label="GPU-Beschleunigung" value={gpuLabel} />
         <Metric
           label="RTF"
           value={
@@ -336,13 +336,13 @@ export default function DiarizationCapabilityCard() {
               ? benchmark.real_time_factor.toFixed(2)
               : diarization?.benchmark_real_time_factor != null
                 ? diarization.benchmark_real_time_factor.toFixed(2)
-                : "Not run"
+                : "Nicht ausgeführt"
           }
         />
       </div>
       {diarization?.benchmark_measured_at && (
         <p className="mb-4 font-body text-[11px] text-brand-mid-gray">
-          Measured {new Date(diarization.benchmark_measured_at).toLocaleString()}
+          Gemessen am {new Date(diarization.benchmark_measured_at).toLocaleString()}
           {diarization.benchmark_validity === "aged" ? ` - ${diarization.benchmark_validity_reason}` : ""}
         </p>
       )}
@@ -357,7 +357,7 @@ export default function DiarizationCapabilityCard() {
           <div>
             <p className="font-body text-[10px] uppercase text-brand-mid-gray">Sprecherzuordnung</p>
             <p className="font-body text-xs text-brand-gray">
-              Match threshold: <span className="font-semibold text-brand-dark-gray">{thresholdDraft.toFixed(2)}</span>
+              Schwelle der Zuordnung: <span className="font-semibold text-brand-dark-gray">{thresholdDraft.toFixed(2)}</span>
             </p>
           </div>
           <button
@@ -366,7 +366,7 @@ export default function DiarizationCapabilityCard() {
             disabled={!thresholdChanged || savingThreshold || loadingDiagnostics}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
           >
-            {savingThreshold ? "Saving..." : "Apply"}
+            {savingThreshold ? "Wird gespeichert ..." : "Übernehmen"}
           </button>
         </div>
         <div className="flex items-center gap-3">
@@ -404,8 +404,8 @@ export default function DiarizationCapabilityCard() {
             <p className="font-body text-[10px] uppercase text-brand-mid-gray">Mein Stimmprofil</p>
             <p className="mt-1 font-body text-xs text-brand-gray">
               {voiceEnrolled
-                ? "Your encrypted voice signature is ready for mic-only speaker matching."
-                : "Record 4-10 seconds of your voice. Calibration audio is discarded; only its encrypted voice signature is kept."}
+                ? "Dein verschlüsseltes Stimmprofil ist für die Sprecherzuordnung über das Mikrofon bereit."
+                : "Nimm 4–10 Sekunden deiner Stimme auf. Das Kalibrierungsaudio wird verworfen; nur die verschlüsselte Stimmkennung bleibt erhalten."}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -422,12 +422,12 @@ export default function DiarizationCapabilityCard() {
               className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-colors hover:bg-brand-teal hover:text-white disabled:cursor-not-allowed disabled:border-brand-light-gray-1 disabled:text-brand-mid-gray"
             >
               {recordingMode === "voice"
-                ? `Stop (${recordingSeconds}s)`
+                ? `Stopp (${recordingSeconds}s)`
                 : voiceSaving
-                  ? "Saving..."
+                  ? "Wird gespeichert ..."
                   : voiceEnrolled
-                    ? "Replace Voice Profile"
-                    : "Record Voice Profile"}
+                    ? "Stimmprofil ersetzen"
+                    : "Stimmprofil aufnehmen"}
             </button>
             {voiceEnrolled && (
               <button
@@ -447,10 +447,10 @@ export default function DiarizationCapabilityCard() {
         <p className="font-body text-xs text-brand-gray">
           {loadingDiagnostics
             ? "Sprechertrennungsfähigkeit wird geprüft ..."
-            : benchmark?.reason ?? diarization?.selection_reason ?? diarization?.reason ?? "Diagnostics have not been loaded."}
+            : benchmark?.reason ?? diarization?.selection_reason ?? diarization?.reason ?? "Diagnosedaten wurden noch nicht geladen."}
         </p>
         {diarization?.gpu_memory_gb != null && (
-          <p className="mt-1 font-body text-[10px] text-brand-mid-gray">GPU memory: {diarization.gpu_memory_gb} GB</p>
+          <p className="mt-1 font-body text-[10px] text-brand-mid-gray">GPU-Speicher: {diarization.gpu_memory_gb} GB</p>
         )}
         <p className="mt-1 font-mono text-[10px] text-brand-mid-gray">{diarization?.model_id}</p>
       </div>
@@ -467,7 +467,7 @@ export default function DiarizationCapabilityCard() {
           disabled={!benchmarkFile || benchmarking || recordingMode !== null}
           className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
         >
-          {benchmarking ? "Benchmarking..." : "Run Benchmark"}
+            {benchmarking ? "Wird gemessen ..." : "Messung starten"}
         </button>
         <button
           onClick={recordingMode === "benchmark"
@@ -481,8 +481,8 @@ export default function DiarizationCapabilityCard() {
           className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-colors hover:bg-brand-teal hover:text-white disabled:cursor-not-allowed disabled:border-brand-light-gray-1 disabled:text-brand-mid-gray"
         >
           {recordingMode === "benchmark"
-            ? `Stop Recording (${recordingSeconds}s)`
-            : "Record Mic Benchmark"}
+            ? `Aufnahme stoppen (${recordingSeconds}s)`
+            : "Mikrofonmessung aufnehmen"}
         </button>
         {benchmark ? (
           <span className="font-body text-xs text-brand-mid-gray">
@@ -490,14 +490,14 @@ export default function DiarizationCapabilityCard() {
           </span>
         ) : benchmarkFile && (
           <span className="font-body text-[10px] text-brand-mid-gray">
-            Needs at least {MIN_BENCHMARK_SECONDS}s of audio; only the first {MAX_RECORDING_SECONDS}s is benchmarked.
+            Mindestens {MIN_BENCHMARK_SECONDS}s Audio erforderlich; gemessen werden nur die ersten {MAX_RECORDING_SECONDS}s.
           </span>
         )}
       </div>
 
       {diagnosticError && (
         <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700">
-          {diagnosticError} {loadingDiagnostics ? "Retrying..." : ""}
+          {diagnosticError} {loadingDiagnostics ? "Neuer Versuch ..." : ""}
         </p>
       )}
     </div>

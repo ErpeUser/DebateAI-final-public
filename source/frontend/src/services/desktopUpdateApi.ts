@@ -7,7 +7,7 @@ export const getDesktopUpdate = () => request<DesktopUpdateStatus>("/updates");
 
 export async function getDesktopInstanceToken(): Promise<string> {
   const response = await fetch(`${BASE}/health`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Desktop authorization is unavailable.");
+  if (!response.ok) throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   const body: unknown = await response.json();
   if (
     typeof body !== "object"
@@ -15,11 +15,11 @@ export async function getDesktopInstanceToken(): Promise<string> {
     || Object.keys(body).length !== 1
     || (body as { status?: unknown }).status !== "ok"
   ) {
-    throw new Error("Desktop authorization is unavailable.");
+    throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
   const token = response.headers.get("X-Backchannel-Instance") ?? "";
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
-    throw new Error("Desktop authorization is unavailable.");
+    throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
   return token;
 }

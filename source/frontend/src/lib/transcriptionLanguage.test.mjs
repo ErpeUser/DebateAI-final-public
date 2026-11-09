@@ -17,14 +17,14 @@ test("multilingual or provider-decided models never warn", async () => {
 
 test("a set language the model does not cover warns by name", async () => {
   const { languageMismatch } = await load();
-  assert.match(languageMismatch(v2, "de", name), /does not transcribe German/);
-  assert.match(languageMismatch(v3, "ja", name), /does not transcribe Japanese/);
+  assert.match(languageMismatch(v2, "de", name), /transkribiert German nicht/);
+  assert.match(languageMismatch(v3, "ja", name), /transkribiert Japanese nicht/);
   assert.equal(languageMismatch(v3, "de", name), null);
 });
 
 test("auto flags only English-only models", async () => {
   const { languageMismatch } = await load();
-  assert.match(languageMismatch(v2, "auto", name), /English only/);
+  assert.match(languageMismatch(v2, "auto", name), /nur Englisch/);
   assert.equal(languageMismatch(v3, "auto", name), null);
   assert.equal(languageMismatch(v2, "en", name), null);
 });

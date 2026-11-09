@@ -34,9 +34,9 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
   const handleRetranscribe = async () => {
     if (!modelId) return;
     const ok = await confirm({
-      title: "Re-transcribe call audio",
-      message: "The existing transcript stays in place until the replacement finishes.",
-      confirmLabel: "Re-transcribe",
+      title: "Audio des Gesprächs erneut transkribieren",
+      message: "Das vorhandene Transkript bleibt erhalten, bis die Ersetzung abgeschlossen ist.",
+      confirmLabel: "Erneut transkribieren",
       tone: "danger",
     });
     if (!ok) return;
@@ -46,7 +46,7 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
       setJob(queued);
       const result = await api.waitForTranscriptionJob(session.id, queued, setJob);
       if (result.status === "completed") {
-        setMessage(`Re-transcribed ${result.entries} entries.`);
+        setMessage(`${result.entries} Einträge wurden erneut transkribiert.`);
         await onRetranscribed();
       } else if (result.status === "canceled") {
         setMessage("Erneute Transkription abgebrochen. Das vorhandene Transkript bleibt erhalten.");
@@ -72,7 +72,7 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
         <div className="flex flex-wrap items-center gap-4">
           {audioSegments.map((seg) => (
             <div key={seg.id} className="flex items-center gap-2">
-              <span className="font-body text-xs text-brand-mid-gray">Call {seg.segment_number}</span>
+              <span className="font-body text-xs text-brand-mid-gray">Gespräch {seg.segment_number}</span>
               <audio controls preload="none" src={api.segmentAudioUrl(session.id, seg.segment_number)} className="h-8" />
             </div>
           ))}
@@ -99,7 +99,7 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
             disabled={busy || !modelId}
             className="min-h-11 rounded bg-brand-teal px-3 font-body text-xs font-medium text-white transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal focus-visible:ring-offset-2 disabled:opacity-40"
           >
-            Re-transcribe
+            Erneut transkribieren
           </button>
         </div>
       </div>

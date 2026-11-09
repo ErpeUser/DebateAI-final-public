@@ -55,7 +55,7 @@ test("an OpenAI-only key with saved Gemini selections is not ready and explains 
   });
   assert.equal(result.ready, false);
   assert.match(result.reason, /Google-API-Schlüssel/);
-  assert.match(result.reason, /Privacy First|transcription model/);
+  assert.match(result.reason, /Datenschutzmodus|Transkriptionsmodell/);
 });
 
 test("a backend-provided readiness reason is passed through verbatim", async () => {

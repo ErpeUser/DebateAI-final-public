@@ -79,6 +79,11 @@ class CooldownSubscriber:
             await self._handler(batch)
         except Exception as e:
             logger.error(f"CooldownSubscriber handler error: {e}")
+        if self._pending and not self._stopped:
+            # Events can arrive while the handler is running.  The current
+            # timer is still active at that point, so __call__ deliberately
+            # does not create another one; schedule the trailing batch here.
+            self._timer_task = asyncio.create_task(self._cooldown_then_fire())
 
     def stop(self):
         """Cancel pending timers."""

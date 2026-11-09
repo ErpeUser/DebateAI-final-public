@@ -50,6 +50,7 @@ class OrderedTranscriptionQueue:
         self._semaphore = asyncio.Semaphore(max(1, max_concurrency))
         self._lock = asyncio.Lock()
         self._tasks: set[asyncio.Task] = set()
+        self._emit_task: asyncio.Task | None = None
         self._results: dict[int, TranscriptionResult] = {}
         self._next_job_index = 0
         self._next_emit_index = 0
@@ -140,6 +141,8 @@ class OrderedTranscriptionQueue:
         if self._tasks:
             await asyncio.gather(*list(self._tasks), return_exceptions=True)
         await self._emit_ready()
+        if self._emit_task is not None:
+            await self._emit_task
 
     async def _run(self, index: int, speaker_auto_id: str, pcm_bytes: bytes):
         text = None
@@ -167,13 +170,25 @@ class OrderedTranscriptionQueue:
         await self._emit_ready()
 
     async def _emit_ready(self):
-        emit_failures = 0
         async with self._lock:
-            while self._next_emit_index in self._results:
-                result = self._results.pop(self._next_emit_index)
-                self._next_emit_index += 1
-                if not result.text:
-                    continue
+            if self._emit_task is None or self._emit_task.done():
+                self._emit_task = asyncio.create_task(self._emit_ready_loop())
+
+    async def _emit_ready_loop(self):
+        """Emit contiguous results without holding the result-ingress lock."""
+        while True:
+            ready: list[TranscriptionResult] = []
+            async with self._lock:
+                while self._next_emit_index in self._results:
+                    result = self._results.pop(self._next_emit_index)
+                    self._next_emit_index += 1
+                    if result.text:
+                        ready.append(result)
+            if not ready:
+                return
+
+            emit_failures = 0
+            for result in ready:
                 try:
                     if self._emit_timeout_seconds is None:
                         await self._emit(result.speaker_auto_id, result.pcm_bytes, result.text)
@@ -189,5 +204,5 @@ class OrderedTranscriptionQueue:
                 except Exception as exc:
                     logger.error("Ordered transcript emit failed: %s", exc)
                     emit_failures += 1
-        for _ in range(emit_failures):
-            await self._record_failure("emit")
+            for _ in range(emit_failures):
+                await self._record_failure("emit")

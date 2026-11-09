@@ -7,18 +7,18 @@ export const BUILTIN_TYPE_META: Record<string, { label: string; plural: string; 
   // The operator's own questions. Deliberately a neutral rather than a sixth
   // hue: the five agent types already hold teal, amber, violet, emerald and
   // red, and an answer to your own question is not another finding category.
-  asked: { label: "You asked", plural: "Asked", color: "#475569" },
-  question: { label: "Question", plural: "Questions", color: "#0d9488" },
-  objection: { label: "Objection", plural: "Objections", color: "#f59e0b" },
-  observation: { label: "Observation", plural: "Observations", color: "#7c3aed" },
-  opportunity: { label: "Opportunity", plural: "Opportunities", color: "#10b981" },
-  action_item: { label: "Action Item", plural: "Action Items", color: "#e2231a" },
+  asked: { label: "Eigene Frage", plural: "Eigene Fragen", color: "#475569" },
+  question: { label: "Frage", plural: "Fragen", color: "#0d9488" },
+  objection: { label: "Einwand", plural: "Einwände", color: "#f59e0b" },
+  observation: { label: "Beobachtung", plural: "Beobachtungen", color: "#7c3aed" },
+  opportunity: { label: "Chance", plural: "Chancen", color: "#10b981" },
+  action_item: { label: "Aufgabe", plural: "Aufgaben", color: "#e2231a" },
   // Strategic signals the live panel did not have room for, and the ones that
   // have since aged out of the current cycle (ALP-308). Each row's lens_label
   // carries the section it came from, so the card badge still reads "Risk" or
   // "Next Question" rather than a flat "Strategic".
-  signal: { label: "Strategic Signal", plural: "Strategic", color: "#0284c7" },
-  signal_history: { label: "Past Signal", plural: "History", color: "#64748b" },
+  signal: { label: "Strategisches Signal", plural: "Strategische Signale", color: "#0284c7" },
+  signal_history: { label: "Früheres Signal", plural: "Verlauf", color: "#64748b" },
 };
 
 // Types whose lens_label is a per-row section badge (Signal, Risk, Next
@@ -30,8 +30,8 @@ export const BUILTIN_TYPE_META: Record<string, { label: string; plural: string; 
 // The live chips keep the short plurals above (Strategic, History; see
 // docs/agents.md); the post-call group headings get these fuller names.
 const SIGNAL_GROUP_LABELS: Record<string, string> = {
-  signal: "Strategic Signals",
-  signal_history: "Signal History",
+  signal: "Strategische Signale",
+  signal_history: "Signalverlauf",
 };
 
 // Display order for type groupings; custom types sort after built-ins.

@@ -211,7 +211,7 @@ export default function AgentActivityPanel({
         )}
         {privacyBlocked > 0 && (
           <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-1 font-body text-xs font-medium text-amber-800">
-            {privacyBlocked} Agent{privacyBlocked === 1 ? "" : "en"} aus: Privacy First
+            {privacyBlocked} Agent{privacyBlocked === 1 ? "" : "en"} aus: Datenschutzmodus
           </span>
         )}
         {shieldBlocked > 0 && (
@@ -226,8 +226,8 @@ export default function AgentActivityPanel({
 
       {open && snapshot && (
         <div id="agent-activity-details" className="overflow-x-auto border-t border-brand-light-gray-1 px-4 py-3 md:px-6">
-          <table className="w-full min-w-[900px] text-left font-body text-xs">
-            <thead className="text-[10px] uppercase tracking-wide text-brand-mid-gray">
+          <table className="w-full text-left font-body text-xs">
+            <thead className="hidden text-[10px] uppercase tracking-wide text-brand-mid-gray md:table-header-group">
               <tr>
                 <th className="pb-2 pr-3">Agent</th>
                 <th className="pb-2 pr-3">Status</th>
@@ -240,23 +240,23 @@ export default function AgentActivityPanel({
             </thead>
             <tbody className="divide-y divide-brand-light-gray-1 text-brand-gray">
               {snapshot.agents.map((agent) => (
-                <tr key={agent.slug} className="align-top">
-                  <td className="py-2 pr-3 font-semibold text-brand-dark-gray">{germanAgent(agent.slug)?.name || agent.name}</td>
-                  <td className="py-2 pr-3">{DE.live.activity.states[agent.state]}</td>
-                  <td className="max-w-64 py-2 pr-3">
+                <tr key={agent.slug} className="block border-b border-brand-light-gray-1 py-2 last:border-0 md:table-row md:border-0 md:py-0">
+                  <td data-label="Agent" className="block py-1 pr-3 font-semibold text-brand-dark-gray before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{germanAgent(agent.slug)?.name || agent.name}</td>
+                  <td data-label="Status" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{DE.live.activity.states[agent.state]}</td>
+                  <td data-label="Grund" className="block max-w-64 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
                     {agent.blocked_reason
                       ? DE.live.activity.reasons[agent.blocked_reason as keyof typeof DE.live.activity.reasons] || "Einstellungen prüfen"
                       : "-"}
                   </td>
-                  <td className="py-2 pr-3">
+                  <td data-label="Letzter Lauf" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
                     {relativeTime(agent.last_run_started_at, now)}
                     {agent.last_run_ms !== null ? ` (${agent.last_run_ms}ms)` : ""}
                   </td>
-                  <td className="py-2 pr-3">{nextLabel(agent, now)}</td>
-                  <td className="max-w-72 py-2 pr-3">
+                  <td data-label="Nächster" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{nextLabel(agent, now)}</td>
+                  <td data-label="Letztes Ergebnis" className="block max-w-72 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
                     {agent.last_outcome ? "Ergebnis vorhanden" : "-"}
                   </td>
-                  <td className="max-w-72 py-2">
+                  <td data-label="Letzter Fehler" className="block max-w-72 py-1 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
                     {agent.last_error ? "Fehler - Einstellungen prüfen" : "-"}
                   </td>
                 </tr>

@@ -68,8 +68,8 @@ test("renders the two rhetoric modes and three research frequencies", () => {
   assert.match(html, /0.34/);
 });
 
-test("shows that Privacy First blocks public research", () => {
+test("zeigt, dass der Datenschutzmodus öffentliche Recherche blockiert", () => {
   const html = render({ settings, privacyFirst: true, saving: false, onChange: () => {} });
-  assert.match(html, /Privacy First/);
+  assert.match(html, /Datenschutzmodus/);
   assert.match(html, /Öffentliche Recherche ist blockiert/);
 });

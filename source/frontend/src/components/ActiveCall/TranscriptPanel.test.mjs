@@ -23,8 +23,9 @@ await build({
       import React from "react";
       import { renderToStaticMarkup } from "react-dom/server";
       import TranscriptPanel from "./TranscriptPanel.tsx";
+      import { transcriptEntryKey } from "./TranscriptPanel.tsx";
       import { findTranscriptMatches, highlightParts } from "./transcriptSearch.ts";
-      export { findTranscriptMatches, highlightParts };
+      export { findTranscriptMatches, highlightParts, transcriptEntryKey };
       export function render(props) {
         return renderToStaticMarkup(React.createElement(TranscriptPanel, props));
       }
@@ -39,7 +40,7 @@ await build({
   outfile: outputPath,
 });
 
-const { render, findTranscriptMatches, highlightParts } = createRequire(import.meta.url)(outputPath);
+const { render, findTranscriptMatches, highlightParts, transcriptEntryKey } = createRequire(import.meta.url)(outputPath);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
@@ -58,6 +59,14 @@ const transcripts = [
   "Maya will send the evidence pack.",
   "Back to the ceiling talk.",
 ].map(entry);
+
+test("transcript rows use persisted ids instead of array positions", () => {
+  assert.equal(transcriptEntryKey({ ...entry("hello", 1), id: "persisted-1" }, 9), "persisted-1");
+  assert.equal(
+    transcriptEntryKey({ ...entry("live", 2), id: "" }, 9),
+    "2026-08-31T10:00:00Z:live:9",
+  );
+});
 
 test("the expanded panel offers search quietly; the input stays hidden until asked for", () => {
   const html = render({ transcripts, speakers: [], collapsed: false });

@@ -21,12 +21,14 @@ from app.services.track_mixer import TrackMixer
 from app.services.windows_audio_capture import native_windows_audio
 from app.ws.audio_messages import _handle_audio_frame, _handle_text_message
 from app.ws.audio_runtime import (
+    MAX_DIARIZATION_QUEUE_FRAMES,
     _PCM_BYTES_PER_SECOND,
     _QueuedAudioFrame,
     _queued_speaker_auto_id,
     _receive_websocket_message,
     _reconnect_audio_gateway,
     _run_diarization_worker,
+    _send_gateway_audio,
     _send_status,
     _stop_diarization_worker,
 )
@@ -52,6 +54,8 @@ class _AudioPipelineState:
     gateway_available: bool = True
     gateway_reconnect_task: asyncio.Task | None = None
     gateway_retry_at: float = 0.0
+    gateway_frames_dropped: int = 0
+    gateway_overload_notified: bool = False
     # Audio queued for diarization but not yet processed, and how many frames
     # were shed because the diarizer could not keep up (see ALP-153).
     diarization_backlog_bytes: int = 0
@@ -135,6 +139,26 @@ async def _cancel_gateway_reconnect(state: _AudioPipelineState) -> None:
         await asyncio.gather(task, return_exceptions=True)
 
 
+async def _run_gateway_audio_sender(
+    queue: "asyncio.Queue[bytes | None]",
+    orchestrator: AgentOrchestrator,
+    state: _AudioPipelineState,
+) -> None:
+    """Send gateway audio outside the WebSocket ingress loop."""
+    while True:
+        pcm_data = await queue.get()
+        try:
+            if pcm_data is None:
+                return
+            if state.gateway_available:
+                state.gateway_available = await _send_gateway_audio(
+                    orchestrator,
+                    pcm_data,
+                )
+        finally:
+            queue.task_done()
+
+
 def _transcription_failure_handler(
     websocket: WebSocket,
     batch_model_is_local: bool,
@@ -199,9 +223,17 @@ async def _run_audio_pipeline(
 ) -> None:
     state = _AudioPipelineState()
     mixer = TrackMixer()
-    diarization_queue: asyncio.Queue[_QueuedAudioFrame | None] = asyncio.Queue()
+    diarization_queue: asyncio.Queue[_QueuedAudioFrame | None] = asyncio.Queue(
+        maxsize=MAX_DIARIZATION_QUEUE_FRAMES
+    )
     pending_enqueued_at: deque[float] = deque()
     native_audio_queue = register_native_audio_session(session_id)
+    # The live gateway is an optional interim path.  Keep its queue small so
+    # a slow provider cannot grow memory or stall the durable batch path.
+    gateway_queue: asyncio.Queue[bytes | None] = asyncio.Queue(maxsize=20)
+    gateway_sender_task = asyncio.create_task(
+        _run_gateway_audio_sender(gateway_queue, orchestrator, state)
+    )
     websocket_receive_task: asyncio.Task | None = None
     native_receive_task: asyncio.Task | None = None
 
@@ -465,6 +497,7 @@ async def _run_audio_pipeline(
                         **(message.get("audio_meta") or {}),
                         "origin": origin,
                     },
+                    gateway_queue=gateway_queue,
                 ):
                     if state.stopped:
                         break
@@ -494,6 +527,11 @@ async def _run_audio_pipeline(
         except Exception:
             pass
     finally:
+        try:
+            gateway_queue.put_nowait(None)
+        except asyncio.QueueFull:
+            gateway_sender_task.cancel()
+        await asyncio.gather(gateway_sender_task, return_exceptions=True)
         # A vanished WebView/socket must not leave WASAPI capturing forever.
         # Ownership prevents an old pipeline from stopping a newer session.
         await native_windows_audio.stop_session(session_id)

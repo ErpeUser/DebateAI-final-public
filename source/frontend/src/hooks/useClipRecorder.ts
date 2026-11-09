@@ -70,7 +70,7 @@ export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseCl
 
   const start = useCallback(async () => {
     if (!supported) {
-      onError?.("Browser microphone recording is not available.");
+      onError?.("Mikrofonaufnahme im Browser ist nicht verfügbar.");
       return;
     }
     const generation = generationRef.current + 1;
@@ -111,7 +111,7 @@ export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseCl
       }, 1000);
     } catch (err) {
       if (generation !== generationRef.current) return;
-      onError?.(err instanceof Error ? err.message : "Unable to start microphone recording.");
+      onError?.(err instanceof Error ? err.message : "Mikrofonaufnahme konnte nicht gestartet werden.");
       stopTracks();
       clearTimer();
       setRecording(false);

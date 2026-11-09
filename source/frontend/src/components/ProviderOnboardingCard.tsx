@@ -99,12 +99,12 @@ export default function ProviderOnboardingCard({
 
         <div className="rounded-lg border border-brand-light-gray-1 p-3.5">
           <h4 className="font-display text-sm font-bold text-brand-dark-gray">
-            Lokale KI und Privacy First
+            Lokale KI und Datenschutzmodus
           </h4>
           <p className="mt-1.5 font-body text-xs leading-relaxed text-brand-gray">
             Lokale Transkription benötigt keinen Schlüssel. Für lokale Analysen unten
             einen selbst gehosteten Dienst verbinden, den Eignungstest ausführen und
-            unter Agenten eine passende Empfehlung wählen. Privacy First sperrt Cloud-Wege.
+            unter Assistenten eine passende Empfehlung wählen. Der Datenschutzmodus sperrt Cloud-Wege.
             {disabledImpact.length > 0 && (
               <>
                 {" "}Einschränkung: {disabledImpact.map((i) => i.feature).join(", ")}{" "}
@@ -114,7 +114,7 @@ export default function ProviderOnboardingCard({
           </p>
           {localOnly ? (
             <p className="mt-2 font-body text-xs font-medium text-brand-teal">
-              Privacy First ist aktiv.
+              Der Datenschutzmodus ist aktiv.
             </p>
           ) : (
             <button
@@ -123,7 +123,7 @@ export default function ProviderOnboardingCard({
               disabled={privacyBusy}
               className="mt-2 rounded border border-brand-light-gray-1 px-3 py-1.5 font-body text-xs font-medium text-brand-dark-gray transition-colors hover:border-brand-teal hover:text-brand-teal disabled:opacity-40"
             >
-              Privacy First einschalten
+              Datenschutzmodus einschalten
             </button>
           )}
         </div>

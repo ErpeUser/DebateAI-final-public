@@ -85,6 +85,30 @@ class OrderedTranscriptionQueueTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual([("track_mic", b"pcm", "streamed")], emitted)
 
+    async def test_accepts_later_result_while_an_earlier_emit_is_slow(self):
+        first_emit_started = asyncio.Event()
+        release_first_emit = asyncio.Event()
+
+        async def emit(_speaker_auto_id: str, _pcm_bytes: bytes, text: str):
+            if text == "first":
+                first_emit_started.set()
+                await release_first_emit.wait()
+
+        queue = OrderedTranscriptionQueue(transcribe=AsyncMock(), emit=emit)
+        first_task = asyncio.create_task(
+            queue.add_result("track_mic", b"one", "first")
+        )
+        await asyncio.wait_for(first_emit_started.wait(), 0.2)
+
+        second_task = asyncio.create_task(
+            queue.add_result("track_mic", b"two", "second")
+        )
+        await asyncio.wait_for(second_task, 0.05)
+
+        release_first_emit.set()
+        await first_task
+        await queue.drain()
+
     async def test_emits_in_input_order_when_transcriptions_finish_out_of_order(self):
         delays = {
             b"first": 0.03,

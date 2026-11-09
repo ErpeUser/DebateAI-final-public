@@ -82,13 +82,13 @@ export default function AppOverlays({
                 }}
                 className="min-h-11 shrink-0 rounded-lg bg-brand-teal px-3 py-2 font-body text-xs font-semibold text-white transition-colors motion-reduce:transition-none hover:bg-brand-teal-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2"
               >
-                See what&apos;s new
+                Neuigkeiten anzeigen
               </button>
               <button
                 type="button"
                 onClick={onAcknowledgeUpdate}
-                aria-label="Dismiss update notice"
-                title="Dismiss"
+                aria-label="Update-Hinweis schließen"
+                title="Schließen"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-brand-mid-gray transition-colors motion-reduce:transition-none hover:bg-brand-light-gray-2 hover:text-brand-dark-gray focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">

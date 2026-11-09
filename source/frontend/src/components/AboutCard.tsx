@@ -22,9 +22,9 @@ interface AboutCardProps {
 // Compact capability summary for the Models & pricing table.
 function capabilityLabel(model: ModelInfo): string {
   const caps = [
-    model.supports_text ? "text" : null,
-    model.supports_live_audio ? "live" : null,
-    model.supports_batch_audio ? "batch" : null,
+    model.supports_text ? "Text" : null,
+    model.supports_live_audio ? "Live-Audio" : null,
+    model.supports_batch_audio ? "Stapel-Audio" : null,
   ].filter(Boolean);
   return caps.length > 0 ? caps.join(", ") : "-";
 }
@@ -89,7 +89,7 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
             </p>
           </div>
           <span className="rounded-full bg-brand-teal/10 px-3 py-1 font-mono text-sm font-semibold text-brand-teal">
-            {version ? `v${version}` : "version unavailable"}
+            {version ? `v${version}` : "Version nicht verfügbar"}
           </span>
         </div>
       </div>
@@ -130,12 +130,12 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
                   <span className="font-mono text-xs font-semibold text-brand-dark-gray">v{note.version}</span>
                   {isCurrent && (
                     <span className="rounded-full bg-brand-teal/10 px-2 py-0.5 font-body text-[10px] font-medium text-brand-teal">
-                      Current
+                      Aktuell
                     </span>
                   )}
                   {isUnread && (
-                    <span className="rounded-full bg-brand-teal px-2 py-0.5 font-body text-[10px] font-semibold text-white" title={`Released since v${highlightSince}`}>
-                      New
+                    <span className="rounded-full bg-brand-teal px-2 py-0.5 font-body text-[10px] font-semibold text-white" title={`Veröffentlicht seit v${highlightSince}`}>
+                      Neu
                     </span>
                   )}
                   <span className="min-w-0 flex-1 truncate font-body text-sm text-brand-gray">{note.title}</span>

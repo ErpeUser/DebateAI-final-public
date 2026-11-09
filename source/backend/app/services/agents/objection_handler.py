@@ -354,6 +354,29 @@ def _has_speakable_guidance(
     )
 
 
+def _has_any_guidance(recommendation: DebateRecommendation) -> bool:
+    """Return whether the model supplied any actual response material.
+
+    A schema-valid recommendation may intentionally contain no advice when the
+    latest window does not warrant an intervention.  That is a normal live
+    outcome, not a malformed response requiring a second provider call.  The
+    check deliberately ignores control metadata such as ``primary_move`` and
+    confidence, which are populated by defaults even for an empty answer.
+    """
+    return any(
+        text.strip()
+        for text in (
+            recommendation.answer_now,
+            recommendation.counterargument,
+            recommendation.counter_question,
+            recommendation.analogy,
+            recommendation.open_question,
+        )
+    ) or any(
+        follow_up.question.strip() for follow_up in recommendation.follow_ups
+    )
+
+
 def _compact_live_context(value: str) -> str:
     """Keep user-supplied debate context, not generic meeting boilerplate."""
     lines = [line.strip() for line in value.splitlines() if line.strip()]
@@ -711,43 +734,50 @@ class ObjectionHandlerAgent:
             return []
 
         output = first_output
+        guidance_empty = False
         if not _has_speakable_guidance(
             first_output.recommendation, self._always_analogy
         ):
-            primary_field = (
-                "counter_question"
-                if first_output.recommendation.primary_move == "question"
-                else "answer_now"
-            )
-            analogy_requirement = (
-                " `analogy` MUSS zusaetzlich eine kurze sachlich passende "
-                "Analogie enthalten."
-                if self._always_analogy
-                else " `analogy` bleibt optional."
-            )
-            try:
-                retry_output = await request_guidance(
-                    prompt
-                    + "\n\nKRITISCHE KORREKTUR: Der gewaehlte Hauptbeitrag war leer. "
-                    f"Fuellen Sie `{primary_field}` mit genau einem kurzen, sofort "
-                    "aussprechbaren deutschen Beitrag. Andere Sprechoptionen duerfen "
-                    f"leer bleiben.{analogy_requirement}"
-                )
-            except Exception as exc:
-                guidance_error = exc
+            if not _has_any_guidance(first_output.recommendation):
+                # A syntactically valid empty recommendation is an explicit
+                # no-op.  Do not spend another live-call request trying to
+                # manufacture advice that the model did not find warranted.
+                guidance_empty = True
             else:
-                if _has_speakable_guidance(
-                    retry_output.recommendation, self._always_analogy
-                ):
-                    output = retry_output.model_copy(
-                        update={
-                            "items": [*first_output.items, *retry_output.items],
-                        }
+                primary_field = (
+                    "counter_question"
+                    if first_output.recommendation.primary_move == "question"
+                    else "answer_now"
+                )
+                analogy_requirement = (
+                    " `analogy` MUSS zusaetzlich eine kurze sachlich passende "
+                    "Analogie enthalten."
+                    if self._always_analogy
+                    else " `analogy` bleibt optional."
+                )
+                try:
+                    retry_output = await request_guidance(
+                        prompt
+                        + "\n\nKRITISCHE KORREKTUR: Der gewaehlte Hauptbeitrag war leer. "
+                        f"Fuellen Sie `{primary_field}` mit genau einem kurzen, sofort "
+                        "aussprechbaren deutschen Beitrag. Andere Sprechoptionen duerfen "
+                        f"leer bleiben.{analogy_requirement}"
                     )
+                except Exception as exc:
+                    guidance_error = exc
                 else:
-                    guidance_error = ValueError(
-                        "The model returned empty debate guidance twice."
-                    )
+                    if _has_speakable_guidance(
+                        retry_output.recommendation, self._always_analogy
+                    ):
+                        output = retry_output.model_copy(
+                            update={
+                                "items": [*first_output.items, *retry_output.items],
+                            }
+                        )
+                    else:
+                        guidance_error = ValueError(
+                            "The model returned incomplete debate guidance twice."
+                        )
 
         self.latest_recommendation = output.recommendation
         if _has_speakable_guidance(output.recommendation, self._always_analogy):
@@ -762,6 +792,8 @@ class ObjectionHandlerAgent:
                 "argument_points": output.recommendation.argument_points,
                 "target_claim": output.recommendation.target_claim,
             }
+        elif guidance_empty:
+            self._conversation_state = {}
         raw_items = [item.model_dump(exclude_unset=True) for item in output.items]
         items = self._parse_response(raw_items, valid_speaker_ids)
         for item in items:
@@ -770,6 +802,12 @@ class ObjectionHandlerAgent:
             self.last_outcome = {
                 "kind": "error",
                 "error": classify_error(guidance_error, self._model),
+            }
+        elif guidance_empty:
+            self.last_outcome = {
+                "kind": "no_guidance",
+                "detail": "No immediate debate guidance was warranted.",
+                "items": len(items),
             }
         elif items:
             logger.info(f"[objection_handler] flagged {len(items)} objection(s)")

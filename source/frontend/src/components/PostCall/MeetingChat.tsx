@@ -192,10 +192,10 @@ export default function MeetingChat({ session }: MeetingChatProps) {
             onClick={handleReset}
             disabled={busy || messages.length === 0}
             className="inline-flex items-center gap-1.5 rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1 font-body text-xs font-medium text-brand-gray transition-colors hover:border-brand-teal hover:text-brand-teal disabled:cursor-not-allowed disabled:opacity-40"
-            title="Reset chat history"
+            title="Chatverlauf zurücksetzen"
           >
             <RotateCcw className="h-3.5 w-3.5" aria-hidden="true" />
-            Reset chat
+            Chat zurücksetzen
           </button>
         </div>
         {searchResults.length > 0 && (

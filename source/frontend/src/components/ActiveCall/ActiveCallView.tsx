@@ -33,6 +33,7 @@ interface ActiveCallViewProps {
   audioLevel: AudioLevelSource;
   systemAudioLevel?: AudioLevelSource;
   systemAudioActive?: boolean;
+  systemAudioWarning?: string | null;
   isCapturing: boolean;
   isStarting: boolean;
   audioStats: AudioSendStats;
@@ -109,6 +110,7 @@ export default function ActiveCallView({
   audioLevel,
   systemAudioLevel,
   systemAudioActive,
+  systemAudioWarning,
   isCapturing,
   isStarting,
   audioStats,
@@ -215,6 +217,11 @@ export default function ActiveCallView({
                 label="Gesprächspegel"
                 showStatusText={false}
               />
+            </span>
+          )}
+          {systemAudioWarning && (
+            <span role="status" className="rounded-md bg-amber-50 px-2 py-1 font-body text-xs text-amber-800">
+              {systemAudioWarning}
             </span>
           )}
           {/* Only when it says something the meters do not: the mic meter

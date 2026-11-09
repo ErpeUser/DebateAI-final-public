@@ -16,7 +16,7 @@ const CATEGORY_HINTS: Partial<Record<PiiCategory, string>> = {
   LOCATION: "Standardmäßig aus: Ortsnamen sind meist Analyseinhalt statt Identität.",
 };
 
-const TERM_LABELS: Partial<Record<PiiCategory, string>> = { ORG: "org", PERSON: "person", LOCATION: "place" };
+const TERM_LABELS: Partial<Record<PiiCategory, string>> = { ORG: "Organisation", PERSON: "Person", LOCATION: "Ort" };
 
 type Update = Partial<PiiShieldSettings>;
 
@@ -122,11 +122,11 @@ function NerSection({ status, saving, onApply, onReload }: { status: PiiShieldSt
   const [error, setError] = useState<string | null>(null);
   const { ner, settings } = status;
   const label: Record<PiiShieldStatus["ner"]["state"], string> = {
-    off: "Off",
-    ready: "Ready",
-    not_downloaded: settings.enabled ? "Nicht heruntergeladen" : "Download nach Aktivierung",
-    downloading: "Downloading",
-    unavailable: "Unavailable",
+    off: "Aus",
+    ready: "Bereit",
+    not_downloaded: settings.enabled ? "Nicht heruntergeladen" : "Nach Aktivierung herunterladen",
+    downloading: "Wird heruntergeladen",
+    unavailable: "Nicht verfügbar",
   };
   const badge = ner.state === "ready"
     ? "bg-brand-teal/10 text-brand-teal"
@@ -181,7 +181,7 @@ function NerSection({ status, saving, onApply, onReload }: { status: PiiShieldSt
         </label>
         {settings.ner && ner.state !== "ready" && !running && (
           <button type="button" onClick={() => void install()} disabled={starting} className={smallButtonClass}>
-            {starting ? "Wird gestartet ..." : ner.state === "unavailable" ? "Download erneut versuchen" : "Jetzt herunterladen"}
+            {starting ? "Wird gestartet ..." : ner.state === "unavailable" ? "Erneut herunterladen" : "Jetzt herunterladen"}
           </button>
         )}
       </div>

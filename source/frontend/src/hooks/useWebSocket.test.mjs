@@ -50,6 +50,16 @@ test("reconnect carries capture identity while explicit disconnect rotates it", 
   assert.match(hook, /captureIdRef\.current = ""/);
 });
 
+test("audio send applies browser WebSocket high/low-water backpressure", () => {
+  const hook = readFileSync(new URL("./useWebSocket.ts", import.meta.url), "utf8");
+
+  assert.match(hook, /bufferedAmount/);
+  assert.match(hook, /AUDIO_SEND_HIGH_WATER_BYTES/);
+  assert.match(hook, /AUDIO_SEND_LOW_WATER_BYTES/);
+  assert.match(hook, /audioBackpressureRef/);
+  assert.match(hook, /chunksDropped: audioStatsRef\.current\.chunksDropped \+ 1/);
+});
+
 test("hidden-window delivery does not depend on an animation frame and resyncs when visible", () => {
   const hook = readFileSync(new URL("./useWebSocket.ts", import.meta.url), "utf8");
 

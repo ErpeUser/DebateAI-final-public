@@ -261,7 +261,7 @@ test("live research switch can be off while manual checks remain available", () 
   assert.match(html, /Widerlegung suchen/);
 });
 
-test("Privacy First honestly disables every live research action", () => {
+test("der Datenschutzmodus deaktiviert jede öffentliche Live-Recherche ehrlich", () => {
   const html = render({
     recommendation: ready,
     activity: activity("waiting"),
@@ -271,7 +271,7 @@ test("Privacy First honestly disables every live research action", () => {
     privacyFirst: true,
   });
 
-  assert.match(html, /Privacy First blockiert öffentliche Recherche/);
+  assert.match(html, /Datenschutzmodus blockiert öffentliche Recherche/);
   assert.doesNotMatch(html, /Manuell suchen bleibt/);
   assert.match(html, /Auto-Recherche an/);
   assert.match(html, /aria-checked="true"[^>]*disabled=""/s);

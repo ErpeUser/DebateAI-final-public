@@ -79,7 +79,12 @@ def run_chatgpt_web_login(result_path: Path) -> int:
         answer = output.read_text(encoding="utf-8").strip() if output.is_file() else ""
         selection = _verified_oracle_selection(home, started_wall)
         if completed.returncode or not answer or selection is None:
-            diagnostic = (completed.stderr or completed.stdout or "").strip()
+            # Test doubles and a few subprocess wrappers may omit stderr/stdout
+            # or expose non-string placeholders.  Diagnostics must never turn
+            # a provider failure into a secondary TypeError.
+            stderr = completed.stderr if isinstance(completed.stderr, str) else ""
+            stdout = completed.stdout if isinstance(completed.stdout, str) else ""
+            diagnostic = (stderr or stdout).strip()
             if "No Chrome installations found" in diagnostic:
                 message = "Kein kompatibler Chrome-/Edge-Browser wurde gefunden."
             elif completed.returncode:

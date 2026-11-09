@@ -26,7 +26,7 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
       setStatus(`${result.imported} Abschnitte aus ${result.filename} importiert`);
       onImported?.();
     } catch (err: any) {
-      setStatus(`Error: ${err.message}`);
+      setStatus(`Fehler: ${err.message}`);
     } finally {
       setLoading(false);
       if (transcriptRef.current) transcriptRef.current.value = "";
@@ -50,10 +50,10 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
       } else if (result.status === "canceled") {
         setStatus("Audioimport abgebrochen. Es wurde kein Teiltranskript gespeichert.");
       } else {
-        setStatus(`Error: ${result.error || "Audio import failed."}`);
+        setStatus(`Fehler: ${result.error || "Audioimport fehlgeschlagen."}`);
       }
     } catch (err: unknown) {
-      setStatus(`Error: ${err instanceof Error ? err.message : "Audio import failed."}`);
+      setStatus(`Fehler: ${err instanceof Error ? err.message : "Audioimport fehlgeschlagen."}`);
     } finally {
       setLoading(false);
       if (audioRef.current) audioRef.current.value = "";
@@ -125,11 +125,11 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
         <div role="status" aria-live="polite" className={`rounded-lg px-4 py-2 text-sm font-body ${
           loading
             ? "bg-brand-teal/10 text-brand-teal"
-            : status.startsWith("Error")
+              : status.startsWith("Fehler")
               ? "bg-red-50 text-red-600"
               : "bg-green-50 text-green-700"
         }`}>
-          {loading && !status.startsWith("Error") ? (
+          {loading && !status.startsWith("Fehler") ? (
             <span className="flex items-center gap-2">
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-teal border-t-transparent" />
               {status || "Wird verarbeitet ..."}

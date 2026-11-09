@@ -1,4 +1,5 @@
 import unittest
+from pathlib import Path
 from types import SimpleNamespace
 
 from app.main import app
@@ -15,6 +16,12 @@ class DebateBrandingTests(unittest.TestCase):
         self.assertIn("<b>Debate AI</b>", document)
         self.assertIn("Prepared by Debate AI", document)
         self.assertNotIn("Prepared by Backchannel", document)
+
+    def test_frontend_declares_german_document_language(self):
+        index = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
+        html = index.read_text(encoding="utf-8")
+        self.assertIn('<html lang="de">', html)
+        self.assertIn("Debate AI", html)
 
 
 if __name__ == "__main__":

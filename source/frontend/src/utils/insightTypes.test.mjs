@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 const src = readFileSync(new URL("./insightTypes.ts", import.meta.url), "utf8");
 
 test("asked is a built-in type with the operator label", () => {
-  assert.match(src, /asked:\s*\{\s*label:\s*"You asked",\s*plural:\s*"Asked",\s*color:\s*"#475569"\s*\}/);
+  assert.match(src, /asked:\s*\{\s*label:\s*"Eigene Frage",\s*plural:\s*"Eigene Fragen",\s*color:\s*"#475569"\s*\}/);
 });
 
 test("asked sorts before every agent type", () => {
@@ -53,8 +53,8 @@ test("signal groups never borrow a row's section badge as the group label", asyn
   const currentLabel = typeGroupLabel("signal", current);
   const historyLabel = typeGroupLabel("signal_history", history);
 
-  assert.equal(currentLabel, "Strategic Signals");
-  assert.equal(historyLabel, "Signal History");
+  assert.equal(currentLabel, "Strategische Signale");
+  assert.equal(historyLabel, "Signalverlauf");
   assert.notEqual(currentLabel, historyLabel);
   assert.doesNotMatch(currentLabel, /Action Cue/);
   assert.doesNotMatch(historyLabel, /Action Cue/);
@@ -65,8 +65,8 @@ test("signal cards keep their section badge even though the group does not", asy
   assert.equal(typeLabel("signal", "Risk"), "Risk");
   assert.equal(typeLabel("signal_history", "Action Cue"), "Action Cue");
   // Without a badge the built-in singular still applies.
-  assert.equal(typeLabel("signal", ""), "Strategic Signal");
-  assert.equal(typeLabel("signal_history", undefined), "Past Signal");
+  assert.equal(typeLabel("signal", ""), "Strategisches Signal");
+  assert.equal(typeLabel("signal_history", undefined), "Früheres Signal");
 });
 
 test("the live chips keep the short plurals the docs name", async () => {
@@ -74,8 +74,8 @@ test("the live chips keep the short plurals the docs name", async () => {
   // them as Strategic and History, so the fuller group headings must not
   // leak into the live call strip.
   const { BUILTIN_TYPE_META } = await load();
-  assert.equal(BUILTIN_TYPE_META.signal.plural, "Strategic");
-  assert.equal(BUILTIN_TYPE_META.signal_history.plural, "History");
+  assert.equal(BUILTIN_TYPE_META.signal.plural, "Strategische Signale");
+  assert.equal(BUILTIN_TYPE_META.signal_history.plural, "Verlauf");
 });
 
 test("lens-produced groups still take their heading from the producing lens", async () => {
@@ -88,7 +88,7 @@ test("lens-produced groups still take their heading from the producing lens", as
     row("o-3", "observation", ""),
   ];
   assert.equal(typeGroupLabel("observation", observations), "Notable Facts");
-  assert.equal(typeGroupLabel("observation", [row("o-4", "observation", "")]), "Observations");
+  assert.equal(typeGroupLabel("observation", [row("o-4", "observation", "")]), "Beobachtungen");
   assert.equal(typeGroupLabel("custom_lens", []), "Custom Lens");
 });
 

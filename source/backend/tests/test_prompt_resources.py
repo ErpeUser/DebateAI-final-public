@@ -8,6 +8,17 @@ from app.services.agents.objection_handler import build_deep_analysis_prompt
 
 
 class PromptResourceTests(unittest.TestCase):
+    def test_prompt_rejects_unknown_template_placeholders(self):
+        from app.services.ai_config import _validate_prompt_content
+
+        with self.assertRaises(ValueError):
+            _validate_prompt_content(
+                "debate_deep_v1",
+                "Claim {claim}\nPosition {own_position}\n"
+                "Context {relevant_context}\nEvidence {evidence}\n"
+                "Unknown {untrusted_value}",
+            )
+
     def test_missing_resource_uses_the_checked_in_fallback(self):
         from app.services.agents.prompt_resources import load_prompt_resource
 

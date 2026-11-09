@@ -56,6 +56,7 @@ async def _handle_audio_frame(
     pending_enqueued_at: deque[float],
     state: Any,
     frame_metadata: dict[str, Any] | None = None,
+    gateway_queue: asyncio.Queue[bytes | None] | None = None,
 ) -> bool:
     track, pcm_data = _decode_audio_frame(raw_frame)
     try:
@@ -87,6 +88,27 @@ async def _handle_audio_frame(
                     "max_backlog_bytes": MAX_DIARIZATION_BACKLOG_BYTES,
                     "rejected_bytes": len(pcm_data),
                     "frames_dropped": 0,
+                },
+            )
+            return False
+        if queue.full():
+            state.stopped = True
+            state.stop_drain_mode = "full"
+            state.diarization_overload_notified = True
+            await _send_status(
+                websocket,
+                "diarization_overflow",
+                (
+                    "Speaker processing reached its bounded frame buffer. "
+                    "Recording was stopped; the rejected frame was not reported "
+                    "as captured audio and all accepted PCM will be drained."
+                ),
+                details={
+                    "buffered_bytes": state.diarization_backlog_bytes,
+                    "max_backlog_bytes": MAX_DIARIZATION_BACKLOG_BYTES,
+                    "rejected_bytes": len(pcm_data),
+                    "frames_dropped": 0,
+                    "queue_limit_reached": True,
                 },
             )
             return False
@@ -154,10 +176,31 @@ async def _handle_audio_frame(
                 }
             )
         if mixed_frames and state.gateway_available:
-            state.gateway_available = await _send_gateway_audio(
-                orchestrator,
-                mixed,
-            )
+            if gateway_queue is None:
+                state.gateway_available = await _send_gateway_audio(
+                    orchestrator,
+                    mixed,
+                )
+            else:
+                try:
+                    gateway_queue.put_nowait(mixed)
+                except asyncio.QueueFull:
+                    state.gateway_frames_dropped += 1
+                    if not state.gateway_overload_notified:
+                        state.gateway_overload_notified = True
+                        await _send_status(
+                            websocket,
+                            "audio_gateway_overflow",
+                            (
+                                "Die Live-Zwischentranskription ist ueberlastet. "
+                                "Die Batch-Transkription laeuft weiter; einzelne "
+                                "Zwischenframes wurden verworfen."
+                            ),
+                            details={
+                                "frames_dropped": state.gateway_frames_dropped,
+                                "queue_limit": gateway_queue.maxsize,
+                            },
+                        )
         audio_flow = _record_audio_flow(
             state.audio_bytes_by_track,
             track,

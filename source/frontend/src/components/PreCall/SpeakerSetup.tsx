@@ -51,7 +51,7 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
       resetForm();
       onRefresh();
     } catch (err) {
-      console.error("Failed to add speaker", err);
+      console.error("Teilnehmer konnte nicht hinzugefügt werden", err);
     } finally {
       setSaving(false);
     }
@@ -61,7 +61,7 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
     const ok = await confirm({
       title: "Teilnehmende Person entfernen",
       message: "Diese Person aus dem Gespräch entfernen?",
-      confirmLabel: "Remove",
+      confirmLabel: "Entfernen",
       tone: "danger",
     });
     if (!ok) return;
@@ -70,7 +70,7 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
       onRefresh();
       toast("Teilnehmer entfernt");
     } catch (err) {
-      console.error("Failed to delete speaker", err);
+      console.error("Teilnehmer konnte nicht entfernt werden", err);
     }
   };
 
@@ -152,7 +152,7 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Name"
+              placeholder="Name der Person"
               className="flex-1 rounded-md border border-brand-light-gray-1 px-3 py-2 font-body text-sm text-brand-dark-gray placeholder:text-brand-mid-gray focus:border-brand-teal-light focus:ring-1 focus:ring-brand-teal-light"
             />
             <input

@@ -226,7 +226,7 @@ export function DebateSettingsControls({ settings, privacyFirst, saving, onChang
       {privacyFirst && settings.research_enabled && (
         <div role="status" className="flex gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900">
           <ShieldAlert aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0" />
-          <span><strong>Privacy First:</strong> Öffentliche Recherche ist blockiert, bis der Modus ausgeschaltet wird.</span>
+          <span><strong>Datenschutzmodus:</strong> Öffentliche Recherche ist blockiert, bis der Modus ausgeschaltet wird.</span>
         </div>
       )}
     </div>

@@ -81,7 +81,7 @@ export function setupReadiness(input: {
       t.reason.trim() ||
       `Das ausgewählte Transkriptionsmodell (${t.model_id}) benötigt einen gültigen ` +
         `${t.provider}-API-Schlüssel. Hinterlege ihn unter Verbindungen, wechsle das ` +
-        `Transkriptionsmodell oder aktiviere Privacy First für lokale Modelle.`;
+        `Transkriptionsmodell oder aktiviere den Datenschutzmodus für lokale Modelle.`;
     return { ready: false, reason };
   }
 
@@ -114,8 +114,8 @@ export function setupReadiness(input: {
     return {
       ready: false,
       reason:
-        `Privacy First blockiert die ausgewählten Modelle für ${agentNames(privacyBlocked)}. ` +
-        "Wähle unter Einstellungen → Assistenten lokale Modelle oder deaktiviere Privacy First.",
+        `Der Datenschutzmodus blockiert die ausgewählten Modelle für ${agentNames(privacyBlocked)}. ` +
+        "Wähle unter Einstellungen → Assistenten lokale Modelle oder deaktiviere den Datenschutzmodus.",
     };
   }
 

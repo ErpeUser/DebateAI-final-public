@@ -64,6 +64,7 @@ from app.services.briefing_synthesis import (
 )
 from app.services.gemini_live import GeminiLiveSession
 from app.services.llm import provider_for, registry_entry
+from app.services.privacy import allows_local_only
 from app.services.speaker_name_rewriter import replace_speaker_labels
 from app.services.local_live_captioner import LocalLiveCaptioner, is_local_live_model
 from app.services.openai_realtime import OpenAIRealtimeSession
@@ -331,6 +332,11 @@ def _claim_terms(text: str) -> set[str]:
     }
 
 
+def _unicode_words(text: str) -> set[str]:
+    """Tokenize words without encoding-specific character classes."""
+    return set(re.findall(r"[\wäöüß]+", text.casefold()))
+
+
 _NUMERIC_UNIT_ALIASES = {
     "%": {"%", "prozent", "percent"},
     "prozent": {"%", "prozent", "percent"},
@@ -384,6 +390,7 @@ def _contains_unsupported_numeric_assertion(
     has_number = bool(re.search(r"\d", spoken)) or bool(
         set(re.findall(r"[\wäöüß]+", spoken)).intersection(_NUMBER_WORDS)
     )
+    has_number = has_number or bool(_unicode_words(spoken).intersection(_NUMBER_WORDS))
     if not has_number:
         return False
     if any(marker in spoken for marker in _UNCERTAINTY_MARKERS):
@@ -393,6 +400,7 @@ def _contains_unsupported_numeric_assertion(
     spoken_number_words = set(
         re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", spoken)
     ).intersection(_NUMBER_WORDS)
+    spoken_number_words = _unicode_words(spoken).intersection(_NUMBER_WORDS)
     target_terms = _claim_terms(recommendation.target_claim)
     context = " ".join((recommendation.target_claim, spoken))
     for source in recommendation.sources:
@@ -403,6 +411,7 @@ def _contains_unsupported_numeric_assertion(
         evidence_number_words = set(
             re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", evidence)
         ).intersection(_NUMBER_WORDS)
+        evidence_number_words = _unicode_words(evidence).intersection(_NUMBER_WORDS)
         claim_matches = not target_terms or bool(
             target_terms.intersection(_claim_terms(source.claim))
         )
@@ -1425,6 +1434,29 @@ class AgentOrchestrator:
         )
         if not include_local_dossier or not local_dossier_context.strip():
             return self._debate_support_context(current_text)
+        model_id = ""
+        get_model = getattr(self, "_get_model", None)
+        if callable(get_model):
+            model_id = str(get_model("objection_handler") or "").strip()
+        admitted_models = getattr(self, "admitted_models", None)
+        if getattr(self, "local_only", False) and admitted_models is not None:
+            dossier_admitted = model_id in admitted_models
+        else:
+            try:
+                dossier_admitted = bool(model_id) and await allows_local_only(model_id)
+            except Exception:  # noqa: BLE001 - fail closed before any retrieval
+                logger.warning(
+                    "Could not verify dossier egress route for %s; omitting local context",
+                    model_id or "unconfigured model",
+                    exc_info=True,
+                )
+                dossier_admitted = False
+        if not dossier_admitted:
+            logger.info(
+                "Omitting local dossier from non-local debate route %s",
+                model_id or "unconfigured model",
+            )
+            return self._debate_support_context(current_text)
         try:
             async with async_session() as db:
                 dossier_context = await get_local_dossier_context(
@@ -1432,7 +1464,6 @@ class AgentOrchestrator:
                     db,
                     query=current_text,
                 )
-                await db.commit()
         except Exception:
             logger.warning("Hybrid dossier retrieval failed", exc_info=True)
             dossier_context = select_context_sections(
@@ -1893,10 +1924,18 @@ class AgentOrchestrator:
         return True
 
     def _schedule_debate_revision(self) -> None:
-        """Coalesce speech while one latency-critical model call is in flight."""
+        """Run only the newest latency-critical revision.
+
+        A stale live call can otherwise occupy the provider and keep running
+        until its response arrives.  The revision guards still protect against
+        a provider that ignores cancellation, while cancelling the task here
+        prevents normal async providers from doing avoidable work and avoids
+        stale side effects such as partial guidance broadcasts.
+        """
         self._debate_pending = True
-        if self._objection_task and not self._objection_task.done():
-            return
+        active_task = self._objection_task
+        if active_task and not active_task.done():
+            active_task.cancel("newer transcript revision")
         self._objection_task = asyncio.create_task(
             self._run_debate_worker(),
             name=f"debate-copilot-{self.session_id}-worker",

@@ -16,7 +16,7 @@ export interface ModelGroup {
 export function groupModels(models: ModelInfo[]): ModelGroup[] {
   const groups: ModelGroup[] = [];
   for (const model of models) {
-    const provider = runsLocally(model) ? "Local" : model.provider;
+    const provider = runsLocally(model) ? "Lokal" : model.provider;
     const existing = groups.find((g) => g.provider === provider);
     if (existing) existing.models.push(model);
     else groups.push({ provider, models: [model] });
@@ -42,7 +42,7 @@ export function optionLabel(model: ModelInfo, role?: string): string {
   const label = model.endpoint_id
     ? `${model.name} (${model.provider})`
     : `${model.name} (${model.id})`;
-  return recommendationFor(model, role) ? `${label} - Recommended` : label;
+  return recommendationFor(model, role) ? `${label} - Empfohlen` : label;
 }
 
 /**
@@ -54,21 +54,21 @@ export function optionState(
   model: ModelInfo,
   currentId: string | undefined,
   localOnly: boolean,
-  lockLabel = "Privacy First",
+  lockLabel = "Datenschutzmodus",
 ) {
   const cloudBlocked = localOnly && !runsLocally(model);
   const keyLocked = model.key_available === false;
   // An endpoint model is only "cloud" when its server is not on your machine or
   // LAN, so name that reason instead of implying the model itself is hosted.
   const cloudSuffix = model.endpoint_id
-    ? ` - endpoint is not on your machine/LAN, off in ${lockLabel}`
-    : ` - cloud model, off in ${lockLabel}`;
+    ? ` – Endpunkt liegt nicht auf deinem Rechner/im LAN; im ${lockLabel} deaktiviert`
+    : ` – Cloud-Modell; im ${lockLabel} deaktiviert`;
   return {
     locked: (keyLocked || cloudBlocked) && model.id !== currentId,
     suffix: cloudBlocked
       ? cloudSuffix
       : keyLocked
-        ? " - add API key to enable"
+        ? " – API-Schlüssel zum Aktivieren erforderlich"
         : "",
   };
 }

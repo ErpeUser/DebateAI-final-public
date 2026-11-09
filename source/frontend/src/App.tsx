@@ -232,7 +232,7 @@ function MainApp() {
     refreshSynthesis,
   } = useSession(activeSessionId);
 
-  const { startCapture, stopCapture, isCapturing, audioLevelRef, systemAudioLevelRef, systemAudioActive } = useAudioCapture();
+  const { startCapture, stopCapture, isCapturing, audioLevelRef, systemAudioLevelRef, systemAudioActive, systemAudioWarning } = useAudioCapture();
   const [nativeAudioActive, setNativeAudioActive] = useState(false);
   const [nativeSystemAudioActive, setNativeSystemAudioActive] = useState(false);
   const nativeMicLevelRef = useRef(0);
@@ -1292,6 +1292,7 @@ function MainApp() {
             audioLevel={nativeAudioActive ? nativeMicLevelRef : audioLevelRef}
             systemAudioLevel={liveSessionId === session.id ? (nativeAudioActive ? nativeSystemAudioLevelRef : systemAudioLevelRef) : SILENT_AUDIO_LEVEL}
             systemAudioActive={liveSessionId === session.id && (systemAudioActive || nativeSystemAudioActive)}
+            systemAudioWarning={liveSessionId === session.id && !nativeAudioActive ? systemAudioWarning : null}
             isCapturing={liveSessionId === session.id && (isCapturing || nativeAudioActive)}
             isStarting={liveSessionId === session.id && audioStarting}
             audioStats={audioStats}

@@ -7,10 +7,10 @@ interface PostProcessingProgressProps {
 
 const STEP_LABELS: Record<string, string> = {
   speaker_assignment: "Sprecherzuordnungen",
-  final_insights: "Final insight pass",
-  insight_reconciliation: "Insight reconciliation",
-  opportunity_matching: "Offering matching",
-  call_briefing: "Call briefing",
+  final_insights: "Letzte Hinweisanalyse",
+  insight_reconciliation: "Hinweise abgleichen",
+  opportunity_matching: "Chancen abgleichen",
+  call_briefing: "Gesprächsbriefing",
   saving_session: "Gespräch speichern",
 };
 
@@ -60,7 +60,7 @@ export default function PostProcessingProgress({ progress }: PostProcessingProgr
             <div className="flex items-center gap-2">
               <span className="h-2.5 w-2.5 rounded-full bg-brand-amber animate-pulse" />
               <h2 className="font-display text-sm font-semibold uppercase text-brand-dark-gray">
-                Post-processing
+                Nachbearbeitung
               </h2>
             </div>
             <p className="mt-1 font-body text-sm text-brand-gray">{progress.message}</p>

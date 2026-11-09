@@ -3,17 +3,17 @@ import type { Question } from "../../types";
 import { typeColor, typeLabel, visibleEnrichmentNotes } from "../../utils/insightTypes";
 
 const AGENT_LABELS: Record<string, string> = {
-  question_hunter: "Question Hunter",
-  observer: "Observer",
-  opportunity_scout: "Opp. Scout",
-  action_tracker: "Action Tracker",
-  synthesizer: "Synthesizer",
-  refiner: "Refiner",
-  opportunity_specialist: "Opp. Specialist",
-  consolidated_analyst: "Analyst",
-  objection_handler: "Objection Handler",
-  general: "General",
-  live_chat: "You asked",
+  question_hunter: "Fragenanalyse",
+  observer: "Beobachtung",
+  opportunity_scout: "Chancenfinder",
+  action_tracker: "Aufgabenverfolgung",
+  synthesizer: "Zusammenfassung",
+  refiner: "Korrektur",
+  opportunity_specialist: "Chancenabgleich",
+  consolidated_analyst: "Gesamtanalyse",
+  objection_handler: "Debatten-Assistent",
+  general: "Allgemein",
+  live_chat: "Eigene Frage",
 };
 
 interface QuestionCardProps {
@@ -283,7 +283,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
           <button
             onClick={handleDismiss}
             className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-500"
-            aria-label="Dismiss"
+            aria-label="Verwerfen"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />

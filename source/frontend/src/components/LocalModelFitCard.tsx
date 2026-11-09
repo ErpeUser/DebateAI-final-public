@@ -69,12 +69,12 @@ const VERDICT_STYLE: Record<FitVerdict, string> = {
   yellow: "border-amber-200 bg-amber-50 text-amber-800",
   red: "border-red-200 bg-red-50 text-red-700",
 };
-const VERDICT_LABEL: Record<FitVerdict, string> = { green: "Keeps up", yellow: "Tight", red: "Too slow" };
-const POST_CALL_LABEL: Record<FitVerdict, string> = { green: "Fine", yellow: "Slow", red: "Too slow" };
+const VERDICT_LABEL: Record<FitVerdict, string> = { green: "Hält Schritt", yellow: "Knapp", red: "Zu langsam" };
+const POST_CALL_LABEL: Record<FitVerdict, string> = { green: "Gut", yellow: "Langsam", red: "Zu langsam" };
 const FEASIBILITY: Record<Exclude<FitFeasibility, "">, { label: string; cls: string }> = {
-  feasible: { label: "Feasible", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  marginal: { label: "Marginal", cls: "border-amber-200 bg-amber-50 text-amber-800" },
-  no: { label: "Not feasible", cls: "border-red-200 bg-red-50 text-red-700" },
+  feasible: { label: "Geeignet", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
+  marginal: { label: "Grenzwertig", cls: "border-amber-200 bg-amber-50 text-amber-800" },
+  no: { label: "Nicht geeignet", cls: "border-red-200 bg-red-50 text-red-700" },
 };
 
 // A resolved, contention-aware view of one agent row.
@@ -140,7 +140,7 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       setBudgets({}); // start from the server's stored budgets
     } catch (err) {
       console.error("Local fit test failed", err);
-      setError(err instanceof Error ? err.message : "Fit test failed.");
+      setError(err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.");
     } finally {
       setRunning(false);
     }
@@ -189,7 +189,7 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
     try {
       const { applied } = await api.applyLocalFitIntervals(model.model_id, updates);
       setBudgets((prev) => ({ ...prev, [model.model_id]: { ...prev[model.model_id], ...applied } }));
-      setNotice(`Applied ${Object.keys(applied).length} budget change(s) for ${model.model_name} (contention ${contention.toFixed(1)}x).`);
+       setNotice(`${Object.keys(applied).length} Zeitbudget(s) für ${model.model_name} angewendet (Lastfaktor ${contention.toFixed(1)}x).`);
       onIntervalsApplied?.();
     } catch (err) {
       console.error("Applying budgets failed", err);
@@ -210,7 +210,7 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       setAsrReport(await api.runAsrFit(file));
     } catch (err) {
       console.error("ASR fit failed", err);
-      setAsrError(err instanceof Error ? err.message : "Transcription speed check failed.");
+      setAsrError(err instanceof Error ? err.message : "Geschwindigkeitstest der Transkription fehlgeschlagen.");
     } finally {
       setAsrBusy(false);
     }
@@ -393,9 +393,10 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
 
       <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-2">
         <p className="font-body text-xs leading-relaxed text-brand-gray">
-          To run an agent on a local model, also select it on the Agents tab. Budgets you set here are
-          per-model: the agent uses this budget only when it runs that model. Live interim captions have no
-          local option today (they need a cloud streaming model).
+          Um einen Agenten mit einem lokalen Modell auszufuehren, waehle ihn zusaetzlich im Bereich
+          Agenten aus. Die hier gesetzten Budgets gelten pro Modell und werden nur verwendet, wenn der
+          Agent dieses Modell nutzt. Fuer Live-Zwischentitel gibt es derzeit keine lokale Option; dafuer
+          ist ein Streaming-Modell in der Cloud erforderlich.
         </p>
       </div>
     </div>
@@ -407,9 +408,9 @@ function ContentionSlider({ contention, onChange }: { contention: number; onChan
     <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">Assumed load headroom</p>
+          <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">Angenommener Lastpuffer</p>
           <p className="mt-0.5 font-body text-xs text-brand-gray">
-            Reserve for recording, diarization, and other apps: <span className="font-semibold text-brand-dark-gray">{contention.toFixed(1)}x</span> measured latency
+            Reserve für Aufnahme, Sprechertrennung und andere Apps: <span className="font-semibold text-brand-dark-gray">{contention.toFixed(1)}x</span> gemessene Latenz
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -460,18 +461,18 @@ function ModelFitBlock({
           <p className="truncate font-display text-sm font-bold text-brand-dark-gray" title={model.model_id}>{model.model_name}</p>
           {superseded && (
             <span className="mt-1 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-body text-[10px] text-amber-800">
-              Superseded
+              Überholt
             </span>
           )}
           {model.status === "ok" && model.short && model.long ? (
             <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">
-              Short {model.short.latency_seconds.toFixed(1)}s - Long {model.long.latency_seconds.toFixed(1)}s per call
+              Kurz {model.short.latency_seconds.toFixed(1)} s - Lang {model.long.latency_seconds.toFixed(1)} s pro Aufruf
             </p>
           ) : (
-            <p className="mt-0.5 font-body text-[11px] text-red-700">{model.reason || "Benchmark failed."}</p>
+            <p className="mt-0.5 font-body text-[11px] text-red-700">{model.reason || "Leistungstest fehlgeschlagen."}</p>
           )}
           {usableFor.length > 0 && (
-            <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">Usable for: <span className="text-brand-gray">{usableFor.join(", ")}</span></p>
+            <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">Nutzbar für: <span className="text-brand-gray">{usableFor.join(", ")}</span></p>
           )}
         </div>
         {model.status === "ok" && changes > 0 && !superseded && (
@@ -480,7 +481,7 @@ function ModelFitBlock({
             disabled={applying}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
           >
-            {applying ? "Applying..." : `Apply recommended budgets (${changes})`}
+            {applying ? "Wird angewendet ..." : `Empfohlene Zeitbudgets anwenden (${changes})`}
           </button>
         )}
       </div>
@@ -490,12 +491,12 @@ function ModelFitBlock({
           <table className="w-full border-collapse font-body text-xs">
             <thead>
               <tr className="text-left text-brand-mid-gray">
-                <th className="py-1 pr-3 font-medium">Agent</th>
-                <th className="py-1 pr-3 font-medium">Window</th>
-                <th className="py-1 pr-3 font-medium">Call time</th>
-                <th className="py-1 pr-3 font-medium">Cycle budget</th>
-                <th className="py-1 pr-3 font-medium">Verdict</th>
-                <th className="py-1 font-medium">Recommended</th>
+                <th className="py-1 pr-3 font-medium">Assistent</th>
+                <th className="py-1 pr-3 font-medium">Fenster</th>
+                <th className="py-1 pr-3 font-medium">Aufrufzeit</th>
+                <th className="py-1 pr-3 font-medium">Zyklusbudget</th>
+                <th className="py-1 pr-3 font-medium">Bewertung</th>
+                <th className="py-1 font-medium">Empfohlen</th>
               </tr>
             </thead>
             <tbody>
@@ -512,7 +513,7 @@ function ModelFitBlock({
             </tbody>
           </table>
           <p className="mt-2 font-body text-[10px] text-brand-mid-gray">
-            Briefing agents run once at call end (no live loop), so they show an acceptable-wait verdict, not a cycle budget.
+            Nachbesprechungsassistenten laufen einmal am Gesprächsende (keine Live-Schleife); daher zeigen sie eine akzeptable Wartebewertung statt eines Zyklusbudgets.
           </p>
         </div>
       )}
@@ -539,13 +540,13 @@ function RoleRow({
     <tr className="border-t border-brand-light-gray-1">
       <td className="py-1.5 pr-3 text-brand-dark-gray">
         {role.name}
-        {role.post_call && <span className="ml-1 text-[10px] text-brand-mid-gray">(post-call)</span>}
+        {role.post_call && <span className="ml-1 text-[10px] text-brand-mid-gray">(nach dem Gespräch)</span>}
       </td>
       <td className="py-1.5 pr-3 capitalize text-brand-gray">{role.prompt_profile}</td>
-      <td className="py-1.5 pr-3 text-brand-gray" title={`${eff.toFixed(1)}s at ${contention.toFixed(1)}x load`}>{role.latency_seconds.toFixed(1)}s</td>
+      <td className="py-1.5 pr-3 text-brand-gray" title={`${eff.toFixed(1)} s bei ${contention.toFixed(1)}x Last`}>{role.latency_seconds.toFixed(1)}s</td>
       <td className="py-1.5 pr-3 text-brand-gray">
         {role.post_call ? (
-          <span className="text-brand-mid-gray">end-of-call</span>
+          <span className="text-brand-mid-gray">Gesprächsende</span>
         ) : role.editable ? (
           <input
             type="number"
@@ -573,7 +574,7 @@ function RoleRow({
         ) : changed ? (
           <span className="font-semibold text-brand-teal">{recommended}s</span>
         ) : (
-          <span className="text-brand-mid-gray">no change</span>
+          <span className="text-brand-mid-gray">keine Änderung</span>
         )}
       </td>
     </tr>
@@ -585,7 +586,7 @@ function AsrRow({ model, contention }: { model: AsrModelFit; contention: number 
     return (
       <tr className="border-t border-brand-light-gray-1">
         <td className="py-1.5 pr-3 text-brand-dark-gray">{model.model_name}</td>
-        <td className="py-1.5 pr-3 text-brand-mid-gray" colSpan={3}>{model.reason || "Benchmark failed."}</td>
+        <td className="py-1.5 pr-3 text-brand-mid-gray" colSpan={3}>{model.reason || "Leistungstest fehlgeschlagen."}</td>
       </tr>
     );
   }
@@ -597,7 +598,7 @@ function AsrRow({ model, contention }: { model: AsrModelFit; contention: number 
   return (
     <tr className="border-t border-brand-light-gray-1">
       <td className="py-1.5 pr-3 text-brand-dark-gray">{model.model_name}</td>
-      <td className="py-1.5 pr-3 text-brand-gray" title={`${effRtf.toFixed(2)}x at ${contention.toFixed(1)}x load`}>{model.real_time_factor.toFixed(2)}x</td>
+      <td className="py-1.5 pr-3 text-brand-gray" title={`${effRtf.toFixed(2)}x bei ${contention.toFixed(1)}x Last`}>{model.real_time_factor.toFixed(2)}x</td>
       <td className="py-1.5 pr-3">
         <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VERDICT_STYLE[verdict]}`}>{VERDICT_LABEL[verdict]}</span>
       </td>
@@ -615,13 +616,13 @@ function AsrRow({ model, contention }: { model: AsrModelFit; contention: number 
 function LocalCapabilityMap({ capabilities }: { capabilities: LocalCapabilities }) {
   return (
     <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
-      <p className="mb-2 font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">What can run locally on this machine</p>
+      <p className="mb-2 font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">Was auf diesem Rechner lokal laufen kann</p>
       <ul className="space-y-1.5">
         {capabilities.services.map((service) => (
           <li key={service.key} className="flex flex-wrap items-baseline gap-x-2 font-body text-xs">
             <span className="font-medium text-brand-dark-gray">{service.label}:</span>
             {service.cloud_only ? (
-              <span className="text-amber-700">no local option{service.note ? ` - ${service.note}` : ""}</span>
+              <span className="text-amber-700">Keine lokale Option{service.note ? ` - ${service.note}` : ""}</span>
             ) : (
               <span className="text-brand-gray">{service.local_options.map((o) => o.name).join(", ")}</span>
             )}

@@ -132,6 +132,7 @@ class DossierRuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
         orchestrator = object.__new__(AgentOrchestrator)
         orchestrator.session_id = uuid.uuid4()
         orchestrator.local_dossier_context = "full dossier fallback"
+        orchestrator._get_model = lambda _slug: "endpoint:local:debate"
         orchestrator.debate_settings = DebateSettings()
         orchestrator._board_stubs = []
         orchestrator.active_questions = []
@@ -147,6 +148,11 @@ class DossierRuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 "app.services.agents.orchestrator.get_local_dossier_context",
                 mock.AsyncMock(return_value="### Hybridtreffer\nBeleg"),
             ) as retrieve,
+            mock.patch(
+                "app.services.agents.orchestrator.allows_local_only",
+                mock.AsyncMock(return_value=True),
+                create=True,
+            ),
         ):
             context = await orchestrator._debate_support_context_async(
                 "aktuelle Behauptung",
@@ -158,14 +164,44 @@ class DossierRuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
             db,
             query="aktuelle Behauptung",
         )
-        db.commit.assert_awaited_once_with()
+        db.commit.assert_not_awaited()
         self.assertIn("Hybridtreffer", context)
         self.assertNotIn("full dossier fallback", context)
+
+    async def test_cloud_debate_route_never_receives_local_dossier(self):
+        orchestrator = object.__new__(AgentOrchestrator)
+        orchestrator.session_id = uuid.uuid4()
+        orchestrator.local_dossier_context = "GEHEIMER PRIVATER DOSSIERINHALT"
+        orchestrator._get_model = lambda _slug: "gemini-3.5-flash-lite"
+        orchestrator.debate_settings = DebateSettings()
+        orchestrator._board_stubs = []
+        orchestrator.active_questions = []
+        orchestrator._semantic_argument_memory = None
+
+        with (
+            mock.patch(
+                "app.services.agents.orchestrator.allows_local_only",
+                mock.AsyncMock(return_value=False),
+                create=True,
+            ),
+            mock.patch(
+                "app.services.agents.orchestrator.get_local_dossier_context",
+                mock.AsyncMock(side_effect=AssertionError("cloud route must not retrieve dossier")),
+            ) as retrieve,
+        ):
+            context = await orchestrator._debate_support_context_async(
+                "aktuelle Behauptung",
+                include_local_dossier=True,
+            )
+
+        retrieve.assert_not_awaited()
+        self.assertNotIn("GEHEIMER PRIVATER DOSSIERINHALT", context)
 
     async def test_hybrid_failure_falls_back_to_preloaded_local_dossier(self):
         orchestrator = object.__new__(AgentOrchestrator)
         orchestrator.session_id = uuid.uuid4()
         orchestrator.local_dossier_context = "### Lokaler Beleg\nNur lokal geladen."
+        orchestrator._get_model = lambda _slug: "endpoint:local:debate"
         orchestrator.debate_settings = DebateSettings()
         orchestrator._board_stubs = []
         orchestrator.active_questions = []
@@ -179,6 +215,10 @@ class DossierRuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
             mock.patch(
                 "app.services.agents.orchestrator.get_local_dossier_context",
                 mock.AsyncMock(side_effect=RuntimeError("database unavailable")),
+            ),
+            mock.patch(
+                "app.services.agents.orchestrator.allows_local_only",
+                mock.AsyncMock(return_value=True),
             ),
         ):
             context = await orchestrator._debate_support_context_async(

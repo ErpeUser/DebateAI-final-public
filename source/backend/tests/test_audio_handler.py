@@ -16,7 +16,7 @@ from app.models import CallSegment, TranscriptEntry
 from app.services.agents.orchestrator import AgentOrchestrator
 from app.ws import audio_handler, audio_messages
 from app.ws.audio_pipeline import _AudioPipelineState
-from app.ws.audio_runtime import MAX_DIARIZATION_BACKLOG_BYTES
+from app.ws.audio_runtime import MAX_DIARIZATION_BACKLOG_BYTES, _QueuedAudioFrame
 from app.ws.audio_handler import (
     _decode_audio_frame,
 )
@@ -496,6 +496,39 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("diarization_overflow", status["data"]["state"])
         self.assertEqual(0, status["data"]["details"]["frames_dropped"])
 
+    async def test_diarization_queue_limit_rejects_frame_without_accepting_it(self):
+        websocket = MagicMock(send_json=AsyncMock())
+        mixer = MagicMock()
+        queue = asyncio.Queue(maxsize=1)
+        pending = deque()
+        queue.put_nowait(_QueuedAudioFrame(
+            track=0,
+            pcm_bytes=b"\x00\x01",
+            split_track_established=False,
+            enqueued_at=monotonic(),
+        ))
+        state = _AudioPipelineState(last_audio_status_at=monotonic())
+
+        accepted = await audio_messages._handle_audio_frame(
+            b"\x00\x01\x00\x01",
+            websocket,
+            MagicMock(),
+            mixer,
+            None,
+            queue,
+            pending,
+            state,
+        )
+
+        self.assertFalse(accepted)
+        self.assertTrue(state.stopped)
+        self.assertEqual(1, queue.qsize())
+        self.assertEqual([], list(pending))
+        mixer.add.assert_not_called()
+        status = websocket.send_json.await_args.args[0]
+        self.assertEqual("diarization_overflow", status["data"]["state"])
+        self.assertTrue(status["data"]["details"]["queue_limit_reached"])
+
     async def test_gateway_cancellation_keeps_persisted_frame_queued(self):
         events = []
         gateway_started = asyncio.Event()
@@ -560,6 +593,30 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
             item.split_track_established,
         ))
         self.assertEqual(1, len(pending))
+
+    async def test_gateway_queue_overload_is_visible_without_blocking_ingress(self):
+        websocket = MagicMock(send_json=AsyncMock())
+        gateway_queue = asyncio.Queue(maxsize=1)
+        gateway_queue.put_nowait(b"already queued")
+        state = _AudioPipelineState(last_audio_status_at=monotonic())
+        queue = asyncio.Queue()
+
+        accepted = await audio_messages._handle_audio_frame(
+            b"\x00\x01\x02",
+            websocket,
+            MagicMock(),
+            MagicMock(add=MagicMock(return_value=(b"mixed", b"mic", b"system"))),
+            None,
+            queue,
+            deque(),
+            state,
+            gateway_queue=gateway_queue,
+        )
+
+        self.assertTrue(accepted)
+        self.assertEqual(1, state.gateway_frames_dropped)
+        statuses = [call.args[0]["data"] for call in websocket.send_json.await_args_list]
+        self.assertTrue(any(item["state"] == "audio_gateway_overflow" for item in statuses))
 
     async def test_native_buffer_overflow_reports_visible_stop_reason(self):
         session_id = uuid.uuid4()
@@ -670,7 +727,7 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch("app.ws.audio_pipeline.TrackMixer", return_value=mixer),
             patch("app.ws.audio_pipeline._run_diarization_worker", side_effect=worker),
-            patch("app.ws.audio_messages._send_gateway_audio", side_effect=send_gateway),
+            patch("app.ws.audio_pipeline._send_gateway_audio", side_effect=send_gateway),
             patch("app.ws.audio_pipeline.native_windows_audio", native_capture, create=True),
         ):
             await audio_handler._run_audio_pipeline(
@@ -688,18 +745,10 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
 
         native_capture.stop_session.assert_awaited_once_with(segment_id)
 
-        self.assertEqual(
-            [
-                "mixed",
-                "mic",
-                "system",
-                "gateway",
-                ("worker", b"\x01\x02"),
-                "worker_stopped",
-                "finalize",
-            ],
-            events,
-        )
+        self.assertEqual(["mixed", "mic", "system"], events[:3])
+        self.assertIn("gateway", events)
+        self.assertLess(events.index(("worker", b"\x01\x02")), events.index("worker_stopped"))
+        self.assertLess(events.index("worker_stopped"), events.index("finalize"))
 
 
 class AudioFrameDecodingTests(unittest.TestCase):

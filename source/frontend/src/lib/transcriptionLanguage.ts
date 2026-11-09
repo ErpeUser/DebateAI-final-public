@@ -17,9 +17,9 @@ export function languageMismatch(
   if (!model || !covered || covered.length === 0) return null;
   if (language === "auto") {
     return covered.length === 1 && covered[0] === "en"
-      ? `${model.name} transcribes English only. Set the meeting language to English, or pick a multilingual model.`
+      ? `${model.name} transkribiert nur Englisch. Wähle als Gesprächssprache Englisch oder ein mehrsprachiges Modell.`
       : null;
   }
   if (covered.includes(language)) return null;
-  return `${model.name} does not transcribe ${languageName(language)}. Pick a model that covers it.`;
+  return `${model.name} transkribiert ${languageName(language)} nicht. Wähle ein Modell, das diese Sprache unterstützt.`;
 }

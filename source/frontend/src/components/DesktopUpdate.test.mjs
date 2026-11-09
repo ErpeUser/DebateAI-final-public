@@ -159,7 +159,7 @@ test("an interrupted download preserves progress and offers a fresh resume gestu
     downloaded: 400,
   });
   assert.match(markup, /400 B von 1000 B/);
-  assert.match(markup, />Download fortsetzen</);
+  assert.match(markup, />Herunterladen fortsetzen</);
 });
 
 test("download progress uses native progress and remains cancellable", () => {

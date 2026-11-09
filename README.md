@@ -1,8 +1,9 @@
 # Debate AI V6 - private Windows release
 
 This repository contains the privately published Windows x64 onedir release
-candidate for Debate AI V6. The application is distributed as a release
-asset, not as an unreviewed copy of the dirty development worktree.
+candidate for Debate AI V6 and a sanitized source snapshot. The application
+is distributed as a release asset; the source snapshot is kept separate from
+local runtime state.
 
 ## Download and start
 
@@ -19,7 +20,7 @@ provenance and artifact hashes.
 
 ## Scope and evidence
 
-The package was built from Git HEAD
+The release asset was built from Git HEAD
 `da2c5301f272142ae5d7bbb2ab10a7b5402ae20c` with the release Python 3.12.10
 environment and PyInstaller 6.22.3. The executable, normal startup/health
 smoke, external prompt/configuration smoke, archive update/rollback smoke,
@@ -31,7 +32,9 @@ manual A06/A18/A21/A22 evaluations into automated passes.
 
 ## Source code
 
-The `source/` directory contains the sanitized current source snapshot,
+The `source/` directory contains the sanitized source snapshot used for the
+current audit, including the latest German UI, mobile activity layout,
+stable transcript row identities, and visible browser-audio fallback warning,
 including backend, desktop, frontend, docs-site, tests, scripts, prompts and
 release configuration. `SOURCE_SNAPSHOT_MANIFEST.json` lists every included
 file and hash. It deliberately excludes Git metadata, virtual environments,

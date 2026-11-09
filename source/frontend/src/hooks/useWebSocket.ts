@@ -25,6 +25,11 @@ export type StopOutcome = "completed" | "still_processing" | "disconnected";
 // How long the client waits for ANY traffic before assuming silence. Rearmed by
 // every message, so this bounds a gap between messages, not the whole drain.
 export const STOP_SILENCE_TIMEOUT_MS = 180000;
+// WebSocket.send() has no backpressure promise.  Keep a hysteresis window
+// around the browser's internal send buffer so an overloaded connection drops
+// only the current interim frame and exposes the count in the audio status.
+export const AUDIO_SEND_HIGH_WATER_BYTES = 1_000_000;
+export const AUDIO_SEND_LOW_WATER_BYTES = 250_000;
 
 /**
  * Manages a WebSocket connection to the backend for a single call session.
@@ -59,6 +64,7 @@ export function useWebSocket() {
   });
   const lastAudioStatsPublishRef = useRef(0);
   const messagesRef = useRef<WSMessage[]>([]);
+  const audioBackpressureRef = useRef(false);
 
   const acknowledgeMessages = useCallback((processedMessages: WSMessage[]) => {
     lastSequenceRef.current = processedSocketSequence(
@@ -285,6 +291,27 @@ export function useWebSocket() {
 
   const sendAudio = useCallback((data: ArrayBuffer, track: 0 | 1 = 0) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
+      const bufferedAmount = wsRef.current.bufferedAmount || 0;
+      if (audioBackpressureRef.current) {
+        if (bufferedAmount > AUDIO_SEND_LOW_WATER_BYTES) {
+          audioStatsRef.current = {
+            ...audioStatsRef.current,
+            chunksDropped: audioStatsRef.current.chunksDropped + 1,
+          };
+          publishAudioStats();
+          return;
+        }
+        audioBackpressureRef.current = false;
+      }
+      if (bufferedAmount >= AUDIO_SEND_HIGH_WATER_BYTES) {
+        audioBackpressureRef.current = true;
+        audioStatsRef.current = {
+          ...audioStatsRef.current,
+          chunksDropped: audioStatsRef.current.chunksDropped + 1,
+        };
+        publishAudioStats();
+        return;
+      }
       // 1-byte track prefix: 0 = mic, 1 = system audio
       const framed = new Uint8Array(1 + data.byteLength);
       framed[0] = track;

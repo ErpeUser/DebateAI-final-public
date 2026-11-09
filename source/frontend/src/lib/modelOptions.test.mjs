@@ -18,7 +18,7 @@ test("on-prem endpoint models are grouped under Local and keep endpoint identity
 
   const groups = groupModels(models);
 
-  assert.deepEqual(groups.map((group) => group.provider), ["Google", "Local"]);
+  assert.deepEqual(groups.map((group) => group.provider), ["Google", "Lokal"]);
   assert.equal(optionLabel(models[1]), "Qwen (LM Studio)");
 });
 
@@ -41,7 +41,7 @@ test("recommended option text is driven by structured role metadata", async () =
   assert.ok(recommendationFor(model, "consolidated_analyst"));
   assert.equal(
     optionLabel(model, "consolidated_analyst"),
-    "GPT-5.6 Terra (gpt-5.6-terra) - Recommended",
+    "GPT-5.6 Terra (gpt-5.6-terra) - Empfohlen",
   );
   assert.equal(optionLabel(model, "objection_handler"), "GPT-5.6 Terra (gpt-5.6-terra)");
 });

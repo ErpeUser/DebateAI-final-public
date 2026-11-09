@@ -7,7 +7,7 @@ import type {
 function errorText(error: unknown): string {
   return error instanceof Error
     ? error.message.slice(0, 240)
-    : "The update action could not be completed.";
+    : "Die Aktualisierung konnte nicht abgeschlossen werden.";
 }
 
 function pollingInterval(state: DesktopUpdateStatus["state"], pollMs: number): number {

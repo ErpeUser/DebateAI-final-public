@@ -110,7 +110,7 @@ function EndpointForm({
         set({ models: result.served_models });
       }
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "Connection failed" });
+      setMessage({ ok: false, text: err instanceof Error ? err.message : "Verbindung fehlgeschlagen" });
     } finally {
       setBusy(null);
     }
@@ -134,9 +134,9 @@ function EndpointForm({
             throw err;
           }
           const approved = await confirm({
-            title: "Move endpoint off-prem?",
-            message: `Change ${editing.name} from ${editing.base_url} to ${payload.base_url}? Calls using this endpoint can leave your machine or network.`,
-            confirmLabel: "Move endpoint",
+            title: "Endpunkt aus dem lokalen Netz verschieben?",
+            message: `Soll ${editing.name} von ${editing.base_url} zu ${payload.base_url} wechseln? Aufrufe über diesen Endpunkt können deinen Rechner oder dein Netzwerk verlassen.`,
+            confirmLabel: "Endpunkt verschieben",
             tone: "danger",
           });
           if (!approved) return;
@@ -213,7 +213,7 @@ function EndpointForm({
             autoComplete="new-password"
             spellCheck={false}
             value={form.apiKey}
-            placeholder={editing?.has_api_key ? "Replace stored key..." : "Usually not needed"}
+            placeholder={editing?.has_api_key ? "Gespeicherten Schlüssel ersetzen ..." : "Meist nicht erforderlich"}
             onChange={(e) => set({ apiKey: e.target.value, keyTouched: true })}
             className="w-full rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 font-mono text-xs text-brand-dark-gray focus:border-brand-teal focus:outline-none"
           />
@@ -226,7 +226,7 @@ function EndpointForm({
           disabled={!form.baseUrl.trim() || busy !== null}
           className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-opacity hover:bg-brand-teal/5 disabled:opacity-40"
         >
-          {busy === "probe" ? "Connecting..." : "Connect & list models"}
+          {busy === "probe" ? "Verbindung wird hergestellt ..." : "Verbinden und Modelle laden"}
         </button>
         {message && (
           <span className={`font-body text-xs ${message.ok ? "text-brand-teal" : "text-red-600"}`}>{message.text}</span>
@@ -236,9 +236,9 @@ function EndpointForm({
       {dockerHint && (
         <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 font-body text-[11px] leading-relaxed text-amber-900">
             Debate AI läuft in Docker? Im Container bezeichnet <code className="font-mono">localhost</code> den
-          container itself. Use <code className="font-mono">http://host.docker.internal:</code>
+          Container selbst. Verwende <code className="font-mono">http://host.docker.internal:</code>
           {form.baseUrl.split(":")[2] || "1234"}
-          <code className="font-mono">/v1</code> to reach a server on this machine.
+          <code className="font-mono">/v1</code>, um einen Server auf diesem Rechner zu erreichen.
         </p>
       )}
 
@@ -289,7 +289,7 @@ function EndpointForm({
           <input
             type="text"
             value={manual}
-            placeholder="Or type a model name, e.g. antares-1b"
+            placeholder="Oder Modellnamen eingeben, z. B. antares-1b"
             onChange={(e) => setManual(e.target.value)}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
@@ -325,7 +325,7 @@ function EndpointForm({
         </button>
         {!canSave && (
           <span className="font-body text-[11px] text-brand-mid-gray">
-            A name, base URL, and at least one model are required.
+            Name, Basis-URL und mindestens ein Modell sind erforderlich.
           </span>
         )}
       </div>
@@ -370,7 +370,7 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
     } catch (err) {
       setResults((prev) => ({
         ...prev,
-        [endpoint.id]: err instanceof Error ? err.message : "Test failed",
+        [endpoint.id]: err instanceof Error ? err.message : "Verbindungstest fehlgeschlagen",
       }));
     } finally {
       setBusyId(null);

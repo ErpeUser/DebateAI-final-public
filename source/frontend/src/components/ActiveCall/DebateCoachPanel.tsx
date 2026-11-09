@@ -247,7 +247,7 @@ export default function DebateCoachPanel({
                   ? "border-brand-teal/40 bg-brand-teal/10 text-brand-teal"
                   : "border-brand-light-gray-1 text-brand-gray"
               } disabled:opacity-50`}
-              title={privacyFirst ? "Privacy First blockiert öffentliche Recherche" : "Manuelle Recherche bleibt verfügbar"}
+              title={privacyFirst ? "Der Datenschutzmodus blockiert öffentliche Recherche" : "Manuelle Recherche bleibt verfügbar"}
             >
               Auto-Recherche {researchEnabled ? "an" : "aus"}
             </button>
@@ -465,7 +465,7 @@ export default function DebateCoachPanel({
                 </div>
                 {privacyFirst ? (
                   <p role="status" className="mt-1 font-body text-[10px] leading-4 text-amber-800 dark:text-amber-200">
-                    Privacy First blockiert öffentliche Recherche. Lokale Sofortantworten bleiben aktiv.
+                    Der Datenschutzmodus blockiert öffentliche Recherche. Lokale Sofortantworten bleiben aktiv.
                   </p>
                 ) : (
                   <p className="mt-1 font-body text-[10px] leading-4 text-brand-mid-gray">

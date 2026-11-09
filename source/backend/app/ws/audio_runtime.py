@@ -233,6 +233,10 @@ def _queued_speaker_auto_id(
 # pause, far below what exhausts the process.
 MAX_DIARIZATION_BACKLOG_SECONDS = 30.0
 MAX_DIARIZATION_BACKLOG_BYTES = int(MAX_DIARIZATION_BACKLOG_SECONDS * 2 * _PCM_BYTES_PER_SECOND)
+# 100 ms PCM frames are the normal browser/native unit.  This count is a
+# second admission guard in addition to the byte budget, so a producer cannot
+# create an unbounded number of tiny queue entries.
+MAX_DIARIZATION_QUEUE_FRAMES = int(MAX_DIARIZATION_BACKLOG_SECONDS * 10 * 2)
 
 
 def _shed_diarization_backlog(

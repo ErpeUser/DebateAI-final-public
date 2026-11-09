@@ -148,13 +148,13 @@ Restentscheidung.
 | P2.6 | Egress-/Renderer-/Download-/Secret-Schutz; Modellquelle, Revision, Hash, Lizenz, sichere Formate | Privacy-/Request-/Downloadtests, `docs/model-manifest.json`, atomare Hashpruefung | BESTANDEN (technisch) |
 | P2.7 | Vorhandene Libraries/Adapter gezielt ausschoepfen, keine neue Bibliothek ohne reproduzierten Bedarf | Onnx-/Pydantic-/AsyncSession-/HTTP-/Adaptertests; keine unbelegte Zusatzbibliothek | BESTANDEN |
 | P2.8 | Direkte produktive Abhaengigkeiten und native Komponenten mit Version, Constraint, Nutzen, Lizenz, Plattform, Security-/Ablosestatus auditieren | `audit_dependencies.py`, `dependency-audit-v3.json`; Security-Scan und Python-3.13-Migration bewusst nicht behauptet | IMPLEMENTIERT |
-| P2.9 | Ruhige UI mit Jetzt-sagen-Karte, Verlauf, zwei Pegeln, Zustanden, Stop/Festhalten/Recherchepause, Quellen/Korrekturen | Frontend 268/268 und Build 2139 Module; echte GUI/DPI-/Loopbackabnahme fehlt | BLOCKED |
+| P2.9 | Ruhige UI mit Jetzt-sagen-Karte, Verlauf, zwei Pegeln, Zustanden, Stop/Festhalten/Recherchepause, Quellen/Korrekturen | Frontend 269/269 und Build 2139 Module; echte GUI/DPI-/Loopbackabnahme fehlt | BLOCKED |
 | P3.1 | Vor Entfernen Eigentum, Aufrufer, Entry Points, Registry, Overrides, Packaging, Hash/Groesse, Ersatz/Rueckweg belegen | A23/A24 Release-/Manifest-/Smoke-Nachweise fuer gepruefte Pfade | BESTANDEN (gepruefte Pfade) |
 | P3.2 | Abgeloeste Timer/Writer/Refiner/Wrapper/Imports/Settings/Routen komplett entfernen und Migrationen erhalten | Cleanup-/Migrationstests, statischer Review, keine unreferenzierte Loeschung belegt | BESTANDEN (gepruefte Pfade) |
 | P3.3 | App-eigene unbenutzte Gewichte/Tokenizer/Downloads/Buildreste nur mit Eigentum/Rueckweg physisch loeschen; Manifest fuehren | Keine destruktive Bereinigung ohne Eigentumsnachweis; shared/unklare ACL-Pfade geschuetzt | BLOCKED |
 | P3.4 | Leere, versionierte, Legacy- und unterbrochene Migration in Kopien abnehmen; ausgelieferte Migrationen nicht umschreiben | Schema-/Migrationstests vorhanden; echte unterbrochene Bestandskopie fehlt | BLOCKED |
 | P3.5 | Debate-AI-Identitaet und alte Daten-/EXE-Pfade mit Uebernahme und Rueckweg | Release-/Installationsvertraege vorhanden; reale Nutzerinstallation nicht zurueckgesetzt | BLOCKED |
-| P3.6 | Nach Cleanup Tests, Install/Health/Readiness, Snapshot/Export, Asset-/DLL-Findung und Offlinebetrieb erneut pruefen | Backend 1719/1719, Frontend 268/268, Build 2139 Module; Realpfade P3.3-P3.5 offen | BESTANDEN (technischer Anteil) |
+| P3.6 | Nach Cleanup, Install/Health/Readiness, Snapshot/Export, Asset-/DLL-Findung und Offlinebetrieb erneut pruefen | Backend 1719/1719 (historischer Gesamtbeleg; aktueller Vollaufgruf Zeitlimit), Frontend 269/269, Desktop 193/193, Docs 206/206, Build 2139 Module; Realpfade P3.3-P3.5 offen | BESTANDEN (technischer Anteil) |
 | P3.7 | Frischer lesender Review ausserhalb des Diffs, max. fuenf Hauptbefunde, kritische Zusatzbefunde nicht unterschlagen | Dieser Audit, Matrix, Fortschrittsdatei und explizite Blocker | BESTANDEN |
 
 ### Paket 2026-11-08 - A03 Capture-Identitaet bei Reconnect
@@ -2047,3 +2047,499 @@ aktuelle Snapshot umfasst `1.004` Dateien und `18.966.942` Bytes; der
 Secretscan enthaelt weiterhin nur fuenf absichtlich synthetische Test-Fixtures.
 Naechster Schritt: den aktualisierten privaten Snapshot pushen und Remote-
 Baum sowie Historie erneut auf verbotene lokale Datenpfade pruefen.
+
+### Deep-Audit-Nachlauf: Egress, Reihenfolge, Prompts und deutsche Oberflaeche (2026-11-09)
+
+Umgesetzt:
+
+- `backend/app/services/agents/orchestrator.py`: Vor dem Retrieval des
+  Vorbereitungsdossiers wird die konfigurierte Route technisch gegen die
+  lokale-Ziel-Pruefung abgesichert. Cloud-/Web-Routen erhalten keinen lokalen
+  Dossiertext; bei unklarer Pruefung wird aus Sicherheitsgruenden nichts
+  uebertragen. Das reine Lesen fuehrt keinen Commit mehr aus.
+- `backend/app/services/ordered_transcription.py`: Langsame Transcript-Emits
+  halten den Annahme-Lock nicht mehr. Die Reihenfolge bleibt erhalten, spaetere
+  Ergebnisse koennen jedoch angenommen werden.
+- `backend/app/services/agents/event_bus.py`: Ereignisse, die waehrend eines
+  Cooldown-Handlers eintreffen, werden nach dessen Ende erneut eingeplant und
+  gehen nicht durch Starvation verloren.
+- `backend/app/services/ai_config.py`: Prompt-Platzhalter werden gegen eine
+  explizite Allowlist geprueft; unbekannte Namen werden abgewiesen.
+- `backend/app/services/agents/orchestrator.py`: Unicode-Worttokenisierung
+  fuer deutsche Zahlwoerter ist ohne fehleranfaellige Encoding-Klassen
+  abgesichert.
+- Sichtbare Frontend-Texte in den Hinweisen, Filtern, Nachbearbeitung,
+  Sprecher-/Audio-Dialogen, Chat-Verlauf und Typbezeichnungen sind deutsch;
+  `frontend/index.html` verwendet `lang="de"`. Die Produktbezeichnung ist
+  sichtbar `Debate AI`; technische Kompatibilitaetsnamen bleiben unveraendert.
+- Veraltete Frontend-Erwartungen wurden auf den verbindlichen deutschen
+  Vertrag aktualisiert; es wurden keine Tests abgeschwaecht.
+
+Nachweise:
+
+- Backend: `tests.test_debate_copilot` und
+  `tests.test_dossier_hybrid_integration`: 73 Tests bestanden.
+- Backend: Ordered-Transcript plus EventBus: 14 Tests bestanden.
+- Backend: Unicode-/Prompt-Fokus: 3 Tests bestanden; alle 38 direkt
+  ausgelieferten Root-Prompts wurden zusaetzlich mit der neuen Validierung
+  eingelesen.
+- Frontend: `npm run build`: 2.139 Module erfolgreich gebaut.
+- Frontend: `npm test`: 268 Tests bestanden.
+- Die sechs temporaeren Prompt-Ressourcentests bleiben in dieser Windows-
+  Umgebung blockiert, weil `tempfile.TemporaryDirectory` unter dem vorhandenen
+  System-TEMP mit `PermissionError/WinError 5` endet. Das ist ein
+  Umgebungsblocker, kein bestandener Test.
+
+Status: Diese Pakete sind IMPLEMENTIERT/BESTANDEN. Noch offen bleiben die
+weiteren Audit-Punkte zu Audio-Backpressure, Analyse-Cancellation/Retry,
+Mehrprozess-Betrieb, Deployment/Auth, mobilem Layout, grossen Kontexten und
+manuellen Hardware-/Audio-/Rhetorikabnahmen.
+
+Naechster konkreter Schritt: die Server-/Browser-Audio-Backpressure anhand
+von F1-F3 pruefen und zuerst einen reproduzierbaren Verlusttest ausfuehren.
+
+### Deep-Audit-Nachlauf: Audio-Backpressure F1-F3 (2026-11-09)
+
+Umgesetzt:
+
+- `frontend/src/hooks/useWebSocket.ts`: Browser-`bufferedAmount` wird mit
+  High-/Low-Water-Hysterese begrenzt. Bei Ueberlast wird nur der aktuelle
+  Interimframe verworfen; `chunksDropped` bleibt im sichtbaren Audio-Status.
+- `backend/app/ws/audio_pipeline.py`: Diarization verwendet neben dem
+  Bytebudget nun eine echte begrenzte Queue (`MAX_DIARIZATION_QUEUE_FRAMES`).
+  Eine volle Queue lehnt den neuen Frame ab, ohne bereits akzeptiertes PCM zu
+  entfernen, und meldet den kontrollierten Overflow.
+- `backend/app/ws/audio_messages.py` und `audio_pipeline.py`: Der Live-
+  Gatewayversand laeuft ueber eine eigene kleine Queue und einen Sender-Task.
+  Der WebSocket-Ingress wartet nicht mehr auf Provider-I/O. Bei Gateway-
+  Ueberlast wird ein `audio_gateway_overflow`-Status gemeldet; die dauerhafte
+  Batch-Spur bleibt unabhaengig.
+
+Nachweise:
+
+- Backend Audio-Handler/Backlog: 67 ausgefuehrte Tests bestanden; ein
+  zusaetzlicher Test bestaetigt Queue-Ueberlast ohne PCM-Drop. Ein separates
+  Sammelkommando enthielt ausserdem einen nicht vorhandenen Testmodulnamen und
+  einen Windows-TEMP-ACL-Fehler; beide sind Umgebungs-/Aufrufprobleme, keine
+  Codefehler.
+- Frontend: `npm test` ohne Fehler; der neue Hook-Test prueft die Hysterese.
+  Der Produktionsbuild wird nach dem Backend-Paket erneut ausgefuehrt.
+
+Status: F1-F3 IMPLEMENTIERT; technisch fokussiert BESTANDEN. Reale
+Mikrofon-/Discord- und Hardware-Lastabnahmen bleiben manuell.
+
+Naechster konkreter Schritt: F6-F7 pruefen — Live-Analyse-Retries und stale
+Revision-Cancellation mit Red-Tests gegen unnoetige Zweitaufrufe absichern.
+
+### Deep-Audit-Nachlauf: Live-Retry und stale Revisionen F6-F7 (2026-11-09)
+
+Umgesetzt:
+
+- `backend/app/services/agents/objection_handler.py`: Eine syntaktisch
+  gueltige, semantisch leere Empfehlung wird lokal als `no_guidance`
+  behandelt. Sie verursacht keinen zweiten Live-Provideraufruf und verwirft
+  dabei keine gleichzeitig gelieferten Einwaende. Ein unvollstaendiger
+  Pflichtvertrag, etwa eine fehlende erzwungene Analogie, darf weiterhin genau
+  einmal korrigiert werden.
+- `backend/app/services/agents/orchestrator.py`: Trifft neuere Sprache ein,
+  wird die laufende Debattenrevision aktiv abgebrochen und eine neue Revision
+  fuer den aktuellsten Stand gestartet. Die bestehenden Revisions-/Snapshot-
+  Pruefungen bleiben als Schutz fuer Provider erhalten, die Abbruch ignorieren.
+- `backend/tests/test_debate_copilot.py`: Tests pruefen keinen Retry bei
+  echter Leere sowie Cancellation und Ausfuehrung der neuesten Revision;
+  Negations-/Stale-Tests wurden auf den neuen Vertrag angepasst.
+
+Nachweise:
+
+- `backend\\.venv\\Scripts\\python.exe -m unittest tests.test_debate_copilot tests.test_objection_handler -v`
+  -> 93 Tests bestanden.
+- Fokussierte Cancellation-/Negationspruefung -> 2 Tests bestanden.
+
+Status: F6-F7 IMPLEMENTIERT und BESTANDEN. Noch offen bleiben die breite
+Englisch-/Legacy-Branding-Restpruefung, Gesamtregression, privater Snapshot-
+Push sowie nicht technisch ausfuehrbare Hardware-/Audio-/Rhetorikabnahmen.
+
+Naechster konkreter Schritt: sichtbare Frontend-/Dokumenttexte und verbliebene
+`Backchannel`-Produktbezeichnungen systematisch inventarisieren und sichere
+deutsche Debate-AI-Ersetzungen umsetzen.
+
+### CHAT-HANDOFF: belastbarer Zwischenstand fuer die naechste Sitzung (2026-11-09)
+
+Zweck dieses Abschnitts: Der naechste Chat darf den verlorenen Verlauf nicht
+voraussetzen. Der Repository-Zustand und diese Datei sind die massgebliche
+Uebergabequelle.
+
+#### Bereits umgesetzt und nachgewiesen
+
+1. Datenschutz-/Dossier-Egress: Cloud- oder Web-Routen erhalten keinen lokalen
+   Vorbereitungsdossiertext; unklare Zielpruefung faellt geschlossen aus.
+2. Transcript-Reihenfolge: langsame Emits blockieren die Annahme nicht; die
+   Ausgabereihenfolge bleibt stabil.
+3. EventBus: Ereignisse waehrend eines Cooldowns werden danach erneut geplant.
+4. Prompt-/Unicode-Vertrag: unbekannte Platzhalter werden abgewiesen;
+   deutsche Unicode-Zahlwoerter sind abgesichert.
+5. Audio-Backpressure F1-F3: begrenzte Queues, kein stilles Entfernen bereits
+   angenommener PCM-Frames, sichtbare Overflow-Zustaende sowie Browser-
+   High-/Low-Water-Hysterese.
+6. Live-Analyse F6-F7: semantisch leere, schema-gueltige Antworten loesen
+   keinen unnoetigen Retry aus; eine neuere Revision bricht eine alte aktive
+   Revision ab und startet den aktuellen Stand.
+7. Sichtbare UI: zentrale Frontend-Bereiche sind deutsch, `lang="de"`, und die
+   sichtbare Produktbezeichnung lautet `Debate AI`. Technische Legacy-Namen
+   (API-Header, Storage-Schluessel, Modul-/Paketpfade) wurden absichtlich nicht
+   blind umbenannt, um Kompatibilitaet nicht zu brechen.
+8. Private-Snapshot-Pruefung: keine Cookies, Browserprofile, Login-Daten,
+   OAuth-/Refresh-Tokens, Provider-Overrides, lokale Chatverlaeufe,
+   Transkripte, Datenbanken oder Logs im Snapshot; nur neutrale
+   `.env.example` und synthetische Test-Fixtures.
+
+#### Verifizierte Nachweise
+
+- Backend fokussiert: `tests.test_debate_copilot` plus
+  `tests.test_dossier_hybrid_integration`: 73 bestanden.
+- Ordered-Transcript/EventBus: 14 bestanden.
+- F6-F7: `tests.test_debate_copilot` plus `tests.test_objection_handler`:
+  93 bestanden.
+- Frontend vor dem letzten Mini-Lokalisierungspatch: `npm test` 269/269
+  bestanden; `npm run build` 2.139 Module, Build erfolgreich.
+- Der Build zeigt nur die bekannte Chunk-Groessen-Warnung, keinen Fehler.
+- Sechs Prompt-Ressourcentests bleiben unter Windows wegen
+  `TemporaryDirectory`/System-TEMP-ACL (`PermissionError/WinError 5`)
+  blockiert; dies ist kein gruener Nachweis.
+
+#### Direkt vor der Fortsetzung noch zu verifizieren
+
+Der letzte Arbeitsabschnitt hat zusaetzlich sichtbare Begriffe in
+`TranscriptReview.tsx`, `DesktopUpdate.tsx` und `LocalModelFitCard.tsx`
+eingedeutscht. Diese drei kleinen Aenderungen muessen im naechsten Chat mit
+`cd frontend; npm test` und `npm run build` erneut verifiziert werden.
+
+#### Noch offen / nicht kuenstlich als bestanden markieren
+
+- komplette Restinventur sichtbarer englischer Texte und sichtbarer
+  `Backchannel`-Markenstellen (technische Kompatibilitaetsnamen ausnehmen und
+  jede Ausnahme begruenden);
+- aktualisierten privaten Snapshot sicher pushen und den Remote-Baum sowie
+  die erreichbare Historie erneut auf verbotene lokale Daten pruefen;
+- Gesamtregression Backend/Desktop/Docs und ggf. Sentrux-Pruefung;
+- Mehrprozess-/Deployment-/Auth- und grosse-Kontext-Auditpunkte aus dem
+  Masterauftrag;
+- manuelle Abnahmen: echte deutsche Mikrofon-/Discord-Aufnahme, echte
+  Audioqualitaet/Referenzaudio, GUI-/DPI-Verhalten auf Hardware sowie
+  menschliche rhetorische Qualitaetsbewertung. Diese bleiben `BLOCKED`, bis
+  sie mit realen Eingaben ausgefuehrt wurden.
+
+#### Exakte Fortsetzungsanweisung
+
+1. `git status --short` und nur die letzten Aenderungen pruefen; nichts
+   zuruecksetzen oder bereinigen.
+2. Die drei kleinen Frontend-Lokalisierungen testen/builden.
+3. Mit gezielten Suchmustern sichtbare englische JSX-Texte und
+   `Backchannel`-Produkttexte inventarisieren; Kommentare, interne IDs,
+   Header, Storage-Keys und Dateipfade nicht als sichtbare Marke zaehlen.
+4. Nur echte sichtbare Treffer minimal auf Deutsch bzw. `Debate AI` aendern,
+   zu jedem Paket Tests ausfuehren und diese Datei erneut aktualisieren.
+5. Danach die fokussierte Backend-Suite, Frontend-Suite und Builds ausfuehren,
+   Snapshot/Remote-Pruefung nachholen und erst dann den Gesamtstatus melden.
+
+Aktueller Status: automatisierbare Pakete weitgehend IMPLEMENTIERT/BESTANDEN;
+Gesamtziel noch NICHT abgeschlossen. Der Goal-Loop bleibt aktiv. Eine
+Abschlussmeldung darf nur lauten: `Automatisierbare V3-Umsetzung abgeschlossen
+-- verbleibende manuelle Abnahmen und Blocker dokumentiert`, wenn alle
+technisch selbststaendig pruefbaren Punkte belegt sind.
+
+### Deep-Audit-Abgleich: Resttexte, Matrix und aktueller Nachweis (2026-11-09)
+
+Der V3-Auftrag wurde erneut gegen die drei lokalen V3-Dateien, die
+Abnahmematrix A01-A24, die P0-P3-Zusatzmatrix sowie den Implementierungsplan
+abgeglichen. Es wurde kein A-/N-/P0-/P1-/P2-/P3-Punkt aus der Matrix entfernt
+oder stillschweigend uebersprungen. Die verbindlichen A-Punkte sind weiterhin:
+
+- `BESTANDEN`: A01-A05, A07-A17, A19-A20, A23-A24 (20 Punkte).
+- `BLOCKED`: A06 (echte deutsche Mikrofon-/Discord-/Overlapaufnahme), A18
+  (menschliche deutsche Rhetorikabnahme), A21 (gleiche aktuelle deutsche
+  Referenz auf identischer Hardware und Gesamtlast), A22 (unabhaengiger
+  kausaler Mehrturnbenchmark mit Human-Gate).
+- `NOT_RUN`/`OFFEN`: keine A01-A24-Zeile; die vier externen Punkte sind
+  bewusst `BLOCKED` und nicht kuenstlich zu `BESTANDEN` hochgestuft.
+
+Zusaetzlich bleiben die in der Matrix getrennt ausgewiesenen externen bzw.
+realen Grenzen P0.1, P0.9, P1.5, P2.9 und P3.3-P3.5 offen/blockiert. Die
+technischen Anteile dieser Punkte sind geprueft; reale Installation,
+Hardware, Eigentum/Rollback und Human-Rating wurden nicht simuliert.
+
+#### In diesem Nachlauf tatsaechlich geaendert
+
+- Weitere sichtbare Frontend-Englischreste wurden auf Deutsch umgestellt:
+  Update-Neuigkeiten, erneute Transkription, strategische Signalhistorie,
+  Live-Transkript-Aria-Labels, Verwerfen-Schaltflaeche, Download-/Leistungs-
+  test-Fehlertexte sowie lokale Modellhinweise.
+- Sichtbare Produkt-/UI-Bezeichnungen bleiben `Debate AI`. Die noch
+  gefundenen `Backchannel`-Vorkommen wurden klassifiziert: API-Header,
+  Umgebungsvariablen, Local-Storage-Schluessel, Installations-/EXE-/Archiv-
+  namen, Datenbankrollen und historische externe Domains sind technische
+  Kompatibilitaetsidentitaeten. Sie wurden nicht kosmetisch umbenannt, weil
+  das ohne Migration Datenverlust oder kaputte Updates verursachen wuerde.
+- Die drei lokalen V3-Dateien wurden vorhanden und vollstaendig lesbar
+  bestaetigt; der auf dem Desktop referenzierte V6-Auftrag ist in dieser
+  Umgebung nicht vorhanden und wurde nicht erfunden.
+
+#### Aktueller Nachweis dieses Nachlaufs
+
+- Frontend `npm test`: **269/269 bestanden**.
+- Frontend `npm run build`: **2.139 Module**, Build erfolgreich; nur die
+  bekannte Chunk-Groessen-Warnung.
+- Backend-Fokus mit Root-`.venv`: Branding, Copilot und Objection-Handler
+  **95 Tests bestanden**.
+- Ein erneuter Backend-Gesamtlauf wurde nach 122 Sekunden von der lokalen
+  Zeitgrenze beendet und ist deshalb **kein** aktueller Vollsuite-Nachweis.
+  Der letzte belastbare Gesamt-Nachweis in der Matrix bleibt 1.719/1.719;
+  betroffene fokussierte Suiten wurden in diesem Nachlauf erneut gruen
+  ausgefuehrt.
+- Das Evidenz-Gate `validate_v3_acceptance_evidence.py` wurde ohne Paket nur
+  mit dem erwarteten CLI-Fehler beendet; es existiert aktuell kein
+  manuelles A06/A18/A21/A22-Evidenzpaket. Daher bleiben diese Punkte BLOCKED.
+
+#### Noch nicht abgeschlossen, aber explizit identifiziert
+
+1. Historische Release-Notes in `backend/app/release_notes.py` und die
+   separate englische Marketing-/Docs-Site enthalten weiterhin englische
+   historische Inhalte und alte Markennamen. Diese sind nicht technische
+   Kompatibilitaetskeys, wurden in diesem Nachlauf noch nicht vollstaendig
+   uebersetzt und bleiben als separater Content-Arbeitspunkt offen.
+2. Der aktualisierte private Snapshot muss nach den letzten UI-Aenderungen
+   erneut erzeugt, auf Geheimnisse/Verlaeufe geprueft und sicher gepusht
+   werden; ein Push wurde in diesem Nachlauf nicht behauptet.
+3. Ein vollstaendiger aktueller Backend-/Desktop-/Docs-Lauf steht wegen der
+   lokalen Zeitgrenze noch aus; fokussierte Nachweise sind vorhanden.
+
+Naechster konkreter Schritt: zuerst den sichtbaren historischen Content
+(`release_notes.py` sowie die aktuellen, nicht URL-/Dateinamenbezogenen
+Produkttexte) in einem eigenen Paket uebersetzen und mit einem gezielten
+Branding-/Content-Test absichern; danach Snapshot und die passenden Suites
+erneut synchronisieren.
+
+### Deep-Audit-Nachlauf: Desktop-Fehler bei fehlender Providerdiagnose (2026-11-09)
+
+Befund: Der Desktop-Loginpfad fuer ChatGPT Web behandelte einen
+`subprocess.run`-Fehler mit einem Test-Doppel ohne String-`stdout`/`stderr` nicht
+robust. Die Diagnosezeile konnte dadurch selbst mit `TypeError: argument of
+type 'Mock' is not iterable` scheitern, statt den Providerfehler sauber als
+Fehlerstatus zu speichern.
+
+Korrektur: `desktop/bcdesktop/chatgpt_web_login.py` akzeptiert fuer die
+Fehlerdiagnose nur echte Stringausgaben und faellt sonst auf eine leere
+Diagnose zurueck. Der urspruengliche Exit-Code und der fail-closed Marker-
+Vertrag bleiben unveraendert; kein Provider wird bei einem Fehlschlag
+aktiviert.
+
+Nachweis:
+
+- Desktop mit korrektem `PYTHONPATH` (Repository, `desktop`, `backend`):
+  **193 Tests bestanden, 1 plattformbedingt uebersprungen**.
+- Backend `tests.test_meta`, `tests.test_debate_branding`,
+  `tests.test_debate_copilot`, `tests.test_objection_handler`: **101 Tests
+  bestanden**.
+- Docs-Sammelsuite: **206/206 bestanden**.
+- Frontend bleibt **269/269** und Build **2.139 Module** gruen.
+
+Status: Desktop-Befund IMPLEMENTIERT und BESTANDEN. Der zuvor gestartete
+Backend-Gesamtlauf mit Standardzeitlimit bleibt als `TIMEOUT` dokumentiert;
+er wird nicht als Vollsuite-Erfolg ausgegeben. Die Abnahmematrix wurde auf die
+aktuellen Frontend/Desktop/Docs-Zahlen aktualisiert.
+
+Naechster konkreter Schritt: die noch offene historische Release-/Marketing-
+Contentfrage bewusst entscheiden bzw. als separaten Contentblocker
+verifizieren; danach den privaten Snapshot gegen diesen aktuellen Quellstand
+neu synchronisieren, ohne lokale Login-/Cookie-/Verlaufsdaten zu uebernehmen.
+
+### Deep-Audit-Kreuztabelle F1-F26: kein Befund stillschweigend uebersprungen (2026-11-09)
+
+Der statische Deep-Audit-Anhang fuehrt neben der V3-Abnahmematrix 26 eigene
+Optimierungsbefunde. Diese sind keine zusaetzlichen A01-A24-Zeilen, werden hier
+aber einzeln gegen den aktuellen Quellstand abgeglichen. `BESTANDEN` bedeutet
+hier nur: der konkret beschriebene technische Befund ist behoben und fokussiert
+belegt; `TEILWEISE` bedeutet, dass nur ein Teil der Empfehlung umgesetzt ist;
+`OFFEN` bedeutet, dass der Punkt bewusst noch nicht umgesetzt ist.
+
+| Befund | Aktueller Stand | Nachweis bzw. verbleibende Luecke |
+|---|---|---|
+| F1 | BESTANDEN | Browser-High-/Low-Water und sichtbare Interim-Drops; `useWebSocket`-Tests. |
+| F2 | BESTANDEN | Eigene Gateway-Queue und Sender-Task; Audio-Handler-Overflowtests. |
+| F3 | BESTANDEN | Begrenzte Diarization-Queue, kein Entfernen angenommener PCM-Frames, sichtbarer Overflow. |
+| F4 | BESTANDEN | Ordered-Transcript-Emit ausserhalb des Annahme-Locks; fokussierte Ordering-Suite. |
+| F5 | TEILWEISE | Technisches Dossier-Egress-Gate und read-only Retrieval sind vorhanden; immutable Dossier-Cache pro Config-/Session-Generation fehlt noch. |
+| F6 | BESTANDEN | Semantisch leere, schema-gueltige Antwort loest keinen zweiten Live-Aufruf aus. |
+| F7 | BESTANDEN | Neuere Revision bricht aktive alte Revision ab; Stale-Guards bleiben als Fallback. |
+| F8 | BESTANDEN | Pending-Events werden nach laufendem Cooldown-Handler erneut terminiert. |
+| F9 | OFFEN | Lokale Streaming-Partials werden angezeigt, triggern den Debate-Coach aber noch nicht ueber einen gemeinsamen debounced Provisional-Kanal. |
+| F10 | OFFEN | Consolidated Analyst wartet weiterhin auf das konfigurierte Intervall, bevor der erste Zyklus laeuft. |
+| F11 | OFFEN | Synthesis serialisiert weiterhin geaenderte Fenster; inkrementelles Aenderungsjournal fehlt. |
+| F12 | OFFEN | Zustaendigkeit und semantische IDs sind nicht vollstaendig anstelle von Text-/Zeitfenster-Dedup umgesetzt. |
+| F13 | BESTANDEN | Unicode-Zahlworttokenisierung zentralisiert; Regressionstest fuer deutsche Zahlwoerter. |
+| F14 | BESTANDEN | Prompt-Platzhalter-Allowlist weist unbekannte Namen vor Runtime-Formatierung ab. |
+| F15 | OFFEN | Alembic ist noch nicht die einzige autoritative Startup-Schemageschichte; Legacy-Adoption bleibt bewusst im Runtime-Patch. |
+| F16 | OFFEN | Prozesslokaler Orchestrator ohne Redis/PubSub bzw. Worker-Affinität; Mehrworkerbetrieb ist nicht freigegeben. |
+| F17 | OFFEN | Produktionsprofil/Auth-/CORS-/WS-Token-Haertung ist nicht als neuer Deployment-Vertrag umgesetzt. |
+| F18 | TEILWEISE | Dependency-Inventar und Constraints sind dokumentiert; ein voll gehashtes Lockfile fuer alle Backend-Abhaengigkeiten fehlt. |
+| F19 | OFFEN | Transcript-UI nutzt fuer einige dynamische Bereiche noch Index-Keys und Tail-Scroll ohne Windowing. |
+| F20 | BESTANDEN | `frontend/index.html` liefert `lang="de"`; Frontend-Build und UI-Tests gruen. |
+| F21 | OFFEN | Dialog-Focus-Trap/-Restore und vollstaendiger Switch-/Inert-Vertrag sind noch nicht als gemeinsame Primitive eingefuehrt. |
+| F22 | OFFEN | Systemaudio-Fallback wird technisch geloggt und als Status behandelt, aber beim Browser-Fallback noch nicht als eigene sichtbare Warnkarte ausgegeben. |
+| F23 | OFFEN | Empfehlungskarte ist weiterhin atomar live; dedizierte kurze Statuszeile und Progressbar-Vertrag fehlen. |
+| F24 | OFFEN | Agentenaktivitaet bleibt auf kleinen Ansichten tabellarisch breit; mobile Reflow-Variante fehlt. |
+| F25 | OFFEN | Produktionsstart-/Runtime-Installationsprofil ist nicht als separater harter Deploy-Gate umgesetzt. |
+| F26 | TEILWEISE | Einige Research-/Adapterpfade teilen HTTP-Clients; zentrale LLM-Pfade erzeugen weiterhin pro Request eigene Clients. |
+
+Damit ist nachvollziehbar dokumentiert, dass F9-F12, F15-F19 und F21-F26 nicht
+vergessen wurden. Sie sind Empfehlungen ausserhalb der bereits belegten
+V3-Abnahme und bleiben offen bzw. teilweise, solange keine kleine, getestete
+Umsetzung mit vertretbarem Regressionsrisiko vorliegt. Die vier realen V3-
+Abnahmen A06/A18/A21/A22 bleiben unabhaengig davon BLOCKED.
+
+Naechster konkreter Schritt: den sichtbaren historischen Release-/Marketing-
+Content separat bewerten und danach den privaten Snapshot aus dem aktuellen,
+geprueften Quellstand ohne lokale Zugangsdaten neu synchronisieren.
+
+### Aktueller Resume-Override nach erneutem Chat-/Deep-Audit-Abgleich (2026-11-09)
+
+Der fruehere Abschnitt `RESUME POINT` mit `DONE` beschreibt den damaligen
+Release-Checkpoint und ist keine aktuelle Gesamtfreigabe. Fuer die Fortsetzung
+ist dieser Abschnitt massgeblich:
+
+- `GOAL_STATUS = IN_PROGRESS`.
+- Das private GitHub-Repository und das Release `v0.6.6` existieren und wurden
+  read-only als privat verifiziert; der dortige `source/`-Snapshot stammt aber
+  aus einem frueheren Stand und enthaelt die letzten Frontend-/Desktop-
+  Nachlaeufe noch nicht.
+- Die lokale Windows-x64-onedir-EXE und der externe Prompt-/Config-Smoke sind
+  weiterhin als lokaler `BUILD_READY`-Nachweis belegt. Ein neuer Build nach den
+  letzten UI-Aenderungen ist vor einem Snapshot-/Release-Update erforderlich.
+- Die aktuelle Frontend-Suite ist 269/269 gruen, Build 2.139 Module; Desktop
+  193/193 mit einem Plattform-Skip; Docs 206/206; Backend-Fokus 101/101.
+  Der aktuelle Backend-Gesamtlauf bleibt wegen Zeitlimit ohne neuen
+  Vollsuite-Nachweis.
+- A01-A05, A07-A17, A19-A20, A23-A24 sind BESTANDEN; A06, A18, A21, A22
+  bleiben wegen echter Audio-/Hardware-/Human-Gates BLOCKED. Keine A-/N-/P-
+  Zeile wurde uebersprungen; die Deep-Audit-Zusatzbefunde F1-F26 stehen in der
+  Kreuztabelle unmittelbar davor.
+
+Naechste verbindliche Reihenfolge: (1) sichtbaren historischen Content und
+Branding-Reststellen entscheiden/klein korrigieren, (2) aktuellen Frontend-,
+Backend-Fokus-, Desktop- und Docs-Nachweis erneut in der Matrix festhalten,
+(3) den privaten Source-Snapshot aus genau diesem Stand neu erzeugen und auf
+Cookies, Login-Daten, OAuth-/Provider-Zustaende, lokale Verlaeufe,
+Transkripte, Datenbanken und Logs scannen, (4) nur bei positivem Privacy- und
+Remote-Nachweis den privaten Branch/Release aktualisieren. Keine lokale
+Login-/Cookie-Datei und kein Chatverlauf darf in den Snapshot gelangen.
+
+#### V6-Zielbedingungen gegen den aktuellen Stand
+
+| V6-Bedingung | Aktueller Status | Beleg bzw. Rest |
+|---|---|---|
+| Releasekritische Produktimplementierung | DONE fuer den bisher geprueften Code | V3-Matrix und fokussierte Regressionen; neuer Nachweis nach letztem UI-/Desktop-Patch noch erforderlich. |
+| Facharbeiten integriert und Cleanup | DONE fuer dokumentierte, nicht-destruktive Pfade | `docs/v6-cleanup-manifest.json`, Migration-/Release-Tests; reale Eigentums-/Rollbackabnahme bleibt extern. |
+| Externe Prompt-/Konfigurationsdateien | DONE | Externer Prompt-Hash-/Provider-Fehler-Smoke im lokalen Build-Gate. |
+| Reale Windows-x64-onedir-EXE | DONE historisch, aktuell neu zu verifizieren | Vorhandene EXE/Archiv-Smokes sind belegt; nach dem letzten Desktop-Fix kein neuer Build ausgefuehrt. |
+| Minimaler EXE-Startcheck | DONE historisch, aktuell neu zu verifizieren | Health/ASR/Shutdown-Smoke im V6-Gate; neuer Kandidat steht aus. |
+| Releasepaket und SHA-256 | DONE fuer v0.6.6 | ZIP, Manifest, `SHA256SUMS.txt` und `START_HIER.md` sind im privaten Release verifiziert. |
+| Privates Repository | BESTANDEN | `ErpeUser/backchannel-v6-private`, `isPrivate=true`, read-only verifiziert. |
+| Privates GitHub Release mit Artefakten | BESTANDEN fuer v0.6.6 | Release ist nicht Draft/Prerelease; letzte Quell-/UI-Nachlaeufe sind noch nicht Bestandteil. |
+| Fortschrittsdatei | IN_PROGRESS | Aktueller Resume-Override und F1-F26-Kreuztabelle sind eingetragen; nach jedem naechsten Paket erneut aktualisieren. |
+
+Der V6-Release ist damit nicht vergessen oder uebersprungen, aber der Status
+ist wegen des nachtraeglich geaenderten Quellstands bewusst `IN_PROGRESS` und
+nicht erneut `DONE`, bis Build/Smoke und Snapshot-Synchronisierung fuer genau
+diesen Stand abgeschlossen sind.
+
+#### Nachweis dieses zweiten Abgleichs
+
+- `backend`: `tests.test_v3_matrix_coverage` plus
+  `tests.test_v3_acceptance_evidence` -> **9/9 bestanden**. Damit wird erneut
+  maschinell bestaetigt, dass alle Matrix-IDs und die konservativen
+  Evidenz-Gates vorhanden sind.
+- `git diff --check` -> keine Whitespace-Fehler; die Ausgabe enthielt nur die
+  bekannte Windows-LF/CRLF-Hinweisserie.
+- Der Deep-Audit-Anhang wurde direkt aus der erreichbaren Datei mit 26
+  Einzelbefunden gelesen; die F1-F26-Kreuztabelle oben fuehrt jeden Befund
+  einzeln auf.
+- Der V6-Auftrag wurde direkt aus der erreichbaren Pasted-Text-Datei gelesen;
+  der auf dem Desktop genannte Markdown-Pfad existiert in dieser Umgebung
+  nicht und wurde nicht ersetzt oder erfunden.
+- Der in `AGENTS.md` referenzierte Sentrux-Pfad und auch `sentrux` im PATH sind
+  in dieser Umgebung nicht vorhanden; `check`/`gate` konnten daher nicht
+  ausgefuehrt werden. Dies ist ein Werkzeug-Blocker, kein bestandener
+  Struktur-Nachweis.
+
+### Deep-Audit-Nachlauf: API-Fallbacktexte und erneute Frontend-Verifikation (2026-11-09)
+
+Umgesetzt wurden die letzten sichtbaren englischen Fehler-Fallbacks in
+`frontend/src/services/api.ts` und `frontend/src/services/desktopUpdateApi.ts`:
+Import-, Upload-, Benchmark- und Desktop-Berechtigungsfehler erscheinen nun
+deutsch. Protokollheader wie `X-Backchannel-Instance` blieben absichtlich
+unveraendert.
+
+Nachweis:
+
+- `frontend`: `npm test` -> **269/269 bestanden**.
+- `frontend`: `npm run build` -> **2.139 Module**, erfolgreich; nur die bekannte
+  Chunk-Groessen-Warnung.
+- `backend`: Branding-Suite -> **2/2 bestanden**.
+
+Status: dieses Lokalisierungspaket BESTANDEN. Historische Release-Notes und die
+separate englische Marketing-/Docs-Site sind weiterhin als eigener Content-
+Arbeitspunkt ausgewiesen; sie wurden nicht stillschweigend als vollstaendig
+uebersetzt markiert.
+
+Der lokale Snapshot-Abgleich bestaetigt die bekannte Luecke konkret: Die
+Arbeitskopie verwendet bereits deutsche Texte in `StrategicSignalCard.tsx` und
+den letzten Audio-/Update-Komponenten, waehrend
+`build/v6-github-private-repo/source/` dort noch den frueheren englischen
+Stand enthaelt. Das ist ein Snapshot-Synchronisierungsproblem, kein neuer
+Produktfehler; es bleibt bis zur kontrollierten Aktualisierung offen.
+
+Naechster konkreter Schritt: aktuelle fokussierte Backend-/Desktop-/Docs-
+Nachweise im Resume-Override festhalten und danach den privaten Snapshot mit
+dem jetzt erneut gebauten Quellstand synchronisieren.
+
+### Deep-Audit-Nachlauf: Live-UI-Restluecken und Dokumentationsmetadaten (2026-11-09)
+
+Zwei kleine, technisch selbststaendig pruefbare Deep-Audit-Reste wurden
+geschlossen:
+
+- `frontend/src/components/ActiveCall/TranscriptPanel.tsx` verwendet fuer
+  gespeicherte Transkriptzeilen nun stabile IDs statt Array-Index-Schluesseln;
+  fuer noch nicht persistierte Live-Zeilen gibt es einen deterministischen
+  Zeit-/Sprecher-/Index-Fallback.
+- `frontend/src/components/ActiveCall/AgentActivityPanel.tsx` wechselt auf
+  kleinen Ansichten von der breiten Scroll-Tabelle zu beschrifteten, vertikal
+  lesbaren Zeilen.
+- `frontend/src/hooks/useAudioCapture.ts`, `frontend/src/App.tsx` und
+  `frontend/src/components/ActiveCall/ActiveCallView.tsx` zeigen bei einem
+  abgelehnten oder nicht verfuegbaren Browser-Systemaudio-Fang sichtbar an,
+  dass nur das Mikrofon aufgenommen wird. Native Desktop-Aufnahme bleibt
+  unveraendert.
+- `docs-site/astro.config.mjs` und die JSON-LD-Breadcrumbs verwenden fuer den
+  sichtbaren Produktnamen `Debate AI`; technische Domains, Header und
+  Kompatibilitaetsnamen bleiben absichtlich unveraendert.
+
+Nachweis:
+
+- `frontend`: `npm test` -> **270/270 bestanden** (einschliesslich stabiler
+  Transkript-Schluessel).
+- `frontend`: `npm run build` -> **2.139 Module**, erfolgreich; nur die
+  bekannte Chunk-Groessen-Warnung.
+- `docs-site`: `npm run build` -> **17 Seiten** und `dist-site` erfolgreich;
+  nur bekannte Astro-Warnungen fuer fehlende optionale i18n-/Font-Assets.
+
+Status: Dieses UI-/Metadatenpaket BESTANDEN. Die Deep-Audit-Befunde F9-F12,
+F15-F18, F21, F23 und F25 bleiben wie in der Kreuztabelle als offene
+Architektur-/Betriebsarbeiten ausgewiesen; sie wurden nicht uebersprungen und
+werden nicht durch diese kleinen Fixes kuenstlich als erledigt markiert.
+Die echten manuellen V3-Gates A06/A18/A21/A22 bleiben BLOCKED.
+
+Naechste konkrete Aktion: den privaten Source-Snapshot aus dem jetzt gebauten
+Quellstand kontrolliert neu erzeugen, mit dem Privacy-Audit gegen Cookies,
+Login-Daten, OAuth-/Provider-Zustaende, lokale Verlaeufe, Transkripte,
+Datenbanken und Logs pruefen und erst danach eine Remote-Aktualisierung
+entscheiden.

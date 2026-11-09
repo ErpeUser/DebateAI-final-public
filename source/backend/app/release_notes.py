@@ -18,7 +18,7 @@ RELEASE_NOTES: list[dict] = [
         "version": "0.6.6",
         "date": "2026-09-25",
         "title": "Meetings in more languages, transcribed on your machine",
-        "body": """Backchannel no longer assumes your meetings are in English.
+        "body": """Debate AI no longer assumes your meetings are in English.
 
 - Admin -> Transcription & Audio has a Meeting language setting. It starts on
   Detect automatically; pick a language and on-device Whisper, Gemini and
@@ -48,7 +48,7 @@ only when you select one or run the fit test.""",
         "version": "0.6.5",
         "date": "2026-09-04",
         "title": "Long transcription jobs stay visible and calls finish cleanly",
-        "body": """Long audio work no longer makes Backchannel look frozen, and
+        "body": """Long audio work no longer makes Debate AI look frozen, and
 the roughest live-call failure states now say what is actually happening.
 
 - Audio imports and Re-transcribe run in the background, show their model,
@@ -164,7 +164,7 @@ time.
   writing to a console the app does not have when it runs as a desktop
   window, which left an internal lock stuck shut forever.
 
-Downloads are visible now. Backchannel fetches model weights the first time
+Downloads are visible now. Debate AI fetches model weights the first time
 something needs them, and it used to do that with no sign anywhere.
 
 - A notice shows what is downloading, how far along it is, and what it is
@@ -381,7 +381,7 @@ follow-on work that turns strategic signals into insights you can act on.
   at the download portal's edge because the request carried a generic Python
   browser signature rather than the application's name, and the check gave up
   after five seconds on a slow connection. From this version the updater
-  identifies itself as Backchannel and waits ten seconds. An install on v0.5.2
+  identifies itself as Debate AI and waits ten seconds. An install on v0.5.2
   or earlier cannot see this release from inside the app, so fetch it from the
   download portal once; updates after that are in-app again.
 """,
@@ -497,7 +497,7 @@ first-run state applies only to genuinely fresh databases.""",
         "version": "0.4.0",
         "date": "2026-07-28",
         "title": "Updates itself, and knows what your machine can run",
-        "body": """Backchannel now updates itself, measures whether your
+        "body": """Debate AI now updates itself, measures whether your
 hardware can keep up before a call starts, and keeps working through the
 failures that used to end a call quietly.
 
@@ -751,11 +751,11 @@ per-call token usage, and makes the app easier to start with and keep current.
         "version": "0.2.5",
         "date": "2026-07-22",
         "title": "Desktop app window and new Gemini defaults",
-        "body": """This release gives Backchannel a dedicated desktop-app window when a
+        "body": """This release gives Debate AI a dedicated desktop-app window when a
 supported Chromium browser is installed and updates the default Gemini models
 used for meeting analysis and batch transcription.
 
-- Open Backchannel in a dedicated app window with its own taskbar or Dock
+- Open Debate AI in a dedicated app window with its own taskbar or Dock
   presence when Chrome, Edge, or Chromium is installed; otherwise use the
   default browser.
 - Reserve a stable local port and verify each running instance before launch
@@ -807,7 +807,7 @@ calls with one local microphone user and remote participants on system audio.
         "version": "0.2.2",
         "date": "2026-07-13",
         "title": "Authenticated desktop download portal",
-        "body": """This release moves desktop delivery to Backchannel's authenticated
+        "body": """This release moves desktop delivery to Debate AI's authenticated
 download portal and strengthens the access controls around private installers.
 
 - Deliver Windows, macOS, and Linux bundles through recipient accounts,
@@ -825,7 +825,7 @@ download portal and strengthens the access controls around private installers.
 database during version handoffs, and restores the Linux tarball to the
 automated release pipeline.
 
-- Show the Backchannel waveform mark in the system tray and on the Windows
+- Show the Debate AI waveform mark in the system tray and on the Windows
   executable and macOS app bundle.
 - Quitting a lingering older instance no longer stops the database that a
   newer instance started on the shared data directory, which previously made
@@ -867,7 +867,7 @@ speaker attribution, and a quieter desktop launch experience.
         "version": "0.1.0",
         "date": "2026-07-10",
         "title": "First desktop release",
-        "body": """The first packaged release of Backchannel: real-time meeting analysis
+        "body": """The first packaged release of Debate AI: real-time meeting analysis
 with live transcription, speaker diarization, insight agents, and post-call
 briefings, delivered as Windows x64 and macOS arm64 desktop bundles alongside
 the Docker Compose stack.""",

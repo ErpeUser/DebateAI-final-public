@@ -39,12 +39,12 @@ function DesktopUpdateTransferBody({
         <div className="space-y-3">
           <div>
             <p className="font-body text-sm font-semibold text-brand-dark-gray">
-              Download unterbrochen
+              Herunterladen unterbrochen
             </p>
             <p className="mt-1 font-mono text-xs text-brand-mid-gray">{progressText(status)}</p>
           </div>
           <button type="button" onClick={() => void update.download()} className={primaryButton}>
-            Download fortsetzen
+            Herunterladen fortsetzen
           </button>
         </div>
       );

@@ -28,7 +28,7 @@ export function bytes(value = 0): string {
 export function downloadProgressText(download: ModelDownload): string {
   if (download.state === "queued") return "Wartet auf Start";
   if (download.state === "installed") return "Installiert";
-  if (download.state === "error") return download.error || "Download fehlgeschlagen";
+  if (download.state === "error") return download.error || "Herunterladen fehlgeschlagen";
   if (download.total > 0) {
     return `${bytes(download.downloaded)} von ${bytes(download.total)}`;
   }
