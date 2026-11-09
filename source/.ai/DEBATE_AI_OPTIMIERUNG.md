@@ -1999,3 +1999,31 @@ Release- und Private-Repository-Bedingung erfuellt.
 
 Weiterhin nicht automatisch erfuellt und ehrlich dokumentiert bleiben A06,
 A18, A21, A22 sowie reale Hardware-/DPI-/Installations-/Rollbackabnahmen.
+
+### Nachlauf: vollstaendiger bereinigter Quellcode im privaten Repository (2026-11-09)
+
+Auf ausdruecklichen Wunsch wurde der Source-Code zusaetzlich in das private
+Release-Repository geladen. Der Snapshot liegt unter `source/` im privaten
+Remote `https://github.com/ErpeUser/backchannel-v6-private` und umfasst `1.004`
+versionierte Dateien mit `18.965.329` Bytes. Enthalten sind Backend,
+Desktop, Frontend, docs-site, Tests, Skripte, AI-Prompts, Konfiguration und
+Dokumentation.
+
+Nicht uebernommen wurden Git-Metadaten, virtuelle Umgebungen, node_modules,
+Build-/Dist-/`.astro`-/`dist-site`-Ausgaben, Modelle, native Runtime-Binaries,
+Audio, Datenbanken, Session-/Tempdaten und `.env`-Dateien. Die generierte
+Kopie `docs-site/src/content/docs/` wurde nicht hochgeladen, weil sie gemaess
+Projektregeln aus `source/docs/` erzeugt wird. `SOURCE_SNAPSHOT_MANIFEST.json`
+listet jede tatsaechlich versionierte Datei mit Groesse und SHA-256.
+
+Der Secretscan meldete nur die fuenf absichtlich synthetischen Test-Fixtures
+aus den Redaction-/Credential-Tests; kein Live-Token und kein privater Schluessel
+wurde gefunden. Remote-Nachweis: Master-Commit `6f0be66`, `1.004` Source-Blobs,
+`0` verbotene Pfade (`.env`, `node_modules`, `build`, `dist`, `.git`),
+Repository weiterhin `isPrivate=true`.
+
+Die Korrektur des Snapshot-Manifests wurde als eigener Commit ausgefuehrt,
+damit das Inventar keine lokal vorhandenen, aber von `.gitignore` verworfenen
+generierten Dateien behauptet. Der bestehende Release-Tag und die vier
+Releaseartefakte bleiben unveraendert; der vollstaendige Code liegt auf dem
+privaten `master`-Branch.
