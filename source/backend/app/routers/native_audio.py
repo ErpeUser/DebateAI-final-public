@@ -5,7 +5,11 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.models import Session
 from pydantic import BaseModel
 
 from app.services.windows_audio_capture import native_windows_audio
@@ -29,6 +33,10 @@ class NativeAudioProbe(BaseModel):
     microphone_index: int
 
 
+class NativeAudioStop(BaseModel):
+    session_id: uuid.UUID
+
+
 @router.get("/status")
 async def native_audio_status():
     return native_windows_audio.status()
@@ -43,7 +51,12 @@ async def native_audio_devices():
 
 
 @router.post("/start")
-async def start_native_audio(request: NativeAudioStart):
+async def start_native_audio(request: NativeAudioStart, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, request.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if str(session.state) not in {"pre_call", "active"}:
+        raise HTTPException(status_code=409, detail="Session is not recordable")
     if not native_windows_audio.available:
         raise HTTPException(status_code=503, detail="Native Windows-Audioaufnahme ist nicht verfuegbar")
     try:
@@ -64,12 +77,15 @@ async def start_native_audio(request: NativeAudioStart):
 
 
 @router.post("/stop")
-async def stop_native_audio():
-    return await native_windows_audio.stop()
+async def stop_native_audio(request: NativeAudioStop, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, request.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    return await native_windows_audio.stop_session(request.session_id)
 
 
 @router.post("/probe")
-async def probe_native_audio(request: NativeAudioProbe):
+async def probe_native_audio(request: NativeAudioProbe, db: AsyncSession = Depends(get_db)):
     try:
         level = await native_windows_audio.probe_microphone(request.microphone_index)
         return {"level": level}
