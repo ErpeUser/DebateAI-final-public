@@ -183,6 +183,15 @@ def _master_key() -> bytes:
         return env_key.encode()
     key_file = master_key_path()
     if key_file.exists():
+        try:
+            mode = key_file.stat().st_mode & 0o777
+            if mode & 0o077:
+                key_file.chmod(0o600)
+                mode = key_file.stat().st_mode & 0o777
+            if mode & 0o077:
+                raise MasterKeyUnavailable(f"{key_file} is readable by other users")
+        except OSError as exc:
+            raise MasterKeyUnavailable(f"{key_file} permissions could not be secured: {exc}") from exc
         key, wrapped = _read_master_key_file(key_file)
         if not key:
             raise MasterKeyUnavailable(f"{key_file} is empty")
