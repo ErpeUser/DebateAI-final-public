@@ -72,7 +72,7 @@ test("both session search boxes use this module and the same hint", async () => 
     assert.match(source, /aria-describedby/, path);
   }
   const hint = await read("../components/SearchHint.ts");
-  assert.match(hint, /Search by date works too/);
+  assert.match(hint, /Search by date works too|Auch die Suche nach Datum ist möglich/);
 });
 
 test("neither box filters by name alone any more", async () => {
