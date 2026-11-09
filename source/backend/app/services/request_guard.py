@@ -172,6 +172,7 @@ class RequestGuardMiddleware:
         method = scope.get("method", "GET").upper()
         path = scope.get("path", "")
         health_path = path in {"/health", "/api/health", "/api/ready"}
+        bootstrap_path = path == "/api/meta" and _hostname_of(host) in LOOPBACK_NAMES
         origin_checked = scope["type"] == "websocket" or method not in _SAFE_METHODS
         if origin_checked:
             origin = headers.get("origin")
@@ -209,7 +210,7 @@ class RequestGuardMiddleware:
         elif method not in {"OPTIONS"} and not health_path:
             expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
             supplied = headers.get("x-backchannel-instance", "")
-            if expected and not hmac.compare_digest(supplied, expected):
+            if expected and not hmac.compare_digest(supplied, expected) and not bootstrap_path:
                 await self._reject(
                     scope,
                     receive,
@@ -218,6 +219,16 @@ class RequestGuardMiddleware:
                     "Desktop session authorization is required",
                 )
                 return
+        if scope["type"] == "http" and bootstrap_path:
+            expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
+            async def send_bootstrap(message):
+                if message["type"] == "http.response.start" and expected:
+                    headers_out = list(message.get("headers") or [])
+                    headers_out.append((b"x-backchannel-instance", expected.encode("utf-8")))
+                    message = {**message, "headers": headers_out}
+                await send(message)
+            await self.app(scope, receive, send_bootstrap)
+            return
         await self.app(scope, receive, send)
 
     @staticmethod
