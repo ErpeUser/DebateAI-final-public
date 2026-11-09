@@ -365,20 +365,35 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
     except EndpointError as exc:
         return False, str(exc), []
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.get(f"{url}/models", headers=auth_headers(api_key))
-            response.raise_for_status()
-            payload = response.json()
+        limits = httpx.Limits(max_connections=4, max_keepalive_connections=2)
+        request_timeout = httpx.Timeout(timeout, connect=min(timeout, 5.0))
+        async with httpx.AsyncClient(
+            timeout=request_timeout,
+            limits=limits,
+            follow_redirects=False,
+        ) as client:
+            async with client.stream("GET", f"{url}/models", headers=auth_headers(api_key)) as response:
+                response.raise_for_status()
+                content_length = int(response.headers.get("content-length", "0") or 0)
+                if content_length > 1_048_576:
+                    raise ValueError("Endpoint model catalog is too large")
+                body = await response.aread()
+                if len(body) > 1_048_576:
+                    raise ValueError("Endpoint model catalog is too large")
+                payload = json.loads(body)
     except httpx.HTTPStatusError as exc:
         return False, f"Server returned HTTP {exc.response.status_code}", []
     except httpx.ConnectError:
         return False, f"Could not connect to {redact_text(url)}. Is the server running and reachable?", []
     except Exception as exc:  # noqa: BLE001 - surfaced to the operator, minus any credential
         return False, redact_text(str(exc))[:300], []
+    raw_models = payload.get("data") if isinstance(payload, dict) else []
+    if not isinstance(raw_models, list) or len(raw_models) > 64:
+        return False, "Endpoint returned an invalid or oversized model catalog", []
     served = [
-        str(item.get("id"))
-        for item in (payload.get("data") or [])
-        if isinstance(item, dict) and item.get("id")
+        str(item.get("id"))[:160]
+        for item in raw_models
+        if isinstance(item, dict) and item.get("id") and len(str(item.get("id"))) <= 160
     ]
     return True, f"Connected. {len(served)} model(s) available.", served
 
