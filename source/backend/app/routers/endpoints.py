@@ -6,7 +6,7 @@ into a named choice in the agent, chat, and analysis pickers.
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -46,24 +46,24 @@ router = APIRouter(prefix="/api/endpoints", tags=["endpoints"])
 
 
 class EndpointModelIn(BaseModel):
-    id: str
-    label: str = ""
+    id: str = Field(min_length=1, max_length=160)
+    label: str = Field(default="", max_length=200)
 
 
 class EndpointIn(BaseModel):
-    name: str
-    base_url: str
-    api_key: str = ""
-    models: list[EndpointModelIn] = []
+    name: str = Field(min_length=1, max_length=120)
+    base_url: str = Field(min_length=1, max_length=2048)
+    api_key: str = Field(default="", max_length=4096)
+    models: list[EndpointModelIn] = Field(default_factory=list, max_length=64)
     enabled: bool = True
 
 
 class EndpointPatch(BaseModel):
     # Omitted fields keep their stored value; an empty api_key clears the key.
-    name: str | None = None
-    base_url: str | None = None
-    api_key: str | None = None
-    models: list[EndpointModelIn] | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=120)
+    base_url: str | None = Field(default=None, min_length=1, max_length=2048)
+    api_key: str | None = Field(default=None, max_length=4096)
+    models: list[EndpointModelIn] | None = Field(default=None, max_length=64)
     enabled: bool | None = None
     confirm_off_prem: bool = False
 
@@ -71,8 +71,8 @@ class EndpointPatch(BaseModel):
 class ProbeIn(BaseModel):
     """Reachability check for an endpoint that has not been saved yet."""
 
-    base_url: str
-    api_key: str = ""
+    base_url: str = Field(min_length=1, max_length=2048)
+    api_key: str = Field(default="", max_length=4096)
 
 
 def _models_payload(models: list[EndpointModelIn] | None) -> list[dict] | None:
@@ -116,6 +116,8 @@ async def add(body: EndpointIn, db: AsyncSession = Depends(get_db)):
 @router.put("/{endpoint_id}")
 async def edit(endpoint_id: str, body: EndpointPatch, db: AsyncSession = Depends(get_db)):
     endpoint = await _require(db, endpoint_id)
+    if body.base_url and body.base_url != endpoint.base_url and body.api_key is None:
+        raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")
     try:
         await update_endpoint(
             db,
