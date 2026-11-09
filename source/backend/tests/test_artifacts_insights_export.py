@@ -203,6 +203,50 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
             self.assertIn("Dana Client", joined, sheet)
             self.assertNotIn("Voice 1", joined, sheet)
 
+    async def test_formula_like_text_is_literal_on_every_sheet(self):
+        # Formula/DDE payloads can arrive in any user- or model-controlled text
+        # field.  The export pass must cover the helper-generated sheets as
+        # well as the raw Insights grid.
+        payloads = (
+            "=1+1",
+            "+1+1",
+            "-1+1",
+            "@SUM(1,1)",
+            "\t=cmd|' /C calc'!A0",
+            " =HYPERLINK(\"https://attacker.invalid\")",
+            "=cmd|' /C calc'!A0",
+            "=WEBSERVICE(\"https://attacker.invalid\")",
+        )
+        db = _Db(
+            [
+                _question(
+                    payloads[0],
+                    item_type="action_item",
+                    lens_label=payloads[7],
+                    rationale=payloads[1],
+                    source_context=payloads[2],
+                    answer_summary=payloads[3],
+                    followup_question=payloads[4],
+                    offering_match=payloads[5],
+                    enrichment_notes=payloads[6],
+                    agent_source=payloads[7],
+                )
+            ]
+        )
+
+        wb, _ = await _workbook(db)
+        cells = [cell for ws in wb.worksheets for row in ws.iter_rows() for cell in row]
+
+        self.assertFalse(
+            any(cell.data_type == "f" for cell in cells),
+            "untrusted text must never deserialize as an Excel formula",
+        )
+        for payload in payloads:
+            self.assertTrue(
+                any(cell.value == "'" + payload for cell in cells),
+                f"sanitized payload missing: {payload!r}",
+            )
+
 
 class RevealedExportTests(IsolatedAsyncioTestCase):
     """A new worksheet must never emit a vault value the export was not asked
