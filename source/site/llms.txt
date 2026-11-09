@@ -1,0 +1,154 @@
+# Backchannel
+
+> Backchannel is a self-hosted, open-source (MIT) AI meeting assistant. It
+> captures meeting audio in the browser, builds a live speaker-attributed
+> transcript using local voice activity detection and speaker embeddings,
+> and runs configurable AI agents (Google Gemini or OpenAI, with optional
+> fully local ONNX transcription) that surface questions, objections,
+> opportunities, and action items while the meeting is still happening.
+> You can also ask the running call a question and get an answer from the
+> conversation so far, without stopping the recording. A PII Shield can
+> replace names, companies and contact details with tokens before anything
+> is stored or shown to a model, local or cloud, so the models read the
+> conversation without reading the people in it.
+
+Backchannel is free to run: there is no hosted service and no pricing
+tiers, and self-hosting with Docker Compose (React frontend, FastAPI
+backend, PostgreSQL) requires no account of any kind. The prebuilt desktop
+executables for Windows, macOS, and Linux are a free direct download from
+the public download portal; no account is needed. Bring your own Gemini or OpenAI API key, or transcribe
+fully offline with local ONNX Whisper/Parakeet models. Because it is
+self-hosted, meeting audio and transcripts never leave your infrastructure
+except for the model API calls you configure.
+
+Key facts:
+- License: MIT, source at https://github.com/talberthoule/backchannel
+- Category: real-time meeting analysis / AI meeting assistant / meeting copilot
+- Desktop release: v0.6.6 for Windows x64, macOS Apple Silicon, and Linux x64, downloaded freely at https://downloads.backchannel.page/; no account, GitHub identity, or repository membership is required. From v0.4.0 the desktop app updates itself in place with a verified signature
+- Self-hosted alternative to cloud meeting assistants such as Otter.ai,
+  Fireflies.ai, and Granola
+- Stack: React 18 + TypeScript frontend, FastAPI backend, PostgreSQL 16
+- Diarization: Silero VAD + WeSpeaker ResNet152 speaker embeddings (local, ONNX)
+- Transcription: Gemini Flash, OpenAI batch audio models, or fully offline
+  ONNX Whisper/Parakeet; interim live captions come from Gemini Live or
+  OpenAI Realtime by default, or run on-device with the local Parakeet
+  captioner
+- Text analysis: Google, OpenAI, or any number of self-hosted
+  OpenAI-compatible endpoints (Ollama, LM Studio, vLLM, LiteLLM), with
+  every served model listed by name in the pickers -- so a deployment can
+  run end to end with no cloud key. Privacy First judges the destination,
+  so an on-prem endpoint (loopback or LAN) keeps the analysis agents
+  running with the switch on while cloud providers stay blocked.
+- Agents: ten seeded agents -- an audio gateway, six live agents
+  (consolidated analyst every 40s, objection handler every 10s over the last
+  90s, synthesizer, opportunity specialist, strategic signals every 45s, and
+  a transcript refiner every 45s that is off by default), and a three-agent
+  post-call briefing pass (meeting lens, discovery lens, arbiter) -- each
+  with a configurable model, prompt, and trigger
+- PII Shield: personal data is replaced with tokens such as [PERSON_1] at
+  the moment a transcript line, directive, document excerpt, session name or
+  speaker name is written, so every agent, briefing, chat and Ask works from
+  tokenized text and the database itself holds only tokens. It covers
+  people's names, company names, email addresses, phone numbers, payment
+  card and national-identifier numbers, IP addresses and street addresses.
+  Real values live in a vault encrypted under the same master key that
+  protects provider keys, and are restored only on the operator's own
+  screen and in exports explicitly asked for. Detection is entirely local:
+  patterns for structured identifiers, the session's speaker roster, a
+  user-maintained protected-terms list, and an on-device name-recognition
+  model (Xenova/bert-base-NER, about 110 MB) that downloads once and then
+  runs offline. No detection ever makes a cloud call. Because audio cannot
+  be tokenized, the shield holds transcription to a local model and turns
+  off cloud live captions; cloud text models stay usable because they
+  receive tokens only. An optional prompt log records every outbound prompt
+  exactly as it left, badged "tokens only" or "blocked", so the claim is
+  checkable rather than trusted; while the shield is on, a prompt still
+  carrying a vault value is refused before it is sent
+- Transcript refiner: an optional agent that sends the tokenized transcript
+  to any text model, local or cloud, to fix punctuation, casing, sentence
+  boundaries and mishearings, closing the quality gap of local-only
+  transcription. A rewrite is kept only if it carries exactly the original
+  tokens, so no name reaches the model
+- Cost transparency: a per-session Tokens tab breaks usage down by source
+  and by model, pricing cached prompt tokens and audio tokens at their own
+  published rates rather than the text rate, and the post-call Overview
+  carries the resulting estimate
+- Ask during the call: the call's command bar answers a typed question from
+  the live transcript, the insights raised so far, strategic signals,
+  directives, and stored document summaries, without stopping the recording.
+  The answer is saved as a starred `asked` insight and exported with the
+  rest. It is not an agent: nothing schedules it and asking does not steer
+  the running agents. The answering model is chosen in the bar and may be a
+  self-hosted one
+- Strategic signals persist: signals raised during a call are kept with a
+  per-signal count and first/last sighting, readable live and in the
+  post-call briefing, rather than being overwritten by the next cycle
+- Nothing is chosen for you at first run: a fresh install seeds no cloud
+  model, every agent starts unselected, models are grouped by Google,
+  OpenAI, and local, and one role-appropriate recommendation is marked in
+  each provider that is actually available
+- Works with any meeting, digital or in person: captures mic plus tab/system
+  audio in the browser, so Zoom, Meet, and Teams need no bot or integration,
+  and a conference-room conversation needs only the microphone
+
+## Privacy
+
+- [Private meeting AI](https://backchannel.page/private-meeting-ai/): the full account
+  of the PII Shield -- what is tokenized and when, the layered on-device detection,
+  the encrypted vault, the three places a value is decoded, why audio is held to
+  local models while cloud text models stay usable, how to verify the claim with the
+  outbound prompt log, and the limits stated plainly (off by default, detection is
+  not perfect, tokenization is reversible by design, and it governs what models read
+  rather than who can reach the machine)
+- [Three degrees of local](https://backchannel.page/blog/three-degrees-of-local/): where
+  each component can run, from local diarization through fully self-hosted analysis
+
+## How it works
+
+- [Analyst lenses](https://backchannel.page/analyst-lenses/): how the Consolidated
+  Analyst reads the call. Every 40 seconds one request carries the latest 30
+  transcript lines and one prompt section per enabled lens; the reply uses one
+  fixed shape, each finding tagged with its type and lens. Covers custom lens types,
+  the Opportunity lens being left out of meeting types without offering matching,
+  and the trade-off that all lenses share one model, cycle, and window
+
+## Docs
+
+- [Download portal](https://downloads.backchannel.page/): public Windows, macOS, and Linux executable downloads; no account required
+- [Desktop release v0.6.6](https://backchannel.page/releases/v0.6.6/): public asset inventory, release notes, install notes, and first-run guidance
+- [All releases](https://backchannel.page/releases/): version history with publish dates and per-release notes
+- [Full documentation as one file](https://backchannel.page/llms-full.txt): every docs page concatenated as plain markdown for agents
+- [Quickstart](https://backchannel.page/docs/quickstart/): Docker Compose setup, local development, migrations, tests
+- [Architecture](https://backchannel.page/docs/architecture/): the live call path end to end
+- [Agent System](https://backchannel.page/docs/agents/): each agent's trigger, purpose, and configuration
+- [Audio Pipeline](https://backchannel.page/docs/audio-pipeline/): capture format, VAD/diarization, transcription routing
+- [WebSocket Protocol](https://backchannel.page/docs/websocket-protocol/): binary audio framing and message types
+- [REST API](https://backchannel.page/docs/rest-api/): endpoint reference
+- [Configuration](https://backchannel.page/docs/configuration/): settings, environment variables, model registry
+- [Deployment](https://backchannel.page/docs/deployment/): compose services, GPU support, startup behavior
+
+## Writing
+
+- [Writing index](https://backchannel.page/blog/): dated, vendor-sourced notes on the AI meeting-assistant category
+- [The free AI notetaker is genuinely free. Here is why I self-host anyway.](https://backchannel.page/blog/self-hosted-ai-notetaker-honest-comparison/) (2026-07-28): sourced competitive research against Fathom, Otter, Read AI, tl;dv, and Avoma that opens with the concessions -- Fathom's free tier really is unlimited, bot-free capture is no longer a differentiator, and real-time in-call AI shipped at Otter and Zoom in July 2026 -- then argues from what survives: where audio is processed, whether a vendor trains on conversations, tactical generated responses vs descriptive live summaries, configurability, and readable source.
+- [Three degrees of local: what "self-hosted" actually means in a meeting assistant](https://backchannel.page/blog/three-degrees-of-local/) (2026-07-28): architecture walk-through showing locality as a three-position spectrum chosen per component. Diarization is always local (Silero VAD plus WeSpeaker ResNet152, ONNX); degree one pairs local diarization with cloud transcription on your own key; degree two runs transcription and live captions fully on-device; degree three points the analysis agents at a self-hosted OpenAI-compatible endpoint (Ollama, LM Studio, vLLM, LiteLLM) so no packet leaves your network. Every claim cited to a file path.
+- [Live meeting AI arrived in one week, and all of it is Enterprise-gated](https://backchannel.page/blog/live-meeting-ai-enterprise-gate/) (2026-07-25): Otter Live Assist (2026-07-21, Otter Enterprise) and Zoom Revenue Accelerator Sales Assist (2026-07-22, Essentials from $66/user/mo and Premium from $99.99/user/mo annual, Essentials dated August) both shipped real-time in-call guidance within 48 hours. Compares the three mechanisms now in market: Zoom pre-configures guidance per topic category via admin setup, Otter grounds it in playbooks and SOPs you supply, and Backchannel generates it from the trailing transcript window. Concedes that pre-authored guidance is more consistent and reviewable.
+
+## Compare
+
+- [Open-source Otter.ai alternative](https://backchannel.page/otter-alternative/): self-hosted transcripts and insights without minute caps
+- [Open-source Granola alternative](https://backchannel.page/granola-alternative/): bot-free capture, self-hosted and real-time
+- [Fireflies.ai alternative without the bot](https://backchannel.page/fireflies-alternative/): live assistance on your own hardware
+- [Backchannel vs Meetily](https://backchannel.page/vs-meetily/): two open-source meeting assistants compared
+- [Open-source meeting assistants](https://backchannel.page/open-source-meeting-assistants/): the self-hosted landscape (Meetily, Anarlog, Amurex, Vibe, Buzz, Backchannel) compared honestly, including when to pick something else
+- [Backchannel vs Anarlog, formerly Hyprnote](https://backchannel.page/vs-anarlog/): a local-first Mac notetaker vs a live agent server; both keep audio local, only one acts during the call
+- [Fathom alternative](https://backchannel.page/fathom-alternative/): what a generous free tier does and does not cover
+- [Read AI alternative](https://backchannel.page/read-ai-alternative/): meeting intelligence without the auto-join governance problem
+- [Gong and Backchannel](https://backchannel.page/gong-and-backchannel/): not a Gong replacement -- where a live seller-side layer fits under revenue intelligence
+- [Backchannel vs Clari Copilot](https://backchannel.page/vs-clari-copilot/): responses generated against the objection actually raised vs pre-written battlecards
+- [Teams Premium alternative](https://backchannel.page/teams-premium-alternative/): one assistant across every meeting platform instead of one per platform
+- [Plaud alternative](https://backchannel.page/plaud-alternative/): bot-free capture without buying hardware or sending audio to a vendor cloud
+
+## Source
+
+- [GitHub repository](https://github.com/talberthoule/backchannel): MIT-licensed source code and README

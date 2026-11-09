@@ -1,0 +1,8 @@
+services:
+  backend:
+    environment:
+      # Ollama stays on the Windows host. No token or paid provider credential
+      # is published into the container.
+      DEBATE_RESEARCH_ENABLED: ${DEBATE_RESEARCH_ENABLED:-false}
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

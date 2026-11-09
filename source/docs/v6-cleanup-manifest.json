@@ -1,0 +1,63 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-09T03:00:00Z",
+  "policy": "Keine physische Loeschung ohne Eigentums-, statische, dynamische, Packaging-, Migrations-, Fallback- und Rollbackbelege.",
+  "scope": [
+    "backend/app",
+    "backend/alembic",
+    "desktop",
+    "frontend",
+    "scripts",
+    "ai",
+    "tests and fixtures"
+  ],
+  "checks": {
+    "static_reference_search": "rg over backend, desktop, frontend, scripts and docs excluding ACL-protected temp folders",
+    "dynamic_import_check": "Python 3.12 targeted backend and desktop regression suites",
+    "packaging_check": "desktop/backchannel.spec and scripts/build_debate_assistant.ps1 reviewed",
+    "migration_check": "backend/alembic/versions reviewed; no migration file treated as dead",
+    "user_data_check": "working tree contains dirty/untracked user and prior-work artifacts; no ownership proof for deletion"
+  },
+  "entries": [
+    {
+      "path": "backend/app/services/transcript_dedup.py",
+      "state_at_v6_baseline": "already deleted in pre-existing dirty worktree",
+      "owner": "app-owned historical module, deletion not performed by V6 session",
+      "head_sha256": "4677b6992a61dddc48eea0ff251962c0bbee2caf",
+      "head_size_bytes": 4340,
+      "static_refs": "none found in current source or packaging files",
+      "dynamic_refs": "not imported by the targeted Python 3.12 suites; live deduplication is in orchestrator.py",
+      "decision": "BEIBEHALTEN/OFFEN as deleted baseline; do not alter",
+      "reason": "The deletion predates this V6 session and restoring or removing it would overwrite another workstream.",
+      "replacement": "backend/app/services/agents/orchestrator.py",
+      "rollback": "git show HEAD:backend/app/services/transcript_dedup.py > backend/app/services/transcript_dedup.py (only with owner approval)"
+    },
+    {
+      "path": "backend/tests/test_transcript_dedup.py",
+      "state_at_v6_baseline": "already deleted in pre-existing dirty worktree",
+      "owner": "app-owned historical test, deletion not performed by V6 session",
+      "head_sha256": "9587f6e32cf925f8f1b6d94b8a12f83c54be1e30",
+      "head_size_bytes": 5529,
+      "static_refs": "none found in current test or build references",
+      "dynamic_refs": "not collected by current test discovery because the production module is absent",
+      "decision": "BEIBEHALTEN/OFFEN as deleted baseline; do not alter",
+      "reason": "The deletion predates this V6 session and may be part of an active test migration.",
+      "replacement": "backend/tests/test_insight_dedup.py and orchestrator regression coverage",
+      "rollback": "git show HEAD:backend/tests/test_transcript_dedup.py > backend/tests/test_transcript_dedup.py (only with owner approval)"
+    },
+    {
+      "path": "frontend/public/favicon.svg",
+      "state_at_v6_baseline": "already deleted in pre-existing dirty worktree",
+      "owner": "frontend asset; ownership and browser-cache usage are not provable from this dirty checkout",
+      "head_sha256": "6f6769695988733a79b356358f244eb51963e6da",
+      "head_size_bytes": 515,
+      "static_refs": "no current source reference found",
+      "dynamic_refs": "not independently browser-tested in this session",
+      "decision": "BEIBEHALTEN/OFFEN as deleted baseline; do not alter",
+      "reason": "A stale browser or deployment manifest may still reference it; no safe deletion authority in V6.",
+      "replacement": "frontend/public/icons/* and current index metadata",
+      "rollback": "git show HEAD:frontend/public/favicon.svg > frontend/public/favicon.svg (only with owner approval)"
+    }
+  ],
+  "result": "No new physical deletion is justified by the required evidence. All unclear, shared, user, migration, license, model and cache paths are retained."
+}

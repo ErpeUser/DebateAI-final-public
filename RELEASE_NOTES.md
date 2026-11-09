@@ -12,6 +12,9 @@
 - Invalid user prompt files use the safe fallback without overwriting the
   user's file.
 - Release manifest, full file inventory and SHA-256 checksums.
+- Sanitized source snapshot under `source/` with per-file hashes and explicit
+  exclusions for generated artifacts, user data, binaries and environment
+  secrets.
 
 ## Verification
 

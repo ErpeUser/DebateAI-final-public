@@ -10,6 +10,8 @@
 - PyInstaller: 6.22.3
 - Release version/tag: `v0.6.6`
 
-The development worktree contained pre-existing unrelated changes. They were
-not copied into this release repository. The release asset is the authoritative
-tested deliverable; the manifest and checksums are the integrity boundary.
+The development worktree contained pre-existing unrelated changes. The
+sanitized current source snapshot is included under `source/` with a complete
+per-file manifest; Git metadata, generated/runtime artifacts, user data and
+secrets were excluded. The release asset remains the authoritative tested
+Windows deliverable; the manifests define the integrity boundaries.

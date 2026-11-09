@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f8fafc" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
+  <title>Backchannel admin</title>
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/admin.css" />
+  <script type="module" src="/admin.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#route-content">Skip to route content</a>
+
+  <div class="admin-shell">
+    <aside class="admin-rail">
+      <div class="rail-identity">
+        <a class="brand" href="/users" aria-label="Backchannel admin home">
+          <span class="brand-mark" aria-hidden="true"></span>
+          Backchannel
+        </a>
+        <p class="private-label">
+          <span class="private-dot" aria-hidden="true"></span>
+          Private admin
+        </p>
+      </div>
+      <nav class="route-nav" aria-label="Admin routes">
+        <a href="/early-access">Early access</a>
+        <a href="/users">Users</a>
+        <a href="/authorization">Authorization</a>
+      </nav>
+    </aside>
+
+    <main class="admin-main">
+      <header class="route-header">
+        <div class="route-heading">
+          <h1 id="route-title">Admin</h1>
+          <p id="route-description">Loading route.</p>
+        </div>
+        <dl class="route-summary" aria-label="Route summary">
+          <div>
+            <dt>Results</dt>
+            <dd id="result-count">-</dd>
+          </div>
+          <div>
+            <dt>Last refreshed</dt>
+            <dd id="last-refreshed">Not yet</dd>
+          </div>
+        </dl>
+        <button id="refresh" class="secondary-button" type="button">Refresh</button>
+      </header>
+
+      <p id="admin-status" class="admin-status" role="status" aria-live="polite">Loading route.</p>
+      <section id="route-content" class="route-content" aria-busy="true">
+        <section class="route-state"><p>Loading route.</p></section>
+      </section>
+    </main>
+  </div>
+
+  <dialog id="confirm-dialog" aria-labelledby="confirm-dialog-title" aria-describedby="confirm-dialog-description">
+    <h2 id="confirm-dialog-title">Confirm action</h2>
+    <p id="confirm-dialog-description"></p>
+    <div class="dialog-actions">
+      <button id="confirm-cancel" type="button">Cancel</button>
+      <button id="confirm-submit" class="primary-button" type="button">Confirm</button>
+    </div>
+  </dialog>
+
+  <dialog id="credential-dialog" aria-labelledby="credential-dialog-title">
+    <h2 id="credential-dialog-title">One-time credential</h2>
+    <p>Copy or save this credential now. It will not be shown again.</p>
+    <label for="credential-text">Credential text</label>
+    <textarea id="credential-text" readonly></textarea>
+    <p id="credential-status" class="dialog-status" role="status" aria-live="polite"></p>
+    <div class="dialog-actions">
+      <button id="credential-copy" type="button">Copy credential</button>
+      <button id="credential-save" type="button">Save credential</button>
+      <button id="credential-close" type="button">Close</button>
+    </div>
+    <div class="credential-links">
+      <a href="/users">Open Users</a>
+      <a href="/authorization">Open Authorization</a>
+    </div>
+  </dialog>
+
+  <noscript><p class="noscript">JavaScript is required to load the private admin pages.</p></noscript>
+</body>
+</html>

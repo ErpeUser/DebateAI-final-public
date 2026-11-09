@@ -1,0 +1,10 @@
+node_modules/
+dist/
+dist-site/
+.wrangler/
+.astro/
+# Generated from ../docs by sync-docs.mjs
+src/content/docs/
+
+# D1 exports contain subscriber email addresses.
+interest-subscribers.*

@@ -1,0 +1,17 @@
+[
+  {"terms":["zeile fuer zeile","zeile für zeile","punkt fuer punkt","punkt für punkt"],"directive":"[PLAYBOOK] Zeile für Zeile: Beantworte die Punkte des aktuellen Zugs einzeln und knapp."},
+  {"terms":["zugestehen","concede","drehen"],"directive":"[PLAYBOOK] Zugestehen und drehen: Räume nur den berechtigten Kern ein und führe zur Nutzerposition zurück."},
+  {"terms":["widerlegen","widerlegung","rebuttal"],"directive":"[PLAYBOOK] Widerlegung: Greife den schwächsten tragenden Punkt des aktuellen Zugs direkt an."},
+  {"terms":["gegenfrage"],"directive":"[PLAYBOOK] Gegenfrage: Stelle die engste Frage, die Prämisse oder Beweislast des aktuellen Claims prüft."},
+  {"terms":["folgen abwaegen","folgen abwägen","weigh impacts"],"directive":"[PLAYBOOK] Folgen abwägen: Vergleiche die Folgen beider Positionen am entscheidenden Unterschied."},
+  {"terms":["praemisse","prämisse","schluss pruefen","schluss prüfen"],"directive":"[PLAYBOOK] Prämissenprüfung: Trenne Prämissen und Schluss und greife die schwächste notwendige Annahme an."},
+  {"terms":["logischen widerspruch","widerspruch pruefen","widerspruch prüfen"],"directive":"[PLAYBOOK] Widerspruch: Behaupte einen Widerspruch nur bei unvereinbaren Aussagen und benenne beide konkret."},
+  {"terms":["fehlschluss"],"directive":"[PLAYBOOK] Fehlschluss: Benenne nur einen tatsächlich begründbaren Fehlschluss und erkläre die fehlerhafte Folgerung knapp."},
+  {"terms":["doppelstandard","gleiche maßstäbe","gleiche massstaebe"],"directive":"[PLAYBOOK] Doppelstandard: Vergleiche ausdrücklich die beiden Maßstäbe; semantische Nähe allein genügt nicht."},
+  {"terms":["beweislast"],"directive":"[PLAYBOOK] Beweislast: Ordne die konkrete Behauptung und ihre Belegpflicht klar zu."},
+  {"terms":["offene frage","offene fragen","zurueck zur frage","zurück zur frage"],"directive":"[PLAYBOOK] Offene Frage: Beantworte oder erneuere die wichtigste noch offene Frage des aktuellen Argumentzweigs."},
+  {"terms":["analogie"],"directive":"[PLAYBOOK] Analogie: Liefere eine kurze strukturgleiche Analogie, die keinen Beleg ersetzt."},
+  {"terms":["offensiv","direkter","haerter","härter","angriff"],"directive":"[PLAYBOOK] Offensiv: Formuliere direkt und druckvoll, aber sachlich und ohne persönlichen Angriff."},
+  {"terms":["humor","ironisch","ironie","schlagfertig"],"directive":"[PLAYBOOK] Humor: Nutze nur eine passende kurze Pointe; erfinde dafür keine Tatsachen."},
+  {"terms":["extra high","xhigh","tiefenanalyse"],"directive":"[PLAYBOOK] Tiefenanalyse: Prüfe Argumentstruktur, Gegenbelege und offene Fragen mit der konfigurierten höchsten Denkstufe."}
+]

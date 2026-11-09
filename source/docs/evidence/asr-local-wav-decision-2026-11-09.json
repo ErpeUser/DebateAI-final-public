@@ -1,0 +1,90 @@
+{
+  "kind": "local_asr_decision_preflight",
+  "generated_at": "2026-11-09",
+  "language": "de",
+  "decision": "local-whisper-base remains the final German ASR",
+  "scope": "same local runtime, existing WAVs, no network or paid provider",
+  "not_v3_a21_pass": true,
+  "limitations": [
+    "No independent word-level reference transcript was supplied for these WAVs.",
+    "The clips are shorter than the A06 120-second reference requirement.",
+    "This run did not hold a complete microphone+system+agent load constant across two full production runs.",
+    "The result is a technical model-selection preflight, not a human audio-quality sign-off."
+  ],
+  "files": [
+    {
+      "path": "artifacts/real-smoke/german-asr.wav",
+      "sha256": "d8e304e100ad8f20e17610141772e89511df4dee31df0fbedd964b0ea022f69f",
+      "duration_seconds": 6.575,
+      "observed": {
+        "local-whisper-base": {
+          "elapsed_seconds": 1.627,
+          "rtf": 0.2475,
+          "text": "Der Ausbau erneuerbare Energien senkt langfristig die Kosten und erhöht die Versorgungssicherheit."
+        },
+        "local-parakeet-tdt-0.6b-v3": {
+          "elapsed_seconds": 2.579,
+          "rtf": 0.3923,
+          "text": "Der Ausbau erneuerbarer Energien senkt langfristig die Kosten und erhöht die Versorgungssicherheit."
+        }
+      }
+    },
+    {
+      "path": "backend/.tmp/asr-real/phrase-window.wav",
+      "sha256": "1e4cd01abfb54b9ad5da900d49f432d7bc0a97e9e2ba9ca2dd79d4d204ce522e",
+      "duration_seconds": 55.0,
+      "observed": {
+        "local-whisper-base": {
+          "elapsed_seconds": 0.477,
+          "rtf": 0.0087,
+          "text": "Ich bin natürlich gegen Abtreibung. Das ist so mein Ding, mein Frau. Nein, alles mögliche. Kannst du das wiederlegen? Abtreibung."
+        },
+        "local-parakeet-tdt-0.6b-v3": {
+          "elapsed_seconds": 2.202,
+          "rtf": 0.04,
+          "text": "Up tremble."
+        }
+      }
+    },
+    {
+      "path": "backend/.tmp/asr-real/window-a.wav",
+      "sha256": "2eaa1dece1eaa67aaba5385249e5a4f262a95636fd4f369f6929c4e50675cb13",
+      "duration_seconds": 18.0,
+      "observed": {
+        "local-whisper-base": {
+          "elapsed_seconds": 0.375,
+          "rtf": 0.0208,
+          "text": "Ich bin natürlich gegen Abtreibung. Das ist so mein Ding, mein Fall."
+        },
+        "local-parakeet-tdt-0.6b-v3": {
+          "elapsed_seconds": 0.577,
+          "rtf": 0.032,
+          "text": "Ich bin natürlich gegen Abschlagen, das ist mein Ding, mein V."
+        }
+      }
+    },
+    {
+      "path": "backend/.tmp/asr-real/window-b.wav",
+      "sha256": "053d3731c5f389a0e94cf13190bdd073d30faad09c5ae0d6b3575c49e09508a9",
+      "duration_seconds": 24.0,
+      "observed": {
+        "local-whisper-base": {
+          "elapsed_seconds": 0.375,
+          "rtf": 0.0156,
+          "text": "Die Schöne kannst du das wiederlegen. Abtreibung. Das Abtreibung."
+        },
+        "local-parakeet-tdt-0.6b-v3": {
+          "elapsed_seconds": 0.817,
+          "rtf": 0.034,
+          "text": "Die schon kannst du das wiederlegen Abtreibung Das abtreiben abtreiben."
+        }
+      }
+    }
+  ],
+  "recommendation": {
+    "final": "local-whisper-base",
+    "live_interim": "local-parakeet-tdt-0.6b-v3 may remain only as a fast provisional stream",
+    "reason": "Whisper preserves the German topic and the key term Abtreibung on the difficult real clips; Parakeet produces an English/non-German collapse on the 55-second clip and a semantic noun substitution on window-a.",
+    "next_decision": "Do not switch the final German ASR to Parakeet based on this evidence."
+  }
+}

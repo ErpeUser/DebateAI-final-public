@@ -1,0 +1,233 @@
+{
+  "schema_version": 2,
+  "generated_at": "2026-11-03T22:59:24.492257+00:00",
+  "measurement_path": "transcript_ingest_to_debate_update",
+  "endpoint": "http://127.0.0.1:11434/v1",
+  "model": "qwen3:4b",
+  "app_model_id": "endpoint:german-debate-ollama:qwen3:4b",
+  "model_metadata": {
+    "parameter_size": "4.0B",
+    "quantization_level": "Q4_K_M",
+    "family": "qwen3"
+  },
+  "fixture": "benchmarks\\debate_quality_de.json",
+  "research_egress": "disabled",
+  "generation_egress": "loopback",
+  "turns": [
+    {
+      "turn_index": 0,
+      "speaker": "Gegenseite",
+      "text": "Cyberpunk hatte am Anfang Bugs, also kann das Spiel heute nicht gut sein.",
+      "revision": 1,
+      "status": "ok",
+      "first_update_ms": 0.281,
+      "current_update_ms": 0.281,
+      "deep_revision_ms": 6905.98,
+      "deep_recommendation": {
+        "answer_now": "Cyberpunk 2077 hatte früher Bugs, aber heute ist das Spiel stabil genug, um zu spielen.",
+        "counterargument": "Viele Spiele haben im Laufe der Zeit Bugs gefixt, ohne die Qualität zu beeinträchtigen.",
+        "counter_question": "Wie viele wichtige Bugs waren im ersten Update von Cyberpunk 2077?",
+        "analogy": "Wie ein Kind, das erst bei der ersten Schule viele Fehler macht, aber bald gut wird.",
+        "primary_move": "answer",
+        "confidence": "medium",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Das widerlegt meine Position noch nicht; dafuer muesstest du ihre entscheidende Praemisse konkret angreifen.",
+        "counterargument": "Eine Behauptung gegen das Ergebnis ersetzt keinen Einwand gegen den Schluss.",
+        "counter_question": "Welche Praemisse meiner Position widerlegst du konkret?",
+        "analogy": "Wie bei einem Urteil zaehlt die Begruendung, nicht nur das Ergebnis."
+      },
+      "error_type": null,
+      "error": null
+    },
+    {
+      "turn_index": 1,
+      "speaker": "Gegenseite",
+      "text": "Neunzig Prozent der Spieler sehen das genauso, das ist doch bewiesen.",
+      "revision": 2,
+      "status": "ok",
+      "first_update_ms": 0.117,
+      "current_update_ms": 0.117,
+      "deep_revision_ms": 6588.573,
+      "deep_recommendation": {
+        "answer_now": "Nein, neunzig Prozent sind nicht genug, um die Qualität zu bewerten. Es gibt viele andere Faktoren, die zählen.",
+        "counterargument": "Bugs im ersten Update sind normal bei neuen Spielen, und die Stabilität verbessert sich mit jeder Patch-Release",
+        "counter_question": "Wie viele Spieler sind aktuell im Spiel, und wie viele haben die Stabilität verbessert?",
+        "analogy": "Wie ein neues Restaurant, das erst nach mehreren Monaten offiziell offiziell öffnet und dann erst richtig lebendig wird.",
+        "primary_move": "answer",
+        "confidence": "medium",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Die Zahl klingt praezise, beweist ohne belastbare Erhebung aber noch gar nichts.",
+        "counterargument": "Entscheidend sind Quelle, Zeitraum, Grundgesamtheit und eine faire Vergleichsbasis.",
+        "counter_question": "Welche Erhebung belegt diese Zahl konkret?",
+        "analogy": "Eine Zahl ohne Bezugsrahmen ist ein Preisschild ohne Ware."
+      },
+      "error_type": null,
+      "error": null
+    },
+    {
+      "turn_index": 2,
+      "speaker": "Gegenseite",
+      "text": "Warum soll deine Position stimmen, wenn du keinen perfekten Beleg hast?",
+      "revision": 3,
+      "status": "ok",
+      "first_update_ms": 0.118,
+      "current_update_ms": 0.118,
+      "deep_revision_ms": 6829.716,
+      "deep_recommendation": {
+        "answer_now": "Cyberpunk 2077 hat schon seit 2023 über 15 Millionen Spieler, was zeigt, dass die Stabilität durch Zeit verbessert wird.",
+        "counterargument": "Bugs im ersten Update sind normal bei neuen Spielen und werden mit Patch-Updates behoben.",
+        "counter_question": "Wie viele Spieler sind zufrieden mit Cyberpunk 2077 nach zwei Jahren?",
+        "analogy": "Wie ein Auto, das erst nach mehreren Jahren von der Fabrik ausreichend stabil wird.",
+        "primary_move": "answer",
+        "confidence": "medium",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Die Frage setzt voraus, was erst belegt werden muss; diese Praemisse trage ich nicht mit.",
+        "counterargument": "Eine Frage ersetzt keinen Beleg fuer ihre eigene Voraussetzung.",
+        "counter_question": "Welche Praemisse davon kannst du konkret belegen?",
+        "analogy": "Wie bei einem Urteil zaehlt die Begruendung, nicht nur das Ergebnis."
+      },
+      "error_type": null,
+      "error": null
+    },
+    {
+      "turn_index": 3,
+      "speaker": "Gegenseite",
+      "text": "Aber was ist mit den hohen Strompreisen? Das ist sowieso das wichtigere Thema.",
+      "revision": 4,
+      "status": "ok",
+      "first_update_ms": 0.101,
+      "current_update_ms": 0.101,
+      "deep_revision_ms": 7143.326,
+      "deep_recommendation": {
+        "answer_now": "Strompreise sind ein externes Problem, Cyberpunk 2077 hat seit 2023 über 15 Millionen Spieler und die Stabilität verbessert sich mit jedem Patch",
+        "counterargument": "Die Spielerzufriedenheit steigt mit jeder Update-Runde, was die langfristige Nutzerbindung sichert",
+        "counter_question": "Wie viele Spieler verlassen das Spiel nach dem ersten Update?",
+        "analogy": "Wie ein Auto, das erst nach mehreren Jahren Nutzung stabil wird, verbessert sich Cyberpunk 2077 mit jedem Patch",
+        "primary_move": "answer",
+        "confidence": "high",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Das ist ein anderes Thema und beantwortet den aktuellen Punkt noch nicht.",
+        "counterargument": "Ein Themenwechsel ersetzt keine Antwort auf den aktuellen Punkt.",
+        "counter_question": "Ist der bisherige Punkt damit beantwortet?",
+        "analogy": "Eine neue Baustelle repariert das offene Loch in der alten nicht."
+      },
+      "error_type": null,
+      "error": null
+    },
+    {
+      "turn_index": 4,
+      "speaker": "Gegenseite",
+      "text": "Solarstrom ist nachts nutzlos, Speicher sind unbezahlbar und Deutschland bewirkt global nichts.",
+      "revision": 5,
+      "status": "ok",
+      "first_update_ms": 0.109,
+      "current_update_ms": 0.109,
+      "deep_revision_ms": 6000.477,
+      "deep_recommendation": {
+        "answer_now": "Deutschland nutzt Solarstrom nur 20 % der Zeit, deshalb ist der Effekt nicht signifikant.",
+        "counterargument": "Solarstrom ist nachts nutzlos, Speicher sind unbezahlbar und Deutschland bewirkt global nichts.",
+        "counter_question": "Wie viel Prozent der Sonnenenergie wird Deutschland tatsächlich nutzen?",
+        "analogy": "Wie ein Auto, das nur im Velo-Betrieb fährt, aber niemals im Auto-Betrieb.",
+        "primary_move": "answer",
+        "confidence": "medium",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Das widerlegt meine Position noch nicht; dafuer muesstest du ihre entscheidende Praemisse konkret angreifen.",
+        "counterargument": "Eine Behauptung gegen das Ergebnis ersetzt keinen Einwand gegen den Schluss.",
+        "counter_question": "Welche Praemisse meiner Position widerlegst du konkret?",
+        "analogy": "Wie bei einem Urteil zaehlt die Begruendung, nicht nur das Ergebnis."
+      },
+      "error_type": null,
+      "error": null
+    },
+    {
+      "turn_index": 5,
+      "speaker": "Nutzer",
+      "text": "Okay, dann wechseln wir zum Thema Wohnkosten; meine Position ist, dass mehr Angebot die Mieten senkt.",
+      "revision": 6,
+      "status": "ok",
+      "first_update_ms": 0.111,
+      "current_update_ms": 0.111,
+      "deep_revision_ms": 6847.677,
+      "deep_recommendation": {
+        "answer_now": "Okay, mehr Wohnraum senkt Mieten – das ist einfach logisch.",
+        "counterargument": "Deutschland hat bereits CO2-Reduktionen, die globale Wirkung nicht negativ sind.",
+        "counter_question": "Wie viele neue Wohnraumangebote braucht Berlin, um Mieten um 20 % zu senken?",
+        "analogy": "Wie ein Markt mit mehr Spielern – mehr Angebote senken Preise durch Konkurrenz.",
+        "primary_move": "answer",
+        "confidence": "high",
+        "needs_research": false
+      },
+      "source_refinement_ms": null,
+      "research_status": "disabled",
+      "recommendation": {
+        "answer_now": "Das widerlegt meine Position noch nicht; dafuer muesstest du ihre entscheidende Praemisse konkret angreifen.",
+        "counterargument": "Eine Behauptung gegen das Ergebnis ersetzt keinen Einwand gegen den Schluss.",
+        "counter_question": "Welche Praemisse meiner Position widerlegst du konkret?",
+        "analogy": "Wie bei einem Urteil zaehlt die Begruendung, nicht nur das Ergebnis."
+      },
+      "error_type": null,
+      "error": null
+    }
+  ],
+  "supersession_probe": {
+    "delay_ms": 150.0,
+    "cancellation_count": 0,
+    "completed_count": 3,
+    "statuses": [
+      "ok",
+      "ok",
+      "ok"
+    ],
+    "failure_count": 0,
+    "records": [
+      {
+        "turn_index": 0,
+        "status": "ok"
+      },
+      {
+        "turn_index": 1,
+        "status": "ok"
+      },
+      {
+        "turn_index": 2,
+        "status": "ok"
+      }
+    ]
+  },
+  "summary": {
+    "turn_count": 6,
+    "success_count": 6,
+    "turn_failure_count": 0,
+    "probe_failure_count": 0,
+    "failure_count": 0,
+    "cancellation_count": 0,
+    "median_first_update_ms": 0.114,
+    "p95_first_update_ms": 0.281,
+    "median_current_update_ms": 0.114,
+    "p95_current_update_ms": 0.281,
+    "median_deep_revision_ms": 6838.697,
+    "p95_deep_revision_ms": 7143.326,
+    "source_refinement_latency_ms": null,
+    "source_refinement_note": "disabled: benchmark ran with Privacy First semantics"
+  }
+}

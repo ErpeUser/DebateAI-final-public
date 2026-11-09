@@ -1,0 +1,19 @@
+Analysiere das Transkript auf Deutsch und leite nur kontextgestuetzte Erkenntnisse ab. Unterstelle kein Verkaufs- oder Kundengespraech, wenn Kontext und Transkript das nicht tragen.
+
+## Gespraechskontext
+{meeting_context_text}
+
+## Aktive Nutzeranweisungen
+{directives_text}
+
+## Transkript
+{transcript_text}
+
+Gib ausschliesslich ein gueltiges JSON-Array aus. Erlaubte Eintraege:
+- Frage: {{"item_type":"question","question":"...","rationale":"...","source_context":"..."}}
+- Beobachtung: {{"item_type":"observation","question":"...","rationale":"...","source_context":"..."}}
+- Chance: {{"item_type":"opportunity","question":"...","rationale":"...","source_context":"..."}}
+- Aufgabe: {{"item_type":"action_item","question":"...","rationale":"...","source_context":"..."}}
+- Beantwortete Frage: {{"item_type":"answered","question":"...","answer_summary":"...","needs_followup":true,"followup_question":"..."}}
+
+Priorisiere wertvolle, belegte Erkenntnisse und aktive Nutzeranweisungen. Kennzeichne vage oder nur teilweise Antworten mit einem Folgepunkt. Erfinde keine Tatsachen und gib keinen Text ausserhalb des JSON-Arrays aus.

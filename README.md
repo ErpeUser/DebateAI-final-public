@@ -28,3 +28,14 @@ and release-manifest tests were run before publication.
 The release is private because the public upstream repository must not receive
 binary release artifacts. A private repository does not turn the remaining
 manual A06/A18/A21/A22 evaluations into automated passes.
+
+## Source code
+
+The `source/` directory contains the sanitized current source snapshot,
+including backend, desktop, frontend, docs-site, tests, scripts, prompts and
+release configuration. `SOURCE_SNAPSHOT_MANIFEST.json` lists every included
+file and hash. It deliberately excludes Git metadata, virtual environments,
+node_modules, generated build/dist folders, model/native binaries, audio,
+databases, session data and `.env` files. Synthetic credential strings used by
+redaction tests are retained as test fixtures and are explicitly listed in the
+manifest; no live secret was included.

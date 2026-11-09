@@ -1,0 +1,737 @@
+# DEBATE AI – VOLLSTÄNDIGE TECHNISCHE OFFENLEGUNG UND IMPLEMENTIERUNGSINVENTUR
+
+## DEINE ROLLE
+
+Du bist ein unabhängiger technischer Auditor, Softwarearchitekt, KI-Systemanalyst und Code-Reviewer.
+
+Deine Aufgabe ist ausdrücklich **NICHT**, den bestehenden Code zu verändern, neue Features zu implementieren oder sofort Optimierungen vorzunehmen.
+
+Stattdessen sollst du das **gesamte tatsächlich vorhandene DebateAI-Projekt technisch untersuchen und vollständig dokumentieren**, damit anschließend eine andere KI den aktuellen Zustand unabhängig analysieren kann.
+
+Ich benötige keine oberflächliche Zusammenfassung, sondern eine detaillierte und nachvollziehbare Dokumentation aller implementierten Funktionen, Methoden, Bibliotheken, Frameworks, Extensions, Tools, Modelle, Prompts, Algorithmen, Datenflüsse, Prozesse, Schnittstellen, Einstellungen und relevanten technischen Entscheidungen.
+
+**Wichtig: Der tatsächliche Repository-Code ist die maßgebliche Quelle. Frühere Chatantworten, Projektpläne und Fortschrittsdokumente sind keine Beweise für eine funktionierende Implementierung.**
+
+---
+
+## 0. VERBINDLICHE ARBEITSREGELN
+
+1. Arbeite ausschließlich lesend. Verändere keinen produktiven Code, keine Konfigurationen, Datenbanken, Abhängigkeiten oder bestehenden Dateien.
+2. Führe keine Commits, Pushes, Resets, Installationen, Updates oder Migrationen aus.
+3. Starte keine kostenpflichtigen APIs, umfangreichen Benchmarks, vollständigen Builds oder lang laufenden Modellprozesse.
+4. Führe grundsätzlich keine externen Datenübertragungen durch.
+5. Bewahre sämtliche Nutzerdaten und den vorhandenen Arbeitsstand unverändert.
+6. Lies den tatsächlich vorhandenen Code. Übernimm keine früheren Erfolgsmeldungen ungeprüft.
+7. Behaupte niemals, dass etwas funktioniert, nur weil entsprechende Funktionen oder Tests existieren.
+8. Unterscheide konsequent zwischen implementiert, getestet, real gemessen, nur dokumentiert und nicht verifiziert.
+9. Erfinde keine fehlenden Informationen, Versionen, Messwerte oder Funktionen.
+10. Dokumentiere jede technische Aussage möglichst mit konkretem Dateipfad, Klassen-/Funktionsnamen und Zeilenbereich.
+11. Gib vollständige technische Erklärungen statt bloßer Stichworte.
+12. Wenn eine Funktion, Bibliothek oder Einstellung nicht gefunden wird, kennzeichne das ausdrücklich.
+13. Arbeite effizient: Nutze die vorhandenen Projektdateien und gezielte Codeinspektion statt unnötig aufwendiger Testläufe.
+
+## 1. ORIGINALAUFTRAG GEGEN TATSÄCHLICHE IMPLEMENTIERUNG ABGLEICHEN
+
+Lies zuerst sämtliche verfügbaren Anforderungs- und Fortschrittsquellen, insbesondere:
+
+- Den vollständigen ursprünglichen Masterprompt beziehungsweise `PROMPT.txt`.
+- `AGENTS.md` sowie weitere projektrelevante Agentenanweisungen.
+- `.ai/DEBATE_AI_OPTIMIERUNG.md`.
+- Weitere technische Dokumentationen, Architekturpläne und Aufgabenlisten.
+- Den aktuellen Git-Status, die vorhandenen Änderungen und die relevante Versionshistorie.
+- Tatsächlich vorhandene Tests und Testprotokolle.
+
+Wenn der vollständige Masterprompt nicht vorhanden ist, kennzeichne diese Einschränkung ausdrücklich. Rekonstruiere fehlende Anforderungen nicht als angeblich originale Anforderungen.
+
+Erstelle eine vollständige **Anforderungs-Implementierungs-Matrix**.
+
+Für JEDE ursprünglich gestellte Einzelanforderung dokumentiere:
+
+- Eindeutige Anforderungs-ID.
+- Ursprüngliche Anforderung mit genauer Quellenstelle.
+- Konkretes erwartetes Verhalten.
+- Zugehörige Implementierungsdateien.
+- Tatsächlich verwendete Methoden und Algorithmen.
+- Zugehörige UI-Funktionen, Schnittstellen und Datenbankobjekte.
+- Vorhandene Tests und Nachweise.
+- Tatsächlicher Implementierungsstatus.
+- Festgestellte Abweichungen.
+- Noch fehlende Funktionen oder Nachweise.
+
+Verwende ausschließlich diese Statuskategorien:
+
+- VOLLSTÄNDIG IMPLEMENTIERT UND NACHGEWIESEN
+- IMPLEMENTIERT, ABER NICHT AUSREICHEND VERIFIZIERT
+- TEILWEISE IMPLEMENTIERT
+- NICHT IMPLEMENTIERT
+- IMPLEMENTIERUNG WIDERSPRICHT DER ANFORDERUNG
+- NICHT BEURTEILBAR
+
+Untersuche ausdrücklich, ob Anforderungen stillschweigend ausgelassen, abgeschwächt, anders umgesetzt oder durch technische Alternativen ersetzt wurden.
+
+Vergleiche auch Aussagen aus früheren Arbeitsständen mit dem neuesten Quellcode.
+
+## 2. VOLLSTÄNDIGE PROJEKTARCHITEKTUR
+
+Erkläre den gesamten technischen Aufbau.
+
+Dokumentiere:
+
+- Repository-Struktur.
+- Backend-Architektur.
+- Frontend-Architektur.
+- Desktop-Architektur.
+- Eventuelle Browsererweiterungen.
+- Lokale Dienste und Hintergrundprozesse.
+- KI-Orchestrierung.
+- Datenbankanbindung.
+- Audioverarbeitung.
+- WebSocket- und REST-Kommunikation.
+- Externe Dienste.
+- Entwicklungs-, Test- und Buildumgebung.
+- Deployment- und Releaseprozess.
+
+Gib für jedes wesentliche Modul an:
+
+1. Dateipfad und Modulname.
+2. Zweck und Verantwortlichkeit.
+3. Verwendete Technologien.
+4. Abhängigkeiten zu anderen Modulen.
+5. Eingaben und Ausgaben.
+6. Internen Ablauf.
+7. Fehlerbehandlung.
+8. Technische Grenzen.
+9. Bekannte Einschränkungen.
+10. Relevante Tests.
+
+Erstelle zusätzlich eine Architekturübersicht, die den vollständigen Datenfluss erklärt.
+
+Insbesondere:
+
+Audioeingang → Audioverarbeitung → Live-ASR → Transkriptpersistenz → Sprecherzuordnung → Dialoganalyse → KI-Orchestrierung → lokale oder externe Modelle → Empfehlungen → Frontend.
+
+Dokumentiere dabei auch alle abweichenden und parallelen Verarbeitungspfade.
+
+## 3. ALLE BIBLIOTHEKEN, FRAMEWORKS, ABHÄNGIGKEITEN UND EXTENSIONS
+
+Erfasse ALLE tatsächlich verwendeten direkten Abhängigkeiten sowie relevante transitive Abhängigkeiten.
+
+Untersuche beispielsweise:
+
+- `requirements.txt` und andere Python-Abhängigkeitsdateien.
+- `pyproject.toml`, `poetry.lock`, `uv.lock` oder vergleichbare Dateien.
+- `package.json` und vorhandene Lockfiles.
+- Frontend- und Desktop-Konfigurationen.
+- Native Bibliotheken und lokale Laufzeitkomponenten.
+- Buildskripte.
+- Browser-Extension-Manifeste, sofern vorhanden.
+- Entwicklungs- und Agentenkonfigurationen.
+- Modell- und Asset-Manifeste.
+
+Für jede relevante Abhängigkeit erkläre:
+
+**Name, Version, Verwendungsort, tatsächliche Aufgabe, Funktionsweise, technische Abhängigkeiten, Konfiguration, Ressourcenverbrauch, Alternativen und bekannte Risiken.**
+
+Unterscheide zwischen:
+
+- Runtime-Abhängigkeiten.
+- Development-Abhängigkeiten.
+- Test-Abhängigkeiten.
+- Build-Abhängigkeiten.
+- Optionalen Abhängigkeiten.
+- Nur dokumentierten, aber ungenutzten Paketen.
+- Direkt und transitiv installierten Komponenten.
+
+Erfasse außerdem:
+
+- Python-Version.
+- Node.js-Version.
+- NPM-Version.
+- Betriebssystemvoraussetzungen.
+- GPU- und CUDA-Anforderungen.
+- Modell-Runtimes.
+- Native Executables.
+- Audio-Codecs und Verarbeitungsbibliotheken.
+- Installierte oder benötigte Extensions und Plugins.
+- Sicherheitsrelevante Versionsbindungen.
+
+Erkläre für jede Komponente, warum sie eingesetzt wird und ob ihre konkrete Rolle im Quellcode nachweisbar ist.
+
+Mache keine pauschale Aussage wie „verwendet moderne Bibliotheken“.
+
+## 4. ALLE METHODEN, FUNKTIONEN, KLASSEN UND ALGORITHMEN
+
+Dies ist einer der wichtigsten Abschnitte.
+
+Erstelle eine vollständige technische Funktionsinventur.
+
+Erfasse alle selbstdefinierten, relevanten Klassen, Methoden, Funktionen, Handler, Hintergrundjobs, Hooks, Middleware-Komponenten und Event-Handler.
+
+Lasse auch interne Funktionen nicht aus, nur weil sie nicht öffentlich exportiert sind.
+
+Für JEDE Funktion dokumentiere:
+
+- Dateipfad und Zeilenbereich.
+- Name und vollständige Signatur.
+- Zugehörige Klasse oder Komponente.
+- Technische Aufgabe.
+- Eingabeparameter und Datentypen.
+- Rückgabewert und Datentyp.
+- Exakte Verarbeitungsschritte.
+- Aufgerufene Funktionen und Abhängigkeiten.
+- Verwendete Algorithmen.
+- Asynchrones Verhalten.
+- Nebenwirkungen.
+- Datenbankzugriffe.
+- Netzwerkzugriffe.
+- Datei- und Speicherzugriffe.
+- Fehlerbehandlung.
+- Retry-, Timeout- und Cancellation-Logik.
+- Relevante Einstellungen.
+- Vorhandene Tests.
+- Bekannte Schwachstellen.
+- Mögliche Leistungsengpässe.
+
+Erkläre bei komplexen Algorithmen auch die zugrunde liegende Idee.
+
+Behandle insbesondere:
+
+- Queue- und Scheduler-Mechanismen.
+- Debouncing und Throttling.
+- Caching.
+- Idempotenz.
+- Deduplication.
+- Sequenzvergabe.
+- Versions- und Revisionsverwaltung.
+- Concurrency Control.
+- Race-Condition-Vermeidung.
+- Transaktionslogik.
+- Prompt Assembly.
+- Modellrouting.
+- Ergebnisvalidierung.
+- Streaming.
+- Supersession.
+- Abbruch laufender Verarbeitung.
+- Automatische und manuelle Sprecherkorrekturen.
+
+Falls eine dieser Methoden nicht implementiert ist, sage ausdrücklich, dass sie fehlt.
+
+Vermeide unpräzise Aussagen wie „die Funktion verarbeitet Daten effizient“. Erkläre stattdessen, was sie konkret tut und welche zeitliche beziehungsweise speicherbezogene Komplexität gegebenenfalls erkennbar ist.
+
+Erstelle einen vollständigen Index aller gefundenen Funktionen und Methoden.
+
+## 5. VOLLSTÄNDIGE KI-MODELL-INVENTUR
+
+Dokumentiere sämtliche tatsächlich integrierten und konfigurierten KI-Modelle.
+
+Untersuche insbesondere die im Projekt genannten Technologien:
+
+- Qwen beziehungsweise Qwen3:4b.
+- Ollama.
+- Whisper.
+- Parakeet.
+- Gemini und eventuell weitere Provider.
+- Alternative oder nicht aktive Modelle.
+
+Für jedes Modell:
+
+1. Exakter Modellname und Version beziehungsweise Modellkennung.
+2. Lokale oder externe Ausführung.
+3. Modellformat und Quantisierung, soweit feststellbar.
+4. Zweck im System.
+5. Tatsächlich aktiver Einsatzbereich.
+6. Modellladeverfahren.
+7. Hardwareanforderungen.
+8. Kontextfenster und relevante Tokenlimits, soweit konfiguriert.
+9. Eingabeformat.
+10. Ausgabeformat.
+11. Prompt-Konfiguration.
+12. Temperatur, Sampling und sonstige Generierungsparameter.
+13. Streaming-Verhalten.
+14. Timeout.
+15. Cancellation.
+16. Fallbacks.
+17. Tatsächlich vorhandene Leistungsnachweise.
+18. Erkennbare Nachteile und Beschränkungen.
+
+Erkläre auch, wie Modelle kombiniert werden und warum das Projekt verschiedene Modelle für Live- und Finalverarbeitung verwendet.
+
+## 6. SÄMTLICHE PROMPTS UND PROMPT-ENGINEERING-METHODEN
+
+Suche projektweit nach allen KI-Prompts und Promptbestandteilen.
+
+Dazu gehören:
+
+- Systemprompts.
+- Entwicklerprompts.
+- Laufzeitprompts.
+- Dynamische Templates.
+- In Code eingebettete Prompts.
+- Prompt-Fragmente.
+- Mode-spezifische Prompts.
+- Rhetorikprompts.
+- Rechercheprompts.
+- Zusammenfassungs- und Coachingprompts.
+- JSON-Ausgabevorgaben.
+- Fallback-Prompts.
+- Validierungs- und Reparaturprompts.
+- Instruktionen für Toolaufrufe.
+- Promptkonfigurationen.
+- Relevante Agentenprompts und Repository-Instruktionen.
+
+Für JEDEN Prompt:
+
+1. Dateipfad und Zeilenbereich.
+2. Vollständiger tatsächlich verwendeter Prompttext, mit ersetzten Geheimnissen.
+3. Verwendungszweck.
+4. Auslösendes Ereignis.
+5. Aufrufendes Modul.
+6. Verwendetes Modell.
+7. Zusammensetzung und Reihenfolge der Promptteile.
+8. Dynamisch eingesetzte Variablen.
+9. Kontextaufbau.
+10. Ausgabevorgaben.
+11. Tatsächliche Validierungslogik.
+12. Modellparameter.
+13. Unterschiede zwischen verschiedenen Betriebsmodi.
+14. Erkennbare Konflikte zwischen Promptteilen.
+15. Redundante Instruktionen.
+16. Mögliche Tokenverschwendung.
+17. Mögliche Halluzinations- und Prompt-Injection-Risiken.
+18. Grenzen der belegbaren Promptwirksamkeit.
+
+Untersuche ausdrücklich, ob die Regeln „nur die Nutzerseite coachen“ und „keine Fakten erfinden“ in sämtlichen relevanten Laufzeitpfaden erhalten bleiben.
+
+Erkläre die tatsächliche Funktion von `/no_think` und wie es im aktuellen Projekt verwendet wird.
+
+Kennzeichne nicht verwendete oder veraltete Prompts.
+
+Keine Kürzung mit „usw.“. Bei längeren Prompts den vollständigen Text in entsprechend gekennzeichneten Abschnitten ausgeben.
+
+## 7. AUDIO, SPRACHERKENNUNG UND SPRECHERZUORDNUNG
+
+Dokumentiere die gesamte Audioverarbeitung.
+
+Insbesondere:
+
+- Audioaufnahme.
+- Audioquellen und Tracks.
+- Samplingrate.
+- Kanäle und Formate.
+- Buffering.
+- Chunking.
+- Resampling.
+- Streaming.
+- Voice Activity Detection, falls vorhanden.
+- Live-Erkennung.
+- Interim-Hypothesen.
+- Final-Erkennung.
+- Post-Processing.
+- Sprachnormalisierung.
+- Zeitstempel und Audiozeitbasis.
+- Segment-IDs.
+- Sprecherzuordnung.
+- Mehrsprecherverarbeitung.
+- Reconnect.
+- Restart.
+- Replay.
+- Fehlerbehandlung.
+- Finale Speicherung.
+
+Erkläre detailliert, wie Whisper und Parakeet eingesetzt werden.
+
+Untersuche, wie das System mit folgenden Fällen umgeht:
+
+- Kurze Sprechbeiträge.
+- Wortgleiche Wiederholungen.
+- Sprecherwechsel.
+- Überlappende Sprache.
+- Unterbrochene Audioverbindungen.
+- Verspätete Final-Ergebnisse.
+- Falsche Sprecherzuordnung.
+- Unterschiedlich lange Interim- und Finaltexte.
+- Manuelle Korrekturen.
+
+Dokumentiere vorhandene Messwerte zur deutschen Spracherkennung, beispielsweise WER, CER, Erkennungsdauer und andere tatsächlich verfügbare Qualitätsmetriken.
+
+Erfinde keine Vergleichswerte.
+
+## 8. DATENBANK, PERSISTENZ, REVISIONEN UND DATENSICHERHEIT
+
+Analysiere das vollständige Datenmodell.
+
+Dokumentiere:
+
+- Alle Tabellen und relevanten Felder.
+- Beziehungen.
+- Indizes.
+- Constraints.
+- Migrationen.
+- Schreibpfade.
+- Lesepfade.
+- Transaktionsgrenzen.
+- Commit-Verhalten.
+- Rollback-Verhalten.
+- Concurrent Writes.
+- Sequenzgenerierung.
+- Revisionshistorie.
+- Retention-Regeln.
+- Datenlöschung.
+- Session-Zuordnung.
+- Historisierung manueller Änderungen.
+
+Untersuche besonders:
+
+`provisional_transcript_revisions`
+
+sowie sämtliche Tabellen und Mechanismen für Finaltranskripte, Versionierung und Äußerungskorrekturen.
+
+Erkläre vollständig, welche Daten zu welchem Zeitpunkt gespeichert, geändert, angezeigt und gegebenenfalls gelöscht werden.
+
+Prüfe anhand des Codes, ob die Speicherung tatsächlich vor der Erfolgsmeldung erfolgt.
+
+Dokumentiere die Rolle der Alembic-Migrationen 029, 030 und 031, soweit sie vorhanden sind.
+
+Zeige potenzielle Datenverlust-, Doppelungs- und Konkurrenzrisiken auf, ohne eine ungetestete Fehlerfreiheit zu behaupten.
+
+## 9. API, WEBSOCKETS UND KOMMUNIKATION
+
+Erstelle ein vollständiges Inventar aller tatsächlich implementierten API-Endpunkte, WebSocket-Events und internen Kommunikationswege.
+
+Für jeden Endpunkt beziehungsweise Event:
+
+- Name und Route.
+- HTTP-Methode beziehungsweise Eventtyp.
+- Aufrufende Komponente.
+- Empfänger.
+- Authentifizierung.
+- Request-Schema.
+- Response-Schema.
+- Validierung.
+- Fehlerfälle.
+- Retry- und Timeout-Verhalten.
+- Nebenwirkungen.
+- Sitzungsbezug.
+- Tests.
+- Relevante Sicherheitskontrollen.
+
+Erkläre die komplette Lifecycle-Logik von:
+
+- Session Start.
+- Live Call.
+- Reconnect.
+- Resume.
+- Snapshot.
+- Live Update.
+- Session End.
+- Post-Call.
+- Manueller Korrektur.
+- Erneuter KI-Bewertung.
+
+Untersuche insbesondere, wie veraltete Antworten erkannt und verworfen werden.
+
+## 10. RECHERCHE, PROVIDER, PRIVACY UND HINTERGRUNDAUFGABEN
+
+Dokumentiere alle tatsächlich implementierten Recherche- und Providerpfade.
+
+Untersuche:
+
+- Webkonto.
+- Gemini-Web.
+- OAuth-Fallback.
+- Offizielle API-Pfade.
+- Kostenkontrollen.
+- Lokale Alternativen.
+- Hintergrundrecherche.
+- Scheduler.
+- Priorisierung.
+- Cancellation.
+- Fehler- und Fallbackverhalten.
+- Datenschutzschalter.
+- Privacy-First-Modus.
+
+Erkläre für jeden Provider:
+
+- Integrationsart.
+- Authentifizierungsmethode.
+- Verwendung von Browser, SDK oder API.
+- Unterstützte Funktionen.
+- Voraussetzungen.
+- Bekannte Grenzen.
+- Konfiguration.
+- Tatsächliche Testabdeckung.
+- Technische und sicherheitsbezogene Risiken.
+- Bedingungen für externe Datenübertragung.
+
+Trenne vorhandene Routing-Logik von real nachgewiesener Providerfunktion.
+
+## 11. FRONTEND, DESKTOP, EXTENSIONS UND BEDIENOBERFLÄCHE
+
+Dokumentiere alle tatsächlich vorhandenen Benutzeroberflächen und Bedienabläufe.
+
+Für jede relevante Ansicht beziehungsweise Komponente:
+
+- Dateipfad.
+- Zweck.
+- Verwendete Frameworks.
+- Zustandsverwaltung.
+- API-Anbindungen.
+- Event-Verarbeitung.
+- Sichtbare Statusmeldungen.
+- Deaktivierte Aktionen.
+- Fehlerzustände.
+- Ladezustände.
+- Datenaktualisierung.
+- Performance-relevante Renderabläufe.
+
+Erkläre insbesondere:
+
+- Live-Call-Ansicht.
+- Live-Transkript.
+- Gespeicherte Entwürfe.
+- Sprecherkorrekturen.
+- Post-Call-Ansicht.
+- Rhetorische Empfehlungen.
+- Rechercheaktionen.
+- Privacy-Einstellungen.
+- Modell- und Provider-Einstellungen.
+
+Dokumentiere außerdem sämtliche tatsächlich vorhandenen Desktop- und Extension-Komponenten.
+
+Wenn PyInstaller verwendet wird, erkläre die konkrete Buildkonfiguration, eingefrorene Assets, Startmechanismen und Smoke-Tests.
+
+Unterscheide ausdrücklich zwischen erfolgreich erzeugtem lokalem Build und freigegebenem, reproduzierbarem Release.
+
+## 12. PERFORMANCE, EFFIZIENZ UND RESSOURCENVERBRAUCH
+
+Untersuche die tatsächlichen technischen Eigenschaften des aktuellen Systems.
+
+Dokumentiere vorhandene Informationen zu:
+
+- End-to-End-Antwortlatenz.
+- Time to First Token.
+- Vollständiger Generierungsdauer.
+- Audio-zu-Text-Latenz.
+- Text-zu-Empfehlung-Latenz.
+- Live-Update-Frequenz.
+- Durchsatz.
+- CPU-Auslastung.
+- GPU-Auslastung.
+- VRAM.
+- RAM.
+- Datenträgerzugriffen.
+- Netzwerkverkehr.
+- Datenbankzugriffen.
+- Tokenverbrauch.
+- Promptlänge.
+- Parallelität.
+- Warteschlangen.
+- Wiederholten Berechnungen.
+- Cache-Nutzung.
+- Startzeiten.
+- Modellladezeiten.
+- Abbruchzeiten.
+
+Nutze ausschließlich tatsächlich vorhandene Messungen oder nachvollziehbare statische Codeanalysen.
+
+Für jeden Messwert:
+
+- Messgröße und Einheit.
+- Gemessener Wert.
+- Testhardware.
+- Modell.
+- Testbedingungen.
+- Anzahl der Messungen.
+- Messdatum.
+- Messmethode.
+- Fundstelle.
+- Aussagekraft und Einschränkungen.
+
+Wenn keine Messung existiert, kennzeichne die Metrik als „NICHT GEMESSEN“.
+
+Untersuche statisch mögliche Effizienzprobleme, beispielsweise:
+
+- Unnötig große Prompts.
+- Redundante Modellaufrufe.
+- Unnötige Rekonstruktion von Gesprächshistorien.
+- Ungünstige Streaming-Intervalle.
+- Blockierende I/O.
+- Unnötige Datenbankabfragen.
+- Ineffiziente Schleifen.
+- Überflüssige Zwischenverarbeitung.
+- Doppelte Hintergrundarbeit.
+- Übermäßige Speichernutzung.
+- Verzögerte Cancellation.
+- Unnötige Frontend-Renderings.
+
+Trenne klar zwischen gemessenen Engpässen und theoretischen Optimierungsmöglichkeiten.
+
+## 13. TESTS, VERIFIKATION UND REALE FUNKTIONSFÄHIGKEIT
+
+Inventarisiere sämtliche vorhandenen relevanten Tests.
+
+Erstelle eine Zuordnung von Anforderungen zu:
+
+- Unit-Tests.
+- Integrationstests.
+- API-Tests.
+- Datenbanktests.
+- Nebenläufigkeitstests.
+- Frontendtests.
+- Desktoptests.
+- Audioqualitätstests.
+- Modelltests.
+- Performance-Benchmarks.
+- End-to-End-Tests.
+- Smoke-Tests.
+- Sicherheitstests.
+
+Dokumentiere:
+
+1. Testdatei.
+2. Geprüfte Funktion.
+3. Konkretes Testszenario.
+4. Erwartetes Verhalten.
+5. Tatsächlich vorliegenden Ergebnisnachweis.
+6. Zeitpunkt des letzten belegten Testlaufs.
+7. Verwendete Mocks.
+8. Verwendete reale Komponenten.
+9. Nicht abgedeckte Risiken.
+10. Reproduzierbaren Testaufruf.
+
+Wichtig: Ein bestandener Mock-Test ist kein Nachweis für einen funktionierenden externen Provider.
+
+Ein erfolgreicher Produktionsbuild ist kein vollständiger End-to-End-Test.
+
+Eine korrekt implementierte Timeout-Logik beweist keine ausreichende Antwortgeschwindigkeit.
+
+Untersuche auch ausdrücklich die im Chatverlauf genannten offenen oder zeitweise blockierten Punkte, darunter:
+
+- PostgreSQL-Konkurrenztest.
+- Windows-Temp-Berechtigungen.
+- Sprecherzuordnung.
+- Desktop-Releasekandidat.
+- Ollama-Startverhalten.
+- Qwen-Mehrturn-Benchmark.
+- Provider-Integrationsnachweise.
+
+Dokumentiere, welche Punkte im aktuellen Repository tatsächlich noch offen sind.
+
+## 14. TECHNISCHE SCHWACHSTELLEN UND VERBESSERUNGSPOTENZIALE
+
+Erstelle eine eigenständige, evidenzbasierte Problemliste.
+
+Untersuche:
+
+- Korrektheitsprobleme.
+- Verlorene oder unvollständige Anforderungen.
+- Datenverlustrisiken.
+- Race Conditions.
+- Sicherheitsprobleme.
+- Datenschutzprobleme.
+- Modell- und Promptprobleme.
+- Unzuverlässige Fallbacks.
+- Performanceengpässe.
+- Redundante Bibliotheken.
+- Überflüssigen Code.
+- Architekturkomplexität.
+- Fehlende Fehlerbehandlung.
+- Unzureichende Tests.
+- Fehlende Betriebsmetriken.
+
+Für jedes Problem:
+
+- Eindeutige Problem-ID.
+- Betroffene Dateien.
+- Konkretes beobachtetes beziehungsweise aus dem Code abgeleitetes Problem.
+- Technische Ursache.
+- Mögliche Auswirkungen.
+- Nachweis oder Kennzeichnung als Hypothese.
+- Betroffene ursprüngliche Anforderung.
+- Möglicher Verbesserungsansatz.
+- Geschätzte Komplexität.
+- Regressionsrisiko.
+- Möglichkeit einer schnellen, gezielten Verifikation.
+
+Priorisiere nach tatsächlicher Relevanz.
+
+**WICHTIG: Noch nichts optimieren oder verändern. Ausschließlich dokumentieren.**
+
+## 15. AUSGABEFORMAT – VOLLSTÄNDIGER TECHNISCHER AUDIT-DATENEXPORT
+
+Gib deine Ergebnisse in einem strukturierten, ausführlichen Markdown-Bericht aus.
+
+Verwende folgende Kapitelreihenfolge:
+
+1. Quellenlage und Grenzen der Untersuchung.
+2. Vollständiger Originalauftrag-Abgleich.
+3. Projektstruktur und Architektur.
+4. Vollständiges Technologie- und Abhängigkeitsinventar.
+5. Alle Methoden, Funktionen, Klassen und Algorithmen.
+6. Vollständige KI-Modell-Dokumentation.
+7. Sämtliche Prompts und deren tatsächliche Verwendung.
+8. Audio- und Transkriptionsarchitektur.
+9. Datenbank und Revisionsverwaltung.
+10. API, WebSockets und Datenflüsse.
+11. Recherche- und Providerarchitektur.
+12. Frontend, Desktop und Extensions.
+13. Performance und Ressourcenverbrauch.
+14. Tatsächliche Test- und Verifikationslage.
+15. Bekannte Probleme und technische Risiken.
+16. Potenzielle Verbesserungen.
+17. Nicht nachgewiesene ursprüngliche Anforderungen.
+18. Vollständiger Quellen- und Funktionsindex.
+19. Offene Informationen für eine unabhängige Folgeanalyse.
+
+Nutze Tabellen für Übersichten, aber erkläre komplexe technische Mechanismen zusätzlich in vollständigen Absätzen.
+
+Gib tatsächliche Versionsnummern, Funktionsnamen, Konfigurationsparameter, Dateipfade, relevante Codeauszüge und vollständige Prompttexte an, soweit vorhanden und sicher ausgebbar.
+
+Keine API-Keys, Access-Tokens, Passwörter, privaten Zugangsdaten oder sensiblen Gesprächsinhalte ausgeben. Ersetze diese durch eindeutige Platzhalter und dokumentiere ausschließlich ihre technische Rolle.
+
+### VERBINDLICHE VOLLSTÄNDIGKEITSKONTROLLE
+
+Bevor du deine Arbeit abschließt, prüfe:
+
+- Wurde jede verfügbare ursprüngliche Anforderung erfasst?
+- Wurde jede relevante Produktionscode-Datei berücksichtigt?
+- Wurden alle selbstdefinierten relevanten Funktionen und Methoden inventarisiert?
+- Wurden alle direkten Abhängigkeiten erfasst?
+- Wurden relevante transitive und native Komponenten erfasst?
+- Wurden alle aktiven Prompts vollständig dokumentiert?
+- Wurden nicht aktive und veraltete Promptpfade erkannt?
+- Wurden sämtliche Modell- und Providerpfade erklärt?
+- Wurden alle relevanten Datenbanktabellen und Migrationen geprüft?
+- Wurden alle relevanten APIs und Events erfasst?
+- Wurde die Testabdeckung mit den Anforderungen abgeglichen?
+- Wurden gemessene und nur behauptete Leistungswerte getrennt?
+- Wurden offene Punkte explizit dokumentiert?
+
+Gib am Ende die Anzahl der erfassten Dateien, Funktionen, Methoden, Klassen, Bibliotheken, Prompts, Modelle, Schnittstellen, Tests und Originalanforderungen aus.
+
+Nenne auch die bewusst ausgeschlossenen Dateigruppen und den Grund für ihren Ausschluss.
+
+Wenn du wegen Kontext-, Zeit- oder Ausgabelimits nicht alles bearbeiten kannst, markiere den Export ausdrücklich als UNVOLLSTÄNDIG. Gib die bereits geprüften Bereiche, die noch ungeprüften Bereiche und den exakten Fortsetzungspunkt an.
+
+Vermeide in diesem Fall jede Behauptung, die Untersuchung sei vollständig.
+
+## ABSCHLIESSENDE ANWEISUNG
+
+Ich will keinen Marketingbericht, keinen oberflächlichen Fortschrittsbericht und keine erneute Implementierungsarbeit.
+
+Ich will eine **vollständige technische Offenlegung des tatsächlich vorhandenen DebateAI-Systems**, damit eine externe KI ohne direkten Repository-Zugriff verstehen und prüfen kann:
+
+- Was ursprünglich gefordert wurde.
+- Was tatsächlich implementiert wurde.
+- Wie jede relevante Komponente funktioniert.
+- Welche Algorithmen und technischen Methoden verwendet werden.
+- Welche Bibliotheken, Tools, Modelle, Extensions und Prompts zum Einsatz kommen.
+- Welche Einstellungen und technischen Parameter aktiv sind.
+- Welche Ergebnisse durch Tests oder reale Messungen gestützt sind.
+- Welche Fehler, Ineffizienzen und Risiken erkennbar sind.
+- Was noch fehlt oder nicht bewiesen ist.
+- Welche konkreten Verbesserungen technisch sinnvoll sein könnten.
+
+**Vollständigkeit, technische Präzision, Quellennachweise und ehrliche Darstellung sind wichtiger als eine kurze oder besonders positiv formulierte Antwort.**
+
+Beginne mit der Quelleninventur und dem Originalauftrag-Abgleich. Arbeite danach systematisch alle Kapitel ab. Wenn der Bericht nicht in eine Antwort passt, teile ihn in klar nummerierte, lückenlos fortsetzbare Teile auf.

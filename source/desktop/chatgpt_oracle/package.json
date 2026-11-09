@@ -1,0 +1,10 @@
+{
+  "name": "backchannel-chatgpt-oracle-runtime",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pinned runtime for the optional ChatGPT consumer-web analyst",
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@steipete/oracle": "0.22.2"
+  }
+}

@@ -1,0 +1,84 @@
+{
+  "schema_version": 2,
+  "routes": [
+    {
+      "id": "oracle",
+      "label": "Oracle (normales ChatGPT-Webkonto)",
+      "provider": "openai-web",
+      "model_id": "chatgpt-web:gpt-6",
+      "enabled": true,
+      "reasoning_effort": "xhigh",
+      "timeout_seconds": 660,
+      "cooldown_seconds": 900,
+      "lazy_start": true
+    },
+    {
+      "id": "gemini_web",
+      "label": "Gemini-Webproxy (Google AI Pro)",
+      "provider": "google-web",
+      "model_id": "endpoint:gemini-web:gemini-3.1-pro",
+      "enabled": true,
+      "reasoning_effort": "high",
+      "timeout_seconds": 180,
+      "cooldown_seconds": 900,
+      "lazy_start": false
+    },
+    {
+      "id": "cliproxyapi",
+      "label": "CLIProxyAPI (ChatGPT-/Codex-OAuth-Fallback)",
+      "provider": "openai",
+      "model_id": "endpoint:subscription-ai:gpt-6-sol",
+      "enabled": true,
+      "reasoning_effort": "xhigh",
+      "timeout_seconds": 180,
+      "cooldown_seconds": 900,
+      "lazy_start": false
+    },
+    {
+      "id": "gemini_cli",
+      "label": "Gemini CLI OAuth (Fallback)",
+      "provider": "google-login",
+      "model_id": "endpoint:subscription-ai:gemini-3.1-pro-preview",
+      "enabled": true,
+      "reasoning_effort": "high",
+      "timeout_seconds": 180,
+      "cooldown_seconds": 900,
+      "lazy_start": false
+    },
+    {
+      "id": "official_gemini",
+      "label": "Offizielle Gemini-API",
+      "provider": "google",
+      "model_id": "gemini-3.1-pro-preview",
+      "enabled": false,
+      "reasoning_effort": "high",
+      "timeout_seconds": 180,
+      "cooldown_seconds": 900
+    }
+  ],
+  "fallback_enabled": true,
+  "forced_model": "",
+  "max_parallel_analyses": 1,
+  "unavailable_cooldown_seconds": 900,
+  "adaptive_reasoning": {
+    "enabled": true,
+    "new_topic_effort": "xhigh",
+    "follow_up_effort": "high",
+    "deep_reanalysis_effort": "xhigh",
+    "latency_threshold_ms": 45000,
+    "queue_threshold": 1,
+    "stable_calls_to_restore": 2,
+    "topic_similarity_threshold": 0.46,
+    "reuse_topic_analysis": true
+  },
+  "research": {
+    "enabled": true,
+    "providers": [
+      {"id": "duckduckgo", "label": "DuckDuckGo", "enabled": true},
+      {"id": "wikipedia", "label": "Wikipedia", "enabled": true}
+    ],
+    "steps": 2,
+    "original_sources_required": true,
+    "timeout_seconds": 20
+  }
+}

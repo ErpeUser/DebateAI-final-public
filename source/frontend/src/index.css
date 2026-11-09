@@ -1,0 +1,376 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ==========================================================================
+   Token spine: primitive -> semantic (light + dark) -> Tailwind consumers.
+   Colors are stored as space-separated RGB channels so Tailwind opacity
+   utilities (bg-brand-teal/10) keep working via rgb(var(--x) / <alpha-value>).
+   Dark values are authored, not naive inversions.
+   ========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Layer 1 - primitives. The historical teal token names are retained so
+     existing components keep working, but the product palette is now
+     intentionally monochrome. */
+  --p-teal: 24 24 27;          /* #18181b - primary action */
+  --p-teal-dark: 9 9 11;       /* #09090b - primary action hover */
+  --p-teal-light: 82 82 91;    /* #52525b - quiet emphasis */
+  --p-amber: 245 158 11;       /* #f59e0b */
+  --p-white: 255 255 255;
+  --p-slate-900: 17 17 17;     /* #111111 */
+  --p-slate-800: 23 23 23;     /* #171717 */
+  --p-slate-700: 64 64 64;     /* #404040 */
+  --p-slate-600: 82 82 82;     /* #525252 */
+  --p-slate-500: 115 115 115;  /* #737373 */
+  --p-slate-400: 163 163 163;  /* #a3a3a3 */
+  --p-slate-300: 212 212 212;  /* #d4d4d4 */
+  --p-slate-200: 229 229 229;  /* #e5e5e5 */
+  --p-slate-100: 245 245 245;  /* #f5f5f5 */
+  --p-slate-50: 250 250 250;   /* #fafafa */
+
+  /* Layer 2 - semantics (what everything maps to). Light mode. */
+  --accent: var(--p-teal);
+  --accent-dark: var(--p-teal-dark);
+  --accent-light: var(--p-teal-light);
+  --accent-2: var(--p-amber);
+
+  --surface: var(--p-white);           /* cards, panels, header, sidebar */
+  --canvas: var(--p-slate-100);        /* app background, visibly below cards */
+  --surface-muted: var(--p-slate-50);  /* hover and inset surfaces */
+  --border-subtle: var(--p-slate-200);
+
+  --text-primary: var(--p-slate-900);
+  --text-secondary: var(--p-slate-600);
+  --text-tertiary: var(--p-slate-500);
+
+  /* Focus ring token */
+  --focus: var(--p-slate-900);
+
+  /* Text emphasis is separate from the control fill so both remain legible
+     when the same compatibility color name appears in component markup. */
+  --accent-text: var(--p-slate-900);
+  /* Brand mark backdrop: dark on the light header, lifted on the dark one so
+     the rounded square keeps its shape instead of vanishing. */
+  --brand-mark-bg: var(--p-slate-900);
+
+  /* Minimal elevation: hierarchy comes from surface and hairline first. */
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.05), 0 0 0 1px rgb(0 0 0 / 0.02);
+  --shadow-md: 0 10px 30px rgb(0 0 0 / 0.08), 0 2px 8px rgb(0 0 0 / 0.04);
+
+  /* All product-owned scroll regions inherit one operable baseline. */
+  --scroll-thumb: var(--p-slate-300);
+  --scroll-thumb-hover: var(--p-slate-500);
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* Controls remain dark enough for white labels. Text emphasis uses the
+     separate --accent-text token below. */
+  --accent: 64 64 64;
+  --accent-dark: 82 82 82;
+  --accent-light: 115 115 115;
+  --accent-2: var(--p-amber);
+
+  --surface: 18 18 18;                 /* panels sit above canvas */
+  --canvas: 5 5 5;                     /* app canvas (darkest) */
+  --surface-muted: 27 27 27;           /* hover and inset surfaces */
+  --border-subtle: 46 46 46;
+
+  --text-primary: 245 245 245;
+  --text-secondary: 196 196 196;
+  --text-tertiary: 138 138 138;
+
+  --focus: 245 245 245;
+
+  --accent-text: 229 229 229;
+  --brand-mark-bg: 64 64 64;
+  --scroll-thumb: 82 82 82;
+  --scroll-thumb-hover: 138 138 138;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.32), 0 0 0 1px rgb(255 255 255 / 0.025);
+  --shadow-md: 0 16px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+}
+
+/* Follow the OS when the user has not made an explicit choice. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --accent: 64 64 64;
+    --accent-dark: 82 82 82;
+    --accent-light: 115 115 115;
+    --surface: 18 18 18;
+    --canvas: 5 5 5;
+    --surface-muted: 27 27 27;
+    --border-subtle: 46 46 46;
+    --text-primary: 245 245 245;
+    --text-secondary: 196 196 196;
+    --text-tertiary: 138 138 138;
+    --focus: 245 245 245;
+    --accent-text: 229 229 229;
+    --brand-mark-bg: 64 64 64;
+    --scroll-thumb: 82 82 82;
+    --scroll-thumb-hover: 138 138 138;
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.32), 0 0 0 1px rgb(255 255 255 / 0.025);
+    --shadow-md: 0 16px 40px rgb(0 0 0 / 0.5), 0 0 0 1px rgb(255 255 255 / 0.04);
+  }
+}
+
+body {
+  @apply bg-canvas text-brand-dark-gray font-body antialiased;
+  margin: 0;
+  letter-spacing: -0.011em;
+  line-height: 1.5;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+::selection {
+  background: rgb(var(--text-primary));
+  color: rgb(var(--surface));
+}
+
+/* Global scrollbar baseline. Component classes may alter geometry, never
+   activate the theme: every future overflow surface inherits this treatment. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--scroll-thumb)) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-height: 32px;
+  border: 3px solid transparent;
+  border-radius: 999px;
+  background: rgb(var(--scroll-thumb));
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: rgb(var(--scroll-thumb-hover));
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: rgb(var(--text-tertiary));
+}
+
+@media (forced-colors: active) {
+  * {
+    scrollbar-color: auto;
+  }
+}
+
+h1, h2, h3, h4, h5, h6 {
+  @apply font-display;
+  letter-spacing: -0.025em;
+  text-wrap: balance;
+}
+
+/* The compatibility color name is shared by fills and text in component
+   markup. Route text through its own contrast-safe monochrome token while
+   leaving button fills on --accent. */
+body .text-brand-teal,
+body .text-brand-teal-dark,
+body .text-brand-teal-light {
+  color: rgb(var(--accent-text));
+}
+
+body .hover\:text-brand-teal:hover,
+body .hover\:text-brand-teal-dark:hover,
+body .hover\:text-brand-teal-light:hover {
+  color: rgb(var(--text-primary));
+}
+
+/* Quiet, crisp depth replaces the previous generic Tailwind shadows. */
+.shadow-sm {
+  box-shadow: var(--shadow-sm);
+}
+
+.shadow-md,
+.shadow-lg,
+.shadow-xl,
+.shadow-2xl {
+  box-shadow: var(--shadow-md);
+}
+
+:where(input, textarea, select)::placeholder {
+  color: rgb(var(--text-tertiary));
+  opacity: 0.78;
+}
+
+/* Global keyboard focus ring: every interactive element gets a visible
+   :focus-visible indicator drawn from the --focus token. Mouse clicks stay
+   quiet (no outline) because :focus-visible only fires for keyboard/AT. */
+:where(a, button, input, select, textarea, summary, [role="button"], [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--focus));
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+.chat-markdown {
+  line-height: 1.6;
+  overflow-wrap: anywhere;
+}
+
+.chat-markdown > * {
+  margin: 0;
+}
+
+.chat-markdown > * + * {
+  margin-top: 0.65rem;
+}
+
+.chat-markdown h1,
+.chat-markdown h2,
+.chat-markdown h3,
+.chat-markdown h4 {
+  color: rgb(var(--text-primary));
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.chat-markdown h1 { font-size: 1.125rem; }
+.chat-markdown h2 { font-size: 1rem; }
+.chat-markdown h3,
+.chat-markdown h4 { font-size: 0.875rem; }
+
+.chat-markdown ul,
+.chat-markdown ol {
+  padding-left: 1.35rem;
+}
+
+.chat-markdown ul { list-style: disc; }
+.chat-markdown ol { list-style: decimal; }
+.chat-markdown li + li { margin-top: 0.25rem; }
+.chat-markdown li > ul,
+.chat-markdown li > ol { margin-top: 0.25rem; }
+
+.chat-markdown blockquote {
+  border-left: 3px solid rgb(var(--accent));
+  color: rgb(var(--text-secondary));
+  padding-left: 0.75rem;
+}
+
+.chat-markdown code {
+  border: 1px solid rgb(var(--border-subtle));
+  border-radius: 4px;
+  background: rgb(var(--surface));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 0.8em;
+  padding: 0.1rem 0.3rem;
+}
+
+.chat-markdown pre {
+  overflow-x: auto;
+  border: 1px solid rgb(var(--border-subtle));
+  border-radius: 6px;
+  background: rgb(var(--surface));
+  padding: 0.75rem;
+}
+
+.chat-markdown pre code {
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.chat-markdown table {
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  border-collapse: collapse;
+}
+
+.chat-markdown th,
+.chat-markdown td {
+  border: 1px solid rgb(var(--border-subtle));
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+}
+
+.chat-markdown th {
+  background: rgb(var(--surface));
+  font-weight: 700;
+}
+
+.chat-markdown a {
+  color: rgb(var(--accent));
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.chat-markdown hr {
+  border: 0;
+  border-top: 1px solid rgb(var(--border-subtle));
+}
+
+/* ==========================================================================
+   Sidebar helpers (Layout.tsx)
+   ========================================================================== */
+
+/* Row actions stay out of the way until the row is hovered or holds focus.
+   Touch screens have no hover, so there they are always shown. Opacity only:
+   the actions keep their width, so a name never reflows on hover. */
+.bc-reveal {
+  opacity: 0;
+  transition: opacity 120ms ease-out;
+}
+.group:hover > .bc-reveal,
+.group:focus-within > .bc-reveal,
+.bc-reveal:focus-visible {
+  opacity: 1;
+}
+@media (hover: none) {
+  .bc-reveal { opacity: 1; }
+}
+
+/* The rail and the panel swap as whole trees while the width animates; a
+   short fade keeps the swap from popping. */
+@keyframes bc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.bc-fade-in {
+  animation: bc-fade-in 160ms ease-out both;
+}
+
+/* The session list reserves its scrollbar gutter; visual styling is global. */
+.bc-scroll {
+  scrollbar-gutter: stable;
+}
+
+/* The find box draws its own clear button. */
+.bc-search::-webkit-search-cancel-button,
+.bc-search::-webkit-search-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+/* Accent-colored small text (active session, active tool, text links). */
+.bc-accent-text {
+  color: rgb(var(--accent-text));
+}
+
+/* Touch targets: 28-32px visuals for desktop pointers; 44px hit areas where
+   there is no hover (touch screens) and inside the mobile drawer (< md). The
+   drag grip is a pointer affordance; on touch the row menu's Move to covers
+   it, so it is dropped instead of being made 44px wide. */
+@media (hover: none), (max-width: 767.98px) {
+  .bc-row { min-height: 44px; }
+  .bc-action { min-width: 44px; min-height: 44px; }
+  .bc-grip { display: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bc-reveal { transition: none; }
+  .bc-fade-in { animation: none; }
+}

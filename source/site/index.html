@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f9fbfa" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0c1413" media="(prefers-color-scheme: dark)" />
+  <title>Backchannel - Open-source, self-hosted AI meeting assistant</title>
+  <meta name="description" content="Open-source, self-hosted AI meeting assistant: live diarized transcripts, mid-call insights, and a PII Shield that keeps names out of every model. No bot joins your call." />
+  <link rel="canonical" href="https://backchannel.page/" />
+  <meta property="og:title" content="Backchannel - Open-source, self-hosted AI meeting assistant" />
+  <meta property="og:description" content="Open-source, self-hosted AI meeting assistant: live diarized transcripts, mid-call insights, and a PII Shield that keeps names out of every model. No bot joins your call." />
+  <meta property="og:type" content="website" />
+  <meta property="og:site_name" content="Backchannel" />
+  <meta property="og:url" content="https://backchannel.page/" />
+  <meta property="og:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta property="og:image:width" content="1200" />
+  <meta property="og:image:height" content="630" />
+  <meta property="og:image:alt" content="Backchannel: live meeting transcription and real-time insight agents, self-hosted." />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://backchannel.page/assets/og-image.png" />
+  <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
+  <link rel="alternate icon" href="/favicon.ico" sizes="32x32" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "SoftwareApplication",
+        "@id": "https://backchannel.page/#software",
+        "name": "Backchannel",
+        "applicationCategory": "BusinessApplication",
+        "operatingSystem": "Windows, macOS, Linux",
+        "softwareVersion": "0.6.6",
+        "description": "Open-source, self-hosted AI meeting assistant: live diarized transcripts, mid-call insights, and a PII Shield that keeps names out of every model. No bot joins your call.",
+        "url": "https://backchannel.page/",
+        "image": "https://backchannel.page/assets/og-image.png",
+        "license": "https://github.com/talberthoule/backchannel/blob/master/LICENSE",
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "downloadUrl": "https://downloads.backchannel.page/",
+        "releaseNotes": "https://backchannel.page/releases/v0.6.6/",
+        "softwareHelp": { "@type": "CreativeWork", "url": "https://backchannel.page/docs/" },
+        "author": { "@id": "https://backchannel.page/#organization" },
+        "sameAs": ["https://github.com/talberthoule/backchannel"]
+      },
+      {
+        "@type": "Organization",
+        "@id": "https://backchannel.page/#organization",
+        "name": "Backchannel",
+        "url": "https://backchannel.page/",
+        "logo": { "@type": "ImageObject", "url": "https://backchannel.page/assets/favicon.svg" },
+        "sameAs": ["https://github.com/talberthoule/backchannel"]
+      },
+      {
+        "@type": "WebSite",
+        "@id": "https://backchannel.page/#website",
+        "name": "Backchannel",
+        "url": "https://backchannel.page/",
+        "publisher": { "@id": "https://backchannel.page/#organization" }
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          {
+            "@type": "Question",
+            "name": "Is Backchannel free?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. Backchannel is open source under the MIT License, with no hosted tier, no seat pricing, and no feature paywall. Your only costs are your own hardware and any Gemini or OpenAI API usage you configure."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does my meeting audio leave my machine?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Only where you route it. Voice activity detection and speaker diarization always run locally, and a fresh install uses built-in local batch transcription. Agent models stay unselected until you choose Google, OpenAI, or a self-hosted OpenAI-compatible server such as Ollama or LM Studio. With the PII Shield on, audio is held to a local model outright, because audio cannot be tokenized. Recordings and transcripts stay on your server."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What does the PII Shield keep out of the model?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "People's names, company names, email addresses, phone numbers, card and national-ID numbers, IP addresses and street addresses. Each becomes a token such as [PERSON_1] the moment a transcript line, directive, document excerpt, session name or speaker name is written, so every agent, the briefing, chat and Ask work from tokens whether the model is local or in the cloud, and the database holds only tokens. Detection runs entirely on your machine. The real values live in a vault encrypted under the same master key as your provider keys and are put back only on your screen. The shield is off by default; turn it on in Admin -> Privacy."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Does it work with Zoom, Google Meet, Teams, and in-person meetings?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes -- any meeting, digital or in person, because it never joins the call. Backchannel captures your microphone and, optionally, tab or system audio directly in the browser, so there is no bot participant and no per-platform integration to install. For a conference room or an in-person conversation, the microphone alone carries the meeting, with diarization separating the voices. Cross-platform coverage is no longer unique: Google's take-notes-for-me now reaches meetings hosted on other providers, and Zoom's assistant can join Meet and Teams. Both do it as a visible bot in a vendor cloud, and neither can sit in a room."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "How is it different from Otter.ai and other cloud note-takers?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Real-time help is no longer rare: Otter shipped Live Assist in July 2026 and Zoom's Sales Assist reached general availability a day later. Both are Enterprise-priced and tied to their own platform, and like Fireflies.ai and Granola they run in a vendor cloud. Backchannel is self-hosted, MIT licensed, and joins no call as a bot, and its objection handler generates a response to the objection actually raised, every 10 seconds over the freshest 90 seconds of speech."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Can I ask a question during the meeting?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Yes. The call's command bar answers from the conversation as it stands -- the live transcript, the insights raised so far, strategic signals, your directives, and the summaries of attached documents. Recording continues while it answers, the answer is saved with the call and starred, and it exports alongside every other insight. You pick which model answers, including a model running on your own hardware."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "Do I need a GPU?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "No. CPU-only Docker Compose is the default. An NVIDIA GPU can accelerate diarization via a compose override, and AMD GPUs on Windows are supported with a native backend setup script."
+            }
+          },
+          {
+            "@type": "Question",
+            "name": "What do I need to run it?",
+            "acceptedAnswer": {
+              "@type": "Answer",
+              "text": "Use the desktop app for the easiest start: download the build for Windows, macOS, or Linux, unpack it, and run the app. Built-in local batch transcription needs no API key. Agents start as Not selected: connect Google, OpenAI, or a self-hosted service if you want its models, then choose explicit models in Admin. Recommended marks a good starting point. Use Docker Compose when you want the full self-hosted stack, local development, or GPU diarization."
+            }
+          }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+
+<a class="skip-link" href="#top">Skip to content</a>
+
+<header class="site">
+  <div class="wrap">
+    <a class="brand" href="#top">
+      <img src="assets/favicon.svg" alt="" />
+      backchannel
+    </a>
+    <nav class="site-nav">
+      <a class="nav-privacy" href="#shield">Privacy</a>
+      <a href="#features">Features</a>
+      <a href="#quickstart">Quickstart</a>
+      <a href="#how-it-works">How it works</a>
+      <a href="#architecture">Architecture</a>
+      <a href="#agents">Agents</a>
+      <a href="/blog/">Writing</a>
+      <a href="docs/">Docs</a>
+      <a class="btn primary nav-cta" href="https://github.com/talberthoule/backchannel">Star on GitHub<span id="gh-stars" aria-hidden="true"></span></a>
+    </nav>
+  </div>
+</header>
+
+<main id="top">
+
+  <section class="hero">
+    <div class="wrap">
+      <div class="hero-grid">
+        <div>
+          <h1>Your meetings, transcribed live.<br />Your next move, <span class="accent">surfaced <span class="nowrap">mid-call</span></span> &mdash; on your own hardware.</h1>
+          <p class="lede">
+            A self-hosted, open-source AI meeting assistant: live speaker-attributed
+            transcripts and real-time insight agents. No bot in the call, and with
+            the PII Shield on, no name in any prompt.
+          </p>
+          <div class="cta-row">
+            <a class="btn primary" href="https://downloads.backchannel.page/">Download the desktop app</a>
+            <a class="btn ghost" href="#quickstart">Self-host in minutes</a>
+          </div>
+          <p class="quickstart-note">Free desktop app for Windows, macOS &amp; Linux &middot; self-host anytime with Docker Compose &middot; works with any meeting &mdash; Zoom, Meet, Teams, or in the room &middot; MIT licensed</p>
+        </div>
+        <aside class="console" aria-label="Live listening console demonstration">
+          <div class="console-bar">
+            <span class="listening"><span class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></span> Listening&hellip;</span>
+            <span class="shield-state"><i aria-hidden="true"></i>Shield on</span>
+            <span class="clock" id="console-clock">31:00</span>
+          </div>
+          <div class="console-body">
+            <p class="caption"><span class="who">OWEN &middot; INFRASTRUCTURE</span><span id="console-caption"></span><span class="caret" aria-hidden="true"></span></p>
+            <div class="insight-card" id="console-insight">
+              <span class="tag">OBJECTION &middot; RESPONSE READY</span>
+              <p><strong>Respond now:</strong> keep the fixed recovery pilot below the $90K single-source threshold while the broader supplier review continues.</p>
+            </div>
+          </div>
+        </aside>
+      </div>
+      <figure class="hero-shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/live-call-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/live-call.webp" width="1440" height="900" fetchpriority="high"
+                 alt="Backchannel live during a fictional recovery-readiness review: a quiet listening bar, the live strategic-signal strip, 125 insights, an answered mid-call question, a speaker-attributed transcript, and the ask bar along the bottom." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 1</span><span>A high-stakes recovery review, handled remotely: signals across the top, a question asked and answered mid-call, the attributed transcript running beside it. <strong>125 insights</strong> from one 46-minute call, distilled into a single briefing.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="shield">
+    <div class="wrap">
+      <span class="kicker">New in v0.6.0</span>
+      <h2>Every model gets <code class="token">[PERSON_1]</code>. Only your screen gets Owen.</h2>
+      <p class="sub">Turn on the PII Shield and names, companies, email addresses, phone numbers, card and ID numbers, IP and street addresses become tokens the moment a transcript line, directive, document excerpt, session name or speaker name is written. Every agent, the briefing, chat and Ask work from those tokens, whether the model runs on this machine or in someone's cloud. The database holds only tokens. The real values sit in a vault encrypted under the same master key that protects your provider keys, and come back only on the screen in front of you.</p>
+
+      <figure class="shot pii">
+        <div class="shot-strip">
+          <picture>
+            <source srcset="assets/shots/pii-preview-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/pii-preview.webp" width="868" height="254" loading="lazy"
+                 alt="The Privacy tab's try-a-sentence box. Typed in: Owen Delacroix from Alderwake Health Network owns the identity approval, reach him at owen.delacroix@alderwake.example or 212-555-0142 before the board review. Shown as a model would receive it: [PERSON_1] from [ORG_1] owns the identity approval, reach him at [EMAIL_1] or [PHONE_1] before the board review. A legend gives each token's value and whether the on-device name model or a pattern found it." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 2</span><span>The Privacy tab's scratch box: one sentence in, the sentence a model receives out, and how each token was found. Two by the on-device name model, two by pattern. Nothing typed here is stored.</span></figcaption>
+      </figure>
+
+      <figure class="shield-path">
+        <ol class="shield-stops" aria-label="The route one value takes through a session with the shield on">
+          <li>
+            <span class="stop-label">Written</span>
+            <span class="stop-value name">Owen Delacroix</span>
+            <span class="stop-note">A transcript line lands, a directive is typed, a document is read.</span>
+          </li>
+          <li>
+            <span class="stop-label">Tokenized</span>
+            <span class="stop-value"><code class="token">[PERSON_1]</code></span>
+            <span class="stop-note">On this machine, before the row exists. The value goes to the vault.</span>
+          </li>
+          <li>
+            <span class="stop-label">Stored</span>
+            <span class="stop-value"><code class="token">[PERSON_1]</code></span>
+            <span class="stop-note">The database holds tokens only. The vault is encrypted under your master key.</span>
+          </li>
+          <li>
+            <span class="stop-label">Sent to a model</span>
+            <span class="stop-value"><code class="token">[PERSON_1]</code></span>
+            <span class="stop-note">Local or cloud, every agent, the briefing, chat and Ask receive tokens and nothing else.</span>
+          </li>
+          <li>
+            <span class="stop-label">On your screen</span>
+            <span class="stop-value name">Owen Delacroix</span>
+            <span class="stop-note">Decoded at the edge, for the person in front of it. Every reveal is counted.</span>
+          </li>
+        </ol>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 3</span><span>One value's route through a session. The same token stands for the same value for the whole call, so a model can follow who said what; nothing links a person across sessions.</span></figcaption>
+      </figure>
+
+      <div class="feature-row shield-row">
+        <div class="feature-copy">
+          <h3>Audio never leaves while the shield is on</h3>
+          <p>Audio cannot be tokenized, so the shield holds transcription to a local model and switches off cloud live captions. Cloud text models stay available, because they only ever receive tokens. Uploaded documents are read on this machine and never sent as files. Privacy First decides where processing happens; the shield decides what any model, local or cloud, gets to read. Local transcription is rougher than cloud, so the optional Transcript Refiner sends the tokenized transcript to any text model to fix punctuation, casing and mishearings, and keeps a rewrite only if it carries exactly the original tokens.</p>
+        </div>
+        <div class="feature-visual">
+          <picture>
+            <source srcset="assets/shots/admin-privacy-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/admin-privacy.webp" width="1185" height="900" loading="lazy"
+                 alt="Admin Privacy tab with the PII Shield on, badged Personal data tokenized. Four coverage rows: transcripts, insights, briefings, chat and documents protected; transcription audio protected, held to a local model; live captions protected; transcript refinement not covered because the refiner is off. Below them: Vault, 9 protected values across all sessions." />
+          </picture>
+        </div>
+      </div>
+
+      <div class="more-strip">
+        <div>
+          <h3>Detected here, never in the cloud</h3>
+          <p>Pattern checks for structured identifiers, the session's own speaker roster, a protected-terms list you keep, and a small on-device name model (about 110 MB, downloaded once). No detection ever involves a cloud call.</p>
+        </div>
+        <div>
+          <h3>Checkable, not claimed</h3>
+          <p>Record outbound prompts logs every prompt exactly as it left for a model, badged &ldquo;tokens only&rdquo; or &ldquo;blocked&rdquo;. While the shield is on, a prompt still carrying a vault value is refused before it is sent.</p>
+        </div>
+        <div>
+          <h3>Exports and the audit trail</h3>
+          <p>Exports carry tokens unless you tick &ldquo;Include personal data&rdquo;. Every reveal, on screen or in a file, is counted. Sessions recorded before the shield was on can be protected after the fact.</p>
+        </div>
+      </div>
+
+      <p class="sub deep-dive"><a href="/private-meeting-ai/">The full account of the PII Shield</a> &mdash; what is tokenized and when, where detection happens, how a value is decoded, and the limits stated plainly.</p>
+    </div>
+  </section>
+
+  <section id="setup" class="alt">
+    <div class="wrap">
+      <span class="kicker">Before the call</span>
+      <h2>Start from the top of one screen</h2>
+      <p class="sub">Start Call and Process Transcript sit at the top of the setup screen and stay there while you scroll. A readiness line under the session name says what is configured; the steps below are collapsed cards whose headers say what they hold. The sidebar's find box understands dates, so <em>October</em>, <em>oct 8</em>, <em>10/8</em> or <em>2026-10-08</em> all bring up the sessions from that day.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/precall-setup-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/precall-setup.webp" width="1440" height="900" loading="lazy"
+                 alt="The pre-call setup screen for a fictional Alderwake pilot scope review: Start Call pinned beside the session name, the readiness line Client / prospect, 2 directives, 4 participants, the audio-capture switch, an open Context card, and collapsed cards for Documents, Import a transcript or recording, and Coaching directives." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 4</span><span>Client / prospect, 2 directives, 4 participants: the readiness line says what the call has, and Start Call stays in reach however far you scroll.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="features">
+    <div class="wrap">
+      <span class="kicker">During the call</span>
+      <h2>Everything a second set of ears should do</h2>
+      <p class="sub">Built for high-stakes sales, discovery, and service-delivery calls &mdash; especially when the account team is remote. Provider-flexible, centered on a transcript you can trust.</p>
+
+      <div class="feature-row">
+        <div class="feature-copy">
+          <h3>Live diarized transcription</h3>
+          <p>Silero VAD and WeSpeaker ResNet152 speaker embeddings attribute every line to a speaker, with interim text streaming seconds ahead of the final transcript. Microphone and tab/system audio are captured as separate tracks, so remote participants get their own identities.</p>
+        </div>
+        <div class="feature-visual">
+          <picture>
+            <source srcset="assets/shots/postcall-transcript-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-transcript.webp" width="1440" height="900" loading="lazy"
+                 alt="Fictional recovery-readiness transcript with every line attributed to Me, Leah, Owen, or Maya and shown with timestamps." />
+          </picture>
+        </div>
+      </div>
+
+      <div class="feature-row reverse">
+        <div class="feature-copy">
+          <h3>Agents that work the call, not just the recap</h3>
+          <p>Five live agents -- an analyst, a fast objection handler, a synthesizer, an opportunity specialist, and a strategic-signals scanner -- each run on their own trigger and push questions, objections, opportunities, and action items mid-call. Signals raised early are kept rather than overwritten, so the point someone made twenty minutes ago is still there. At call end, two independent briefing lenses draft in parallel and an arbiter reconciles them into one summary.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="browser-frame">
+            <div class="bar" aria-hidden="true"></div>
+            <picture>
+              <source srcset="assets/shots/insights-attributed-dark.webp" media="(prefers-color-scheme: dark)" />
+              <img src="assets/shots/insights-attributed.webp" width="1032" height="460" loading="lazy"
+                   alt="Speaker-attributed action items for the board-ready evidence outline and Tuesday technical working session, each badged with the agent that produced it." />
+            </picture>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-row">
+        <div class="feature-copy">
+          <h3>Provider-routed models, on your keys</h3>
+          <p>Mix Google Gemini and OpenAI per agent, transcribe fully offline with local ONNX Whisper and Parakeet, or point the agents at any number of your own OpenAI-compatible servers -- Ollama, LM Studio, vLLM, LiteLLM -- where every model an endpoint serves appears by name in each agent's picker, and run the whole pipeline with no key from anyone. Privacy First judges the destination, so an endpoint on your own machine or LAN keeps the agents running with the switch on; only cloud providers stay blocked.</p>
+        </div>
+        <div class="feature-visual">
+          <picture>
+            <source srcset="assets/shots/admin-api-keys-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/admin-api-keys.webp" width="1185" height="900" loading="lazy"
+                 alt="Admin Connections tab: the Privacy First switch and Google and OpenAI credential cards above the Self-Hosted Models card for LM Studio, Ollama, vLLM, and LiteLLM endpoints." />
+          </picture>
+        </div>
+      </div>
+
+      <div class="more-strip">
+        <div>
+          <h3>Mid-call directives</h3>
+          <p>Drop a note while the call runs and the analysis agents factor it into what they surface next.</p>
+        </div>
+        <div>
+          <h3>Import and re-transcribe</h3>
+          <p>Bring in existing transcripts or audio files, and replay any recorded call through a different model later.</p>
+        </div>
+        <div>
+          <h3>Exports and cross-session chat</h3>
+          <p>Transcript, insight, and summary exports, and chat across every past meeting. With the shield on, exports carry tokens unless you tick &ldquo;Include personal data&rdquo;.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="ask" class="alt">
+    <div class="wrap">
+      <h2>Ask the call a question while it is still running</h2>
+      <p class="sub">Twenty minutes ago someone named a number and you did not write it down. Type the question into the bar under the transcript and the answer comes back from the conversation as it stands &mdash; without stopping the recording, opening a second tool, or waiting for the post-call briefing. The answer is saved with the call, starred, and exported alongside every other insight.</p>
+      <figure class="shot wide">
+        <div class="shot-strip">
+          <picture>
+            <source srcset="assets/shots/ask-bar-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/ask-bar.webp" width="1120" height="58" loading="lazy"
+                 alt="The call's command bar: a Chat and Directive mode toggle, the question &ldquo;What did Owen commit to sending tomorrow?&rdquo; typed in, and a Gemini 3.6 Flash model chip marked Recommended." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span>The whole interface: two modes, one input, and the model that will answer.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/live-ask-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/live-ask.webp" width="1440" height="900" loading="lazy"
+                 alt="A live call with two answered mid-call questions pinned at the top of the insight feed and a third being typed into the ask bar at the bottom of the screen." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 5</span><span>Asked mid-call, answered from the transcript so far &mdash; and kept, so the answer is still there afterwards.</span></figcaption>
+      </figure>
+      <div class="more-strip">
+        <div>
+          <h3>Two modes, one bar</h3>
+          <p>Chat asks the call a question. Directive steers what the agents look for next. An answer you want the crew to act on converts to a directive in one click.</p>
+        </div>
+        <div>
+          <h3>You choose who answers</h3>
+          <p>The model that answers is picked in the bar itself &mdash; Google, OpenAI, or a model on your own hardware. Nothing is selected on your behalf.</p>
+        </div>
+        <div>
+          <h3>Grounded in the room</h3>
+          <p>Answers draw on the live transcript, the insights raised so far, strategic signals, your directives, and the summaries of documents you attached.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="answered" class="center">
+    <div class="wrap">
+      <h2>Questions answer themselves</h2>
+      <p class="sub">The synthesizer keeps reading the room. When a question gets answered mid-call, it marks the card Answered, summarizes the answer, and spins off the follow-up you still owe. No bookkeeping from you.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/live-answered-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/live-answered.webp" width="940" height="492" loading="lazy"
+                 alt="The live feed filtered to 34 questions: the leading card is marked Answered with the synthesizer's one-line answer summary, and carries the follow-up question it spun off." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 6</span><span>Mid-call &mdash; the synthesizer hears the answer land, marks the question Answered, and hands you the follow-up you still owe.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="overview" class="alt">
+    <div class="wrap">
+      <span class="kicker">After the call</span>
+      <h2>Stop the call. Open on what mattered.</h2>
+      <p class="sub">Stop the call and Backchannel drains the last segments, runs the final analysis and saves the session. A finished call opens on an Overview: the briefing's top outcome first, then commitments, open loops, opportunities, risks and estimated spend, each count linking to the tab that holds the rows behind it. Below that, who spoke how much, and when in the call each insight arrived, drawn as call time with a seam at every resume.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-overview-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-overview.webp" width="1440" height="900" loading="lazy"
+                 alt="The Overview tab of the Alderwake recovery-readiness session: a 44m 12s call plus a 2m resume, a 9 shielded badge beside Resume Call, the headline outcome Sponsor aligned on a non-disruptive pilot, and a row of counts: Commitments 4, Open loops 3, Opportunities 3, Risks 3, and Est. spend $1.14 from 1,287,379 tokens, above the start of the commitments and open-loops lists." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 7</span><span>Sponsor aligned on a non-disruptive pilot: the top outcome, then five counts. The session header carries the shield's tally for this call, 9 shielded, next to the resume button.</span></figcaption>
+      </figure>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-overview-digest-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-overview-digest.webp" width="1440" height="900" loading="lazy"
+                 alt="The Overview digest scrolled into view: four commitments with due dates and owners, three open loops phrased as questions, three opportunities including a Recovery Implementation Pilot valued at $72K to $84K, and three risks with owners, each list ending in a link to the full Insights tab." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 8</span><span>The digest: commitments with owners and due dates, open loops as the questions still unanswered, opportunities with a value range, risks with the person who owns them. Each list links through to the rows behind it.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="results">
+    <div class="wrap">
+      <h2>The briefing does the reading for you</h2>
+      <p class="sub">A 46-minute call produced 125 grounded signals. You never wade through them. Two independent briefing lenses draft in parallel and an arbiter reconciles them into one briefing that opens with an at-a-glance strip and leads with the top outcomes: risks, actions, and open questions each color-coded, owners named as people rather than identifiers.</p>
+      <div class="proof-line">
+        <span class="big">125</span>
+        <span class="arrow">&rarr;</span>
+        <span class="big">1</span>
+        <span class="desc"><strong>One briefing</strong> of outcomes, objectives, and follow-ups &mdash; with every underlying insight kept, attributed, and exportable.</span>
+      </div>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-briefing-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-briefing.webp" width="1440" height="900" loading="lazy"
+                 alt="Alderwake recovery-readiness briefing: an at-a-glance strip of three outcomes, four actions, three risks and three open questions, the kept strategic-signal history, and the top three outcomes with named owners." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 9</span><span>The settled briefing &mdash; two independent lens drafts reconciled by an arbiter, opening with the whole meeting in five seconds.</span></figcaption>
+      </figure>
+      <p class="sub">Nothing raised during the call is quietly dropped. Signals the strategic scan surfaced are kept with how often each came back, so a theme that ran through the conversation reads as a theme rather than one line you happened to catch.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-signals-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-signals.webp" width="1440" height="900" loading="lazy"
+                 alt="Strategic Signal History expanded in the briefing: six kept signals labelled Action, Discovery Question, Opportunity, Signal and Risk, each showing how many times it was seen and when it was first and last raised." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 10</span><span>Durable signals, with first and last sighting &mdash; &ldquo;seen 6 times&rdquo; is the difference between a passing remark and the thing the meeting was actually about.</span></figcaption>
+      </figure>
+      <p class="sub">The detail is all still there: every one of the 125, each attributed to who said it, ready to take with you as one enriched Excel workbook, HTML, or text.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-insights-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-insights.webp" width="1440" height="900" loading="lazy"
+                 alt="Insights tab: 125 total, with 2 asked, 24 action items, 16 objections, 18 opportunities, 31 observations, and 34 questions above the answered mid-call questions." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 11</span><span>All 125, kept and attributed &mdash; 24 action items, 16 objections, 18 opportunities, 31 observations, 34 questions, and the 2 you asked yourself.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="tokens" class="alt">
+    <div class="wrap">
+      <h2>What a call costs, to the token</h2>
+      <p class="sub">Every model call the session made is recorded. The Tokens tab breaks usage down by source and by model, and prices cached and audio tokens at their own published rates rather than the text rate, so the estimate is honest about where the money went.</p>
+      <div class="proof-line cost">
+        <span class="big">1,287,379</span>
+        <span class="arrow">&rarr;</span>
+        <span class="big">$1.14</span>
+        <span class="desc"><strong>One 46-minute call.</strong> 1,192,838 input and 94,541 output tokens; 176,590 of the input were audio, and 463,839 came back from the provider's prompt cache.</span>
+      </div>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-tokens-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-tokens.webp" width="1440" height="900" loading="lazy"
+                 alt="The Tokens tab: estimated cost $1.14 for 1,287,379 tokens, with notes that 176,590 input tokens were audio priced at the audio rate and 463,839 were served from the prompt cache at the cached rate, above a by-source table listing audio_gateway, consolidated_analyst and strategic_signals with their models, input, output, cached and audio columns and per-row cost." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 12</span><span>By source, then by model. The live audio gateway is priced at the audio rate; the analyst's 168,203 cached input tokens at the cached rate.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="speakers">
+    <div class="wrap">
+      <h2>Diarization gets close. You get it right.</h2>
+      <p class="sub">Automatic diarization is fast, but it mislabels: splitting one person across several voices, or blending two into one. Rename, merge, and tag speakers by hand, then re-run the analysis so every insight reflects who actually said it.</p>
+
+      <div class="feature-row">
+        <div class="feature-copy">
+          <h3>Rename, merge, and tag</h3>
+          <p>Silero VAD and WeSpeaker embeddings assign a voice to every line before anyone is named, and they don't always match reality. Map each auto ID to a real person, tag your side and theirs, and merge the duplicates a long call inevitably throws off.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="browser-frame">
+            <div class="bar" aria-hidden="true"></div>
+            <picture>
+              <source srcset="assets/shots/postcall-speakers-dark.webp" media="(prefers-color-scheme: dark)" />
+              <img src="assets/shots/postcall-speakers.webp" width="1440" height="900" loading="lazy"
+                   alt="Speakers tab: auto-detected speakers with name mapping, team and external tagging, merge controls, and an Enhance Insights button." />
+            </picture>
+          </div>
+        </div>
+      </div>
+
+      <div class="feature-row reverse">
+        <div class="feature-copy">
+          <h3>Re-run, and every insight updates</h3>
+          <p>Hit Enhance and Backchannel replays the analysis over the corrected speakers &mdash; &ldquo;Me to draft the SOW&rdquo; instead of &ldquo;Speaker 4&rdquo; &mdash; so every action item and observation is re-attributed to the right person.</p>
+        </div>
+        <div class="feature-visual">
+          <div class="browser-frame">
+            <div class="bar" aria-hidden="true"></div>
+            <picture>
+              <source srcset="assets/shots/insights-attributed-dark.webp" media="(prefers-color-scheme: dark)" />
+              <img src="assets/shots/insights-attributed.webp" width="1032" height="542" loading="lazy"
+                   alt="Action items after speaker mapping: each card names the person it belongs to, quotes the line it came from, and flags the one still needing a follow-up." />
+            </picture>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="chat" class="alt center">
+    <div class="wrap">
+      <h2>Ask across every meeting</h2>
+      <p class="sub">Every transcript stays local, and stays queryable. Ask a question against one call or all of them at once, and get a grounded answer with the meetings it came from.</p>
+      <figure class="shot">
+        <div class="browser-frame">
+          <div class="bar" aria-hidden="true"></div>
+          <picture>
+            <source srcset="assets/shots/postcall-chat-dark.webp" media="(prefers-color-scheme: dark)" />
+            <img src="assets/shots/postcall-chat.webp" width="1440" height="900" loading="lazy"
+                 alt="Cross-session chat answering what was committed and what is blocking the timeline, with a grounded answer and session scope pickers." />
+          </picture>
+        </div>
+        <figcaption class="fig-caption"><span class="fig-no">FIG. 13</span><span>One question asked across every saved meeting, answered with the sessions it came from.</span></figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <section id="quickstart">
+    <div class="wrap">
+      <h2>Install the way you want to run it</h2>
+      <p class="sub">Use the desktop executable when you want the shortest path, or Docker Compose when you want the full self-hosted stack, development hooks, and GPU options.</p>
+
+      <div class="setup-grid">
+        <article class="setup-panel featured">
+          <span class="kicker">Desktop app</span>
+          <h3>Download, unzip, run</h3>
+          <p>Windows, macOS, and Linux builds bundle the app, backend, and per-user database. Backchannel sits in your system tray or menu bar, opens in your browser, and needs no Docker. From v0.4.0 the app updates itself in place: it verifies the new build's signature before applying it, rolls back if the swap fails, and waits for recording and post-processing to finish first. Downloads are open to everyone; no account or GitHub sign-in is required.</p>
+          <ul class="setup-list">
+            <li><strong>Windows x64:</strong> unzip <code>Backchannel-windows-x64.zip</code> and run <code>Backchannel.exe</code>.</li>
+            <li><strong>macOS Apple Silicon:</strong> unzip <code>Backchannel-macos-arm64.zip</code> and open <code>Backchannel.app</code>.</li>
+            <li><strong>Linux x64:</strong> a portable tarball, not a package-manager installer: extract <code>Backchannel-linux-x64.tar.gz</code> and run <code>Backchannel/Backchannel</code>; data lives in <code>~/.local/share/backchannel</code>.</li>
+            <li>Add provider keys after launch in <strong>Admin -&gt; Connections</strong>.</li>
+            <li>Turn on the PII Shield in <strong>Admin -&gt; Privacy</strong>; it is off by default.</li>
+          </ul>
+          <div class="setup-actions">
+            <a class="btn primary" href="https://downloads.backchannel.page/">Download for your platform</a>
+            <a class="btn ghost" href="releases/v0.6.6/">Read v0.6.6 notes</a>
+          </div>
+        </article>
+
+        <article class="setup-panel">
+          <span class="kicker">Docker Compose</span>
+          <h3>Self-host the full stack</h3>
+          <p>Compose keeps every service isolated and is still the most flexible path for local development, server installs, and optional NVIDIA GPU diarization.</p>
+          <pre><code>git clone https://github.com/talberthoule/backchannel.git
+cd backchannel
+cp .env.example .env   <span class="cmt"># optionally set GEMINI_API_KEY here</span>
+docker compose up --build
+
+<span class="cmt"># app at http://localhost:3000 -- add API keys any time in Admin -&gt; Connections</span></code></pre>
+          <p class="quickstart-note">
+            The first start builds images and downloads models, so give it a
+            few minutes. Have an NVIDIA GPU? Add the override for GPU
+            diarization: <code>docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build</code>
+          </p>
+        </article>
+      </div>
+
+      <p class="quickstart-note">
+        Built-in local batch transcription and diarization need no API key.
+        For insight agents, connect Google, OpenAI, or a self-hosted
+        OpenAI-compatible service, then choose explicit models under Admin.
+        Local recommendations appear after the connected model passes Local Fit.
+      </p>
+    </div>
+  </section>
+
+  <section id="how-it-works" class="alt">
+    <div class="wrap">
+      <h2>From spoken word to actionable insight</h2>
+      <p class="sub">The live call path, end to end.</p>
+      <ol class="steps">
+        <li><span><strong>Capture.</strong> The browser records mic (and optionally tab) audio and streams PCM16 16 kHz chunks over a WebSocket.</span></li>
+        <li><span><strong>Diarize.</strong> Voice activity detection cuts speech into segments; speaker embeddings assign each segment to a voice.</span></li>
+        <li><span><strong>Transcribe.</strong> Each segment is transcribed by the selected Google, OpenAI, or local ONNX model, filtered, and saved in speaking order.</span></li>
+        <li><span><strong>Shield.</strong> Optional. Names, companies and contact details become tokens before the line is stored; the real values go to an encrypted vault on this machine, and the shield holds transcription to a local model.</span></li>
+        <li><span><strong>Analyze.</strong> Text agents read the growing transcript on their own schedules and propose questions, objections, opportunities, and action items.</span></li>
+        <li><span><strong>Deliver.</strong> Deduplicated insights stream to the call view instantly; a synthesizer refines them as the conversation evolves. With the shield on, tokens turn back into names only on your screen.</span></li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="architecture">
+    <div class="wrap">
+      <h2>Three services, two AI paths, one transcript</h2>
+      <p class="sub">
+        A React SPA, a FastAPI backend, and PostgreSQL: a low-latency
+        interim path for feedback and a durable batch path for the record.
+      </p>
+      <div class="diagram" tabindex="0" role="region" aria-label="Architecture diagram, scrollable">
+        <img src="assets/architecture.svg" width="1200" height="800" alt="Backchannel architecture diagram: client layer, backend layer, AI layer, and persistence" />
+      </div>
+    </div>
+  </section>
+
+  <section id="agents" class="alt">
+    <div class="wrap">
+      <h2>A crew, not a monolith</h2>
+      <p class="sub">Each agent has one job, its own trigger, and a configurable model and prompt. Agents start as Not selected; provider-aware Recommended tags offer starting points without forcing a choice. Gemini 3.8 Flash is the recommended Google model for every text agent and Live Ask.</p>
+      <div class="table-scroll" tabindex="0" role="region" aria-label="Agent roster table, scrollable">
+        <table>
+          <thead>
+            <tr><th scope="col">Agent</th><th scope="col">Trigger</th><th scope="col">Purpose</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Audio Bridge</strong><br /><code>audio_gateway</code></td>
+              <td>Continuous audio stream</td>
+              <td>Listens silently via Gemini Live, OpenAI Realtime, or the on-device Parakeet captioner and streams interim transcription</td>
+            </tr>
+            <tr>
+              <td><strong>Consolidated Analyst</strong><br /><code>consolidated_analyst</code></td>
+              <td>Every 40s + final pass</td>
+              <td>Runs configurable lenses for questions, observations, opportunities, and action items in one pass</td>
+            </tr>
+            <tr>
+              <td><strong>Objection Handler</strong><br /><code>objection_handler</code></td>
+              <td>Every 10s over the last 90s</td>
+              <td>Flags objections with an immediate response and the underlying strategic concern</td>
+            </tr>
+            <tr>
+              <td><strong>Principal Agent</strong><br /><code>synthesizer</code></td>
+              <td>New or updated insights; 75s cooldown, 120s fallback</td>
+              <td>Quality-checks insights and connects them into broader objectives, initiatives, and patterns</td>
+            </tr>
+            <tr>
+              <td><strong>Opportunity Specialist</strong><br /><code>opportunity_specialist</code></td>
+              <td>New opportunities; 55s cooldown + final match</td>
+              <td>Matches opportunity insights against the configured knowledge sources without creating new insights</td>
+            </tr>
+            <tr>
+              <td><strong>Strategic Signals</strong><br /><code>strategic_signals</code></td>
+              <td>Every 45s during the call</td>
+              <td>Refreshes the live signal, risk, next question, opportunity, and action cue while linking supported cards to saved insights</td>
+            </tr>
+            <tr>
+              <td><strong>Transcript Refiner</strong><br /><code>transcript_refiner</code></td>
+              <td>Every 45s during the call + final pass; off by default</td>
+              <td>Sends the tokenized transcript to a text model, local or cloud, to fix punctuation, casing and mishearings; a rewrite is kept only if it carries exactly the original tokens, so no name ever reaches the model</td>
+            </tr>
+            <tr>
+              <td><strong>Briefing Meeting Lens</strong><br /><code>brief_meeting_lens</code></td>
+              <td>At call end or on demand</td>
+              <td>Drafts the meeting record: outcomes, decisions, blockers, commitments, and follow-ups</td>
+            </tr>
+            <tr>
+              <td><strong>Briefing Discovery Lens</strong><br /><code>brief_discovery_lens</code></td>
+              <td>At call end or on demand</td>
+              <td>Drafts the broader signal: objectives, pains, gaps, opportunities, risks, and open paths</td>
+            </tr>
+            <tr>
+              <td><strong>Briefing Arbiter</strong><br /><code>brief_arbiter</code></td>
+              <td>At call end or on demand</td>
+              <td>Reconciles the two independent lens drafts into the settled briefing</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="sub deep-dive"><a href="/analyst-lenses/">See how the analyst's lenses work</a>. One request per cycle reads the call through every lens, and each finding comes back tagged with the lens that found it.</p>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <h2>Privacy, data flow, and what it takes to run</h2>
+      <p class="sub">The questions that decide whether you self-host, answered plainly.</p>
+      <div class="faq-list">
+        <div class="faq-item">
+          <h3>Is Backchannel free?</h3>
+          <p>Yes. Backchannel is open source under the MIT License, with no hosted tier, no seat pricing, and no feature paywall. Your only costs are your own hardware and any Gemini or OpenAI API usage you configure.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Does my meeting audio leave my machine?</h3>
+          <p>Only where you route it. Voice activity detection and speaker diarization always run locally, and a fresh install uses built-in local batch transcription. Agent models stay unselected until you choose Google, OpenAI, or a self-hosted OpenAI-compatible server such as Ollama or LM Studio. With the PII Shield on, audio is held to a local model outright, because audio cannot be tokenized. Recordings and transcripts stay on your server.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What does the PII Shield keep out of the model?</h3>
+          <p>People's names, company names, email addresses, phone numbers, card and national-ID numbers, IP addresses and street addresses. Each becomes a token such as <code class="token">[PERSON_1]</code> the moment a transcript line, directive, document excerpt, session name or speaker name is written, so every agent, the briefing, chat and Ask work from tokens whether the model is local or in the cloud, and the database holds only tokens. Detection runs entirely on your machine. The real values live in a vault encrypted under the same master key as your provider keys and are put back only on your screen. The shield is off by default; turn it on in Admin -&gt; Privacy.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Does it work with Zoom, Google Meet, Teams, and in-person meetings?</h3>
+          <p>Yes -- any meeting, digital or in person, because it never joins the call. Backchannel captures your microphone and, optionally, tab or system audio directly in the browser, so there is no bot participant and no per-platform integration to install. For a conference room or an in-person conversation, the microphone alone carries the meeting, with diarization separating the voices. Cross-platform coverage is no longer unique: Google's take-notes-for-me now reaches meetings hosted on other providers, and Zoom's assistant can join Meet and Teams. Both do it as a visible bot in a vendor cloud, and neither can sit in a room.</p>
+        </div>
+        <div class="faq-item">
+          <h3>How is it different from Otter.ai and other cloud note-takers?</h3>
+          <p>Real-time help is no longer rare: Otter shipped Live Assist in July 2026 and Zoom's Sales Assist reached general availability a day later. Both are Enterprise-priced and tied to their own platform, and like Fireflies.ai and Granola they run in a vendor cloud. Backchannel is self-hosted, MIT licensed, and joins no call as a bot, and its objection handler generates a response to the objection actually raised, every 10 seconds over the freshest 90 seconds of speech.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Can I ask a question during the meeting?</h3>
+          <p>Yes. The call's command bar answers from the conversation as it stands &mdash; the live transcript, the insights raised so far, strategic signals, your directives, and the summaries of attached documents. Recording continues while it answers, the answer is saved with the call and starred, and it exports alongside every other insight. You pick which model answers, including a model running on your own hardware.</p>
+        </div>
+        <div class="faq-item">
+          <h3>Do I need a GPU?</h3>
+          <p>No. CPU-only Docker Compose is the default. An NVIDIA GPU can accelerate diarization via a compose override, and AMD GPUs on Windows are supported with a native backend setup script.</p>
+        </div>
+        <div class="faq-item">
+          <h3>What do I need to run it?</h3>
+          <p>Use the desktop app for the easiest start: download the build for Windows, macOS, or Linux, unpack it, and run the app. Built-in local batch transcription needs no API key. Agents start as Not selected: connect Google, OpenAI, or a self-hosted service if you want its models, then choose explicit models in Admin. Recommended marks a good starting point. Use Docker Compose when you want the full self-hosted stack, local development, or GPU diarization.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="docs" class="alt">
+    <div class="wrap">
+      <h2>Go deeper</h2>
+      <p class="sub">Full technical documentation, searchable and readable.</p>
+      <div class="doc-list">
+        <a class="doc" href="docs/quickstart/">
+          <strong>Quickstart</strong>
+          <span>Docker Compose, local development, migrations, tests</span>
+        </a>
+        <a class="doc" href="docs/architecture/">
+          <strong>Architecture</strong>
+          <span>The live call path end to end, frontend and backend structure</span>
+        </a>
+        <a class="doc" href="docs/agents/">
+          <strong>Agent System</strong>
+          <span>Each agent's trigger and purpose, configuration and overrides</span>
+        </a>
+        <a class="doc" href="docs/audio-pipeline/">
+          <strong>Audio Pipeline</strong>
+          <span>Capture format, VAD/diarization, transcription routing, storage</span>
+        </a>
+        <a class="doc" href="docs/websocket-protocol/">
+          <strong>WebSocket Protocol</strong>
+          <span>Binary audio framing and every message type on /ws</span>
+        </a>
+        <a class="doc" href="docs/rest-api/">
+          <strong>REST API</strong>
+          <span>Endpoint reference for every router</span>
+        </a>
+        <a class="doc" href="docs/configuration/">
+          <strong>Configuration</strong>
+          <span>Settings, environment variables, credentials, the PII Shield, model registry</span>
+        </a>
+        <a class="doc" href="docs/deployment/">
+          <strong>Deployment</strong>
+          <span>Compose services, GPU support, nginx proxying, startup behavior</span>
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <section id="early-access" class="early-access">
+    <div class="wrap early-access-grid">
+      <div class="early-access-copy">
+        <span class="kicker">Stay in the loop</span>
+        <h2>Follow the project on GitHub</h2>
+        <p class="sub">The source, issues, and release tags are all public. Star the repository, watch it for new releases, and read the <a href="/releases/">release notes</a> as they land &mdash; every desktop build is a free download, no account needed.</p>
+        <div class="cta-row">
+          <a class="btn primary" href="https://github.com/talberthoule/backchannel">Star on GitHub</a>
+          <a class="btn ghost" href="https://github.com/talberthoule/backchannel/releases">Watch releases</a>
+        </div>
+        <p class="early-access-proof">Prefer email? No weekly drip campaign &mdash; just release notes and product updates worth opening.</p>
+      </div>
+      <form id="interest-form" class="interest-form" action="/api/interest" method="post">
+        <label for="interest-email">Email address</label>
+        <div class="interest-control-row">
+          <input id="interest-email" name="email" type="email" autocomplete="email" inputmode="email" maxlength="254" aria-describedby="interest-consent interest-status" required />
+          <button class="btn primary" type="submit">Get release updates</button>
+        </div>
+        <div class="cf-turnstile" data-sitekey="0x4AAAAAADzsy7I_nGWf_fZB" data-action="interest" data-theme="auto"></div>
+        <p id="interest-consent" class="interest-consent">By subscribing, you agree to receive release updates and occasional Backchannel product news. Every update will include an unsubscribe option.</p>
+        <p id="interest-status" class="interest-status" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </section>
+
+</main>
+
+<footer class="site">
+    <div class="wrap footer-compare">
+    <span>Compare:</span>
+    <a href="/open-source-meeting-assistants/">Open-source meeting assistants</a>
+    <a href="/otter-alternative/">Open-source Otter.ai alternative</a>
+    <a href="/fireflies-alternative/">Fireflies.ai alternative without the bot</a>
+    <a href="/granola-alternative/">Open-source Granola alternative</a>
+    <a href="/fathom-alternative/">Fathom alternative</a>
+    <a href="/gong-and-backchannel/">Gong and Backchannel</a>
+    <a href="/teams-premium-alternative/">Teams Premium alternative</a>
+  </div>
+  <div class="wrap footer-compare">
+    <span>Privacy:</span>
+    <a href="/private-meeting-ai/">Private meeting AI</a>
+    <a href="/blog/three-degrees-of-local/">Three degrees of local</a>
+  </div>
+  <div class="wrap">
+    <span>Backchannel is an open-source, self-hosted AI meeting assistant.</span>
+    <span>Released under the <a href="https://github.com/talberthoule/backchannel/blob/master/LICENSE">MIT License</a>. <a href="https://github.com/talberthoule/backchannel/issues">Report an issue</a>.</span>
+    <span><a href="/releases/">All releases</a></span>
+  </div>
+</footer>
+
+<script src="/lightbox.js" defer></script>
+
+<script>
+  // Live listening console in the hero: types a real objection from the demo
+  // call, then reveals the handler's response card, on a loop. Typing progress
+  // is wall-clock based so background-tab timer throttling can't stretch it.
+  // Reduced motion gets the completed state with no animation.
+  (function () {
+    var target = document.getElementById("console-caption");
+    var card = document.getElementById("console-insight");
+    var clock = document.getElementById("console-clock");
+    if (!target || !card || !clock) return;
+    var line = "You are not yet an approved services supplier, although we can buy the recovery software through our reseller agreement.";
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+      target.textContent = line;
+      card.classList.add("on");
+      return;
+    }
+    var t = 1860; // the fictional objection lands 31 minutes into the call
+    setInterval(function () {
+      t += 1;
+      var m = String(Math.floor(t / 60));
+      var s = String(t % 60);
+      clock.textContent = (m.length < 2 ? "0" + m : m) + ":" + (s.length < 2 ? "0" + s : s);
+    }, 1000);
+    var CHARS_PER_SEC = 58;
+    function run() {
+      var start = performance.now();
+      target.textContent = "";
+      card.classList.remove("on");
+      var timer = setInterval(function () {
+        var i = Math.floor(((performance.now() - start) / 1000) * CHARS_PER_SEC);
+        target.textContent = line.slice(0, i);
+        if (i >= line.length) {
+          clearInterval(timer);
+          setTimeout(function () { card.classList.add("on"); }, 500);
+          setTimeout(run, 9000);
+        }
+      }, 34);
+    }
+    run();
+  })();
+</script>
+
+<script>
+  // One unauthenticated GitHub API call (60 req/hr/IP) adds a star count to
+  // the nav CTA. It silently keeps the plain "Star on GitHub" label on any
+  // failure or rate-limit, and hides small counts so a freshly open-sourced
+  // repo shows a clean CTA rather than weak social proof.
+  (function () {
+    var el = document.getElementById("gh-stars");
+    fetch("https://api.github.com/repos/talberthoule/backchannel")
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        if (!d) return;
+        var n = d.stargazers_count;
+        if (el && typeof n === "number" && n >= 25) {
+          el.textContent = " " + n.toLocaleString();
+        }
+      })
+      .catch(function () {});
+  })();
+</script>
+
+<script>
+  (function () {
+    var form = document.getElementById("interest-form");
+    if (!form) return;
+    var email = document.getElementById("interest-email");
+    var button = form.querySelector("button[type=submit]");
+    var status = document.getElementById("interest-status");
+
+    form.addEventListener("submit", function (event) {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      var data = new FormData(form);
+      email.removeAttribute("aria-invalid");
+      var token = data.get("cf-turnstile-response");
+      if (!token) {
+        status.textContent = "Complete the verification and try again.";
+        status.dataset.state = "error";
+        return;
+      }
+
+      button.disabled = true;
+      form.setAttribute("aria-busy", "true");
+      status.textContent = "Saving your request...";
+      status.dataset.state = "pending";
+
+      fetch(form.action, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email: String(data.get("email") || "").trim(), token: token })
+      })
+        .then(function (response) {
+          return response.json().then(function (body) {
+            if (!response.ok) {
+              var failure = new Error("Interest request failed");
+              failure.userMessage = body.message || "We couldn't save this right now. Please try again.";
+              failure.field = body.message === "Enter a valid email address." ? "email" : "";
+              throw failure;
+            }
+            return body;
+          });
+        })
+        .then(function (body) {
+          form.reset();
+          status.textContent = body.message;
+          status.dataset.state = "success";
+          if (window.turnstile) window.turnstile.reset();
+        })
+        .catch(function (error) {
+          if (error && error.field === "email") {
+            email.setAttribute("aria-invalid", "true");
+            if (email.focus) email.focus();
+          }
+          status.textContent = (error && error.userMessage) || "We couldn't save this right now. Please try again.";
+          status.dataset.state = "error";
+          if (window.turnstile) window.turnstile.reset();
+        })
+        .finally(function () {
+          button.disabled = false;
+          form.removeAttribute("aria-busy");
+        });
+    });
+  })();
+</script>
+
+</body>
+</html>

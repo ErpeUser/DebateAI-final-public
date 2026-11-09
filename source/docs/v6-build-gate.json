@@ -1,0 +1,70 @@
+{
+  "status": "BUILD_READY",
+  "timestamp": "2026-11-09T05:45:00Z",
+  "git_head": "da2c5301f272142ae5d7bbb2ab10a7b5402ae20c",
+  "worktree_status_sha256": "afcd45972fc713db360e5d7f5cbc4271eac4829f6dea494b001e3636cbbc248a",
+  "toolchain": {
+    "python": "3.12.10",
+    "pyinstaller": "6.22.3",
+    "frontend_build": "vite 6.4.5; 2139 modules; exit 0",
+    "format": "Windows x64 PyInstaller onedir"
+  },
+  "source": {
+    "backend/app/services/ai_config.py": "74DAAC2805EDDD223EECE309022046DAA67B764DADDE0C4DB0F3EF3267AE93CB",
+    "backend/app/services/agents/prompt_resources.py": "7BB6FE018D1E76729866033B95BB7A455513C8897D92A9964559DF18210F62A1",
+    "backend/app/routers/ai_config.py": "F2A74393649854E18A213DB994A982F2B3A6FBBC61B903D98A888BB6BA8C9C60",
+    "desktop/backchannel.spec": "5621261944DD654D7990436B18688E52163B165B622AD743026B938F0611FF37"
+  },
+  "candidate": {
+    "stage": "build/v6-release-stage-20261109b/Backchannel",
+    "executable": "build/v6-release-stage-20261109b/Backchannel/Backchannel.exe",
+    "bytes": 26895770,
+    "sha256": "b56a60a1a1e529398ebab0f60128e00ad09982990d9843777a02cc14f9888fc9"
+  },
+  "verification": {
+    "targeted_tests": "26/26 passed after malformed providers.json fix",
+    "normal_exe_smoke": "PASS: healthy on port 8474; bundled local ASR usable; clean shutdown",
+    "external_prompt_config_smoke": "PASS: external prompt hash changed; invalid providers.json returned HTTP 500; EXE SHA unchanged",
+    "archive_smoke": "PASS: native windows-x64 update and forced rollback",
+    "archive": {
+      "path": "build/v6-release-output-20261109/Backchannel-windows-x64.zip",
+      "bytes": 340229282,
+      "sha256": "a7aff2c633ac5e7c6996b8f05cf76ea9a917a65dfe8a51f00308c647ded98e8a",
+      "entries": 4084
+    },
+    "checksums": "build/v6-release-output-20261109/SHA256SUMS.txt"
+  },
+  "internal_work_sessions": {
+    "agent_1_release_safety": "DONE: 242 backend + 94 desktop targeted tests",
+    "agent_2_external_config": "DONE: 30 prompt/config tests; corrected provider JSON failure semantics",
+    "agent_3_cleanup": "DONE: 39 manifest/V3/dependency tests; no new deletion justified"
+  },
+  "manual_blockers": [
+    "A06: real 120+ second German microphone plus Discord/system-audio capture",
+    "A18: blinded human rhetorical-quality review",
+    "A21: formal German ASR campaign with reference labels",
+    "A22: causal independent dataset and human review",
+    "Real hardware/DPI/install ownership and external rollback acceptance"
+  ],
+  "github_gate": {
+    "upstream_repository": "talberthoule/backchannel",
+    "repository": "ErpeUser/backchannel-v6-private",
+    "url": "https://github.com/ErpeUser/backchannel-v6-private",
+    "default_branch": "master",
+    "is_private": true,
+    "status": "PUBLISHED",
+    "release": {
+      "tag": "v0.6.6",
+      "url": "https://github.com/ErpeUser/backchannel-v6-private/releases/tag/v0.6.6",
+      "draft": false,
+      "prerelease": false,
+      "assets": [
+        "Backchannel-windows-x64.zip",
+        "release-manifest.json",
+        "SHA256SUMS.txt",
+        "START_HIER.md"
+      ]
+    }
+  },
+  "release_lock": "local BUILD_READY; GitHub upload only after private repository and authenticated permission are verified"
+}

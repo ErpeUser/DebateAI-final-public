@@ -1,0 +1,250 @@
+"""Bounded, replayable WebSocket events for one live session."""
+
+from __future__ import annotations
+
+import asyncio
+import copy
+import uuid
+from collections import OrderedDict, deque
+from typing import Any
+
+
+COALESCIBLE_TYPES = {"interim_transcript", "audio_level"}
+
+
+def _payload(event: dict[str, Any]) -> dict[str, Any]:
+    nested = event.get("payload")
+    return nested if isinstance(nested, dict) else event
+
+
+def _coalescible_key(event: dict[str, Any]) -> tuple[str, str, str]:
+    event = _payload(event)
+    data = event.get("data") or {}
+    event_type = str(event.get("type") or "")
+    if event_type == "audio_level":
+        return event_type, str(data.get("track", 0)), "latest"
+    return (
+        event_type,
+        str(data.get("track_id") or "default"),
+        str(data.get("segment_id") or "legacy"),
+    )
+
+
+def _state_key(event: dict[str, Any]) -> tuple[str, str]:
+    event_type = str(event.get("type") or "unknown")
+    data = event.get("data") or {}
+    if event_type == "interim_transcript":
+        return event_type, "|".join(_coalescible_key(event)[1:])
+    if event_type == "audio_level":
+        return event_type, str(data.get("track", 0))
+    if event_type in {"transcript", "transcript_updated"}:
+        # Keep the durable creation event as well as its latest revision. A
+        # reconnect snapshot must insert the row before applying the update.
+        return event_type, str(data.get("id") or data.get("sequence") or event.get("session_sequence"))
+    if event_type in {"question", "question_answered", "insight_updated", "insight_elevated"}:
+        return event_type, str(data.get("id") or event.get("session_sequence"))
+    return event_type, "latest"
+
+
+class SessionEventJournal:
+    """Assign a monotone sequence and retain a compact reconnect snapshot."""
+
+    def __init__(
+        self,
+        session_id: uuid.UUID | str,
+        *,
+        max_events: int = 512,
+        max_state_events: int = 512,
+    ) -> None:
+        self.session_id = str(session_id)
+        self.max_events = max(1, max_events)
+        self.max_state_events = max(1, max_state_events)
+        self.server_epoch = uuid.uuid4().hex
+        self._sequence = 0
+        self._generation = 0
+        self._events: deque[dict[str, Any]] = deque(maxlen=self.max_events)
+        self._state: OrderedDict[tuple[str, str], dict[str, Any]] = OrderedDict()
+
+    @property
+    def sequence(self) -> int:
+        return self._sequence
+
+    def open_generation(self) -> int:
+        self._generation += 1
+        return self._generation
+
+    def is_current_generation(self, generation: int) -> bool:
+        return generation == self._generation
+
+    def record(self, payload: dict[str, Any]) -> dict[str, Any]:
+        self._sequence += 1
+        event = copy.deepcopy(payload)
+        event["event_id"] = self._sequence
+        event["session_sequence"] = self._sequence
+        key = _state_key(event)
+        previous = self._state.get(key)
+        data = event.get("data") or {}
+        state_event = copy.deepcopy(event)
+        if (
+            event.get("type") == "interim_transcript"
+            and data.get("mode") == "append"
+            and previous is not None
+        ):
+            previous_data = previous.get("data") or {}
+            state_event["data"] = {
+                **data,
+                "text": str(previous_data.get("text") or "") + str(data.get("text") or ""),
+                # Reconnect state is self-contained. The live event remains a
+                # small append delta so a long call does not send quadratic data.
+                "mode": "replace",
+            }
+
+        self._events.append(event)
+        self._state.pop(key, None)
+        self._state[key] = state_event
+        while len(self._state) > self.max_state_events:
+            self._state.popitem(last=False)
+        return event
+
+    def latest(self, event_type: str) -> dict[str, Any] | None:
+        event = self._state.get((event_type, "latest"))
+        return copy.deepcopy(event) if event else None
+
+    def snapshot(
+        self,
+        after_sequence: int = 0,
+        *,
+        after_epoch: str | None = None,
+    ) -> dict[str, Any]:
+        earliest = self._events[0]["session_sequence"] if self._events else self._sequence + 1
+        full = (
+            (after_epoch is not None and after_epoch != self.server_epoch)
+            or after_sequence <= 0
+            or after_sequence < earliest - 1
+            or after_sequence > self._sequence
+        )
+        source = self._state.values() if full else self._events
+        events = [
+            copy.deepcopy(event)
+            for event in source
+            if full or event["session_sequence"] > after_sequence
+        ]
+        if not full:
+            # Status is state, not history. In particular, never replay an
+            # old `completed` immediately before a newer reconnect state.
+            latest_status = self._state.get(("status", "latest"))
+            events = [event for event in events if event.get("type") != "status"]
+            if latest_status and latest_status["session_sequence"] > after_sequence:
+                events.append(copy.deepcopy(latest_status))
+        events.sort(key=lambda event: event["session_sequence"])
+        return {
+            "type": "session_snapshot",
+            "data": {
+                "session_id": self.session_id,
+                "server_epoch": self.server_epoch,
+                "through_sequence": self._sequence,
+                "full": full,
+                "events": events,
+            },
+        }
+
+
+class ClientSendBuffer:
+    """Bound one client's pending sends while preserving final events.
+
+    Final transcripts and state changes apply backpressure when the client is
+    slow. Interim revisions may replace an older revision or be discarded.
+    """
+
+    def __init__(self, maxsize: int = 256) -> None:
+        self.maxsize = max(1, maxsize)
+        self._items: deque[dict[str, Any]] = deque()
+        self._condition = asyncio.Condition()
+        self._closed = False
+        self._needs_resync = False
+
+    def qsize(self) -> int:
+        return len(self._items)
+
+    @property
+    def needs_resync(self) -> bool:
+        return self._needs_resync
+
+    async def put(self, event: dict[str, Any]) -> bool:
+        coalescible = _payload(event).get("type") in COALESCIBLE_TYPES
+        async with self._condition:
+            if self._closed:
+                return False
+            if coalescible:
+                key = _coalescible_key(event)
+                for index, queued in enumerate(self._items):
+                    if _payload(queued).get("type") in COALESCIBLE_TYPES and _coalescible_key(queued) == key:
+                        self._items[index] = event
+                        self._condition.notify()
+                        return True
+                if len(self._items) >= self.maxsize:
+                    for index, queued in enumerate(self._items):
+                        if _payload(queued).get("type") in COALESCIBLE_TYPES:
+                            del self._items[index]
+                            self._items.append(event)
+                            self._condition.notify()
+                            return True
+                    return False
+                self._items.append(event)
+                self._condition.notify()
+                return True
+
+            if len(self._items) >= self.maxsize:
+                # Final state is already in the session journal. Waiting here
+                # would couple a slow UI back into transcript persistence and
+                # the audio producer. Signal the per-client sender to replace
+                # its stale backlog with a current snapshot instead.
+                self._needs_resync = True
+                return False
+            if self._closed:
+                return False
+            self._items.append(event)
+            self._condition.notify()
+            return True
+
+    async def replace_with_snapshot(self, event: dict[str, Any]) -> None:
+        """Atomically discard this client's stale backlog for one snapshot."""
+        async with self._condition:
+            if self._closed:
+                return
+            self._items.clear()
+            self._items.append(event)
+            self._needs_resync = False
+            self._condition.notify_all()
+
+    async def get(self) -> dict[str, Any]:
+        async with self._condition:
+            while not self._items and not self._closed:
+                await self._condition.wait()
+            if not self._items:
+                raise asyncio.CancelledError
+            event = self._items.popleft()
+            self._condition.notify_all()
+            return event
+
+    async def close(self) -> None:
+        async with self._condition:
+            self._closed = True
+            self._condition.notify_all()
+
+
+_journals: dict[str, SessionEventJournal] = {}
+
+
+def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
+    key = str(session_id)
+    journal = _journals.get(key)
+    if journal is None:
+        journal = SessionEventJournal(key)
+        _journals[key] = journal
+    return journal
+
+
+def latest_session_event(session_id: uuid.UUID | str, event_type: str) -> dict[str, Any] | None:
+    journal = _journals.get(str(session_id))
+    return journal.latest(event_type) if journal else None

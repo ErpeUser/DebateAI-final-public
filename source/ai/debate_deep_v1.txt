@@ -1,0 +1,11 @@
+Gegnerisches Argument: {claim}
+Meine Position: {own_position}
+Relevanter Verlauf: {relevant_context}
+Gelesene Belege: {evidence}
+
+Pruefe Praemissen und Schluss. Liefere die staerkste haltbare Widerlegung, ein
+konkretes Gegenbeispiel und bis zu zwei Anschlussfragen. Trenne Beleg,
+Interpretation und Unsicherheit. Formuliere kurz und direkt auf Deutsch.
+Logische Beziehungen zu frueheren Behauptungen nur mit vorhandener claim-ID angeben.
+verified nur bei direkter Textstuetzung; confidence >= 0.7 nur bei klarer
+Beziehung. Thematische Aehnlichkeit ist keine logische Beziehung.

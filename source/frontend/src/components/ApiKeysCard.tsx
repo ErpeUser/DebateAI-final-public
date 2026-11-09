@@ -1,0 +1,206 @@
+import { useCallback, useEffect, useState } from "react";
+import { useConfirm } from "./ConfirmProvider";
+import * as api from "../services/api";
+import type { CredentialInfo } from "../services/api";
+
+// Self-hosted servers are configured per endpoint in EndpointsCard, not as a
+// single workspace-wide key, so that provider is not listed here.
+const COMPATIBLE = api.OPENAI_COMPATIBLE_PROVIDER;
+
+const PROVIDER_LABELS: Record<string, string> = {
+  google: "Google (Gemini)",
+  openai: "OpenAI",
+};
+
+// Direct links to each provider's key-creation page so users never hunt
+// through console menus.
+const PROVIDER_KEY_PAGES: Record<string, string> = {
+  google: "https://aistudio.google.com/apikey",
+  openai: "https://platform.openai.com/api-keys",
+};
+
+interface ApiKeysCardProps {
+  onChanged?: () => void;
+}
+
+// The backend answers a save with 503 when the credentials master key cannot
+// be used (an unwrappable DPAPI blob after a password reset, a corrupt file);
+// its detail carries the recovery steps, so show that text rather than the
+// "API error 503:" prefix the client wraps every failure in.
+export function describeKeyError(err: unknown, fallback: string): string {
+  if (!(err instanceof Error)) return fallback;
+  return err.message.replace(/^API error \d+:\s*/, "") || fallback;
+}
+
+export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
+  const { confirm, toast } = useConfirm();
+  const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState<string | null>(null);
+  const [results, setResults] = useState<Record<string, { ok: boolean; message: string }>>({});
+
+  const load = useCallback(async () => {
+    try {
+      const all = await api.listCredentials();
+      setCredentials(all.filter((cred) => cred.provider !== COMPATIBLE));
+    } catch (err) {
+      console.error("Failed to load credentials", err);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const setResult = (provider: string, ok: boolean, message: string) =>
+    setResults((prev) => ({ ...prev, [provider]: { ok, message } }));
+
+  const handleSave = async (provider: string) => {
+    const key = (inputs[provider] || "").trim();
+    if (!key) return;
+    setBusy(provider);
+    try {
+      const saved = await api.saveCredential(provider, key);
+      setInputs((prev) => ({ ...prev, [provider]: "" }));
+      setResult(provider, saved.connected, saved.message ?? "Gespeichert");
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setResult(provider, false, describeKeyError(err, "Speichern fehlgeschlagen"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleTest = async (provider: string) => {
+    setBusy(provider);
+    try {
+      const res = await api.testCredential(provider);
+      setResult(provider, res.ok, res.message);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setResult(provider, false, describeKeyError(err, "Test fehlgeschlagen"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  const handleRemove = async (provider: string) => {
+    const ok = await confirm({
+      title: "API-Schlüssel entfernen",
+      message: `Gespeicherten ${provider}-Schlüssel entfernen? Davon abhängige Live-Transkription und Analysen funktionieren erst wieder nach dem Hinterlegen eines neuen Schlüssels.`,
+      confirmLabel: "Schlüssel entfernen",
+      tone: "danger",
+    });
+    if (!ok) return;
+    setBusy(provider);
+    try {
+      await api.deleteCredential(provider);
+      setResult(provider, true, "Entfernt");
+      toast(`${provider}-Schlüssel entfernt`);
+      await load();
+      onChanged?.();
+    } catch (err) {
+      setResult(provider, false, describeKeyError(err, "Entfernen fehlgeschlagen"));
+    } finally {
+      setBusy(null);
+    }
+  };
+
+  return (
+    <div className="rounded-xl bg-surface p-5 shadow-sm">
+      <h3 className="font-display text-base font-bold text-brand-dark-gray">Cloud-Anbieterzugänge</h3>
+      <p className="mt-1 mb-4 font-body text-xs text-brand-gray leading-relaxed">
+        Arbeitsbereichsschlüssel werden verschlüsselt gespeichert und von allen Agenten verwendet. Umgebungsvariablen bleiben als Rückfall verfügbar.
+        Selbst gehostete Server werden weiter unten eingerichtet und benötigen normalerweise keinen Schlüssel.
+      </p>
+      <div className="space-y-4">
+        {credentials.map((cred) => {
+          const isBusy = busy === cred.provider;
+          const result = results[cred.provider];
+          return (
+            <div key={cred.provider} className={`transition-opacity ${isBusy ? "opacity-70" : ""}`}>
+              <div className="flex items-center gap-2 mb-1">
+                <label className="font-body text-xs font-medium text-brand-gray">
+                  {PROVIDER_LABELS[cred.provider] || cred.provider}
+                </label>
+                {cred.configured || cred.env_fallback ? (
+                  <>
+                    <span className="inline-flex rounded-full bg-brand-teal px-2 py-0.5 text-[10px] font-medium text-white">
+                      {cred.masked || "Schlüssel gesetzt"}
+                    </span>
+                    {cred.env_fallback && (
+                      <span className="inline-flex rounded-full bg-brand-light-gray-1 px-2 py-0.5 text-[10px] font-medium text-brand-dark-gray">
+                        Umgebungsvariable
+                      </span>
+                    )}
+                    <span
+                      className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+                      style={{ backgroundColor: cred.connected ? "#72d54a" : "#ff9e16" }}
+                      title={cred.connected ? "Dieser Schlüssel hat den Verbindungstest bestanden" : "Mit Test prüfen; nicht bestätigte fehlerhafte Schlüssel deaktivieren die Modelle dieses Anbieters"}
+                    >
+                      {cred.connected ? "Verbunden" : "Nicht geprüft"}
+                    </span>
+                  </>
+                ) : (
+                  <span className="inline-flex rounded-full bg-brand-light-gray-1 px-2 py-0.5 text-[10px] font-medium text-brand-dark-gray">
+                    Nicht eingerichtet
+                  </span>
+                )}
+                {PROVIDER_KEY_PAGES[cred.provider] && (
+                  <a
+                    href={PROVIDER_KEY_PAGES[cred.provider]}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="font-body text-[10px] font-medium text-brand-teal hover:underline"
+                  >
+                    Schlüssel beziehen
+                  </a>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <input
+                  type="password"
+                  autoComplete="new-password"
+                  spellCheck={false}
+                  aria-label={`${PROVIDER_LABELS[cred.provider] || cred.provider} API-Schlüssel`}
+                  placeholder={cred.configured ? "Schlüssel ersetzen ..." : "API-Schlüssel einfügen ..."}
+                  value={inputs[cred.provider] || ""}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, [cred.provider]: e.target.value }))}
+                  className="w-full max-w-md rounded border border-brand-light-gray-1 bg-surface px-3 py-1.5 font-mono text-sm text-brand-dark-gray focus:border-brand-teal"
+                />
+                <button
+                  onClick={() => handleSave(cred.provider)}
+                  disabled={isBusy || !(inputs[cred.provider] || "").trim()}
+                  className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-opacity disabled:opacity-40"
+                >
+                  Speichern
+                </button>
+                <button
+                  onClick={() => handleTest(cred.provider)}
+                  disabled={isBusy || (!cred.configured && !cred.env_fallback)}
+                  className="rounded border border-brand-light-gray-1 px-3 py-1.5 font-body text-xs font-medium text-brand-dark-gray transition-opacity disabled:opacity-40"
+                >
+                  Prüfen
+                </button>
+                {cred.configured && (
+                  <button
+                    onClick={() => handleRemove(cred.provider)}
+                    disabled={isBusy}
+                    className="rounded px-2 py-1.5 font-body text-xs text-brand-mid-gray hover:text-red-600 transition-colors disabled:opacity-40"
+                  >
+                    Entfernen
+                  </button>
+                )}
+              </div>
+              {result && (
+                <p className={`mt-1 font-body text-xs ${result.ok ? "text-brand-teal" : "text-red-600"}`}>
+                  {result.message}
+                </p>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}

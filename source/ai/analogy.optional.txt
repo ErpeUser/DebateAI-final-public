@@ -1,0 +1,2 @@
+## ANALOGIE
+Eine Analogie nur liefern, wenn sie den konkreten Punkt wirklich klarer macht; sonst `analogy` leer lassen.

@@ -1,0 +1,164 @@
+name: Structure
+
+# Sentrux structural gate in CI (ALP-187).
+#
+# WHY THIS GATES AGAINST A COMPARISON POINT, NOT THE COMMITTED BASELINE.
+# Gating a change against `.sentrux/baseline.json` charges it for inherited debt
+# it did not cause, which is noise rather than a gate. So this builds a throwaway
+# baseline from what the change branched from - the PR's base commit, or for a
+# push the previous master commit - and compares the head against it. The
+# question it answers is the useful one: "does this change make the structure
+# worse than what came before it?" With no comparison point available it falls
+# back to the committed baseline rather than skipping the gate.
+#
+# THIS JOB IS NON-BLOCKING (continue-on-error) FOR ONE REMAINING REASON:
+# it has never run on Linux. Sentrux is verified only on the maintainer's
+# Windows machine; plugin installation and path-argument handling on a hosted
+# runner are unverified. Treat the first runs as a probe.
+#
+# The second reason is gone: ALP-183 landed and refreshed the baseline (quality
+# 6469, 0 cycles), and the Rules check step below now tolerates exactly the two
+# generated lockfiles that Sentrux 0.5.7 cannot exempt by path. Promote this to
+# blocking by deleting `continue-on-error` once the first Linux runs are green.
+
+on:
+  pull_request:
+  # This repository merges locally and pushes trains straight to master, so
+  # PR-only coverage meant the gate never evaluated the branch it protects
+  # (ALP-266). No schedule: structure only moves when code moves, and
+  # SENTRUX_VERSION is pinned, so a timer would re-measure unchanged code.
+  push:
+    branches: [master]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+concurrency:
+  group: structure-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Pinned, not "latest": the baseline records the version that produced it, and
+  # a different analyzer version can move the metrics on unchanged code.
+  SENTRUX_VERSION: v0.5.7
+
+jobs:
+  sentrux:
+    name: Sentrux structural gate
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - name: Check out the head
+        uses: actions/checkout@v4
+        with:
+          path: head
+
+      - name: Check out the base
+        if: github.event_name == 'pull_request'
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
+
+      # A push's "base" is where master stood before it, so the gate asks the
+      # same question for a merge train that it asks for a PR. Skipped when the
+      # before-SHA is the null commit (first push, or a force push whose parent
+      # is gone), and the gate step falls back to the committed baseline.
+      - name: Check out the previous master commit
+        if: >-
+          github.event_name == 'push' &&
+          github.event.before != '0000000000000000000000000000000000000000'
+        uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: ${{ github.event.before }}
+          path: base
+
+      - name: Install Sentrux
+        run: |
+          set -euo pipefail
+          # sentrux-linux-x86_64 is dynamically linked against GTK and dies with
+          # "error while loading shared libraries: libgtk-3.so.0" without it.
+          # The hosted runner image happens to carry GTK today because it ships
+          # a browser, but that is incidental to this job and a slimmer image
+          # would break it, so declare the dependency rather than inherit it.
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq libgtk-3-0t64 || sudo apt-get install -y -qq libgtk-3-0
+          curl -fsSL -o /tmp/sentrux \
+            "https://github.com/sentrux/sentrux/releases/download/${SENTRUX_VERSION}/sentrux-linux-x86_64"
+          chmod +x /tmp/sentrux
+          sudo mv /tmp/sentrux /usr/local/bin/sentrux
+          sentrux --version
+
+      - name: Install language plugins
+        run: |
+          set -euo pipefail
+          sentrux plugin add-standard
+          # Logged because .sentrux/baseline.json pins plugin versions and the
+          # registry can move: if the metrics ever shift unexpectedly, compare
+          # this list against plugin_versions in the baseline first.
+          sentrux plugin list
+
+      - name: Rules check
+        working-directory: head
+        run: |
+          # Sentrux 0.5.7 has no per-path max_file_lines exception and applies
+          # the constraint to tracked JSON, so the two generated lockfiles
+          # always report and a plain `sentrux check` can never be green here.
+          # A permanently red gate is one nobody reads, so tolerate exactly the
+          # two documented exceptions and fail on anything else (ALP-266).
+          set +e
+          output=$(sentrux check . 2>&1)
+          set -e
+          printf '%s\n' "$output"
+          violated_rules=$(printf '%s\n' "$output" \
+            | grep -oE '^✗ \[[A-Za-z]+\] [a-z_]+' | awk '{print $NF}' | sort -u || true)
+          offenders=$(printf '%s\n' "$output" \
+            | grep -oE '^[[:space:]]+[^[:space:]]+ \([0-9]+ lines\)' \
+            | awk '{print $1}' | sort -u || true)
+          unexpected_rules=$(printf '%s\n' "$violated_rules" | grep -v '^max_file_lines$' | grep -v '^$' || true)
+          unexpected_files=$(printf '%s\n' "$offenders" \
+            | grep -vE '^(docs-site|frontend)/package-lock\.json$' | grep -v '^$' || true)
+          if [ -n "$unexpected_rules" ] || [ -n "$unexpected_files" ]; then
+            echo "::error::sentrux check reported findings beyond the approved lockfile exceptions"
+            [ -n "$unexpected_rules" ] && echo "unexpected rules: $unexpected_rules"
+            [ -n "$unexpected_files" ] && echo "unexpected files: $unexpected_files"
+            exit 1
+          fi
+          echo "Only the two approved generated lockfiles were reported."
+
+      - name: Gate the head against its base
+        run: |
+          set -euo pipefail
+          if [ ! -d base ]; then
+            # No comparison point (first push, force push, or manual dispatch).
+            # Fall back to the committed baseline rather than skipping the gate
+            # entirely, which is what let master drift unmeasured.
+            echo "No base checkout for this event; gating against the committed baseline."
+            cd head && sentrux gate .
+            exit 0
+          fi
+          # --save writes base/.sentrux/baseline.json, replacing the committed
+          # one in this throwaway checkout only.
+          sentrux gate --save base
+          cp base/.sentrux/baseline.json head/.sentrux/baseline.json
+          cd head && sentrux gate .
+
+      - name: Note the known-red state in the run summary
+        if: failure()
+        run: |
+          {
+            echo "### Sentrux reported a problem"
+            echo
+            echo "This job is non-blocking. One known cause unrelated to the change:"
+            echo
+            echo "- This job had never run on Linux before, so an install or"
+            echo "  argument-handling failure here is a workflow bug, not a code regression."
+            echo
+            echo "Everything else is real. The Rules check step tolerates only the two"
+            echo "generated lockfiles, so any other finding there is genuine debt. The"
+            echo "gate step compares this change against what it branched from - the PR"
+            echo "base, or the previous \`master\` commit on a push - so a failure *there*"
+            echo "is a structural regression introduced by this change."
+          } >> "$GITHUB_STEP_SUMMARY"

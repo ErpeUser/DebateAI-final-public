@@ -1,0 +1,31 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-08",
+  "artifacts": [
+    {
+      "filename": "backend/models/silero_vad.onnx",
+      "source": "https://github.com/snakers4/silero-vad/raw/5cd7945676eb32225748052e2e6a0580e4686a08/src/silero_vad/data/silero_vad.onnx",
+      "revision": "5cd7945676eb32225748052e2e6a0580e4686a08",
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+      "size_bytes": 2327524,
+      "license": "MIT"
+    },
+    {
+      "filename": "backend/models/voxceleb_resnet152_LM.onnx",
+      "source": "https://huggingface.co/Wespeaker/wespeaker-voxceleb-resnet152-LM/resolve/4adba1525a6c9d5fff74b6df43a6ec97a86c4112/voxceleb_resnet152_LM.onnx",
+      "revision": "4adba1525a6c9d5fff74b6df43a6ec97a86c4112",
+      "sha256": "5b734353b4b410e222bbd124dd095537642237ad895727d18a3b9fee330262a8",
+      "size_bytes": 79158228,
+      "license": "Apache-2.0"
+    },
+    {
+      "filename": "backend/models/voxceleb_resnet34_LM.onnx",
+      "source": "https://huggingface.co/openspeech/wespeaker-models/resolve/ee89d24b81a8b2940305c258b8829ea9b0a4679f/voxceleb_resnet34_LM.onnx",
+      "revision": "ee89d24b81a8b2940305c258b8829ea9b0a4679f",
+      "sha256": "7bb2f06e9df17cdf1ef14ee8a15ab08ed28e8d0ef5054ee135741560df2ec068",
+      "size_bytes": 27787264,
+      "license": "Apache-2.0",
+      "optional": true
+    }
+  ]
+}

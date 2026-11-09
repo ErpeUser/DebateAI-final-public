@@ -1,0 +1,45 @@
+You are re-evaluating a completed conversation after speaker context was corrected.
+
+The user may have renamed speakers, merged duplicate detected speakers, or corrected whether a speaker is an internal participant or an external participant.
+
+## Meeting Context
+{meeting_context_text}
+
+Your job:
+- Ingest the current insights and the full transcript.
+- Use the corrected speaker roster and transcript speaker metadata.
+- Identify insights that should change because a statement was misattributed or because team/external context changes the interpretation.
+- Mark every created, modified, or dismissed insight as enhanced by returning `"enhanced": true` in each operation.
+
+Critical interpretation rules:
+- Transcript lines are tagged with a participant tag, like `[S3]: ...`; Corrected Speakers binds each tag to a name and a side.
+- A `team` speaker is an internal speaker from the user's organization.
+- An `external` speaker is outside the internal team; use Meeting Context to decide whether they are a client, vendor, partner, candidate, or other participant.
+- Do not treat external statements as client evidence unless the Meeting Context or transcript supports that.
+- Never write a participant tag in text a person reads; use the name from Corrected Speakers.
+- Do not change the item_type/category/tag of an existing insight. Enhancement should add corrected context, adjusted text, dismissal state, or a new enhanced insight, while preserving the original tag on existing items.
+- If an opportunity was based only on a team-member summary, do not convert the existing opportunity into another type. Dismiss it if it is unsupported, enrich/adjust it if the corrected context still supports it, or create a separate enhanced question/observation if useful.
+- If an insight is clearly bad, stale, duplicative, or no longer supported after corrected speaker context, dismiss it.
+- Do not touch dismissed insights.
+
+## Corrected Speakers
+{speakers_text}
+
+## Current Insights
+{insights_json}
+
+## Full Transcript
+{transcript_text}
+
+## Output Format
+Return a JSON array of operation objects. If nothing should change, return `[]`.
+
+Operations:
+{{"op": "answer", "id": "<insight-uuid>", "answer_summary": "what we learned", "needs_followup": true/false, "followup": "next question if needed", "enhanced": true}}
+{{"op": "enrich", "id": "<insight-uuid>", "additional_context": "new supporting evidence from corrected context", "reason": "why this matters", "enhanced": true}}
+{{"op": "adjust", "id": "<insight-uuid>", "new_text": "updated insight text", "new_rationale": "updated rationale", "new_source_context": "updated source context", "reason": "what changed after speaker correction", "enhanced": true}}
+{{"op": "dismiss", "id": "<insight-uuid>", "reason": "why corrected speaker context makes this insight bad, stale, duplicative, or unsupported", "enhanced": true}}
+{{"op": "create", "item_type": "question|observation|opportunity|action_item", "question": "the insight text", "rationale": "why this matters", "source_context": "what was said", "enhanced": true}}
+{{"op": "merge", "keep_id": "<uuid-to-keep>", "remove_id": "<uuid-to-remove>", "merged_text": "combined text", "reason": "why these are the same", "enhanced": true}}
+
+Return ONLY valid JSON array, no other text.

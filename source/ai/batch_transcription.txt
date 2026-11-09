@@ -1,0 +1,1 @@
+Transcribe this audio exactly as spoken. Output ONLY the transcribed text, nothing else. If no speech is detected, output an empty string.

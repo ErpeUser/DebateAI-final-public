@@ -1,0 +1,21 @@
+import unittest
+from types import SimpleNamespace
+
+from app.main import app
+from app.services.briefing_document import BriefingData, render_record
+
+
+class DebateBrandingTests(unittest.TestCase):
+    def test_api_and_export_use_the_active_product_name(self):
+        session = SimpleNamespace(name="Testdebatte", meeting_type="general")
+
+        document = render_record(BriefingData(session=session))
+
+        self.assertEqual("Debate AI", app.title)
+        self.assertIn("<b>Debate AI</b>", document)
+        self.assertIn("Prepared by Debate AI", document)
+        self.assertNotIn("Prepared by Backchannel", document)
+
+
+if __name__ == "__main__":
+    unittest.main()

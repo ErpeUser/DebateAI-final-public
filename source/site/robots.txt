@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://backchannel.page/sitemap.xml
+Sitemap: https://backchannel.page/docs/sitemap-index.xml

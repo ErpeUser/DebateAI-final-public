@@ -1,0 +1,138 @@
+{
+  "schema": 1,
+  "generated_at": "2026-11-09",
+  "scope": "Debate AI workspace runtime, packaging, rollback and test artifacts",
+  "policy": {
+    "no_destructive_cleanup_performed": true,
+    "unknown_acl_paths_preserved": true,
+    "hash_algorithm": "sha256",
+    "removed": [],
+    "merged": []
+  },
+  "artifacts": [
+    {
+      "path": "backend/models/silero_vad.onnx",
+      "status": "needed",
+      "owner": "app-runtime",
+      "reason": "Silero VAD runtime weight",
+      "size_bytes": 2327524,
+      "sha256": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+      "rollback": "model-manifest revision 5cd7945676eb32225748052e2e6a0580e4686a08"
+    },
+    {
+      "path": "backend/models/voxceleb_resnet152_LM.onnx",
+      "status": "needed",
+      "owner": "app-runtime",
+      "reason": "primary speaker embedding runtime weight",
+      "size_bytes": 79158228,
+      "sha256": "5b734353b4b410e222bbd124dd095537642237ad895727d18a3b9fee330262a8",
+      "rollback": "model-manifest revision 4adba1525a6c9d5fff74b6df43a6ec97a86c4112"
+    },
+    {
+      "path": "desktop/ffmpeg/ffmpeg.exe",
+      "status": "needed",
+      "owner": "app-runtime",
+      "reason": "bundled LGPL media conversion for imports",
+      "size_bytes": 136181760,
+      "sha256": "5942759d12174b996c643bb7c6d5d3002c16584ec5e1ce8949819b58f307b6b8",
+      "rollback": "desktop/scripts/download_ffmpeg.py source and extracted LICENSE.txt"
+    },
+    {
+      "path": "desktop/pgsql",
+      "status": "needed",
+      "owner": "app-runtime",
+      "reason": "embedded PostgreSQL runtime for desktop package",
+      "version": "16.4.0",
+      "rollback": "desktop/scripts/download_pg.py pinned PG_VERSION"
+    },
+    {
+      "path": "frontend/dist",
+      "status": "generated-staging",
+      "owner": "release-build",
+      "reason": "current frontend production output consumed by desktop/web packaging",
+      "build_evidence": "npm run build -> 2139 modules",
+      "rollback": "source and previous release archives under dist/"
+    },
+    {
+      "path": "dist/Backchannel-DebateAI-windows-x64.zip",
+      "status": "rollback-candidate",
+      "owner": "release-staging",
+      "reason": "current Windows archive used by release/archive smoke tests",
+      "size_bytes": 339972111,
+      "sha256": "130894348f29aa490eee499e7a956c613d8d8ffc5fab11f869c09b561088843e",
+      "rollback": "immutable archive hash and desktop smoke/update tests"
+    },
+    {
+      "path": "dist/BackchannelUpdater.exe",
+      "status": "needed",
+      "owner": "release-staging",
+      "reason": "desktop updater executable required by update flow",
+      "size_bytes": 7920897,
+      "sha256": "b5528bd04e3cff158eae337d91d1d2423e5a3392283c19546b7fad1d501a2263",
+      "rollback": "desktop updater tests and archive smoke"
+    },
+    {
+      "path": "dist/.Backchannel*.previous*",
+      "status": "rollback-candidate",
+      "owner": "release-staging",
+      "reason": "previous-version recovery assets; exact lifecycle requires release-owner confirmation",
+      "rollback": "preserve until the corresponding release retention window expires"
+    },
+    {
+      "path": "backend/.test-tmp-* and backend/tmp*",
+      "status": "open-unreviewed",
+      "owner": "unknown-test-runtime",
+      "reason": "test-created paths with restrictive ACLs; ownership and safe removal were not proven",
+      "rollback": "do not delete in this audit"
+    },
+    {
+      "path": "artifacts/real-smoke/german-asr.wav",
+      "status": "evidence-candidate",
+      "owner": "acceptance-evidence",
+      "reason": "existing 6.575-second German ASR control recording",
+      "size_bytes": 210446,
+      "sha256": "d8e304e100ad8f20e17610141772e89511df4dee31df0fbedd964b0ea022f69f",
+      "rollback": "preserve original bytes; not sufficient for A06/A21 acceptance"
+    },
+    {
+      "path": "backend/.tmp/asr-real/phrase-window.wav",
+      "status": "evidence-candidate",
+      "owner": "acceptance-evidence",
+      "reason": "existing 55-second real German ASR evaluation excerpt",
+      "size_bytes": 1760078,
+      "sha256": "1e4cd01abfb54b9ad5da900d49f432d7bc0a97e9e2ba9ca2dd79d4d204ce522e",
+      "rollback": "preserve original bytes; excerpt is below the A06 duration gate"
+    },
+    {
+      "path": "backend/.tmp/asr-real/window-a.wav",
+      "status": "evidence-candidate",
+      "owner": "acceptance-evidence",
+      "reason": "existing 18-second real German ASR evaluation excerpt",
+      "size_bytes": 576078,
+      "sha256": "2eaa1dece1eaa67aaba5385249e5a4f262a95636fd4f369f6929c4e50675cb13",
+      "rollback": "preserve original bytes; excerpt is below the A06 duration gate"
+    },
+    {
+      "path": "backend/.tmp/asr-real/window-b.wav",
+      "status": "evidence-candidate",
+      "owner": "acceptance-evidence",
+      "reason": "existing 24-second real German ASR evaluation excerpt",
+      "size_bytes": 768078,
+      "sha256": "053d3731c5f389a0e94cf13190bdd073d30faad09c5ae0d6b3575c49e09508a9",
+      "rollback": "preserve original bytes; excerpt is below the A06 duration gate"
+    },
+    {
+      "path": "docs/evidence/asr-local-wav-decision-2026-11-09.json",
+      "status": "evidence-record",
+      "owner": "acceptance-evidence",
+      "reason": "reproducible local Whisper-vs-Parakeet preflight on the existing WAVs",
+      "rollback": "retain alongside the original WAV hashes; this is not an A21 pass"
+    }
+  ],
+  "notes": [
+    "No file was deleted, overwritten, renamed, or cleaned by this inventory.",
+    "The current inventory intentionally does not turn absence of a text match into proof that an ACL-protected path is unused.",
+    "Existing real German clips are retained as evidence candidates only; their duration and missing same-load dual-run metadata do not satisfy A06 or A21.",
+    "A real hardware/installed-EXE snapshot remains a manual P0.1/P3.5 gate."
+  ]
+}
