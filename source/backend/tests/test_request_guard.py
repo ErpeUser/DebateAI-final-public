@@ -146,6 +146,21 @@ class MiddlewareTests(unittest.TestCase):
         with self.client.websocket_connect("/ws/echo", headers={"Host": "localhost:8474"}) as ws:
             self.assertEqual("hi", ws.receive_text())
 
+    def test_websocket_instance_token_uses_subprotocol_not_query(self):
+        os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = "test-token"
+        with self.client.websocket_connect(
+            "/ws/echo",
+            headers={"Host": "localhost:8474"},
+            subprotocols=["backchannel.instance.test-token"],
+        ) as ws:
+            self.assertEqual("hi", ws.receive_text())
+            self.assertEqual("backchannel.instance.test-token", ws.accepted_subprotocol)
+        with self.assertRaises(Exception):
+            self.client.websocket_connect(
+                "/ws/echo?instance_token=test-token",
+                headers={"Host": "localhost:8474"},
+            )
+
     def test_websocket_from_foreign_origin_is_refused_even_with_loopback_host(self):
         # A hostile page can always put a loopback URL in new WebSocket(...);
         # the browser still stamps the page's own Origin on the handshake.
