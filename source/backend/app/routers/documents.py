@@ -10,7 +10,7 @@ from app.models import Document
 from app.schemas import DocumentOut
 from app.services.pii import shield
 from app.services.file_parsing import parse_docx, parse_markdown, parse_text
-from app.services.gemini_files import upload_and_summarize
+from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
 from app.services.privacy import is_local_only
 
 router = APIRouter(prefix="/api/sessions/{session_id}/documents", tags=["documents"])
@@ -104,5 +104,8 @@ async def delete_document(session_id: uuid.UUID, document_id: uuid.UUID, db: Asy
     doc = await db.get(Document, document_id)
     if not doc or doc.session_id != session_id:
         raise HTTPException(404, "Document not found")
+    remote_uri = doc.gemini_file_uri or ""
     await db.delete(doc)
     await db.commit()
+    if remote_uri:
+        await delete_uploaded_file(remote_uri)
