@@ -325,6 +325,14 @@ async def set_session_agents(
     if not session:
         raise HTTPException(404, "Session not found")
 
+    if len(overrides) > 64:
+        raise HTTPException(422, "At most 64 agent overrides are allowed")
+    known_result = await db.execute(select(AgentConfig.slug))
+    known_slugs = {row[0] for row in known_result.all()}
+    unknown = sorted({ov.agent_slug for ov in overrides} - known_slugs)
+    if unknown:
+        raise HTTPException(422, f"Unknown agent slug(s): {', '.join(unknown[:5])}")
+
     # Delete existing overrides
     existing = await db.execute(
         select(SessionAgentOverride).where(SessionAgentOverride.session_id == session_id)
