@@ -471,7 +471,7 @@ class AgentConfigOut(BaseModel):
 
 # --- Session Agent Overrides ---
 class SessionAgentOverrideSet(BaseModel):
-    agent_slug: str
+    agent_slug: str = Field(min_length=1, max_length=50)
     enabled: bool
 
 
