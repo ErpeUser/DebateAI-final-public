@@ -527,6 +527,25 @@ async def _run_audio_pipeline(
         except Exception:
             pass
     finally:
+        # Preserve sub-frame tails from either track before closing the
+        # persistent writers and gateway sender.
+        try:
+            mixer_tail = mixer.flush()
+            if mixer_tail:
+                mixed_tail, mic_tail, system_tail = mixer_tail
+                if audio_writers:
+                    _append_audio_frames(
+                        audio_writers,
+                        (mixed_tail, mic_tail, system_tail),
+                        state.split_track_established,
+                    )
+                if state.gateway_available:
+                    try:
+                        gateway_queue.put_nowait(mixed_tail)
+                    except asyncio.QueueFull:
+                        state.gateway_frames_dropped += 1
+        except Exception:
+            logger.exception("Audio mixer tail flush failed during shutdown")
         try:
             gateway_queue.put_nowait(None)
         except asyncio.QueueFull:
