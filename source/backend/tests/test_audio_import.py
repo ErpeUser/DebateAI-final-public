@@ -12,7 +12,7 @@ from app.routers.imports import _diarize_pcm, _transcribe_audio_diarized, import
 class FakeUpload:
     filename = "recording.wav"
 
-    async def read(self):
+    async def read(self, _size=-1):
         return b"audio"
 
 
