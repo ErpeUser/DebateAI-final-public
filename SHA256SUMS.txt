@@ -1,0 +1,3 @@
+a7aff2c633ac5e7c6996b8f05cf76ea9a917a65dfe8a51f00308c647ded98e8a  Backchannel-windows-x64.zip
+454a38a73b51e0a7e0a1b61d0bcf2945a6ce2b00564957a96af8e2d0ca88fd4c  release-manifest.json
+b56a60a1a1e529398ebab0f60128e00ad09982990d9843777a02cc14f9888fc9  DebateAI-V6-windows-x64/Backchannel/Backchannel.exe
