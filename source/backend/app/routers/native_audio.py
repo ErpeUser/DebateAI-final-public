@@ -34,7 +34,7 @@ class NativeAudioProbe(BaseModel):
 
 
 class NativeAudioStop(BaseModel):
-    session_id: uuid.UUID
+    session_id: uuid.UUID | None = None
 
 
 @router.get("/status")
@@ -77,11 +77,15 @@ async def start_native_audio(request: NativeAudioStart, db: AsyncSession = Depen
 
 
 @router.post("/stop")
-async def stop_native_audio(request: NativeAudioStop, db: AsyncSession = Depends(get_db)):
-    session = await db.get(Session, request.session_id)
-    if session is None:
-        raise HTTPException(status_code=404, detail="Session not found")
-    return await native_windows_audio.stop_session(request.session_id)
+async def stop_native_audio(request: NativeAudioStop | None = None, db: AsyncSession = Depends(get_db)):
+    if request and request.session_id:
+        session = await db.get(Session, request.session_id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return await native_windows_audio.stop_session(request.session_id)
+    # Backward-compatible desktop shutdown; the middleware still requires the
+    # instance token for this mutating route.
+    return await native_windows_audio.stop()
 
 
 @router.post("/probe")
