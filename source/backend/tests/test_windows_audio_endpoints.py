@@ -1,3 +1,4 @@
+import os
 import unittest
 from unittest.mock import patch
 
@@ -83,6 +84,8 @@ class WindowsAudioEndpointTests(unittest.TestCase):
             )
 
     def test_mmdevice_id_resolves_only_to_the_wasapi_capture_path(self):
+        if os.name != "nt":
+            self.skipTest("WASAPI endpoint selection is Windows-specific")
         base = {
             "name": "USB Mic",
             "maxInputChannels": 1,
