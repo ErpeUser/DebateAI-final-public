@@ -101,7 +101,7 @@ def _parse_event(event: dict) -> str | None:
     if not text:
         return None
     if _is_hallucination(text):
-        logger.info(f"Filtered hallucinated realtime transcription: '{text[:80]}'")
+        logger.info("Filtered hallucinated realtime transcription (%d chars)", len(text))
         return None
     return text
 
