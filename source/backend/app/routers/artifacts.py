@@ -49,7 +49,7 @@ def _looks_like_excel_formula(value: str) -> bool:
         return False
     if value[0] in _EXCEL_CONTROL_PREFIXES:
         return True
-    stripped = value.lstrip(" \\t\\r\\n")
+    stripped = value.lstrip(" \t\r\n")
     return bool(stripped) and stripped[0] in _EXCEL_FORMULA_PREFIXES
 
 
