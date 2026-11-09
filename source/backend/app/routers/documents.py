@@ -17,6 +17,8 @@ router = APIRouter(prefix="/api/sessions/{session_id}/documents", tags=["documen
 
 # Bound for the Privacy First local excerpt stored as the document summary.
 LOCAL_EXTRACT_CHARS = 4000
+MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_DOCUMENT_FILENAME_CHARS = 255
 
 _LOCAL_EXTRACT_EXTS = {".txt", ".md", ".markdown", ".docx"}
 
@@ -57,7 +59,10 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 
 @router.post("", response_model=DocumentOut, status_code=201)
 async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
-    content = await file.read()
+    filename = (file.filename or "document").strip()[:MAX_DOCUMENT_FILENAME_CHARS]
+    content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
+    if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
+        raise HTTPException(413, "Document exceeds the 25 MiB upload limit")
     shielded = (await shield.get_settings(db)).enabled
     if await is_local_only() or shielded:
         # With the PII Shield on, the file itself never leaves the machine:
@@ -65,11 +70,11 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
         # to any model.
         doc = Document(
             session_id=session_id,
-            filename=file.filename,
+            filename=filename,
             mime_type=file.content_type or "application/octet-stream",
             gemini_file_uri="",
             summary=await shield.protect_text(
-                db, session_id, local_extract_summary(content, file.filename, shielded=shielded)
+                db, session_id, local_extract_summary(content, filename, shielded=shielded)
             ),
             summary_source="local_extract",
         )
@@ -78,7 +83,7 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
             session_id=session_id,
             filename=file.filename,
             mime_type=file.content_type or "application/octet-stream",
-            gemini_file_uri=await upload_and_summarize(content, file.filename, file.content_type),
+            gemini_file_uri=await upload_and_summarize(content, filename, file.content_type),
         )
     db.add(doc)
     await db.commit()
