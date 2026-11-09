@@ -172,13 +172,23 @@ async def get_segment_audio(
     segment = result.scalar_one_or_none()
     if not segment or not segment.audio_path:
         raise HTTPException(404, "No stored audio for this segment")
-    path = data_dir() / segment.audio_path
+    audio_root = data_dir().resolve()
+    path = (audio_root / segment.audio_path).resolve()
+    try:
+        path.relative_to(audio_root)
+    except ValueError:
+        raise HTTPException(404, "Stored audio file is unavailable") from None
     if not path.exists():
         raise HTTPException(404, "Stored audio file is missing")
 
     if not raw and segment.mic_audio_path and segment.system_audio_path:
-        mic_path = data_dir() / segment.mic_audio_path
-        system_path = data_dir() / segment.system_audio_path
+        mic_path = (audio_root / segment.mic_audio_path).resolve()
+        system_path = (audio_root / segment.system_audio_path).resolve()
+        try:
+            mic_path.relative_to(audio_root)
+            system_path.relative_to(audio_root)
+        except ValueError:
+            raise HTTPException(404, "Stored audio file is unavailable") from None
         cleaned = path.with_name(f"{path.stem}_clean.wav")
         if mic_path.exists() and system_path.exists():
             try:
