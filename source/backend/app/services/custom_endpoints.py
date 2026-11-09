@@ -14,6 +14,7 @@ route an id to the OpenAI-compatible dialect without touching the database.
 """
 
 import ipaddress
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -26,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CustomEndpoint
 from app.services.privacy_state import get_local_only
-from app.services.redaction import exempt_from_redaction, redact_text
+from app.services.redaction import redact_text
 from app.services.secrets import decrypt_value, encrypt_value
 
 logger = logging.getLogger(__name__)
@@ -135,19 +136,17 @@ def is_on_prem(base_url: str) -> bool:
     host = (urlparse(base_url).hostname or "").lower()
     if not host:
         return False
-    if host in _DOCKER_HOST_ALIASES or host.endswith(_PRIVATE_SUFFIXES):
+    if host in _DOCKER_HOST_ALIASES:
         return True
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
-        if "." in host:
-            # A dotted name that is not a canonical IP is a public hostname.
-            return False
-        # No dot: either an alternate IP encoding (judge by its real value) or a
-        # genuine single-label LAN hostname.
+        # Hostname suffixes and arbitrary single-label names are not proof of
+        # locality. Only an explicit Docker alias or a literal private address
+        # opts into Privacy First routing.
         numeric = _numeric_ipv4(host)
         if numeric is None:
-            return True
+            return False
         address = numeric
     if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
         # ::ffff:8.8.8.8 must be judged by its embedded IPv4 on every
@@ -220,9 +219,8 @@ async def list_endpoints(db: AsyncSession) -> list[CustomEndpoint]:
 
 
 def _remember_slug(slug: str) -> None:
-    """An endpoint's slug is part of every model id and log line about it, so
-    it must never be scrubbed - even if the user reused the word as its key."""
-    exempt_from_redaction(slug)
+    """Remembering a model slug must never alter the secret redaction set."""
+    return None
 
 
 async def get_endpoint(db: AsyncSession, endpoint_id: str) -> CustomEndpoint | None:
