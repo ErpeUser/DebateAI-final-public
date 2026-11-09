@@ -13,6 +13,7 @@ regardless of whether a model also supports server VAD, so it stays until a
 live run shows VAD-gated commits read better.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -150,8 +151,8 @@ class OpenAIRealtimeSession:
         }))
         self._bytes_since_commit += len(audio_data)
         if self._bytes_since_commit >= COMMIT_INTERVAL_BYTES:
-            self._bytes_since_commit = 0
             await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+            self._bytes_since_commit = 0
 
     async def receive_responses(self):
         if not self._ws:
@@ -182,6 +183,12 @@ class OpenAIRealtimeSession:
     async def close(self):
         if self._ws:
             try:
+                # Flush the final sub-interval before closing. Otherwise the
+                # last <3s of audio is silently discarded by the provider.
+                if self._bytes_since_commit > 0:
+                    await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+                    self._bytes_since_commit = 0
+                    await asyncio.sleep(0)
                 await self._ws.close()
             except Exception as e:
                 logger.warning(f"Error closing OpenAI Realtime session: {e}")
