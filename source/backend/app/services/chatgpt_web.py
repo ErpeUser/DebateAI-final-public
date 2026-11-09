@@ -137,6 +137,18 @@ def oracle_command(
     return command
 
 
+async def _terminate_child(process: asyncio.subprocess.Process) -> None:
+    """Terminate an Oracle child and reap it after timeout/cancellation."""
+    if process.returncode is not None:
+        return
+    process.terminate()
+    try:
+        await asyncio.wait_for(process.wait(), timeout=5)
+    except asyncio.TimeoutError:
+        process.kill()
+        await asyncio.wait_for(process.wait(), timeout=5)
+
+
 async def generate(
     prompt: str,
     *,
@@ -175,6 +187,7 @@ async def generate(
         })
         flags = 0x08000000 if os.name == "nt" else 0
         content = f"{system.strip()}\n\n{prompt.strip()}" if system else prompt.strip()
+        process = None
         try:
             process = await asyncio.create_subprocess_exec(
                 *command,
@@ -184,9 +197,14 @@ async def generate(
                 env=env,
                 creationflags=flags,
             )
-            stdout, stderr = await asyncio.wait_for(
-                process.communicate(content.encode("utf-8")), timeout=660
-            )
+            try:
+                stdout, stderr = await asyncio.wait_for(
+                    process.communicate(content.encode("utf-8")), timeout=660
+                )
+            except (asyncio.TimeoutError, asyncio.CancelledError):
+                if process is not None:
+                    await asyncio.shield(_terminate_child(process))
+                raise
             if process.returncode:
                 diagnostic = stderr or stdout
                 detail = redact_text(diagnostic.decode("utf-8", "replace"))[-1200:].strip()
