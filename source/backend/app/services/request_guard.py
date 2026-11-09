@@ -179,7 +179,7 @@ class RequestGuardMiddleware:
             if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
                 expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
                 supplied = headers.get("x-backchannel-instance", "")
-                if not expected or not hmac.compare_digest(supplied, expected):
+                if expected and not hmac.compare_digest(supplied, expected):
                     await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
                     return
             elif origin is not None and not origin_allowed(origin, self.allowed_hosts, self.allowed_origins):
