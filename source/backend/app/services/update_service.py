@@ -6,6 +6,7 @@ import os
 import posixpath
 import re
 import shutil
+import stat
 import ssl
 import stat
 import subprocess
@@ -732,8 +733,18 @@ class UpdateService:
                     stderr=subprocess.DEVNULL,
                 )
             else:
+                extraction_root = _zip_extraction_root(self.stage_dir)
+                extraction_root.mkdir(parents=True, exist_ok=True)
                 with zipfile.ZipFile(archive_path) as archive:
-                    archive.extractall(_zip_extraction_root(self.stage_dir))
+                    root = extraction_root.resolve()
+                    for member in archive.infolist():
+                        target = (extraction_root / member.filename).resolve()
+                        if os.path.commonpath((str(root), str(target))) != str(root):
+                            raise InvalidUpdate("archive contains a path outside its root")
+                        mode = (member.external_attr >> 16) & 0o170000
+                        if mode == stat.S_IFLNK:
+                            raise InvalidUpdate("archive contains a symbolic link")
+                        archive.extract(member, extraction_root)
             children = list(self.stage_dir.iterdir())
             if children != [self.staged_root] or not self.staged_root.is_dir():
                 raise InvalidUpdate("archive root mismatch")
