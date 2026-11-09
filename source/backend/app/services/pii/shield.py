@@ -137,8 +137,7 @@ async def get_settings_standalone() -> ShieldSettings:
             return await get_settings(db)
     except Exception:  # noqa: BLE001 - the database, not the shield, is the problem here
         # Keep the last known settings rather than let a database hiccup
-        # decide the policy either way; with nothing known the shield is off,
-        # which is the state a fresh install is in.
+        # disable an already enabled policy. A cold-start failure below fails closed.
         if _settings_cache:
             return _settings_cache[1]
         logger.error("PII Shield settings could not be read; failing closed", exc_info=True)
