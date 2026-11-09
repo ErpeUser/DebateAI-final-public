@@ -40,7 +40,7 @@ async def delete_uploaded_file(file_uri: str) -> None:
     remote delete is logged for later cleanup rather than making the local
     user action fail.
     """
-    if not file_uri or await is_local_only():
+    if not file_uri:
         return
     try:
         client = genai.Client(api_key=await resolve_provider_key("google"))
