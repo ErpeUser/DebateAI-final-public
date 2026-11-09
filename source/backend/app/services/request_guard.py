@@ -46,7 +46,7 @@ ALLOWED_ORIGINS_ENV = "BACKCHANNEL_ALLOWED_ORIGINS"
 
 # Names that only ever mean "this machine" (plus the Compose service name,
 # which resolves nowhere outside the stack's own network).
-LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "0.0.0.0", "backend"})
+LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "backend"})
 
 # Origins CORS accepts without configuration. Everything a local frontend
 # could be served from: the app's own port, the Vite dev server, a preview.
