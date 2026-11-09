@@ -96,6 +96,16 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
     if body.name is not None:
         session.name = await shield.protect_text(db, session_id, body.name)
     if body.state is not None:
+        allowed_transitions = {
+            "pre_call": {"pre_call", "active"},
+            "active": {"active", "completed"},
+            "completed": {"completed", "active"},
+        }
+        if body.state not in allowed_transitions.get(session.state, set()):
+            raise HTTPException(
+                409,
+                f"Invalid session state transition: {session.state} -> {body.state}",
+            )
         if body.state == "active" and session.state == "pre_call":
             session.started_at = datetime.now(timezone.utc)
         elif body.state == "active" and session.state == "completed":
