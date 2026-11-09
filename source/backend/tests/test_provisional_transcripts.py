@@ -30,6 +30,46 @@ class ProvisionalTranscriptModelContractTests(unittest.TestCase):
         self.assertIn("uq_provisional_transcript_segment_revision", constraints)
 
 
+class ProvisionalTranscriptInputContractTests(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_revision_values_are_rejected_before_database_access(self):
+        import uuid
+
+        from app.services.provisional_transcripts import persist_provisional_revision
+
+        for value in (None, True, 0, -1, 1.5, "not-a-number", "1.5"):
+            result = await persist_provisional_revision(
+                None,
+                uuid.uuid4(),
+                {
+                    "segment_id": "segment-1",
+                    "segment_revision": value,
+                    "text": "Hypothese",
+                    "mode": "replace",
+                },
+            )
+            self.assertIsNone(result.row)
+            self.assertFalse(result.created)
+
+    async def test_unknown_revision_mode_is_rejected_before_database_access(self):
+        import uuid
+
+        from app.services.provisional_transcripts import persist_provisional_revision
+
+        result = await persist_provisional_revision(
+            None,
+            uuid.uuid4(),
+            {
+                "segment_id": "segment-1",
+                "segment_revision": 1,
+                "text": "Hypothese",
+                "mode": "merge",
+            },
+        )
+
+        self.assertIsNone(result.row)
+        self.assertFalse(result.created)
+
+
 class ProvisionalTranscriptRevisionContractTests(unittest.TestCase):
     def test_append_revision_materializes_without_losing_previous_words(self):
         from app.services.provisional_transcripts import materialize_revision_text
