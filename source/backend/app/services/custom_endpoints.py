@@ -96,8 +96,11 @@ def validate_base_url(raw: str) -> str:
         raise EndpointError("Base URL is required")
     if not url.startswith(("http://", "https://")):
         raise EndpointError("Base URL must start with http:// or https://")
-    if not urlparse(url).netloc:
-        raise EndpointError("Base URL must include a host, e.g. http://localhost:1234/v1")
+    parsed = urlparse(url)
+    if not parsed.netloc or parsed.username or parsed.password:
+        raise EndpointError("Base URL must include a host and must not contain URL credentials")
+    if parsed.query or parsed.fragment:
+        raise EndpointError("Base URL must not contain query parameters or fragments")
     return url
 
 
