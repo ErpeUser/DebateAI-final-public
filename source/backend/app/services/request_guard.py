@@ -82,7 +82,7 @@ def hostname_allowed(hostname: str, extra_hosts: list[str] | None = None) -> boo
     name = (hostname or "").lower()
     if not name:
         return False
-    if name in LOOPBACK_NAMES or name.endswith(".localhost"):
+    if name in LOOPBACK_NAMES:
         return True
     if _is_ip_literal(name):
         try:
@@ -169,13 +169,22 @@ class RequestGuardMiddleware:
         # WebSockets are checked unconditionally because CORS never applied to
         # them: without this, a hostile page could open ws://127.0.0.1/ws/<id>
         # and both read the live transcript and drive the call.
-        origin_checked = scope["type"] == "websocket" or scope.get("method", "GET").upper() not in _SAFE_METHODS
+        method = scope.get("method", "GET").upper()
+        path = scope.get("path", "")
+        health_path = path in {"/health", "/api/health", "/api/ready"}
+        origin_checked = scope["type"] == "websocket" or method not in _SAFE_METHODS
         if origin_checked:
             origin = headers.get("origin")
-            if origin is not None and not origin_allowed(origin, self.allowed_hosts, self.allowed_origins):
+            if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
+                expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
+                supplied = headers.get("x-backchannel-instance", "")
+                if not expected or not hmac.compare_digest(supplied, expected):
+                    await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
+                    return
+            elif origin is not None and not origin_allowed(origin, self.allowed_hosts, self.allowed_origins):
                 logger.warning(
                     "Rejected cross-origin %s from %r; set %s to allow it",
-                    "websocket" if scope["type"] == "websocket" else scope.get("method"),
+                    "websocket" if scope["type"] == "websocket" else method,
                     origin[:120],
                     ALLOWED_ORIGINS_ENV,
                 )
@@ -197,7 +206,7 @@ class RequestGuardMiddleware:
                         "Desktop session authorization is required",
                     )
                     return
-        elif scope.get("method", "GET").upper() not in _SAFE_METHODS:
+        elif method not in {"OPTIONS"} and not health_path:
             expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
             supplied = headers.get("x-backchannel-instance", "")
             if expected and not hmac.compare_digest(supplied, expected):
