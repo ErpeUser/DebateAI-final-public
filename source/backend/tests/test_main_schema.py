@@ -201,6 +201,8 @@ class MigrationPathTests(unittest.TestCase):
         )
 
     def test_backend_root_is_the_parent_of_the_app_package(self):
+        if os.name != "nt":
+            self.skipTest("Packaged path assertion is Windows-specific")
         module_path = Path("C:/bundle/_internal/app/main.py")
 
         self.assertEqual(
