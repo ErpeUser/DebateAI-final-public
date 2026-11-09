@@ -125,7 +125,7 @@ export default function PostCallView({
   const [argumentGraph, setArgumentGraph] = useState<ArgumentGraph | null>(null);
   const [argumentGraphLoading, setArgumentGraphLoading] = useState(false);
   const [argumentGraphError, setArgumentGraphError] = useState<string | null>(null);
-  const speakerActionsLocked = Boolean(postProcessing?.active || postProcessing?.state === "timeout" || postProcessing?.state === "error");
+  const speakerActionsLocked = Boolean(postProcessing?.active || postProcessing?.state === "background" || postProcessing?.state === "timeout" || postProcessing?.state === "error");
   const progressSummary = formatPostProcessingSummary(postProcessing?.details);
   // The live banner only exists for a client that was still connected when the
   // drain finished. A disconnect mid-drain used to lose the record entirely, so
