@@ -84,7 +84,7 @@ class DebateSettings:
 
 def default_debate_settings() -> DebateSettings:
     if is_desktop_bundle():
-        return DebateSettings(research_enabled=True, research_frequency="often")
+        return DebateSettings(research_enabled=False, research_frequency="never")
     return DebateSettings()
 
 
