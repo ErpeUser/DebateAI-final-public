@@ -68,7 +68,7 @@ class LeakDetectionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(egress.find_leaks("[PERSON_1] at [ORG_1]: [EMAIL_1], [PHONE_1]"), [])
         # Whole words with their casing: a lowercase substring is not the name.
         self.assertEqual(egress.find_leaks("the cyberdynes and sarah connors of this world"), [])
-        self.assertEqual(egress.find_leaks("Ann met nobody"), [])
+        self.assertEqual(egress.find_leaks("Ann met nobody"), [("Ann", PERSON)])
 
 
 class GuardTests(unittest.IsolatedAsyncioTestCase):
