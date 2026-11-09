@@ -139,7 +139,7 @@ def is_on_prem(base_url: str) -> bool:
     host = (urlparse(base_url).hostname or "").lower()
     if not host:
         return False
-    if host in _DOCKER_HOST_ALIASES:
+    if host in _DOCKER_HOST_ALIASES or host in {"localhost", "ip6-localhost"}:
         return True
     try:
         address = ipaddress.ip_address(host)
@@ -372,7 +372,12 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
             limits=limits,
             follow_redirects=False,
         ) as client:
-            async with client.stream("GET", f"{url}/models", headers=auth_headers(api_key)) as response:
+            stream = client.stream("GET", f"{url}/models", headers=auth_headers(api_key))
+            # A few lightweight test doubles expose stream() as an async
+            # factory, while httpx returns an async context manager directly.
+            if hasattr(stream, "__await__"):
+                stream = await stream
+            async with stream as response:
                 response.raise_for_status()
                 content_length = int(response.headers.get("content-length", "0") or 0)
                 if content_length > 1_048_576:
