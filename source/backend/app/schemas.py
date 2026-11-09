@@ -8,17 +8,17 @@ from pydantic import BaseModel, Field
 # --- Sessions ---
 class SessionCreate(BaseModel):
     name: str = Field(max_length=120)
-    notes: str | None = None
-    meeting_type: str = "general"
-    meeting_context: str = ""
+    notes: str | None = Field(default=None, max_length=10000)
+    meeting_type: str = Field(default="general", max_length=80)
+    meeting_context: str = Field(default="", max_length=20000)
 
 
 class SessionUpdate(BaseModel):
     name: str | None = Field(default=None, max_length=120)
-    state: str | None = None
-    notes: str | None = None
-    meeting_type: str | None = None
-    meeting_context: str | None = None
+    state: Literal["pre_call", "active", "completed"] | None = None
+    notes: str | None = Field(default=None, max_length=10000)
+    meeting_type: str | None = Field(default=None, max_length=80)
+    meeting_context: str | None = Field(default=None, max_length=20000)
     group_id: uuid.UUID | None = None
 
 
@@ -82,11 +82,11 @@ class TokenUsageSummaryOut(BaseModel):
 
 # --- Directives ---
 class DirectiveCreate(BaseModel):
-    text: str
+    text: str = Field(max_length=4000)
 
 
 class DirectiveUpdate(BaseModel):
-    text: str | None = None
+    text: str | None = Field(default=None, max_length=4000)
     active: bool | None = None
 
 
@@ -116,7 +116,7 @@ class DocumentOut(BaseModel):
 class QuestionUpdate(BaseModel):
     starred: bool | None = None
     dismissed: bool | None = None
-    vote: int | None = None  # -1, 0, or 1
+    vote: int | None = Field(default=None, ge=-1, le=1)  # -1, 0, or 1
 
 
 class QuestionOut(BaseModel):
@@ -254,16 +254,16 @@ class CallSegmentOut(BaseModel):
 
 # --- Speakers ---
 class SpeakerCreate(BaseModel):
-    name: str
-    role: str = ""
+    name: str = Field(min_length=1, max_length=200)
+    role: str = Field(default="", max_length=200)
     color: str = "#0d9488"
     is_user: bool = False
     speaker_type: Literal["team", "external"] = "external"
 
 
 class SpeakerUpdate(BaseModel):
-    name: str | None = None
-    role: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=200)
+    role: str | None = Field(default=None, max_length=200)
     color: str | None = None
     is_user: bool | None = None
     speaker_type: Literal["team", "external"] | None = None
