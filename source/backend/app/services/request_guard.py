@@ -33,7 +33,7 @@ import ipaddress
 import hmac
 import logging
 import os
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import urlsplit
 
 from starlette.datastructures import Headers
 from starlette.responses import PlainTextResponse
@@ -51,6 +51,7 @@ LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "backend"})
 # Origins CORS accepts without configuration. Everything a local frontend
 # could be served from: the app's own port, the Vite dev server, a preview.
 CORS_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|\[::1\]|[A-Za-z0-9.-]+\.localhost)(:\d+)?$"
+WS_TOKEN_PROTOCOL_PREFIX = "backchannel.instance."
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
@@ -133,6 +134,22 @@ def cors_allowed_origins() -> list[str]:
     return [o for o in _env_list(ALLOWED_ORIGINS_ENV) if o != "*"]
 
 
+def _websocket_instance_protocol(headers: Headers) -> tuple[str, str] | None:
+    """Return the offered instance-token subprotocol and its token.
+
+    Query-string tokens are deliberately unsupported: URLs are routinely
+    copied into browser history, reverse-proxy logs, access logs, and tracing
+    systems. WebSocket subprotocols are carried in the handshake headers and
+    echoed only after validation.
+    """
+    offered = headers.get("sec-websocket-protocol", "")
+    for value in offered.split(","):
+        protocol = value.strip()
+        if protocol.startswith(WS_TOKEN_PROTOCOL_PREFIX):
+            return protocol, protocol[len(WS_TOKEN_PROTOCOL_PREFIX):]
+    return None
+
+
 class RequestGuardMiddleware:
     """Reject requests whose Host or Origin is not one of ours.
 
@@ -191,13 +208,12 @@ class RequestGuardMiddleware:
                 )
                 await self._reject(scope, receive, send, 403, "Origin is not allowed")
                 return
+        selected_ws_protocol: str | None = None
         if scope["type"] == "websocket":
             expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
             if expected:
-                query = parse_qs(
-                    scope.get("query_string", b"").decode("ascii", errors="ignore")
-                )
-                supplied = (query.get("instance_token") or [""])[0]
+                offered = _websocket_instance_protocol(headers)
+                supplied = offered[1] if offered else ""
                 if not hmac.compare_digest(supplied, expected):
                     await self._reject(
                         scope,
@@ -207,6 +223,7 @@ class RequestGuardMiddleware:
                         "Desktop session authorization is required",
                     )
                     return
+                selected_ws_protocol = offered[0]
         elif method not in {"OPTIONS"} and not health_path:
             expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
             supplied = headers.get("x-backchannel-instance", "")
@@ -228,6 +245,13 @@ class RequestGuardMiddleware:
                     message = {**message, "headers": headers_out}
                 await send(message)
             await self.app(scope, receive, send_bootstrap)
+            return
+        if scope["type"] == "websocket" and selected_ws_protocol:
+            async def send_websocket(message):
+                if message["type"] == "websocket.accept":
+                    message = {**message, "subprotocol": selected_ws_protocol}
+                await send(message)
+            await self.app(scope, receive, send_websocket)
             return
         await self.app(scope, receive, send)
 
