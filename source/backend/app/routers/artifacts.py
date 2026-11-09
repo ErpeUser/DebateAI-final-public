@@ -41,7 +41,7 @@ _INSIGHT_TEXT_FIELDS = (
 # sheet after all reader-facing views are built, including helper-generated
 # sheets. Excel hides a leading apostrophe while treating the cell as literal.
 _EXCEL_FORMULA_PREFIXES = frozenset("=+-@")
-_EXCEL_CONTROL_PREFIXES = frozenset("\\t\\r\\n")
+_EXCEL_CONTROL_PREFIXES = frozenset("\t\r\n")
 
 
 def _looks_like_excel_formula(value: str) -> bool:
