@@ -934,7 +934,7 @@ function MainApp() {
         if (!isCurrent()) return;
         await api.updateSession(sessionId, { state: "pre_call" }).catch(() => undefined);
         stopCapture();
-        await api.stopNativeAudio(sessionId).catch(() => undefined);
+        await api.stopNativeAudio().catch(() => undefined);
         disconnect();
         liveSessionIdRef.current = null;
         setLiveSessionId(null);
