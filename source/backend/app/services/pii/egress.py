@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 LOG_FILE_NAME = "outbound.jsonl"
 MAX_LOG_BYTES = 25 * 1024 * 1024
 MAX_PROMPT_CHARS_STORED = 60_000
-# Values shorter than this are too easily part of an ordinary word to judge.
-MIN_VALUE_LENGTH = 5
+# Values shorter than three characters are ignored; three-character roster values are still protected with whole-word matching.
+MIN_VALUE_LENGTH = 3
 _DIGIT_CATEGORIES = {PHONE, SSN, CARD, IP}
 
 
