@@ -285,7 +285,7 @@ class StorageTests(_EncryptionCase):
         endpoint = await ce.create_endpoint(db, name="Box", base_url="http://localhost:1234/v1")
         await ce.record_probe(db, endpoint, True, "Connected. 1 model(s) available.")
         self.assertEqual("ok", endpoint.last_status)
-        await ce.update_endpoint(db, endpoint, base_url="http://gpu-box:1234/v1")
+        await ce.update_endpoint(db, endpoint, base_url="http://gpu-box:1234/v1", confirm_off_prem=True)
         self.assertEqual("", endpoint.last_status)
         self.assertIsNone(endpoint.last_checked_at)
 
@@ -441,6 +441,7 @@ class RouterTests(_EncryptionCase):
         body = endpoint_router.EndpointPatch(
             base_url="https://api.together.xyz/v1",
             confirm_off_prem=True,
+            api_key="",
         )
         with mock.patch(
             "app.services.custom_endpoints.get_local_only",
@@ -473,8 +474,12 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"Authorization": "Bearer sk-x"}, ce.auth_headers("sk-x"))
 
     async def test_an_unreachable_server_reports_the_address_it_tried(self):
+        response = mock.Mock(headers={"content-length": "0"}, raise_for_status=mock.Mock())
+        response.aread = mock.AsyncMock(side_effect=ce.httpx.ConnectError("refused"))
+        stream = mock.AsyncMock()
+        stream.__aenter__.return_value = response
         client = mock.Mock()
-        client.stream.side_effect = ce.httpx.ConnectError("refused")
+        client.stream.return_value = stream
         with mock.patch.object(ce.httpx, "AsyncClient", mock.Mock(return_value=client)):
             ok, message, served = await ce.probe("http://localhost:1234/v1")
         self.assertFalse(ok)
