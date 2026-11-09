@@ -24,6 +24,7 @@ services:
       args:
         INSTALL_SORTFORMER: ${INSTALL_SORTFORMER:-true}
         PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-auto}
+    restart: unless-stopped
     # The frontend container reaches the backend over the Compose network;
     # this mapping exists for direct API access from the host and is bound to
     # loopback because the API has no login of its own.
@@ -34,21 +35,33 @@ services:
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-callhelper}:${POSTGRES_PASSWORD:-changeme}@db:5432/${POSTGRES_DB:-callhelper}
       INSTALL_SORTFORMER: ${INSTALL_SORTFORMER:-true}
       PYTORCH_INDEX_URL: ${PYTORCH_INDEX_URL:-auto}
-      BACKEND_RELOAD: ${BACKEND_RELOAD:-true}
+      BACKEND_RELOAD: ${BACKEND_RELOAD:-false}
+      BACKCHANNEL_INSTANCE_TOKEN: ${BACKCHANNEL_INSTANCE_TOKEN:?BACKCHANNEL_INSTANCE_TOKEN must be set}
     volumes:
-      - ./backend/app:/app/app
       - backend_data:/app/data
     depends_on:
       db:
         condition: service_healthy
     command: python scripts/start_backend.py
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/ready', timeout=2)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
   frontend:
     build: ./frontend
+    restart: unless-stopped
     ports:
-      - "3000:80"
+      - "127.0.0.1:3000:80"
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
 
 volumes:
   pgdata:
