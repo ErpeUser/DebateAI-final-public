@@ -21,6 +21,7 @@ MAX_PROVISIONAL_SEGMENT_CHARS = 32_000
 MAX_PROVISIONAL_SEGMENT_BYTES = 128_000
 MAX_PROVISIONAL_SEGMENT_ID_CHARS = 128
 MAX_PROVISIONAL_TRACK_ID_CHARS = 32
+MAX_PROVISIONAL_REVISIONS_PER_SEGMENT = 128
 _PROVISIONAL_MODES = frozenset({"replace", "append"})
 
 
@@ -159,6 +160,16 @@ async def persist_provisional_revision(
     # Revision numbers are strictly increasing per segment. Gaps are allowed
     # because reconnects can legitimately lose an intermediate UI update.
     if latest is not None and revision <= latest.revision:
+        return PersistedProvisionalRevision(latest, False)
+    revision_count = await db.scalar(
+        select(func.count())
+        .select_from(ProvisionalTranscriptRevision)
+        .where(
+            ProvisionalTranscriptRevision.session_id == session_id,
+            ProvisionalTranscriptRevision.segment_id == segment_id,
+        )
+    )
+    if int(revision_count or 0) >= MAX_PROVISIONAL_REVISIONS_PER_SEGMENT:
         return PersistedProvisionalRevision(latest, False)
 
     protected_text = await shield.protect_text(db, session_id, incoming_text)
