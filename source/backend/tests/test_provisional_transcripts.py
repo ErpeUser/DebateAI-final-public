@@ -39,6 +39,23 @@ class ProvisionalTranscriptRevisionContractTests(unittest.TestCase):
             materialize_revision_text("Ich stimme ", "nicht zu.", "append"),
         )
 
+    def test_append_is_rejected_when_materialized_segment_exceeds_hard_limits(self):
+        from app.services.provisional_transcripts import (
+            MAX_PROVISIONAL_SEGMENT_CHARS,
+            materialize_revision_text,
+        )
+
+        previous = "x" * MAX_PROVISIONAL_SEGMENT_CHARS
+        self.assertIsNone(materialize_revision_text(previous, "next", "append"))
+        self.assertIsNone(
+            materialize_revision_text("", "x" * (MAX_PROVISIONAL_SEGMENT_CHARS + 1), "replace")
+        )
+
+    def test_invalid_modes_are_rejected_instead_of_treated_as_replace(self):
+        from app.services.provisional_transcripts import materialize_revision_text
+
+        self.assertIsNone(materialize_revision_text("", "text", "unknown"))
+
     def test_empty_revision_is_never_persisted_as_visible_text(self):
         from app.services.provisional_transcripts import materialize_revision_text
 
