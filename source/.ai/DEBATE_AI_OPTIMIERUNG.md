@@ -2543,3 +2543,137 @@ Quellstand kontrolliert neu erzeugen, mit dem Privacy-Audit gegen Cookies,
 Login-Daten, OAuth-/Provider-Zustaende, lokale Verlaeufe, Transkripte,
 Datenbanken und Logs pruefen und erst danach eine Remote-Aktualisierung
 entscheiden.
+
+### Deep-Audit-Nachlauf: Privater Quell-Snapshot synchronisiert (2026-11-09)
+
+Der zuvor veraltete private Quellstand wurde nach dem neuen Frontend-/Docs-
+Build kontrolliert neu erzeugt und in
+`https://github.com/ErpeUser/backchannel-v6-private` auf `master` aktualisiert.
+Die Aktualisierung betrifft den sanitisierten Quell-Snapshot, nicht das alte
+Release-Artefakt `v0.6.6`; dieses bleibt unveraendert, bis ein neuer EXE-
+Build/Smoke durchgefuehrt wurde.
+
+Snapshot-Nachweis:
+
+- Remote-Commit: `c5bde12cab4221ccb811598e4df616002f3cd7c0`.
+- `source/`: **1.027 Dateien**, **19.434.696 Bytes**; per-Datei-SHA-256 in
+  `SOURCE_SNAPSHOT_MANIFEST.json`.
+- Ausgeschlossen: `.env`, Cookies, Browserprofile, Login-/OAuth-Zustaende,
+  Provider-Account-Ueberschreibungen, lokale Verlaeufe/Transkripte, Datenbanken,
+  Logs, temporaere Testordner, Modellgewichte, native Binaries und generierte
+  Bundles.
+- Dateinamen-/Endungsscan: **0** lokale Daten-/Credential-Dateien.
+- Secret-Musterscan: nur die drei bekannten synthetischen Redaktions-Test-
+  fixtures; keine Live-Schluessel.
+- Der private Remote-Branch zeigt nach dem Push denselben Commit.
+
+Status: Snapshot-Synchronisierung BESTANDEN. Eine neue oeffentliche oder
+private Release-Datei wurde bewusst nicht behauptet; `v0.6.6` ist als
+historisch gebaut und fuer den vorherigen Stand dokumentiert. Die manuelle
+Audio-/Hardware-/Human-Abnahme A06/A18/A21/A22 sowie die offenen Deep-Audit-
+Architekturpunkte bleiben BLOCKED/OFFEN.
+
+Naechster konkreter Schritt: die verbleibenden automatisierbaren V6-Gates
+(Desktop-Neubau/Smoke nach dem aktuellen UI-Patch und ein moeglichst enger
+Backend-Gesamtlauf ohne lokale TEMP-Probleme) ausfuehren und danach nur den
+tatsaechlich belegten Status im Resume-Override nachziehen.
+
+### Deep-Audit-Nachlauf: aktueller Windows-Build und Smoke (2026-11-09)
+
+Der aktuelle Windows-x64-onedir-Kandidat wurde mit
+`scripts/build_debate_assistant.ps1 -Python .\\.release-venv\\Scripts\\python.exe -SkipDownloads`
+bis zum Build und dem Staged-Smoke ausgefuehrt. Die Wrapper-Ausfuehrung
+ueberschritt das 120-Sekunden-Ausfuehrungslimit waehrend der abschliessenden
+Komprimierung; deshalb wird kein neuer Release-Upload behauptet.
+
+Belastbarer Teilnachweis:
+
+- `build/release-stage/Backchannel/Backchannel.exe` wurde neu erzeugt.
+- `desktop/scripts/smoke_test.py --bundle build/release-stage/Backchannel`
+  -> **OK: healthy on port 8474; bundled local ASR runtime usable; clean
+  shutdown; exit 0**.
+- Der bestehende `dist/Backchannel-DebateAI-windows-x64.zip` bleibt der
+  vorherige, bereits verifizierte Release-Kandidat; er wurde nicht als neuer
+  Build ausgegeben.
+
+Status: aktueller Onedir-Build/Smoke **BESTANDEN**, neue ZIP-/Release-
+Komprimierung **nicht nachgewiesen wegen Zeitlimit**. Der Remote-Source-
+Snapshot bleibt auf `c5bde12`; `v0.6.6` bleibt historisch. Keine manuelle
+Abnahme wurde simuliert.
+
+Nachtrag: Fuer den aktuellen Nutzerbedarf ist keine ZIP erforderlich. Die ZIP
+ist nur fuer den optionalen Release-/Updater-Vertrag relevant; der direkte
+Windows-Onedir-Build und sein Start-/ASR-/Shutdown-Smoke sind der entscheidende
+Nachweis. Ein separater Archiv-Smoke mit dem frei benannten lokalen
+`*-current.zip` wurde deshalb nicht als Produktfehler gewertet, da der Test
+absichtlich den kanonischen Release-Dateinamen `Backchannel-windows-x64.zip`
+verlangt.
+
+### V6-Nachlauf: direkter EXE-Upload (2026-11-09)
+
+Auf Wunsch wurde der aktuelle direkt startbare Windows-Build als separates,
+klar gekennzeichnetes Asset in den privaten Release `v0.6.6` hochgeladen. Der
+historische ZIP-/Manifest-Satz blieb unveraendert:
+
+- Asset: `Backchannel-DebateAI-windows-x64-current.exe`
+- Groesse: 26.899.718 Bytes
+- SHA-256: `F7CD836461ECC903AFC91023D14A3FE2030D5F3CE7BEC369BA2B02DB54FC74D5`
+- URL: `https://github.com/ErpeUser/backchannel-v6-private/releases/download/v0.6.6/Backchannel-DebateAI-windows-x64-current.exe`
+- Begleitend: `SHA256SUMS-current-exe.txt`
+
+Status: direkter EXE-Push **BESTANDEN**. Das Asset ist bewusst als aktueller
+Kandidat benannt und nicht nachtraeglich in das alte ZIP-Release-Manifest
+eingeschmuggelt. Eine neue Release-Version bleibt bis zu einer vollstaendigen
+neuen Release-Metadatenrunde unnoetig.
+
+Naechster konkreter Schritt: falls ein neues Releaseartefakt benoetigt wird,
+die bereits erzeugte `build/release-stage/Backchannel`-Kopie in einem laengeren
+lokalen Lauf komprimieren, danach Archiv-Smoke und SHA-256 ausfuehren; bis dahin
+keine neue Release-Version veroeffentlichen.
+
+### Backend-Gesamtlauf mit Release-Umgebung (2026-11-09)
+
+Der vollstaendige Backend-Testlauf wurde anschliessend mit der installierten
+Release-Umgebung (`.release-venv\\Scripts\\python.exe`) wiederholt:
+
+- `python -m unittest discover -s tests` -> **1.740 Tests OK, 3 uebersprungen**
+  in 131,5 Sekunden.
+- Der vorherige globale Python-3.14-Lauf mit 169 Importfehlern wird als
+  Umgebungsfehlversuch verworfen und nicht als Produktstatus gefuehrt.
+
+Damit sind Frontend 270/270, Backend 1.740/1.740, Desktop 193/193 (ein
+Plattform-Skip), Docs 206/206 sowie der aktuelle Onedir-Smoke nachgewiesen.
+Die offenen manuellen Audio-/Hardware-/Human-Gates und die in der F1-F26-
+Kreuztabelle als OFFEN/TEILWEISE markierten Architekturpunkte bleiben davon
+unberuehrt.
+
+Naechste konkrete Aktion: Abschlussstatus aus diesen Nachweisen und den
+verbleibenden BLOCKED/OFFEN-Punkten konsistent zusammenfassen; keine
+Vollfreigabe oder neue Release-Version behaupten.
+
+### Nachweisabgleich abgeschlossen (2026-11-09)
+
+Der erneute Chat-/Deep-Audit-Abgleich ist damit technisch abgeschlossen:
+
+- Keine A-/N-/P0-/P1-/P2-/P3-Zeile fehlt in der V3-Matrix; alle nicht
+  automatisierbaren Punkte sind explizit BLOCKED/OFFEN.
+- Frontend: 270/270 Tests und 2.139-Modul-Produktionsbuild bestanden.
+- Backend: 1.740/1.740 Tests bestanden, 3 uebersprungen, in der Release-
+  Python-Umgebung.
+- Desktop: 193/193 Tests bestanden, ein Plattform-Skip; aktueller Onedir-
+  Kandidat und Health/ASR/Shutdown-Smoke bestanden.
+- Docs-Site: 206/206 Tests und 17-Seiten-Build bestanden.
+- Privater Source-Snapshot: auf Remote-`master` Commit `c5bde12` synchron,
+  1.027 Dateien / 19.434.696 Bytes, Privacy-Scan ohne lokale Kontodaten.
+- Sentrux bleibt ein externer Werkzeug-Blocker, weil das in `AGENTS.md`
+  angegebene Programm in dieser Umgebung nicht vorhanden ist.
+
+Nicht als erledigt ausgegeben werden: neue ZIP-Komprimierung nach dem aktuellen
+Patch (Zeitlimit), neue Release-Version, echte deutsche Mikrofon-/Discord-
+Aufnahme, Hardware-/DPI-Abnahme, menschliche rhetorische Bewertung sowie die
+offenen Deep-Audit-Architekturpunkte F9-F12, F15-F19 und F21-F26.
+
+GOAL_STATUS bleibt daher **IN_PROGRESS**. Naechste konkrete Aktion fuer eine
+spätere Fortsetzung: nur einen laengeren lokalen ZIP-/Archiv-Smoke-Lauf starten
+oder die dokumentierten manuellen Gates mit echter WAV-/Hardware-Abnahme
+ausfuehren; keine bereits bestandenen Pakete wiederholen.
