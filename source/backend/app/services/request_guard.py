@@ -78,7 +78,7 @@ def _is_ip_literal(hostname: str) -> bool:
 def hostname_allowed(hostname: str, extra_hosts: list[str] | None = None) -> bool:
     extra = _env_list(ALLOWED_HOSTS_ENV) if extra_hosts is None else extra_hosts
     if "*" in extra:
-        return True
+        return os.environ.get("BACKCHANNEL_ENV", "development").lower() != "production"
     name = (hostname or "").lower()
     if not name:
         return False
@@ -113,7 +113,7 @@ def origin_allowed(
     """
     origins = _env_list(ALLOWED_ORIGINS_ENV) if extra_origins is None else extra_origins
     if "*" in origins:
-        return True
+        return os.environ.get("BACKCHANNEL_ENV", "development").lower() != "production"
     value = (origin or "").strip().lower()
     if not value or value == "null":
         return False
