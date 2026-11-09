@@ -4,9 +4,9 @@
   "source_root": "source/",
   "git_head": "da2c5301f272142ae5d7bbb2ab10a7b5402ae20c",
   "worktree_status_sha256": "afcd45972fc713db360e5d7f5cbc4271eac4829f6dea494b001e3636cbbc248a",
-  "private_repo_snapshot_commit": "f7f5d0c78c119a6f99597552a0af4edad7e61537",
+  "private_repo_snapshot_commit": "4678c76323b51250352eba7a58a9ff595a4cfac3",
   "included_files": 1004,
-  "included_bytes": 18965329,
+  "included_bytes": 18966942,
   "secret_scan": {
     "patterns_checked": "API keys, GitHub tokens, private-key PEM headers",
     "hits": [
@@ -51,8 +51,8 @@
   "files": [
     {
       "path": ".ai/DEBATE_AI_OPTIMIERUNG.md",
-      "bytes": 127297,
-      "sha256": "c9e8e20ee2353cea58b7c8b76bc23de2bca551778353fea1a0dea1b8907846dd"
+      "bytes": 128910,
+      "sha256": "936638de225d7757736140b4e998735f9b5e133602d00901cc57f317a80e9fea"
     },
     {
       "path": ".ai/IMPLEMENTATION_AUDIT.md",
