@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
 import threading
 import unicodedata
@@ -29,6 +30,9 @@ from app.services.pii.recognizers import LOCATION, ORG, PERSON, Span
 logger = logging.getLogger(__name__)
 
 MODEL_REPO = "Xenova/bert-base-NER"
+# Operators should pin this to an immutable Hub commit in production; the
+# environment override lets the bundled model manifest select that commit.
+MODEL_REVISION = os.getenv("PII_NER_MODEL_REVISION", "main")
 MODEL_DIR_NAME = "bert-base-NER"
 _MODEL_FILES = ("onnx/model_quantized.onnx", "vocab.txt", "config.json")
 
@@ -88,7 +92,7 @@ def _remote_total() -> int:
 
         total = 0
         for name in _MODEL_FILES:
-            meta = get_hf_file_metadata(hf_hub_url(MODEL_REPO, name))
+            meta = get_hf_file_metadata(hf_hub_url(MODEL_REPO, name, revision=MODEL_REVISION))
             total += int(meta.size or 0)
         return total
     except Exception:  # noqa: BLE001 - a missing denominator is not a failure
@@ -118,6 +122,7 @@ def ensure_downloaded() -> Path:
             MODEL_REPO,
             name,
             local_dir=str(root),
+            revision=MODEL_REVISION,
             tqdm_class=model_downloads.reporter_for(DOWNLOAD_KEY, base=done, total=total),
         )
         done += (root / name).stat().st_size if (root / name).is_file() else 0
