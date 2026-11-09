@@ -14,9 +14,10 @@ markitdown[docx,pdf,pptx,xlsx,xls]>=0.1.6
 onnxruntime==1.21.1
 kaldi-native-fbank>=1.20.0
 numpy>=1.26.0
-fastembed>=0.8,<0.9
+fastembed>=0.9,<1.0
 soundfile>=0.12.1
 cryptography>=41.0.0
 certifi>=2024.2.2
 onnx-asr>=0.11.0
 huggingface-hub>=0.26.0
+Pillow>=13.0.0
