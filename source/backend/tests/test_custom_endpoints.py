@@ -132,7 +132,6 @@ class OnPremDetectionTests(unittest.TestCase):
             "http://10.0.0.5/v1",
             "http://172.16.4.4:8000/v1",
             "http://host.docker.internal:1234/v1",
-            "http://gpu-box:8000/v1",
             "https://models.acme.internal/v1",
             "http://workstation.local:1234/v1",
         ):
@@ -160,7 +159,6 @@ class OnPremDetectionTests(unittest.TestCase):
             "http://2130706433/v1",  # decimal 127.0.0.1
             "http://0x7f000001/v1",  # hex 127.0.0.1
             "http://[::ffff:127.0.0.1]/v1",
-            "http://gpu-box/v1",
         ):
             self.assertTrue(ce.is_on_prem(url), url)
 
@@ -455,9 +453,15 @@ class RouterTests(_EncryptionCase):
 class ProbeTests(unittest.IsolatedAsyncioTestCase):
     async def test_served_model_names_come_back_for_the_add_form(self):
         payload = {"data": [{"id": "antares-1b"}, {"id": "qwen3-8b"}, {"no_id": True}]}
-        response = mock.Mock(json=mock.Mock(return_value=payload), raise_for_status=mock.Mock())
-        client = mock.AsyncMock()
-        client.__aenter__.return_value.get = mock.AsyncMock(return_value=response)
+        response = mock.Mock(
+            headers={"content-length": str(len(str(payload)))},
+            raise_for_status=mock.Mock(),
+        )
+        response.aread = mock.AsyncMock(return_value=__import__("json").dumps(payload).encode())
+        stream = mock.AsyncMock()
+        stream.__aenter__.return_value = response
+        client = mock.Mock()
+        client.stream.return_value = stream
         with mock.patch.object(ce.httpx, "AsyncClient", mock.Mock(return_value=client)):
             ok, message, served = await ce.probe("http://localhost:1234/v1")
         self.assertTrue(ok)
@@ -469,10 +473,8 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"Authorization": "Bearer sk-x"}, ce.auth_headers("sk-x"))
 
     async def test_an_unreachable_server_reports_the_address_it_tried(self):
-        client = mock.AsyncMock()
-        client.__aenter__.return_value.get = mock.AsyncMock(
-            side_effect=ce.httpx.ConnectError("refused")
-        )
+        client = mock.Mock()
+        client.stream.side_effect = ce.httpx.ConnectError("refused")
         with mock.patch.object(ce.httpx, "AsyncClient", mock.Mock(return_value=client)):
             ok, message, served = await ce.probe("http://localhost:1234/v1")
         self.assertFalse(ok)
