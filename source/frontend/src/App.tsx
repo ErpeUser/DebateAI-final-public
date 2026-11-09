@@ -857,7 +857,6 @@ function MainApp() {
       if (generation === audioStartGenerationRef.current) {
         setAudioStarting(false);
       }
-      return true;
     }
   }), [connect, sendAudio, sendTrackState, startCapture, status, captureSystemAudio]);
 
