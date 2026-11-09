@@ -19,7 +19,7 @@ class _Store:
 
 
 class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
-    async def test_desktop_bundle_defaults_to_research_enabled_and_often(self):
+    async def test_desktop_bundle_defaults_to_research_disabled_and_never(self):
         from app.services import debate_settings
 
         store = _Store()
@@ -29,8 +29,8 @@ class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
         ):
             result = await debate_settings.get_debate_settings(object())
 
-        self.assertTrue(result.research_enabled)
-        self.assertEqual(result.research_frequency, "often")
+        self.assertFalse(result.research_enabled)
+        self.assertEqual(result.research_frequency, "never")
         self.assertEqual(result.mode, "persuasive")
         self.assertFalse(result.always_analogy)
         self.assertEqual(result.style_focus, "natural")
@@ -76,7 +76,7 @@ class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(result.research_enabled)
         self.assertEqual(result.research_frequency, "normal")
 
-    async def test_invalid_persisted_values_fall_back_without_disabling_desktop_default(self):
+    async def test_invalid_persisted_values_fall_back_to_disabled_desktop_default(self):
         from app.services import debate_settings
 
         store = _Store('{"mode":"insults","research_frequency":"constant"}')
@@ -87,8 +87,8 @@ class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
             result = await debate_settings.get_debate_settings(object())
 
         self.assertEqual(result.mode, "persuasive")
-        self.assertEqual(result.research_frequency, "often")
-        self.assertTrue(result.research_enabled)
+        self.assertEqual(result.research_frequency, "never")
+        self.assertFalse(result.research_enabled)
 
     async def test_set_persists_validated_json(self):
         from app.services import debate_settings
