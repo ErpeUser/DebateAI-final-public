@@ -104,6 +104,8 @@ async def persist_provisional_revision(
     if isinstance(raw_revision, bool):
         return PersistedProvisionalRevision(None, False)
     try:
+        if isinstance(raw_revision, float) and not raw_revision.is_integer():
+            return PersistedProvisionalRevision(None, False)
         revision = int(raw_revision or 0)
     except (TypeError, ValueError, OverflowError):
         return PersistedProvisionalRevision(None, False)
@@ -173,7 +175,7 @@ async def persist_provisional_revision(
         segment_id=segment_id,
         revision=revision,
         text=text,
-        mode=mode,
+        mode="replace",
         track_id=track_id,
         audio_start_sample=(
             int(data["audio_start_sample"])
