@@ -12,9 +12,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.services.app_settings import get_app_setting, set_app_setting
 
 SETTING_KEY = "debate.copilot.settings"
-RESEARCH_COOLDOWNS = {"low": 180, "normal": 60, "often": 20}
+RESEARCH_COOLDOWNS = {"never": 0, "low": 180, "normal": 60, "often": 20}
 DebateMode = Literal["persuasive", "forceful"]
-ResearchFrequency = Literal["low", "normal", "often"]
+ResearchFrequency = Literal["never", "low", "normal", "often"]
 StyleFocus = Literal["balanced", "natural", "concise", "evidence"]
 PerformanceProfile = Literal["balanced", "economy"]
 
