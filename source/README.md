@@ -221,7 +221,7 @@ Notes:
 ### Option 2: Local German Debate Copilot on Windows
 
 For a fully local setup with German live transcription and no API key, install
-Docker Desktop, open PowerShell in this repository, and run:
+Docker Desktop, open PowerShell in the clone root, and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1
