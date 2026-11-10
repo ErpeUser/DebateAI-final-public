@@ -31,58 +31,67 @@ class TranscriptionJob:
     cancel_requested: bool = False
 
     def snapshot(self) -> dict:
-        progress = 100 if self.status == "completed" else round(
-            self.segments_done * 100 / max(1, self.total_segments)
-        )
-        return {
-            "job_id": str(self.id),
-            "kind": self.kind,
-            "status": self.status,
-            "model_id": self.model_id,
-            "segments_done": self.segments_done,
-            "total_segments": self.total_segments,
-            "entries": self.entries,
-            "progress": progress,
-            "filename": self.filename,
-            "error": self.error,
-        }
+        with _jobs_lock:
+            progress = 100 if self.status == "completed" else round(
+                self.segments_done * 100 / max(1, self.total_segments)
+            )
+            return {
+                "job_id": str(self.id),
+                "kind": self.kind,
+                "status": self.status,
+                "model_id": self.model_id,
+                "segments_done": self.segments_done,
+                "total_segments": self.total_segments,
+                "entries": self.entries,
+                "progress": progress,
+                "filename": self.filename,
+                "error": self.error,
+            }
 
     def check_canceled(self) -> None:
-        if self.cancel_requested:
-            raise JobCanceled()
+        with _jobs_lock:
+            if self.cancel_requested:
+                raise JobCanceled()
 
     def start(self) -> None:
-        self.check_canceled()
-        self.status = "running"
+        with _jobs_lock:
+            self.check_canceled()
+            self.status = "running"
 
     def update_entries(self, entries: int) -> None:
-        self.entries = entries
+        with _jobs_lock:
+            self.entries = max(0, int(entries))
 
     def finish_segment(self, entries: int) -> None:
-        self.entries = entries
-        self.segments_done += 1
+        with _jobs_lock:
+            self.entries = max(0, int(entries))
+            self.segments_done += 1
 
     def complete(self) -> None:
-        self.status = "completed"
-        self.segments_done = self.total_segments
+        with _jobs_lock:
+            self.status = "completed"
+            self.segments_done = self.total_segments
 
     def fail(self, message: str) -> None:
-        self.status = "failed"
-        self.error = message
+        with _jobs_lock:
+            self.status = "failed"
+            self.error = str(message)[:500]
 
     def cancel(self) -> None:
-        if self.status in ACTIVE_STATUSES:
-            self.cancel_requested = True
-            self.status = "canceling"
+        with _jobs_lock:
+            if self.status in ACTIVE_STATUSES:
+                self.cancel_requested = True
+                self.status = "canceling"
 
     def mark_canceled(self) -> None:
-        self.status = "canceled"
+        with _jobs_lock:
+            self.status = "canceled"
 
 
 # ponytail: one process owns the desktop API; persist jobs if multi-worker or
 # restart recovery becomes a requirement.
 _jobs: dict[uuid.UUID, TranscriptionJob] = {}
-_jobs_lock = threading.Lock()
+_jobs_lock = threading.RLock()
 
 
 def create_job(
