@@ -102,10 +102,20 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
         transcript_text="\n".join(entry.text for entry in entries),
     )
     model_id = await agent_model_id("consolidated_analyst")
+    # The SELECTs above open a DB transaction. Release the connection before
+    # waiting on a remote/local model; analysis can take minutes and must not
+    # hold a pool slot or a database snapshot for the whole inference.
+    await db.rollback()
     items = _parse_items(
         await generate_text(model_id, prompt, session_id=session_id, source="analyze")
     )
 
+    # The session may have been deleted or changed while the model was running.
+    # Re-read the row before persisting the result instead of mutating an
+    # object expired by the rollback or relying on a stale ORM snapshot.
+    session = await db.get(Session, session_id)
+    if not session:
+        raise HTTPException(404, "Session not found")
     count = 0
     for item in items:
         if not isinstance(item, dict):
