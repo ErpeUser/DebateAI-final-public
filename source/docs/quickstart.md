@@ -53,7 +53,7 @@ API keys can be supplied two ways:
 
 ## Local German Debate Copilot on Windows (no API key)
 
-On Windows 11 with Docker Desktop, open PowerShell in the repository and run:
+On Windows 11 with Docker Desktop, open PowerShell in the clone root and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1
