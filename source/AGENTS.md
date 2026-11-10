@@ -1,3 +1,14 @@
+> **Final Windows workspace precedence (2026-11):** The repository-root
+> `AGENTS.md` is the current authoritative instruction for syncing the
+> user's EXISTING Windows checkout to newest `origin/master`. In case of
+> apparent conflict with older continuation/branch-preservation guidance
+> below, the newer explicit user request wins: discard superseded local
+> code, selectively retain genuinely unique improvements, never overwrite
+> machine-specific user data. Codex MUST also reconcile the RhetoricIQ
+> playbooks (`ai/playbooks.json`, `ai/defaults/playbooks.json`), saved
+> profile mappings and the active user's customizable playbook. Do not
+> mistake updating a temporary checkout for final synchronization.
+
 # AGENTS.md
 
 This file provides guidance to Codex (Codex.ai/code) when working with this repository.
