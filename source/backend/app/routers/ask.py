@@ -167,6 +167,11 @@ async def ask(session_id: uuid.UUID, body: AskIn, db: AsyncSession = Depends(get
     context = await load_live_context(session_id, db)
     prompt = build_live_prompt(context, question)
 
+    # Persist any newly minted PII-vault tokens and release the read
+    # transaction before model inference. A slow provider must not hold a DB
+    # connection or snapshot while the user waits for the answer.
+    await db.commit()
+
     started = time.monotonic()
     try:
         answer = await generate_text(
