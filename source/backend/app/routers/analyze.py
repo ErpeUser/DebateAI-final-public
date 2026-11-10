@@ -18,6 +18,12 @@ from app.services.transcript_refiner import REFINER_SLUG, refine_session
 
 router = APIRouter(prefix="/api/sessions/{session_id}/analyze", tags=["analyze"])
 
+MAX_ANALYZE_TRANSCRIPT_CHARS = 120_000
+MAX_ANALYZE_DIRECTIVES_CHARS = 16_000
+MAX_ANALYZE_RESPONSE_CHARS = 500_000
+MAX_ANALYZE_ITEMS = 256
+_ALLOWED_ITEM_TYPES = {"question", "observation", "opportunity", "action_item", "answered"}
+
 ANALYZE_TRANSCRIPT_PROMPT = """Analysiere das Transkript auf Deutsch und leite nur kontextgestuetzte Erkenntnisse ab. Unterstelle kein Verkaufs- oder Kundengespraech, wenn Kontext und Transkript das nicht tragen.
 
 ## Gespraechskontext
@@ -39,7 +45,21 @@ Gib ausschliesslich ein gueltiges JSON-Array aus. Erlaubte Eintraege:
 Priorisiere wertvolle, belegte Erkenntnisse und aktive Nutzeranweisungen. Kennzeichne vage oder nur teilweise Antworten mit einem Folgepunkt. Erfinde keine Tatsachen und gib keinen Text ausserhalb des JSON-Arrays aus."""
 
 
+def _clip_context(value: str, limit: int) -> str:
+    if len(value) <= limit:
+        return value
+    head = max(1, (limit - 64) // 2)
+    tail = max(1, limit - 64 - head)
+    return f"{value[:head]}\\n[...context truncated...]\\n{value[-tail:]}"
+
+
+def _bounded_field(value: object, limit: int) -> str:
+    return str(value or "").strip()[:limit]
+
+
 def _parse_items(raw: str) -> list:
+    if len(raw) > MAX_ANALYZE_RESPONSE_CHARS:
+        raise HTTPException(502, "Analyseergebnis ist zu gross.")
     value = raw.strip()
     if value.startswith("```"):
         value = value.split("\n", 1)[1] if "\n" in value else value[3:]
@@ -97,9 +117,15 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
     prompt = load_prompt_resource(
         "analyze_transcript", ANALYZE_TRANSCRIPT_PROMPT
     ).format(
-        meeting_context_text=build_meeting_context_text(session),
-        directives_text="\n".join(f"- {item}" for item in directives) or "(Keine)",
-        transcript_text="\n".join(entry.text for entry in entries),
+        meeting_context_text=_clip_context(build_meeting_context_text(session), MAX_ANALYZE_DIRECTIVES_CHARS),
+        directives_text=_clip_context(
+            "\n".join(f"- {item}" for item in directives) or "(Keine)",
+            MAX_ANALYZE_DIRECTIVES_CHARS,
+        ),
+        transcript_text=_clip_context(
+            "\n".join(entry.text for entry in entries),
+            MAX_ANALYZE_TRANSCRIPT_CHARS,
+        ),
     )
     model_id = await agent_model_id("consolidated_analyst")
     # The SELECTs above open a DB transaction. Release the connection before
@@ -117,33 +143,35 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
     if not session:
         raise HTTPException(404, "Session not found")
     count = 0
-    for item in items:
-        if not isinstance(item, dict):
+    for item in items[:MAX_ANALYZE_ITEMS]:
+        if not isinstance(item, dict) or count >= MAX_ANALYZE_ITEMS:
             continue
-        item_type = item.get("item_type", "question")
-        question_text = str(item.get("question") or "").strip()
+        item_type = _bounded_field(item.get("item_type", "question"), 40)
+        if item_type not in _ALLOWED_ITEM_TYPES:
+            item_type = "question"
+        question_text = _bounded_field(item.get("question"), 4000)
         if not question_text:
             continue
         question = Question(
             session_id=session_id,
-            item_type=item_type if item_type != "answered" else "question",
+            item_type="question" if item_type == "answered" else item_type,
             question=question_text,
-            rationale=item.get("rationale", ""),
-            source_context=item.get("source_context", ""),
+            rationale=_bounded_field(item.get("rationale"), 8000),
+            source_context=_bounded_field(item.get("source_context"), 8000),
         )
         if item_type == "answered":
             question.answered = True
-            question.answer_summary = item.get("answer_summary", "")
-            question.needs_followup = item.get("needs_followup", False)
-            question.followup_question = item.get("followup_question", "")
+            question.answer_summary = _bounded_field(item.get("answer_summary"), 8000)
+            question.needs_followup = bool(item.get("needs_followup", False))
+            question.followup_question = _bounded_field(item.get("followup_question"), 4000)
         db.add(question)
         count += 1
         if item_type == "answered" and item.get("needs_followup") and item.get("followup_question"):
             db.add(Question(
                 session_id=session_id,
-                question=item["followup_question"],
+                question=_bounded_field(item.get("followup_question"), 4000),
                 rationale=f"Rueckfrage zu: {question_text}",
-                source_context=item.get("answer_summary", ""),
+                source_context=_bounded_field(item.get("answer_summary"), 8000),
                 needs_followup=True,
             ))
             count += 1
