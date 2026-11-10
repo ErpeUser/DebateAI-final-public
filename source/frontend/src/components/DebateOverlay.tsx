@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import * as api from "../services/api";
 import type { DebateOverlaySnapshot } from "../services/api";
 import { DE } from "../i18n/de";
