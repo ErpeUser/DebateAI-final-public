@@ -201,7 +201,7 @@ function Invoke-DebateDesktopBuild {
                 throw "Node.js 24 is required to bundle the ChatGPT web runtime."
             }
             $nodeVersion = (& $nodeCommand.Source --version 2>&1 | Out-String).Trim()
-            if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\\.") {
+            if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\.") {
                 throw "Node.js 24 is required to bundle the ChatGPT web runtime; found '$nodeVersion'."
             }
             Invoke-Checked "Bundle portable Node runtime for ChatGPT Web" {
