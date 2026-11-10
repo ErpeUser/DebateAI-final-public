@@ -19,7 +19,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
 
@@ -233,16 +233,19 @@ class NemotronStreamingASRBackend:
     def _websocket_url(self) -> str:
         parts = urlsplit(self._base_url)
         scheme = "wss" if parts.scheme == "https" else "ws"
-        query = f"api_key={quote(self._api_key, safe='')}" if self._api_key else ""
-        return urlunsplit((scheme, parts.netloc, NEMOTRON_REALTIME_PATH, query, ""))
+        # Credentials must not travel in the URL: proxies, access logs, browser
+        # history, and exception messages routinely persist query strings.
+        return urlunsplit((scheme, parts.netloc, NEMOTRON_REALTIME_PATH, "", ""))
 
     async def _connect(self):
         if self._connect_override is not None:
             return await self._connect_override(self._websocket_url())
         import websockets
 
+        headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         return await websockets.connect(
             self._websocket_url(),
+            additional_headers=headers,
             open_timeout=self._event_timeout,
             close_timeout=2,
             max_size=2**20,
