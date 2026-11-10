@@ -13,6 +13,9 @@ for the current asset inventory.
 - **Linux** (x64) -- `Backchannel-linux-x64.tar.gz`; a portable bundle (not a
   package-manager installer): `tar -xzf` it and run `Backchannel/Backchannel`.
 
+The complete German Windows install, provider-login, Ollama, audio, build,
+update and signing procedure is in the [final Windows runbook](windows-final-runbook.md).
+
 The app runs from your system tray / menu bar and stores data per-user --
 `%LOCALAPPDATA%\Backchannel` on Windows,
 `~/Library/Application Support/Backchannel` on macOS,
