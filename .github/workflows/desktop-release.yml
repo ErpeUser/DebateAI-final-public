@@ -324,10 +324,32 @@ jobs:
         shell: pwsh
         run: ./desktop/gemini_web_to_api/build.ps1
 
+      - name: Prepare ChatGPT web runtime
+        working-directory: source
+        shell: pwsh
+        run: |
+          $oracleRoot = Join-Path (Get-Location) "desktop\\chatgpt_oracle"
+          $oracleNodeRoot = Join-Path $oracleRoot "node"
+          New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
+          $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
+          if ($null -eq $nodeCommand) { throw "Node.js 24 is required for the ChatGPT web runtime." }
+          Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
+          npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw "ChatGPT Oracle npm ci failed with exit code $LASTEXITCODE." }
+          $oracleCli = Join-Path $oracleRoot "node_modules\\@steipete\\oracle\\dist\\bin\\oracle-cli.js"
+          if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) { throw "ChatGPT Oracle CLI is missing after npm ci." }
+
       - name: Build bundle
         working-directory: source
-        shell: bash
-        run: pyinstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
+        shell: pwsh
+        run: |
+          $env:BACKCHANNEL_INCLUDE_ORACLE = "true"
+          try {
+            python -m PyInstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
+            if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE." }
+          } finally {
+            Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+          }
 
       - name: Smoke test bundle
         working-directory: source
