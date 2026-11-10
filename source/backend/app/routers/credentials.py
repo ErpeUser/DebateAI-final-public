@@ -64,8 +64,12 @@ async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(
         existing = await get_provider_key(db, OPENAI_COMPATIBLE_PROVIDER)
         if existing and body.api_key is None:
             raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")
-        if body.api_key is not None:
-            await set_secret(db, f"credentials.{OPENAI_COMPATIBLE_PROVIDER}.api_key", body.api_key.strip())
+    if body.api_key is not None:
+        await set_secret(
+            db,
+            f"credentials.{OPENAI_COMPATIBLE_PROVIDER}.api_key",
+            body.api_key.strip(),
+        )
     try:
         config = await set_endpoint_config(db, base_url=body.base_url, model_id=body.model_id)
     except ValueError as exc:
@@ -99,6 +103,7 @@ async def delete_credential(provider: str, db: AsyncSession = Depends(get_db)):
     _check_provider(provider)
     await set_secret(db, f"credentials.{provider}.api_key", "")
     await clear_test_outcome(db, provider)
+    await db.commit()
 
 
 @router.post("/{provider}/test")
@@ -111,4 +116,5 @@ async def test_credential(provider: str, db: AsyncSession = Depends(get_db)):
         return {"ok": False, "message": "No API key configured"}
     ok, message = await run_connection_test(provider, key, await resolve_base_url(db, provider))
     await record_test_outcome(db, provider, key, ok)
+    await db.commit()
     return {"ok": ok, "message": message}
