@@ -202,6 +202,12 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
     ]
     prompt = build_chat_prompt(sessions_data, messages)
 
+    # Persist any tokens created for the typed question and release the read
+    # transaction before waiting on the provider. Chat can span several
+    # sessions, so keeping this connection open during inference needlessly
+    # reduces pool capacity.
+    await db.commit()
+
     try:
         reply = await generate_text(
             body.model_id,
