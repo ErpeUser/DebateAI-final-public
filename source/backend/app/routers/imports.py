@@ -15,7 +15,7 @@ from app.models import CallSegment, Speaker, TranscriptEntry
 from app.services.pii import shield
 from app.services.audio_store import SegmentAudioWriter
 from app.services.batch_transcriber import TranscriptionError
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text
+from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
 from app.services.audio_utils import convert_to_pcm16
 from app.services.local_transcriber import create_transcriber
 from app.services.diarizer_factory import create_diarizer
@@ -361,7 +361,7 @@ async def import_transcript(
     db: AsyncSession = Depends(get_db),
 ):
     """Import a transcript file (.txt, .md, .docx) into the session's transcript entries."""
-    filename = file.filename or ""
+    filename = safe_upload_filename(file.filename, fallback="transcript.txt")
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in (".txt", ".md", ".docx"):
@@ -406,7 +406,7 @@ async def import_audio(
     db: AsyncSession = Depends(get_db),
 ):
     """Import an audio file — diarizes and transcribes via acoustic fingerprinting."""
-    filename = file.filename or ""
+    filename = safe_upload_filename(file.filename, fallback="audio.wav")
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in (".m4a", ".mp3", ".wav", ".ogg", ".flac"):
