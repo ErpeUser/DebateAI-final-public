@@ -180,13 +180,15 @@ async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, valu
         value_hmac=digest,
         value_encrypted=encrypt(value.strip()),
     )
-    db.add(row)
     try:
-        await db.flush()
+        # Use a savepoint so a duplicate from a concurrent writer does not
+        # roll back the caller's surrounding transcript transaction.
+        async with db.begin_nested():
+            db.add(row)
+            await db.flush()
     except IntegrityError:
-        # Another writer minted this value first (two imports racing). Drop
-        # our row, reload, and use theirs.
-        await db.rollback()
+        # Another writer minted this value first (two imports racing). Reload
+        # after the savepoint rollback and use the committed winner.
         with _lock:
             _vaults.pop(session_id, None)
         vault = await _ensure_loaded(db, session_id)
