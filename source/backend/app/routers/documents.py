@@ -9,7 +9,7 @@ from app.database import get_db
 from app.models import Document, Session
 from app.schemas import DocumentOut
 from app.services.pii import shield
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text
+from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
 from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
 from app.services.privacy import is_local_only
 
@@ -61,7 +61,7 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
     if await db.get(Session, session_id) is None:
         raise HTTPException(404, "Session not found")
-    filename = (file.filename or "document").strip()[:MAX_DOCUMENT_FILENAME_CHARS]
+    filename = safe_upload_filename(file.filename, fallback="document", max_length=MAX_DOCUMENT_FILENAME_CHARS)
     content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
     if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
         raise HTTPException(413, "Document exceeds the 25 MiB upload limit")
