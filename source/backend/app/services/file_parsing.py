@@ -1,7 +1,16 @@
 """Shared file-to-text parsing helpers for transcript and knowledge imports."""
 
 import io
+import os
 import re
+
+
+def safe_upload_filename(filename: str | None, *, fallback: str = "upload", max_length: int = 255) -> str:
+    """Return a display filename without path or control-character tricks."""
+    candidate = os.path.basename((filename or "").replace("\\", "/")).strip()
+    candidate = "".join(ch for ch in candidate if ch >= " " and ch != "\x7f")
+    candidate = candidate.lstrip(".- ")
+    return candidate[:max_length] or fallback
 
 
 def parse_text(content: str) -> list[str]:
