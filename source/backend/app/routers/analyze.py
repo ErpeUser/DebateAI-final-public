@@ -144,7 +144,9 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
         raise HTTPException(404, "Session not found")
     count = 0
     for item in items[:MAX_ANALYZE_ITEMS]:
-        if not isinstance(item, dict) or count >= MAX_ANALYZE_ITEMS:
+        if count >= MAX_ANALYZE_ITEMS:
+            break
+        if not isinstance(item, dict):
             continue
         item_type = _bounded_field(item.get("item_type", "question"), 40)
         if item_type not in _ALLOWED_ITEM_TYPES:
@@ -166,7 +168,12 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
             question.followup_question = _bounded_field(item.get("followup_question"), 4000)
         db.add(question)
         count += 1
-        if item_type == "answered" and item.get("needs_followup") and item.get("followup_question"):
+        if (
+            count < MAX_ANALYZE_ITEMS
+            and item_type == "answered"
+            and item.get("needs_followup")
+            and item.get("followup_question")
+        ):
             db.add(Question(
                 session_id=session_id,
                 question=_bounded_field(item.get("followup_question"), 4000),
