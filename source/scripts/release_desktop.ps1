@@ -386,6 +386,10 @@ function Build-WindowsRelease {
     if ($null -eq $nodeCommand) {
         throw "Node.js 24 is required to bundle the ChatGPT web runtime."
     }
+    $nodeVersion = (& $nodeCommand.Source --version 2>&1 | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\\.") {
+        throw "Node.js 24 is required to bundle the ChatGPT web runtime; found '$nodeVersion'."
+    }
     Invoke-Checked "Bundling portable Node runtime for ChatGPT Web" {
         Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
     } | Out-Null
