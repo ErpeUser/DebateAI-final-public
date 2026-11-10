@@ -88,10 +88,12 @@ export function createSystemCaptureStop(handle: SystemCaptureHandle): () => bool
 const WORKLET_CODE = `
   const SAMPLES_NEEDED = 1600; // ~100ms at 16kHz
   class PCM16Processor extends AudioWorkletProcessor {
-    constructor() {
+    constructor(options) {
       super();
       this._chunk = new Int16Array(SAMPLES_NEEDED);
       this._filled = 0;
+      this._inputRate = options.processorOptions?.inputSampleRate || 16000;
+      this._rateAccumulator = 0;
     }
     process(inputs) {
       const input = inputs[0];
@@ -99,6 +101,12 @@ const WORKLET_CODE = `
       const float32 = input[0];
       for (let i = 0; i < float32.length; i++) {
         const s = Math.max(-1, Math.min(1, float32[i]));
+        // AudioContext implementations may ignore the requested 16 kHz rate
+        // and render at 44.1/48 kHz. Downsample explicitly so the backend's
+        // PCM16/16 kHz contract remains true on every Windows browser.
+        this._rateAccumulator += 16000;
+        if (this._rateAccumulator < this._inputRate) continue;
+        this._rateAccumulator -= this._inputRate;
         this._chunk[this._filled++] = s < 0 ? s * 0x8000 : s * 0x7fff;
         if (this._filled === SAMPLES_NEEDED) {
           const full = this._chunk;
@@ -207,7 +215,9 @@ export function useAudioCapture() {
         URL.revokeObjectURL(url);
         workletReadyRef.current = true;
       }
-      const workletNode = new AudioWorkletNode(ctx, "pcm16-processor");
+      const workletNode = new AudioWorkletNode(ctx, "pcm16-processor", {
+        processorOptions: { inputSampleRate: ctx.sampleRate },
+      });
       workletNode.port.onmessage = (e: MessageEvent) => {
         onChunk(e.data as ArrayBuffer, track);
       };
@@ -219,6 +229,8 @@ export function useAudioCapture() {
       // Fallback: ScriptProcessorNode
       const scriptNode = ctx.createScriptProcessor(4096, 1, 1);
       const samplesPerChunk = 1600; // ~100ms at 16kHz
+      let rateAccumulator = 0;
+      const inputRate = ctx.sampleRate || 16000;
       let chunk = new Int16Array(samplesPerChunk);
       let filled = 0;
 
@@ -226,6 +238,9 @@ export function useAudioCapture() {
         const float32 = e.inputBuffer.getChannelData(0);
         for (let i = 0; i < float32.length; i++) {
           const s = Math.max(-1, Math.min(1, float32[i]));
+          rateAccumulator += 16000;
+          if (rateAccumulator < inputRate) continue;
+          rateAccumulator -= inputRate;
           chunk[filled++] = s < 0 ? s * 0x8000 : s * 0x7fff;
           if (filled === samplesPerChunk) {
             const full = chunk;
@@ -320,7 +335,15 @@ export function useAudioCapture() {
       }
       if (generation !== captureGenerationRef.current) return;
 
-      const ctx = new AudioContext({ sampleRate: 16000 });
+      // Prefer the target rate, but keep capture usable on browsers that
+      // reject or silently ignore a non-native AudioContext rate. The worklet
+      // and ScriptProcessor paths resample from ctx.sampleRate explicitly.
+      let ctx: AudioContext;
+      try {
+        ctx = new AudioContext({ sampleRate: 16000 });
+      } catch {
+        ctx = new AudioContext();
+      }
       contextRef.current = ctx;
       workletReadyRef.current = false;
 

@@ -1026,6 +1026,11 @@ class AgentOrchestrator:
         self._consolidated_task: asyncio.Task | None = None
         self._objection_task: asyncio.Task | None = None
         self._debate_pending = False
+        # Once a speakable streaming partial is visible, keep that worker alive
+        # long enough to publish its complete answer.  Cancelling at that point
+        # makes continuous speech look like a broken copilot: every new partial
+        # resets the clock before the first useful card can finish.
+        self._debate_partial_visible = False
         self._interim_debate_hypotheses: dict[str, str] = {}
         self._active_utterance_id: str | None = None
         self._gateway_segment_id = f"{self.capture_id}:gateway"
@@ -1036,6 +1041,7 @@ class AgentOrchestrator:
         self._interim_segment_revisions: dict[str, int] = {}
         self._finalized_interim_segments: set[str] = set()
         self._active_claim_id: str | None = None
+        self._active_claim_is_interim = False
         self._transcript_revision = 0
         self._directive_revision = 0
         self._recommendation_revision = 0
@@ -1366,6 +1372,14 @@ class AgentOrchestrator:
                     related.append(row)
                 if len(related) == 2:
                     break
+            # Lexical fallback is still a real same-topic hit.  Preserve its
+            # claim ids for research routing so an unavailable/unwarmed embedder
+            # does not misclassify a known topic as new and trigger unnecessary
+            # deep analysis.
+            for row in related:
+                claim_id = str(row.get("claim_id") or "")
+                if claim_id and claim_id not in self._active_semantic_related_claim_ids:
+                    self._active_semantic_related_claim_ids.append(claim_id)
         for row in reversed(related):
             good_answer = str(row.get("good_answer") or "").strip()
             if good_answer:
@@ -1433,7 +1447,9 @@ class AgentOrchestrator:
             getattr(self, "local_dossier_context", "") or ""
         )
         if not include_local_dossier or not local_dossier_context.strip():
-            return self._debate_support_context(current_text)
+            # SemanticArgumentMemory uses an ONNX embedding model. Retrieval is
+            # small but CPU-bound, so never run it on the WebSocket event loop.
+            return await asyncio.to_thread(self._debate_support_context, current_text)
         model_id = ""
         get_model = getattr(self, "_get_model", None)
         if callable(get_model):
@@ -1456,7 +1472,10 @@ class AgentOrchestrator:
                 "Omitting local dossier from non-local debate route %s",
                 model_id or "unconfigured model",
             )
-            return self._debate_support_context(current_text)
+            return await asyncio.to_thread(
+                self._debate_support_context,
+                current_text,
+            )
         try:
             async with async_session() as db:
                 dossier_context = await get_local_dossier_context(
@@ -1471,7 +1490,10 @@ class AgentOrchestrator:
                 current_text,
                 budget=12_000,
             )
-        base_context = self._debate_support_context(current_text)
+        base_context = await asyncio.to_thread(
+            self._debate_support_context,
+            current_text,
+        )
         dossier_block = (
             "- [lokales Vorbereitungsdossier; nicht an Cloudmodelle senden]\n"
             + dossier_context
@@ -1792,6 +1814,7 @@ class AgentOrchestrator:
             self._active_interim_segment_id = self._gateway_segment_id
             self._gateway_segment_revision = 0
         self._active_claim_id = self._active_utterance_id
+        self._active_claim_is_interim = False
         self._active_semantic_related_claim_ids = []
         self._active_speaker_id = speaker_id
         self._active_speaker_name = speaker_name
@@ -1842,6 +1865,7 @@ class AgentOrchestrator:
 
         self._active_utterance_id = utterance_id
         self._active_claim_id = utterance_id
+        self._active_claim_is_interim = False
         self._active_semantic_related_claim_ids = []
         self._active_speaker_id = speaker_id
         self._active_speaker_name = speaker_name
@@ -1912,6 +1936,7 @@ class AgentOrchestrator:
             return False
         self._active_utterance_id = utterance_id
         self._active_claim_id = utterance_id
+        self._active_claim_is_interim = True
         self._active_semantic_related_claim_ids = []
         self._interim_debate_hypotheses = {utterance_id: normalized[:500]}
         self._transcript_revision = getattr(self, "_transcript_revision", 0) + 1
@@ -1927,15 +1952,19 @@ class AgentOrchestrator:
         """Run only the newest latency-critical revision.
 
         A stale live call can otherwise occupy the provider and keep running
-        until its response arrives.  The revision guards still protect against
-        a provider that ignores cancellation, while cancelling the task here
-        prevents normal async providers from doing avoidable work and avoids
-        stale side effects such as partial guidance broadcasts.
+        until its response arrives. Before any useful partial is visible we
+        still cancel it, which keeps fast providers responsive. After a
+        speakable partial is visible we coalesce newer speech and let the
+        current worker publish its complete answer before running the newest
+        revision. This preserves a usable card during continuous speech.
         """
         self._debate_pending = True
         active_task = self._objection_task
         if active_task and not active_task.done():
+            if getattr(self, "_debate_partial_visible", False):
+                return
             active_task.cancel("newer transcript revision")
+        self._debate_partial_visible = False
         self._objection_task = asyncio.create_task(
             self._run_debate_worker(),
             name=f"debate-copilot-{self.session_id}-worker",
@@ -1946,6 +1975,7 @@ class AgentOrchestrator:
         # arrived. Publish it, then immediately analyze the coalesced latest text.
         while self._debate_pending and not self._stopped:
             self._debate_pending = False
+            self._debate_partial_visible = False
             self._debate_revision += 1
             await self._run_debate_revision(
                 self._debate_revision,
@@ -2797,12 +2827,30 @@ class AgentOrchestrator:
             int(recommendation.transcript_revision or 0),
             int(recommendation.claim_revision or 0),
         )
+        existing = getattr(self.objection_agent, "latest_recommendation", None)
+        existing_revision = max(
+            int(getattr(existing, "transcript_revision", 0) or 0),
+            int(getattr(existing, "claim_revision", 0) or 0),
+        )
+        same_claim_visible_card = bool(
+            recommendation.claim_id
+            and active_claim_id
+            and recommendation.claim_id == active_claim_id
+            and bool(getattr(self, "_active_claim_is_interim", False))
+            and origin in {"model", "model_stream"}
+            and (
+                not existing
+                or str(getattr(existing, "claim_id", "") or "") != active_claim_id
+                or existing_revision <= explicit_revision
+            )
+        )
         if (
             (recommendation.claim_id and active_claim_id and recommendation.claim_id != active_claim_id)
             or (
                 explicit_revision
                 and current_transcript_revision
                 and explicit_revision < current_transcript_revision
+                and not same_claim_visible_card
             )
         ):
             logger.debug(
@@ -3162,15 +3210,28 @@ class AgentOrchestrator:
             "findings": findings,
         }
 
-    def _analysis_context_is_current(self, context: AnalysisJobContext) -> bool:
+    def _analysis_context_is_current(
+        self,
+        context: AnalysisJobContext,
+        *,
+        allow_newer_revision_same_claim: bool = False,
+    ) -> bool:
         active_claim_id = getattr(self, "_active_claim_id", None)
+        current_revision = int(
+            getattr(self, "_transcript_revision", context.claim_revision)
+        )
+        revision_is_current = context.claim_revision == current_revision
+        if allow_newer_revision_same_claim:
+            revision_is_current = (
+                context.claim_revision <= current_revision
+                and bool(active_claim_id)
+                and context.claim_id == str(active_claim_id)
+            )
         return bool(
             not self._stopped
             and context.session_id == str(self.session_id)
             and (not active_claim_id or context.claim_id == str(active_claim_id))
-            and context.claim_revision == int(
-                getattr(self, "_transcript_revision", context.claim_revision)
-            )
+            and revision_is_current
             and context.directive_revision == int(
                 getattr(self, "_directive_revision", 0)
             )
@@ -3488,7 +3549,7 @@ class AgentOrchestrator:
         used_model = ""
         reuse_topic_analysis = getattr(self, "_reuse_topic_analysis", True)
         relevant_context = (
-            self._debate_support_context(recommendation.target_claim)
+            await self._debate_support_context_async(recommendation.target_claim)
             if reuse_topic_analysis
             else ""
         )
@@ -3664,7 +3725,10 @@ class AgentOrchestrator:
         def snapshot_is_current() -> bool:
             return bool(
                 not self._stopped
-                and self._analysis_context_is_current(generation_context)
+                and self._analysis_context_is_current(
+                    generation_context,
+                    allow_newer_revision_same_claim=True,
+                )
                 and revision == self._debate_revision
                 and (
                     not claim_id
@@ -3712,6 +3776,7 @@ class AgentOrchestrator:
                 if partial_sent or not snapshot_is_current():
                     return
                 partial_sent = True
+                self._debate_partial_visible = True
                 await self._send_debate_update(
                     revision,
                     stamp_context(partial),

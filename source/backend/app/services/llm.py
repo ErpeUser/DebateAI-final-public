@@ -717,8 +717,6 @@ def _ollama_debate_controls(
         "endpoint:german-debate-ollama:"
     ):
         return {}
-    if ":11434" not in endpoint.base_url:
-        return {}
     controls: dict = {
         "keep_alive": "15m",
         "options": {
@@ -1109,7 +1107,6 @@ async def _generate_json_once(
         if (
             source == "debate_copilot"
             and model_id.startswith("endpoint:german-debate-ollama:")
-            and ":11434" in target.endpoint.base_url
         ):
             return await _ollama_native_debate_json(
                 model_id,

@@ -49,12 +49,12 @@ const settings = {
 
 test("renders the two rhetoric modes and three research frequencies", () => {
   const html = render({ settings, privacyFirst: false, saving: false, onChange: () => {} });
-  assert.match(html, /Überzeugend/);
-  assert.match(html, /Brutal-sachlich/);
+  assert.match(html, /Überzeugen/);
+  assert.match(html, /Hart/);
   assert.match(html, /Wenig/);
   assert.match(html, /Normal/);
   assert.match(html, /Oft/);
-  assert.match(html, /aria-pressed="true"[^>]*>Brutal-sachlich/s);
+  assert.match(html, /aria-pressed="true"[^>]*>Hart/s);
   assert.match(html, /20 Sekunden/);
   assert.match(html, /Publikum.*eigene Maßstäbe/s);
   assert.match(html, /Position.*Beweislast.*Konsistenz/s);

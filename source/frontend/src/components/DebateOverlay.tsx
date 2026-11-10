@@ -21,7 +21,11 @@ export default function DebateOverlay() {
       }
     };
     void refresh();
-    const timer = window.setInterval(refresh, 600);
+    const timer = window.setInterval(() => {
+      // The overlay is a fallback transport for the detached always-on-top
+      // window. Do not keep polling while Windows has hidden the window.
+      if (document.visibilityState === "visible") void refresh();
+    }, 1200);
     return () => {
       stopped = true;
       window.clearInterval(timer);
@@ -29,7 +33,15 @@ export default function DebateOverlay() {
   }, []);
 
   const recommendation = snapshot.recommendation;
-  const answer = recommendation?.answer_now || recommendation?.counterargument || "";
+  const primaryIsQuestion = recommendation?.primary_move === "question"
+    && Boolean(recommendation?.counter_question?.trim());
+  const answer = primaryIsQuestion
+    ? recommendation?.counter_question || ""
+    : recommendation?.answer_now || recommendation?.counterargument || "";
+  const secondary = primaryIsQuestion
+    ? recommendation?.answer_now || recommendation?.counterargument || ""
+    : recommendation?.counter_question || "";
+  const primaryLabel = primaryIsQuestion ? "Gegenfrage" : "Sofortantwort";
   const copyAnswer = async () => {
     if (!answer) return;
     await navigator.clipboard.writeText(answer);
@@ -66,7 +78,7 @@ export default function DebateOverlay() {
 
           <section aria-live="polite" aria-atomic="true" className="rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.08] p-4 shadow-lg shadow-black/20">
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">Jetzt sagen</p>
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">{primaryLabel}</p>
               <button type="button" onClick={copyAnswer} disabled={!answer} className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/75 hover:bg-white/15 disabled:opacity-40">
                 {copied ? "Kopiert" : "Kopieren"}
               </button>
@@ -74,10 +86,10 @@ export default function DebateOverlay() {
             <p className="text-[17px] font-medium leading-7 text-white">{answer || "Die Modellantwort wird gerade erzeugt …"}</p>
           </section>
 
-          {recommendation.counter_question && (
+          {secondary && (
             <section className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300">Gegenfrage</p>
-              <p className="text-sm leading-5 text-white/85">{recommendation.counter_question}</p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300">{primaryIsQuestion ? "Sofortantwort" : "Gegenfrage"}</p>
+              <p className="text-sm leading-5 text-white/85">{secondary}</p>
             </section>
           )}
 

@@ -141,6 +141,23 @@ class LLMRouterTests(unittest.IsolatedAsyncioTestCase):
             scheduled.await_args.args[1],
         )
 
+    def test_ollama_debate_controls_support_custom_port(self):
+        endpoint = OpenAIEndpoint(
+            base_url="http://127.0.0.1:11435/v1",
+            model="qwen3:4b",
+            api_key="",
+        )
+        controls = llm._ollama_debate_controls(
+            "endpoint:german-debate-ollama:qwen3:4b",
+            endpoint,
+            source="debate_copilot",
+            reasoning_effort="none",
+            output_budget=128,
+        )
+
+        self.assertFalse(controls.get("think", True))
+        self.assertEqual(128, controls["options"]["num_predict"])
+
     def test_provider_for(self):
         self.assertEqual("openai", llm.provider_for("gpt-5.5"))
         self.assertEqual("google", llm.provider_for("gemini-3.5-flash"))

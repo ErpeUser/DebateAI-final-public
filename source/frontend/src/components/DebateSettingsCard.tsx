@@ -22,8 +22,8 @@ interface ControlsProps {
 }
 
 const modes = [
-  { value: "persuasive", label: "Überzeugend", hint: "Publikum, gemeinsame Basis, eigene Maßstäbe und Beispiele" },
-  { value: "forceful", label: "Brutal-sachlich", hint: "Position, Beweislast, Konsistenz und Falsifikator" },
+  { value: "persuasive", label: "Überzeugen", hint: "Publikum, gemeinsame Basis, eigene Maßstäbe und Beispiele" },
+  { value: "forceful", label: "Hart", hint: "Position, Beweislast, Konsistenz und Falsifikator" },
 ] as const;
 
 const frequencies = [
@@ -162,7 +162,13 @@ export function DebateSettingsControls({ settings, privacyFirst, saving, onChang
               step={0.01}
               value={settings.memory_similarity_threshold}
               disabled={saving || !settings.argument_memory_enabled}
-              onChange={(event) => onChange({ memory_similarity_threshold: Number(event.target.value) })}
+              onChange={(event) => {
+                const value = Number(event.target.value);
+                if (!Number.isFinite(value)) return;
+                onChange({
+                  memory_similarity_threshold: Math.min(0.95, Math.max(0.1, value)),
+                });
+              }}
               className="w-20 rounded border border-brand-light-gray-1 px-2 py-1 text-right"
             />
           </span>
@@ -296,7 +302,7 @@ export default function DebateSettingsCard({ privacyFirst }: { privacyFirst: boo
               <div className="mt-3 rounded border border-brand-teal/30 bg-surface p-3 font-body text-xs leading-5 text-brand-gray">
                 <p className="font-semibold text-brand-dark-gray">Vorschau: {preview.name}</p>
                 <p>{preview.description}</p>
-                <p className="mt-1">Modus: {preview.mode === "forceful" ? "Brutal-sachlich" : "Überzeugend"} · Stil: {preview.style_focus} · Recherche: {preview.research_frequency}</p>
+                <p className="mt-1">Modus: {preview.mode === "forceful" ? "Hart" : "Überzeugen"} · Stil: {preview.style_focus} · Recherche: {preview.research_frequency}</p>
                 <p>Die Gesprächsphase wird automatisch zwischen neuem Thema, Folgezug und Tiefenanalyse gewählt. Faktenregeln und lokale Datenschutzwahl bleiben unverändert.</p>
                 {preview.profile_directive && <p className="mt-1"><strong>Strategie:</strong> {preview.profile_directive.replace("[PLAYBOOK] ", "")}</p>}
                 <div className="mt-2 flex gap-2">
