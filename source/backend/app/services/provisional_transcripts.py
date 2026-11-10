@@ -31,6 +31,19 @@ class PersistedProvisionalRevision:
     created: bool
 
 
+def _bounded_optional_int(value: object, *, minimum: int, maximum: int) -> int | None:
+    """Parse an optional integer without allowing DB overflow or booleans."""
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        if isinstance(value, float) and not value.is_integer():
+            return None
+        parsed = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return parsed if minimum <= parsed <= maximum else None
+
+
 def _within_provisional_limits(text: str) -> bool:
     return (
         len(text) <= MAX_PROVISIONAL_SEGMENT_CHARS
@@ -128,6 +141,28 @@ async def persist_provisional_revision(
     if not track_id or len(track_id) > MAX_PROVISIONAL_TRACK_ID_CHARS:
         return PersistedProvisionalRevision(None, False)
 
+    # These values land in SQL INTEGER columns. Reject malformed, negative, or
+    # overflowing metadata before opening a transaction or minting PII tokens.
+    start_sample = _bounded_optional_int(
+        data.get("audio_start_sample"), minimum=0, maximum=2_147_483_647
+    )
+    end_sample = _bounded_optional_int(
+        data.get("audio_end_sample"), minimum=0, maximum=2_147_483_647
+    )
+    if (
+        (data.get("audio_start_sample") is not None and start_sample is None)
+        or (data.get("audio_end_sample") is not None and end_sample is None)
+        or (start_sample is not None and end_sample is not None and end_sample < start_sample)
+    ):
+        return PersistedProvisionalRevision(None, False)
+    sample_rate = _bounded_optional_int(
+        data.get("sample_rate") if data.get("sample_rate") is not None else 16000,
+        minimum=1,
+        maximum=192_000,
+    )
+    if sample_rate is None:
+        return PersistedProvisionalRevision(None, False)
+
     # One short lock serializes revision validation and append materialization.
     # Validate before PII protection so stale/invalid replays do not mint vault
     # entries or spend NER work.
@@ -188,17 +223,9 @@ async def persist_provisional_revision(
         text=text,
         mode="replace",
         track_id=track_id,
-        audio_start_sample=(
-            int(data["audio_start_sample"])
-            if data.get("audio_start_sample") is not None
-            else None
-        ),
-        audio_end_sample=(
-            int(data["audio_end_sample"])
-            if data.get("audio_end_sample") is not None
-            else None
-        ),
-        sample_rate=int(data.get("sample_rate") or 16000),
+        audio_start_sample=start_sample,
+        audio_end_sample=end_sample,
+        sample_rate=sample_rate,
     )
     db.add(row)
     await db.flush()
