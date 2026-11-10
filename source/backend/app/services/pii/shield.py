@@ -70,8 +70,11 @@ class ShieldSettings:
             data = json.loads(raw)
         except ValueError:
             return cls()
+        raw_categories = data.get("categories", DEFAULT_CATEGORIES)
+        if not isinstance(raw_categories, list):
+            raw_categories = DEFAULT_CATEGORIES
         categories = list(dict.fromkeys(
-            c for c in data.get("categories", DEFAULT_CATEGORIES) if c in CATEGORIES
+            c for c in raw_categories if c in CATEGORIES
         ))[:32]
         raw_terms = data.get("protected_terms", [])
         if not isinstance(raw_terms, list):
