@@ -131,6 +131,10 @@ class OpenAIRealtimeSession:
             REALTIME_URL,
             additional_headers={"Authorization": f"Bearer {key}"},
             max_size=16 * 1024 * 1024,
+            max_queue=16,
+            ping_interval=20,
+            ping_timeout=20,
+            compression=None,
         )
         await self._ws.send(json.dumps(
             _session_update_payload(self._transcribe_model, self._language)
