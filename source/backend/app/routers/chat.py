@@ -56,7 +56,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatIn(BaseModel):
-    model_id: str
+    model_id: str = Field(min_length=1, max_length=160)
     session_ids: list[uuid.UUID] = Field(min_length=1, max_length=20)
     messages: list[ChatMessage] = Field(min_length=1, max_length=MAX_CHAT_HISTORY_MESSAGES)
 
