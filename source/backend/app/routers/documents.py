@@ -6,7 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Document
+from app.models import Document, Session
 from app.schemas import DocumentOut
 from app.services.pii import shield
 from app.services.file_parsing import parse_docx, parse_markdown, parse_text
@@ -59,6 +59,8 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 
 @router.post("", response_model=DocumentOut, status_code=201)
 async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
+    if await db.get(Session, session_id) is None:
+        raise HTTPException(404, "Session not found")
     filename = (file.filename or "document").strip()[:MAX_DOCUMENT_FILENAME_CHARS]
     content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
     if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
@@ -93,6 +95,8 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
 
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    if await db.get(Session, session_id) is None:
+        raise HTTPException(404, "Session not found")
     result = await db.execute(
         select(Document).where(Document.session_id == session_id).order_by(Document.uploaded_at)
     )
