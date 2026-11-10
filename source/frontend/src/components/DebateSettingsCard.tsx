@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Search, ShieldAlert, Sparkles } from "lucide-react";
 import type { DebateProfile, DebateSettings } from "../types";
 import * as api from "../services/api";
