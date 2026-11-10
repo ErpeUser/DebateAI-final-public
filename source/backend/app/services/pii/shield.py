@@ -76,7 +76,7 @@ class ShieldSettings:
         if not isinstance(raw_categories, list):
             raw_categories = DEFAULT_CATEGORIES
         categories = list(dict.fromkeys(
-            c for c in raw_categories if c in CATEGORIES
+            c for c in raw_categories if isinstance(c, str) and c in CATEGORIES
         ))[:32]
         raw_terms = data.get("protected_terms", [])
         if not isinstance(raw_terms, list):
