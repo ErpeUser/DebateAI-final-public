@@ -40,7 +40,7 @@ ANSWER_TRUNCATION_MARKER = "\n\n[Answer truncated at 4000 characters.]"
 
 
 class AskIn(BaseModel):
-    model_id: str
+    model_id: str = Field(min_length=1, max_length=160)
     question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS)
 
 
