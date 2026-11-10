@@ -373,6 +373,12 @@ function Build-WindowsRelease {
     Invoke-Checked "Downloading ffmpeg" {
         & $venvPython (Join-Path $Source "desktop\scripts\download_ffmpeg.py")
     } | Out-Null
+    Invoke-Checked "Downloading CLIProxyAPI and Gemini plugin" {
+        & $venvPython (Join-Path $Source "desktop\scripts\download_cliproxyapi.py")
+    } | Out-Null
+    Invoke-Checked "Building Gemini web bridge" {
+        & (Join-Path $Source "desktop\gemini_web_to_api\build.ps1") -RepositoryRoot $Source
+    } | Out-Null
     Push-Location $Source
     try {
         Invoke-Checked "Building Windows desktop bundle" {
