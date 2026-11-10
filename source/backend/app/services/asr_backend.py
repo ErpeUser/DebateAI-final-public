@@ -249,6 +249,10 @@ class NemotronStreamingASRBackend:
             open_timeout=self._event_timeout,
             close_timeout=2,
             max_size=2**20,
+            max_queue=16,
+            ping_interval=20,
+            ping_timeout=20,
+            compression=None,
         )
 
     async def _check_readiness(self) -> None:
