@@ -28,11 +28,12 @@ $python312 = py -3.12 -c "import sys; print(sys.executable)"
 .\scripts\build_debate_assistant.ps1 -Python $python312 -IncludeOracle
 ```
 
-This wrapper reuses the release frontend build, checked-in model/PostgreSQL/ffmpeg/CLIProxyAPI downloaders, the pinned Gemini
-Web bridge, the ChatGPT Web runtime, `desktop/backchannel.spec`, and both
- desktop smoke tests.
-It writes `dist\Backchannel-DebateAI-windows-x64.zip`. Use `-SkipDownloads`
-only when those three downloaded asset sets are already present. The wrapper
+This wrapper reuses the release frontend build, checked-in model, PostgreSQL,
+ffmpeg and CLIProxyAPI downloaders, the pinned Gemini Web bridge, the ChatGPT
+Web runtime, `desktop/backchannel.spec`, and both desktop smoke tests.
+It writes `dist\Backchannel-DebateAI-windows-x64.zip`. Use
+`-SkipDownloads` only when every downloaded asset and generated bridge/runtime
+is already present. The wrapper
 does not read release credentials, require a tag, publish objects, or replace
 the authoritative multi-platform release coordinator.
 
