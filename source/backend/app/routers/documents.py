@@ -81,7 +81,7 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
     else:
         doc = Document(
             session_id=session_id,
-            filename=file.filename,
+            filename=filename,
             mime_type=file.content_type or "application/octet-stream",
             gemini_file_uri=await upload_and_summarize(content, filename, file.content_type),
         )
