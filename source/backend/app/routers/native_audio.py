@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.models import Session
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from app.services.windows_audio_capture import native_windows_audio
 
@@ -21,16 +21,16 @@ router = APIRouter(prefix="/api/native-audio", tags=["native-audio"])
 class NativeAudioStart(BaseModel):
     session_id: uuid.UUID
     system_audio: bool = True
-    microphone_index: int | None = None
-    loopback_index: int | None = None
-    microphone_id: str | None = None
-    loopback_id: str | None = None
+    microphone_index: int | None = Field(default=None, ge=0, le=10000)
+    loopback_index: int | None = Field(default=None, ge=0, le=10000)
+    microphone_id: str | None = Field(default=None, max_length=512)
+    loopback_id: str | None = Field(default=None, max_length=512)
     microphone_mode: Literal["fixed", "follow_default"] = "follow_default"
     loopback_mode: Literal["fixed", "follow_default"] = "follow_default"
 
 
 class NativeAudioProbe(BaseModel):
-    microphone_index: int
+    microphone_index: int = Field(ge=0, le=10000)
 
 
 class NativeAudioStop(BaseModel):
