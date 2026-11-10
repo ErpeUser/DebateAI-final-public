@@ -262,7 +262,7 @@ class SubscriptionBridge:
 
     def _probe(self, timeout: float = 0.75) -> list[str] | None:
         request = urllib.request.Request(
-            "http://127.0.0.1:8317/v1/models",
+            self.base_url + "/v1/models",
             # The listener is always loopback, even when the port is explicitly
             # changed for a locally managed development installation.
             headers={"Authorization": f"Bearer {self.client_key}"},
