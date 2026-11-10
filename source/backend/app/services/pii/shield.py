@@ -70,6 +70,8 @@ class ShieldSettings:
             data = json.loads(raw)
         except ValueError:
             return cls()
+        if not isinstance(data, dict):
+            return cls()
         raw_categories = data.get("categories", DEFAULT_CATEGORIES)
         if not isinstance(raw_categories, list):
             raw_categories = DEFAULT_CATEGORIES
@@ -80,7 +82,10 @@ class ShieldSettings:
         if not isinstance(raw_terms, list):
             raw_terms = []
         terms = [
-            {"value": str(t.get("value", "")).strip()[:200], "category": t.get("category", ORG)}
+            {
+                "value": str(t.get("value", "")).strip()[:200],
+                "category": str(t.get("category") or ORG).strip().upper(),
+            }
             for t in raw_terms[:256]
             if isinstance(t, dict) and str(t.get("value", "")).strip()
         ]
