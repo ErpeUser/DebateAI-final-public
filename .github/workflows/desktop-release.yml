@@ -319,6 +319,11 @@ jobs:
         shell: bash
         run: python source/desktop/scripts/download_cliproxyapi.py
 
+      - name: Build Gemini web bridge
+        working-directory: source
+        shell: pwsh
+        run: ./desktop/gemini_web_to_api/build.ps1
+
       - name: Build bundle
         working-directory: source
         shell: bash
