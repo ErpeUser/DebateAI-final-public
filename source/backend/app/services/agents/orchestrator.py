@@ -1307,7 +1307,8 @@ class AgentOrchestrator:
         current_text: str = "",
         *,
         include_local_dossier: bool = False,
-    ) -> str:
+        return_related_ids: bool = False,
+    ) -> str | tuple[str, list[str]]:
         """Return a tiny evidence board for the next deep debate revision."""
         economy = getattr(
             getattr(self, "debate_settings", None),
@@ -1357,12 +1358,14 @@ class AgentOrchestrator:
             for marker in ("deine position", "dieser punkt", "dieser beleg", "dazu", "darum")
         )
         related: list[dict[str, object]] = [match.row for match in semantic_matches]
-        self._active_semantic_related_claim_ids = [
+        related_claim_ids = [
             str(match.row.get("claim_id") or "")
             for match in semantic_matches
             if str(match.row.get("claim_id") or "")
             and match.score >= getattr(self, "_topic_similarity_threshold", 0.46)
         ]
+        if not return_related_ids:
+            self._active_semantic_related_claim_ids = related_claim_ids
         if not related:
             for row in reversed(list(getattr(self, "_argument_memory", []))):
                 claim = str(row.get("target_claim") or "")
@@ -1378,8 +1381,10 @@ class AgentOrchestrator:
             # deep analysis.
             for row in related:
                 claim_id = str(row.get("claim_id") or "")
-                if claim_id and claim_id not in self._active_semantic_related_claim_ids:
-                    self._active_semantic_related_claim_ids.append(claim_id)
+                if claim_id and claim_id not in related_claim_ids:
+                    related_claim_ids.append(claim_id)
+            if not return_related_ids:
+                self._active_semantic_related_claim_ids = related_claim_ids
         for row in reversed(related):
             good_answer = str(row.get("good_answer") or "").strip()
             if good_answer:
@@ -1435,7 +1440,10 @@ class AgentOrchestrator:
                     )
             if len(lines) >= 14:
                 break
-        return "\n".join(lines)
+        context = "\n".join(lines)
+        if return_related_ids:
+            return context, related_claim_ids
+        return context
 
     async def _debate_support_context_async(
         self,
@@ -1443,13 +1451,29 @@ class AgentOrchestrator:
         *,
         include_local_dossier: bool = False,
     ) -> str:
+        claim_snapshot = str(getattr(self, "_active_claim_id", "") or "")
+        transcript_snapshot = int(getattr(self, "_transcript_revision", 0))
+
+        async def retrieve_base_context() -> str:
+            context, related_ids = await asyncio.to_thread(
+                self._debate_support_context,
+                current_text,
+                return_related_ids=True,
+            )
+            if (
+                claim_snapshot == str(getattr(self, "_active_claim_id", "") or "")
+                and transcript_snapshot == int(getattr(self, "_transcript_revision", 0))
+            ):
+                self._active_semantic_related_claim_ids = related_ids
+            return context
+
         local_dossier_context = str(
             getattr(self, "local_dossier_context", "") or ""
         )
         if not include_local_dossier or not local_dossier_context.strip():
             # SemanticArgumentMemory uses an ONNX embedding model. Retrieval is
             # small but CPU-bound, so never run it on the WebSocket event loop.
-            return await asyncio.to_thread(self._debate_support_context, current_text)
+            return await retrieve_base_context()
         model_id = ""
         get_model = getattr(self, "_get_model", None)
         if callable(get_model):
@@ -1472,10 +1496,7 @@ class AgentOrchestrator:
                 "Omitting local dossier from non-local debate route %s",
                 model_id or "unconfigured model",
             )
-            return await asyncio.to_thread(
-                self._debate_support_context,
-                current_text,
-            )
+            return await retrieve_base_context()
         try:
             async with async_session() as db:
                 dossier_context = await get_local_dossier_context(
@@ -1490,10 +1511,7 @@ class AgentOrchestrator:
                 current_text,
                 budget=12_000,
             )
-        base_context = await asyncio.to_thread(
-            self._debate_support_context,
-            current_text,
-        )
+        base_context = await retrieve_base_context()
         dossier_block = (
             "- [lokales Vorbereitungsdossier; nicht an Cloudmodelle senden]\n"
             + dossier_context

@@ -21,6 +21,7 @@ Die Änderung priorisiert die erste brauchbare, natürlich sprechbare Debattenhi
 
 2. **Nicht-blockierendes Argument-Retrieval**
    - Support-Kontext, semantische Suche und Hintergrund-Recherche laufen über `asyncio.to_thread` außerhalb des WebSocket-Event-Loops.
+   - Die gefundenen Claim-IDs werden nur übernommen, wenn Claim und Transkript-Snapshot nach dem Thread-Aufruf noch übereinstimmen; ein abgebrochener älterer Aufruf kann dadurch keine neue Revision umleiten.
    - Die synchrone Hilfsfunktion bleibt für Tests und nicht-async Aufrufer erhalten.
 
 3. **Strategische Overlay-Auswahl**
