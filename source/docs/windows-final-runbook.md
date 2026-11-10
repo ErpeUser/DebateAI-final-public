@@ -4,6 +4,38 @@ Dieses Runbook beschreibt den tatsächlich unterstützten End-to-End-Ablauf der
 Windows-Version. Es gilt für das gebaute Verzeichnis
 Backchannel-windows-x64.zip und für einen lokalen Build aus dem Repository.
 
+## 0. Codex: lokalen Stand und Playbooks final synchronisieren
+
+**Vor dem Build im vorhandenen Windows-Checkout** den neuesten `origin/master`
+holen und die Anweisungen in `AGENTS.md` aus dem Repository-Stamm
+ausfuehren. Ein neuer temporaerer Checkout allein ist kein Endergebnis.
+Codex entscheidet eigenstaendig: ueberholten lokalen Source-Code ersetzen,
+kompatible einzigartige Verbesserungen aus lokalen Commits/Arbeitskopien
+uebernehmen, Konflikte aufloesen und dann den tatsaechlich verwendeten
+Windows-Ordner auf den aktuellen Commit bringen.
+
+**Das rhetorische Playbook gehoert zur Finalversion:** `ai/playbooks.json`
+und `ai/defaults/playbooks.json` liefern die Strategien; Profile und
+Ausloeser werden in `backend/app/services/debate_settings.py` und
+`backend/app/services/agents/orchestrator.py` verarbeitet.
+Benutzeranpassungen koennen im Laufzeitverzeichnis
+`%LOCALAPPDATA%\Backchannel\ai\playbooks.json` liegen.
+Codex vergleicht bei Bedarf die ausgelieferte Version mit dem bisher aktiven
+Playbook und dessen Basisversion, sichert Benutzeranpassungen und fuehrt
+echte neue Strategien sinnvoll zusammen. Veraltete Widersprueche werden nicht
+zurueckkopiert; persoenliche Strategien und gespeicherte Versionen werden
+nicht geloescht. Die Anwendung besitzt bereits ein Drei-Wege-Verfahren,
+das geaenderte Benutzerdateien standardmaessig beibehält – deshalb reicht
+ein neuer Git-Checkout alleine **nicht** als Playbook-Migration.
+
+Nach dem Windows-Build kontrollieren, dass das ZIP die aktuellen Playbooks
+und Prompts enthaelt und dass `/api/ai-config` den beabsichtigten aktiven
+Konfigurationspfad, die Promptversion und die Konfigurationsgeneration zeigt.
+Debattenprofile und zumindest die Playbook-Ausloeser Gegenfrage,
+Beweislast und Widerlegung pruefen. Wenn ein Schritt mangels Windows-Rechten
+oder laufender Anmeldung nicht moeglich ist, das konkret melden – keinen
+fertigen Windows-Betrieb behaupten.
+
 ## 1. Voraussetzungen
 
 - Windows 10 oder 11, 64 Bit.
