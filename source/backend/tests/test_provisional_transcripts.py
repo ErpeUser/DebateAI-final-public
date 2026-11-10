@@ -50,6 +50,33 @@ class ProvisionalTranscriptInputContractTests(unittest.IsolatedAsyncioTestCase):
             self.assertIsNone(result.row)
             self.assertFalse(result.created)
 
+    async def test_invalid_audio_metadata_is_rejected_before_database_access(self):
+        import uuid
+
+        from app.services.provisional_transcripts import persist_provisional_revision
+
+        base = {
+            "segment_id": "segment-1",
+            "segment_revision": 1,
+            "text": "Hypothese",
+            "mode": "replace",
+        }
+        for key, value in (
+            ("audio_start_sample", -1),
+            ("audio_end_sample", 2_147_483_648),
+            ("audio_end_sample", 100),
+            ("sample_rate", 0),
+            ("sample_rate", 192_001),
+            ("sample_rate", "not-a-number"),
+        ):
+            data = {**base, key: value}
+            if key == "audio_end_sample" and value == 100:
+                data["audio_start_sample"] = 200
+            result = await persist_provisional_revision(None, uuid.uuid4(), data)
+            self.assertIsNone(result.row)
+            self.assertFalse(result.created)
+
+
     async def test_unknown_revision_mode_is_rejected_before_database_access(self):
         import uuid
 
