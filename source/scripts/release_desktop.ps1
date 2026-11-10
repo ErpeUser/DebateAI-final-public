@@ -379,6 +379,23 @@ function Build-WindowsRelease {
     Invoke-Checked "Building Gemini web bridge" {
         & (Join-Path $Source "desktop\gemini_web_to_api\build.ps1") -RepositoryRoot $Source
     } | Out-Null
+    $oracleRoot = Join-Path $Source "desktop\chatgpt_oracle"
+    $oracleNodeRoot = Join-Path $oracleRoot "node"
+    New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
+    $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
+    if ($null -eq $nodeCommand) {
+        throw "Node.js 24 is required to bundle the ChatGPT web runtime."
+    }
+    Invoke-Checked "Bundling portable Node runtime for ChatGPT Web" {
+        Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
+    } | Out-Null
+    Invoke-Checked "Installing pinned ChatGPT Oracle package" {
+        & $script:Npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
+    } | Out-Null
+    $oracleCli = Join-Path $oracleRoot "node_modules\@steipete\oracle\dist\bin\oracle-cli.js"
+    if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) {
+        throw "ChatGPT Oracle CLI is missing after npm ci: $oracleCli"
+    }
     Push-Location $Source
     try {
         Invoke-Checked "Building Windows desktop bundle" {
