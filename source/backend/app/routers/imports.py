@@ -11,7 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, get_db
-from app.models import CallSegment, Speaker, TranscriptEntry
+from app.models import CallSegment, Session, Speaker, TranscriptEntry
 from app.services.pii import shield
 from app.services.audio_store import SegmentAudioWriter
 from app.services.batch_transcriber import TranscriptionError
