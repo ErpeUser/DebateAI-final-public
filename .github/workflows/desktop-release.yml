@@ -315,6 +315,10 @@ jobs:
         shell: bash
         run: python source/desktop/scripts/download_ffmpeg.py
 
+      - name: Download CLIProxyAPI and Gemini plugin
+        shell: bash
+        run: python source/desktop/scripts/download_cliproxyapi.py
+
       - name: Build bundle
         working-directory: source
         shell: bash
