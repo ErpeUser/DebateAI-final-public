@@ -328,7 +328,7 @@ jobs:
         working-directory: source
         shell: pwsh
         run: |
-          $oracleRoot = Join-Path (Get-Location) "desktop\\chatgpt_oracle"
+          $oracleRoot = Join-Path (Get-Location) "desktop\chatgpt_oracle"
           $oracleNodeRoot = Join-Path $oracleRoot "node"
           New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
           $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
@@ -336,7 +336,7 @@ jobs:
           Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
           npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { throw "ChatGPT Oracle npm ci failed with exit code $LASTEXITCODE." }
-          $oracleCli = Join-Path $oracleRoot "node_modules\\@steipete\\oracle\\dist\\bin\\oracle-cli.js"
+          $oracleCli = Join-Path $oracleRoot "node_modules\@steipete\oracle\dist\bin\oracle-cli.js"
           if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) { throw "ChatGPT Oracle CLI is missing after npm ci." }
 
       - name: Build bundle
