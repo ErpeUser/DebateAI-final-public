@@ -7,6 +7,7 @@ from google import genai
 
 from app.config import settings
 from app.services.privacy import LocalOnlyModeError, is_local_only
+from app.services.redaction import redact_text
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
 
@@ -27,7 +28,11 @@ async def upload_and_summarize(content: bytes, filename: str, mime_type: str) ->
 
     try:
         uploaded = await client.aio.files.upload(file=tmp_path, config={"mime_type": mime_type})
-        logger.info(f"Uploaded file {filename} -> {uploaded.uri}")
+        logger.info(
+            "Uploaded document (%d filename chars) to Gemini Files API: %s",
+            len(filename or ""),
+            redact_text(str(uploaded.uri))[:160],
+        )
         return uploaded.uri
     finally:
         os.unlink(tmp_path)
