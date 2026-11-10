@@ -9,7 +9,9 @@ def safe_upload_filename(filename: str | None, *, fallback: str = "upload", max_
     """Return a display filename without path or control-character tricks."""
     candidate = os.path.basename((filename or "").replace("\\", "/")).strip()
     candidate = "".join(ch for ch in candidate if ch >= " " and ch != "\x7f")
-    candidate = candidate.lstrip(".- ")
+    candidate = candidate.lstrip("- ")
+    if candidate.startswith(".."):
+        candidate = candidate.lstrip(".")
     return candidate[:max_length] or fallback
 
 
