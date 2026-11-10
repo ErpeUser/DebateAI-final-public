@@ -188,21 +188,50 @@ function Invoke-DebateDesktopBuild {
             Invoke-Checked "Download CLIProxyAPI" { & $venvPython $contract.CLIProxyDownloader }
         }
 
+        if ($IncludeOracle) {
+            $oracleRoot = Join-Path $repoRoot "desktop\\chatgpt_oracle"
+            $oracleNodeRoot = Join-Path $oracleRoot "node"
+            New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
+            $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
+            if ($null -eq $nodeCommand) {
+                throw "Node.js 24 is required to bundle the ChatGPT web runtime."
+            }
+            Invoke-Checked "Bundle portable Node runtime for ChatGPT Web" {
+                Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
+            }
+            Invoke-Checked "Install pinned ChatGPT Oracle package" {
+                & npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
+            }
+            $oracleCli = Join-Path $oracleRoot "node_modules\\@steipete\\oracle\\dist\\bin\\oracle-cli.js"
+            if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) {
+                throw "ChatGPT Oracle CLI is missing after npm ci: $oracleCli"
+            }
+        }
+
         if (Test-Path -LiteralPath $contract.StageRoot) {
             Remove-Item -LiteralPath $contract.StageRoot -Recurse -Force
         }
         New-Item -ItemType Directory -Path $contract.StageRoot | Out-Null
 
-        Invoke-Checked "Build Windows desktop bundle" {
-            if ($IncludeOracle) {
-                $env:BACKCHANNEL_INCLUDE_ORACLE = "1"
-            } else {
-                Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+        $previousOracleFlag = $env:BACKCHANNEL_INCLUDE_ORACLE
+        if ($IncludeOracle) {
+            $env:BACKCHANNEL_INCLUDE_ORACLE = "1"
+        } else {
+            Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+        }
+        try {
+            Invoke-Checked "Build Windows desktop bundle" {
+                & $venvPython -m PyInstaller $contract.Spec `
+                    --distpath $contract.StageRoot `
+                    --workpath $contract.PyInstallerWork `
+                    --noconfirm
             }
-            & $venvPython -m PyInstaller $contract.Spec `
-                --distpath $contract.StageRoot `
-                --workpath $contract.PyInstallerWork `
-                --noconfirm
+        } finally {
+            if ($null -eq $previousOracleFlag) {
+                Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+            } else {
+                $env:BACKCHANNEL_INCLUDE_ORACLE = $previousOracleFlag
+            }
         }
 
         if (-not (Test-Path -LiteralPath $contract.StagedBundle -PathType Container)) {
