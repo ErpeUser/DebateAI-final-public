@@ -189,7 +189,7 @@ function Invoke-DebateDesktopBuild {
         }
 
         Invoke-Checked "Build pinned Gemini Web bridge" {
-            & (Join-Path $repoRoot "desktop\\gemini_web_to_api\\build.ps1") -RepositoryRoot $repoRoot
+            & (Join-Path $repoRoot "desktop\gemini_web_to_api\build.ps1") -RepositoryRoot $repoRoot
         }
 
         if ($IncludeOracle) {
