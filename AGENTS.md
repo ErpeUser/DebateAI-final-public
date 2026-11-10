@@ -37,6 +37,48 @@ overwrite or merge:
    executable match. Do not claim this succeeded unless the machine tests
    actually completed. Codesigning requires a real signing certificate.
 
+## Debate Playbooks / RhetoricIQ: MUST RECONCILE AND KEEP WORKING
+
+The debate **playbook is part of the product**, not disposable documentation.
+During latest-master synchronization, Codex must inspect and reconcile:
+
+- `source/ai/playbooks.json` (editable shipped strategy list) and
+  `source/ai/defaults/playbooks.json` (shipped baseline). Currently both
+  provide 15 strategies, including rebuttal, counter-question, evidence
+  burden, premise inspection, analogy and deep analysis. Preserve all valid
+  current strategies. A meaningful local-only strategy can be added, but do
+  not restore obsolete wording over newer factual/safety constraints.
+- `source/ai/debate_live_v2.txt` and `source/ai/defaults/prompts/debate_live_v2.txt`.
+  Keep the newest guaranteed short `answer_now`, optional `counter_question`
+  and `primary_move` behavior while integrating distinctive local improvements.
+- `source/backend/app/services/ai_config.py`: `playbook_controls()` loads
+  playbooks; `_merge_bundled_defaults()` intentionally preserves customized
+  user copies, including those in `%LOCALAPPDATA%\Backchannel\ai`.
+  **Do not assume that a newest EXE overwrites an older customized runtime
+  playbooks.json.** Compare it against the new shipped defaults and last
+  bundled baseline. Preserve the user's unique valid strategies and remove
+  obsolete duplicate/superseded rules from the active playbook only after a
+  separate rollback copy is secured outside Git. Never overwrite user
+  configuration blindly.
+- `source/backend/app/services/debate_settings.py` defines `PROFILE_DEFINITIONS`
+  and maps each `playbook_term` to its directive. Existing saved settings,
+  profile selection and per-session directives must continue to map to the
+  intended strategy. `source/backend/app/services/agents/orchestrator.py`
+  handles playbook trigger normalization. Check these as a single chain.
+- `source/desktop/backchannel.spec` bundles `source/ai` as `ai`. Verify
+  the new Windows ZIP actually contains both JSON files and both live/deep
+  prompt versions; verify the runtime `/api/ai-config` active directory and
+  strategy/prompt generation after the update, not just the Git tree.
+
+**Automatic merge decision:** (1) latest corrected remote strategy is the
+baseline; (2) any compatible, genuinely new local strategy/trigger survives
+and is tested; (3) an outdated duplicate or contradictory directive is
+discarded; (4) keep local user data/strategy version history intact; (5)
+the resulting running application must use the intended merged playbook.
+Do not interpret the request to overwrite outdated *source code* as
+permission to delete a user's saved playbooks, profiles or history.
+Run focused playbook/config/profile tests plus the package smoke gates.
+
 ## Mandatory workflow on Windows
 
 Run these commands **in the existing checkout root** (the directory containing
