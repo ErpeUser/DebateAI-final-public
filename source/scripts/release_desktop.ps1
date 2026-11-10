@@ -398,10 +398,20 @@ function Build-WindowsRelease {
     }
     Push-Location $Source
     try {
-        Invoke-Checked "Building Windows desktop bundle" {
-            & $venvPython -m PyInstaller desktop/backchannel.spec `
-                --distpath dist --workpath build --noconfirm
-        } | Out-Null
+        $previousOracleFlag = $env:BACKCHANNEL_INCLUDE_ORACLE
+        $env:BACKCHANNEL_INCLUDE_ORACLE = "true"
+        try {
+            Invoke-Checked "Building Windows desktop bundle" {
+                & $venvPython -m PyInstaller desktop/backchannel.spec `
+                    --distpath dist --workpath build --noconfirm
+            } | Out-Null
+        } finally {
+            if ($null -eq $previousOracleFlag) {
+                Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+            } else {
+                $env:BACKCHANNEL_INCLUDE_ORACLE = $previousOracleFlag
+            }
+        }
         Invoke-Checked "Smoke testing Windows desktop bundle" {
             & $venvPython (Join-Path $PSScriptRoot "..\desktop\scripts\smoke_test.py")
         } | Out-Null
