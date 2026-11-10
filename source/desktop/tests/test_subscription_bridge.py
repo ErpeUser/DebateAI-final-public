@@ -7,7 +7,37 @@ from unittest.mock import Mock, patch
 from bcdesktop.subscription_bridge import SubscriptionBridge
 
 
+class _Response:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+
 class SubscriptionBridgeTests(unittest.TestCase):
+    def test_probe_uses_configured_port(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = SubscriptionBridge(Path(tmp), Mock())
+            bridge.port = 9234
+            response = _Response()
+            with (
+                patch(
+                    "bcdesktop.subscription_bridge.urllib.request.urlopen",
+                    return_value=response,
+                ) as urlopen,
+                patch(
+                    "bcdesktop.subscription_bridge.json.load",
+                    return_value={"data": [{"id": "gpt-test"}]},
+                ),
+            ):
+                self.assertEqual(bridge._probe(), ["gpt-test"])
+            request = urlopen.call_args.args[0]
+            self.assertEqual(
+                request.full_url,
+                "http://127.0.0.1:9234/v1/models",
+            )
+
     def test_prepare_exports_connection_without_starting_process(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "subscription-bridge"
