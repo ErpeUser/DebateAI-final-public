@@ -189,7 +189,7 @@ function Invoke-DebateDesktopBuild {
         }
 
         if ($IncludeOracle) {
-            $oracleRoot = Join-Path $repoRoot "desktop\\chatgpt_oracle"
+            $oracleRoot = Join-Path $repoRoot "desktop\chatgpt_oracle"
             $oracleNodeRoot = Join-Path $oracleRoot "node"
             New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
             $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
@@ -202,7 +202,7 @@ function Invoke-DebateDesktopBuild {
             Invoke-Checked "Install pinned ChatGPT Oracle package" {
                 & npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
             }
-            $oracleCli = Join-Path $oracleRoot "node_modules\\@steipete\\oracle\\dist\\bin\\oracle-cli.js"
+            $oracleCli = Join-Path $oracleRoot "node_modules\@steipete\oracle\dist\bin\oracle-cli.js"
             if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) {
                 throw "ChatGPT Oracle CLI is missing after npm ci: $oracleCli"
             }
