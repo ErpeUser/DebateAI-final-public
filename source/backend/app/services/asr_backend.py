@@ -287,6 +287,8 @@ class NemotronStreamingASRBackend:
         return event
 
     async def _open_stream(self, track: Hashable) -> _TrackStream:
+        if self._closed:
+            raise RuntimeError("Nemotron streaming backend is closed")
         await self._check_readiness()
         socket = await self._connect()
         try:
@@ -328,6 +330,9 @@ class NemotronStreamingASRBackend:
                 stream = await self._replace_stream(track, stream)
                 return stream
             stream = await self._open_stream(track)
+            if self._closed:
+                await self._close_stream(stream)
+                raise RuntimeError("Nemotron streaming backend is closed")
             self._streams[track] = stream
             return stream
 
@@ -367,7 +372,12 @@ class NemotronStreamingASRBackend:
     async def _replace_stream(self, track: Hashable, previous: _TrackStream) -> _TrackStream:
         replay = bytes(previous.pending_audio)
         await self._close_stream(previous)
+        if self._closed:
+            raise RuntimeError("Nemotron streaming backend is closed")
         replacement = await self._open_stream(track)
+        if self._closed:
+            await self._close_stream(replacement)
+            raise RuntimeError("Nemotron streaming backend is closed")
         replacement.pending_audio.extend(replay)
         replacement.revision = previous.revision
         self._streams[track] = replacement
