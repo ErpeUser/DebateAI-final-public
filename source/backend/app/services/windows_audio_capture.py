@@ -312,6 +312,9 @@ class NativeWindowsAudioCapture:
         self._loopback_mode = "follow_default"
         self._last_error = ""
         self._monitor_task: asyncio.Task | None = None
+        # Generation invalidates an in-flight restart when a caller stops or
+        # replaces the capture session while the monitor is reopening streams.
+        self._generation = 0
 
     @property
     def available(self) -> bool:
@@ -454,13 +457,19 @@ class NativeWindowsAudioCapture:
     async def _monitor(self) -> None:
         while self._session_id is not None:
             await asyncio.sleep(2)
+            generation = self._generation
             restart, reason = await asyncio.to_thread(self._restart_needed_sync)
-            if not restart:
+            if not restart or generation != self._generation or self._session_id is None:
                 continue
             self._last_error = reason
             try:
                 await asyncio.to_thread(self._stop_sync)
+                if generation != self._generation or self._session_id is None:
+                    return
                 _microphone, loopback = await asyncio.to_thread(self._start_sync)
+                if generation != self._generation or self._session_id is None:
+                    await asyncio.to_thread(self._stop_sync)
+                    return
                 self._enqueue({
                     "text": json.dumps({
                         "type": "track_state",
@@ -515,7 +524,13 @@ class NativeWindowsAudioCapture:
             return False, ""
 
     async def stop(self) -> dict:
-        self._session_id = None
+        # Invalidate any monitor restart that may currently be between
+        # stop_sync() and start_sync(). The generation is checked after every
+        # blocking transition so a disconnected WebSocket cannot resurrect
+        # native capture or enqueue into a stale queue.
+        with self._lock:
+            self._generation += 1
+            self._session_id = None
         monitor, self._monitor_task = self._monitor_task, None
         if monitor is not None and monitor is not asyncio.current_task():
             monitor.cancel()
