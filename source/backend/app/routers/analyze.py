@@ -50,7 +50,7 @@ def _clip_context(value: str, limit: int) -> str:
         return value
     head = max(1, (limit - 64) // 2)
     tail = max(1, limit - 64 - head)
-    return f"{value[:head]}\\n[...context truncated...]\\n{value[-tail:]}"
+    return f"{value[:head]}\n[...context truncated...]\n{value[-tail:]}"
 
 
 def _bounded_field(value: object, limit: int) -> str:
