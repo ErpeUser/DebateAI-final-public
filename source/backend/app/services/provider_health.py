@@ -55,10 +55,17 @@ async def run_connection_test(provider: str, key: str, base_url: str = "") -> tu
                 limits=limits,
                 follow_redirects=False,
             ) as client:
-                resp = await client.get(f"{url}/models", headers=auth_headers(key))
-                if int(resp.headers.get("content-length", "0") or 0) > 1_048_576:
-                    raise ValueError("Provider model catalog is too large")
-                resp.raise_for_status()
+                async with client.stream(
+                    "GET", f"{url}/models", headers=auth_headers(key)
+                ) as resp:
+                    resp.raise_for_status()
+                    if int(resp.headers.get("content-length", "0") or 0) > 1_048_576:
+                        raise ValueError("Provider model catalog is too large")
+                    received = 0
+                    async for chunk in resp.aiter_bytes():
+                        received += len(chunk)
+                        if received > 1_048_576:
+                            raise ValueError("Provider model catalog is too large")
         return True, "Connection successful"
     except Exception as e:
         # The message is shown in Admin and stored on the endpoint row, so it
