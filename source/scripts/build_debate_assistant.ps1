@@ -188,6 +188,10 @@ function Invoke-DebateDesktopBuild {
             Invoke-Checked "Download CLIProxyAPI" { & $venvPython $contract.CLIProxyDownloader }
         }
 
+        Invoke-Checked "Build pinned Gemini Web bridge" {
+            & (Join-Path $repoRoot "desktop\\gemini_web_to_api\\build.ps1") -RepositoryRoot $repoRoot
+        }
+
         if ($IncludeOracle) {
             $oracleRoot = Join-Path $repoRoot "desktop\chatgpt_oracle"
             $oracleNodeRoot = Join-Path $oracleRoot "node"
