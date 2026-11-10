@@ -185,6 +185,13 @@ class OrderedTranscriptionQueue:
                     if result.text:
                         ready.append(result)
             if not ready:
+                # Clear the task marker while holding the same lock used by
+                # result ingress. A result arriving after this re-check sees
+                # None and schedules a fresh emitter instead of getting stuck.
+                async with self._lock:
+                    if self._next_emit_index in self._results:
+                        continue
+                    self._emit_task = None
                 return
 
             emit_failures = 0

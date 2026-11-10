@@ -43,6 +43,7 @@ jobs:
       - name: Checkout controller
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
+          persist-credentials: false
           path: controller
 
       - name: Checkout release source
@@ -173,7 +174,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install signing dependency
-        run: pip install "cryptography>=41.0.0"
+        run: pip install "cryptography==44.0.2"
 
       - name: Restore exact macOS handoff
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4

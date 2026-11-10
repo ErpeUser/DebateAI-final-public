@@ -118,7 +118,7 @@ export function useSession(sessionId: string | null) {
     const loadAll = async () => {
       setLoading(true);
       try {
-        const [sess, dirs, docs, qs, segs, spkrs, txs, synth, liveSynth] = await Promise.all([
+        const results = await Promise.allSettled([
           getSession(sessionId),
           listDirectives(sessionId),
           listDocuments(sessionId),
@@ -130,15 +130,18 @@ export function useSession(sessionId: string | null) {
           getSynthesis(sessionId, "live"),
         ]);
         if (cancelled) return;
-        setSession(sess);
-        setDirectives(dirs);
-        setDocuments(docs);
-        setQuestions(qs);
-        setSegments(segs);
-        setSpeakers(spkrs);
-        setTranscripts(txs);
-        setSynthesis(synth);
-        setLiveSynthesis(liveSynth);
+        const [sess, dirs, docs, qs, segs, spkrs, txs, synth, liveSynth] = results;
+        if (sess.status === "fulfilled") setSession(sess.value);
+        if (dirs.status === "fulfilled") setDirectives(dirs.value);
+        if (docs.status === "fulfilled") setDocuments(docs.value);
+        if (qs.status === "fulfilled") setQuestions(qs.value);
+        if (segs.status === "fulfilled") setSegments(segs.value);
+        if (spkrs.status === "fulfilled") setSpeakers(spkrs.value);
+        if (txs.status === "fulfilled") setTranscripts(txs.value);
+        if (synth.status === "fulfilled") setSynthesis(synth.value);
+        if (liveSynth.status === "fulfilled") setLiveSynthesis(liveSynth.value);
+        const failures = results.filter((result) => result.status === "rejected");
+        if (failures.length) console.warn("Some session resources failed to load", failures);
       } catch (err) {
         console.error("Failed to load session data", err);
       } finally {

@@ -26,6 +26,8 @@ from app.services.ai_config import (
 
 class PackagedAiDirectoryTests(unittest.TestCase):
     def test_bundled_defaults_are_merged_only_once_per_process(self):
+        if os.name != "nt":
+            self.skipTest("Windows packaged paths are platform-specific")
         ai_config_module._packaged_ai_directory.cache_clear()
         with (
             patch.dict(
@@ -90,6 +92,8 @@ class PackagedAiDirectoryTests(unittest.TestCase):
             self.assertEqual(new, (baseline / "providers.json").read_bytes())
 
     def test_explicit_portable_mode_uses_started_exe_directory_not_meipass(self):
+        if os.name != "nt":
+            self.skipTest("Windows packaged paths are platform-specific")
         ai_config_module._packaged_ai_directory.cache_clear()
         with (
             patch.dict(

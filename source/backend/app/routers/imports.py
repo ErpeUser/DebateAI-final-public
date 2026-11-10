@@ -11,11 +11,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, get_db
-from app.models import CallSegment, Speaker, TranscriptEntry
+from app.models import CallSegment, Session, Speaker, TranscriptEntry
 from app.services.pii import shield
 from app.services.audio_store import SegmentAudioWriter
 from app.services.batch_transcriber import TranscriptionError
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text
+from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
 from app.services.audio_utils import convert_to_pcm16
 from app.services.local_transcriber import create_transcriber
 from app.services.diarizer_factory import create_diarizer
@@ -46,6 +46,8 @@ _parse_docx = parse_docx
 
 # Default colors for auto-created speakers during import
 _SPEAKER_COLORS = ["#0d9488", "#f59e0b", "#e74c3c", "#2ecc71", "#9b59b6", "#f39c12"]
+MAX_TRANSCRIPT_UPLOAD_BYTES = 10 * 1024 * 1024
+MAX_AUDIO_UPLOAD_BYTES = 250 * 1024 * 1024
 
 
 def import_segment_would_create_new_speaker(
@@ -359,13 +361,15 @@ async def import_transcript(
     db: AsyncSession = Depends(get_db),
 ):
     """Import a transcript file (.txt, .md, .docx) into the session's transcript entries."""
-    filename = file.filename or ""
+    filename = safe_upload_filename(file.filename, fallback="transcript.txt")
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in (".txt", ".md", ".docx"):
         raise HTTPException(400, f"Unsupported format: {ext}. Use .txt, .md, or .docx")
 
-    content = await file.read()
+    content = await file.read(MAX_TRANSCRIPT_UPLOAD_BYTES + 1)
+    if len(content) > MAX_TRANSCRIPT_UPLOAD_BYTES:
+        raise HTTPException(413, "Transcript exceeds the 10 MiB upload limit")
 
     if ext == ".docx":
         segments = _parse_docx(content)
@@ -402,13 +406,15 @@ async def import_audio(
     db: AsyncSession = Depends(get_db),
 ):
     """Import an audio file — diarizes and transcribes via acoustic fingerprinting."""
-    filename = file.filename or ""
+    filename = safe_upload_filename(file.filename, fallback="audio.wav")
     ext = os.path.splitext(filename)[1].lower()
 
     if ext not in (".m4a", ".mp3", ".wav", ".ogg", ".flac"):
         raise HTTPException(400, f"Unsupported audio format: {ext}")
 
-    content = await file.read()
+    content = await file.read(MAX_AUDIO_UPLOAD_BYTES + 1)
+    if len(content) > MAX_AUDIO_UPLOAD_BYTES:
+        raise HTTPException(413, "Audio exceeds the 250 MiB upload limit")
     source_format = ext.lstrip(".")
     config = await get_transcription_runtime_config(db)
     try:

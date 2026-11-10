@@ -97,9 +97,10 @@ action items you would otherwise reconstruct from memory afterwards.
   <img src="site/assets/shots/pii-preview.webp" alt="The PII Shield's try-a-sentence box: a sentence naming a person, a company, an email address and a phone number, the tokenized version a model actually receives, and a legend giving each token's real value and how it was detected." />
 </picture>
 
-**What the model actually reads.** With the PII Shield on, a name never reaches
-a model, local or cloud -- and the shield will show you, sentence by sentence,
-exactly what it hands over.
+**What the model actually reads.** With the PII Shield on, recognized PII is
+replaced before a protected model call. Review the preview and the deployment
+settings because unknown values, research queries, logs, and provider-side
+transcription have separate privacy boundaries.
 
 <table>
 <tr>
@@ -197,8 +198,7 @@ from the [backchannel.page](https://backchannel.page/) landing page and shown
 in-app under Admin -> About.
 
 - `Backchannel-windows-x64.zip` - unzip, run `Backchannel.exe`.
-  Windows SmartScreen will warn on first run because the build is
-  unsigned: click "More info" then "Run anyway".
+  Windows releases must be Authenticode-signed before production distribution; do not bypass SmartScreen for an unverified bundle.
 - `Backchannel-macos-arm64.zip` (Apple Silicon) - unzip, right-click
   `Backchannel.app` and choose "Open" the first time (unsigned build).
 - `Backchannel-linux-x64.tar.gz` (x64) - a portable bundle, not a
@@ -248,8 +248,8 @@ transcription with a self-hosted endpoint for the agents
 (see [Configuration](docs/configuration.md#self-hosted-endpoints)).
 
 ```bash
-git clone https://github.com/talberthoule/backchannel.git
-cd backchannel
+git clone https://github.com/ErpeUser/backchannel-v6-private.git
+cd backchannel-v6-private/source
 cp .env.example .env   # set GEMINI_API_KEY (or add keys later in Admin -> Connections)
 docker compose up --build
 ```

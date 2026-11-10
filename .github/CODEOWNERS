@@ -1,0 +1,7 @@
+# Security-sensitive paths require owner review
+/backend/ @ErpeUser
+/desktop/ @ErpeUser
+/.github/ @ErpeUser
+/source/backend/ @ErpeUser
+/source/desktop/ @ErpeUser
+/source/.github/ @ErpeUser

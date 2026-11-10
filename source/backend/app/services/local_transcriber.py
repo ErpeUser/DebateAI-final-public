@@ -8,6 +8,7 @@ onnxruntime-gpu is installed, otherwise CPU.
 
 import asyncio
 import logging
+import shutil
 import threading
 
 from app.services.audio_utils import pcm16_to_float32
@@ -104,6 +105,14 @@ def _load_model(model_id: str):
             except Exception as exc:  # noqa: BLE001 - recorded for the UI, then re-raised
                 if watcher is not None:
                     model_downloads.fail(key, f"{type(exc).__name__}: {exc}")
+                # A failed onnx-asr load can leave a partial directory behind.
+                # Remove it so the next attempt retries instead of treating the
+                # incomplete cache as an offline-ready model.
+                try:
+                    if path.is_dir():
+                        shutil.rmtree(path)
+                except OSError:
+                    logger.warning("Could not remove incomplete ASR cache %s", path, exc_info=True)
                 raise
             else:
                 if watcher is not None:

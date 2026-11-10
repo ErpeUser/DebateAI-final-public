@@ -27,10 +27,10 @@ DUCKDUCKGO_API = "https://api.duckduckgo.com/"
 DUCKDUCKGO_HTML = "https://html.duckduckgo.com/html/"
 _USER_AGENT = "Backchannel/0.6.6 (https://github.com/talberthoule/backchannel)"
 _HEADERS = {"User-Agent": _USER_AGENT, "Api-User-Agent": _USER_AGENT}
-_PII_TOKEN = re.compile(
-    r"\[(?:PERSON|EMAIL|PHONE|ADDRESS|COMPANY|IDENTIFIER)_\d+\]",
-    re.IGNORECASE,
-)
+# Any tokenized placeholder is treated as sensitive at the public-search boundary.
+# Keeping this generic prevents newly added recognizers (ORG, LOCATION, SSN,
+# CARD, IP, ...) from bypassing the egress gate.
+_PII_TOKEN = re.compile(r"\[[A-Z][A-Z0-9_-]{1,31}_\d+\]", re.IGNORECASE)
 _EMAIL = re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b")
 _HTML_TAG = re.compile(r"<[^>]+>")
 _TRUSTED_ORIGINAL_SUFFIXES = (

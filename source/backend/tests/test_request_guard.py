@@ -51,9 +51,13 @@ class HostRuleTests(unittest.TestCase):
         self.env.stop()
 
     def test_loopback_names_and_ports(self):
-        for host in ("localhost", "localhost:3000", "127.0.0.1:8474", "[::1]:8000", "LOCALHOST", "app.localhost:5173"):
+        for host in ("localhost", "localhost:3000", "127.0.0.1:8474", "[::1]:8000", "LOCALHOST"):
             with self.subTest(host=host):
                 self.assertTrue(request_guard.host_header_allowed(host))
+
+    def test_localhost_subdomains_are_rejected(self):
+        self.assertFalse(request_guard.host_header_allowed("app.localhost:5173"))
+        self.assertFalse(request_guard.origin_allowed("http://app.localhost:5173"))
 
     def test_ip_literals_cannot_be_rebound_so_they_pass(self):
         for host in ("192.168.1.5:3000", "10.0.0.7", "[fe80::1]:3000"):
@@ -142,6 +146,22 @@ class MiddlewareTests(unittest.TestCase):
         with self.client.websocket_connect("/ws/echo", headers={"Host": "localhost:8474"}) as ws:
             self.assertEqual("hi", ws.receive_text())
 
+    def test_websocket_instance_token_uses_subprotocol_not_query(self):
+        os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = "test-token"
+        with self.client.websocket_connect(
+            "/ws/echo",
+            headers={"Host": "localhost:8474"},
+            subprotocols=["backchannel.instance.test-token"],
+        ) as ws:
+            self.assertEqual("hi", ws.receive_text())
+            self.assertEqual("backchannel.instance.test-token", ws.accepted_subprotocol)
+        with self.assertRaises(Exception):
+            with self.client.websocket_connect(
+                "/ws/echo?instance_token=test-token",
+                headers={"Host": "localhost:8474"},
+            ):
+                pass
+
     def test_websocket_from_foreign_origin_is_refused_even_with_loopback_host(self):
         # A hostile page can always put a loopback URL in new WebSocket(...);
         # the browser still stamps the page's own Origin on the handshake.
@@ -196,9 +216,14 @@ class MiddlewareTests(unittest.TestCase):
                 self.assertEqual(200, response.status_code)
                 self.assertEqual(origin, response.headers.get("access-control-allow-origin"))
 
-    def test_mutation_without_origin_passes(self):
-        # curl, the launcher's own health probe, and other non-browser clients.
-        self.assertEqual(200, self.client.post("/api/mutate").status_code)
+    def test_mutation_without_origin_requires_instance_token(self):
+        os.environ[request_guard.ALLOWED_ORIGINS_ENV] = ""
+        os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = "test-token"
+        self.assertEqual(403, self.client.post("/api/mutate").status_code)
+        self.assertEqual(
+            200,
+            self.client.post("/api/mutate", headers={"X-Backchannel-Instance": "test-token"}).status_code,
+        )
 
     def test_cross_origin_read_gets_no_cors_grant(self):
         response = self.client.get("/api/ping", headers={"Origin": "https://attacker.example"})

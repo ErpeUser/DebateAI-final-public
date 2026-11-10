@@ -6,17 +6,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Document
+from app.models import Document, Session
 from app.schemas import DocumentOut
 from app.services.pii import shield
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text
-from app.services.gemini_files import upload_and_summarize
+from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
+from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
 from app.services.privacy import is_local_only
 
 router = APIRouter(prefix="/api/sessions/{session_id}/documents", tags=["documents"])
 
 # Bound for the Privacy First local excerpt stored as the document summary.
 LOCAL_EXTRACT_CHARS = 4000
+MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_DOCUMENT_FILENAME_CHARS = 255
 
 _LOCAL_EXTRACT_EXTS = {".txt", ".md", ".markdown", ".docx"}
 
@@ -57,7 +59,12 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 
 @router.post("", response_model=DocumentOut, status_code=201)
 async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
-    content = await file.read()
+    if await db.get(Session, session_id) is None:
+        raise HTTPException(404, "Session not found")
+    filename = safe_upload_filename(file.filename, fallback="document", max_length=MAX_DOCUMENT_FILENAME_CHARS)
+    content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
+    if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
+        raise HTTPException(413, "Document exceeds the 25 MiB upload limit")
     shielded = (await shield.get_settings(db)).enabled
     if await is_local_only() or shielded:
         # With the PII Shield on, the file itself never leaves the machine:
@@ -65,20 +72,20 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
         # to any model.
         doc = Document(
             session_id=session_id,
-            filename=file.filename,
+            filename=filename,
             mime_type=file.content_type or "application/octet-stream",
             gemini_file_uri="",
             summary=await shield.protect_text(
-                db, session_id, local_extract_summary(content, file.filename, shielded=shielded)
+                db, session_id, local_extract_summary(content, filename, shielded=shielded)
             ),
             summary_source="local_extract",
         )
     else:
         doc = Document(
             session_id=session_id,
-            filename=file.filename,
+            filename=filename,
             mime_type=file.content_type or "application/octet-stream",
-            gemini_file_uri=await upload_and_summarize(content, file.filename, file.content_type),
+            gemini_file_uri=await upload_and_summarize(content, filename, file.content_type),
         )
     db.add(doc)
     await db.commit()
@@ -88,6 +95,8 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
 
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+    if await db.get(Session, session_id) is None:
+        raise HTTPException(404, "Session not found")
     result = await db.execute(
         select(Document).where(Document.session_id == session_id).order_by(Document.uploaded_at)
     )
@@ -99,5 +108,8 @@ async def delete_document(session_id: uuid.UUID, document_id: uuid.UUID, db: Asy
     doc = await db.get(Document, document_id)
     if not doc or doc.session_id != session_id:
         raise HTTPException(404, "Document not found")
+    remote_uri = doc.gemini_file_uri or ""
     await db.delete(doc)
     await db.commit()
+    if remote_uri:
+        await delete_uploaded_file(remote_uri)

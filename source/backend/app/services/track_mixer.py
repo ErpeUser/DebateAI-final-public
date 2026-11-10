@@ -49,3 +49,17 @@ class TrackMixer:
                 del self._buffers[track][:FRAME_BYTES]
 
         return (bytes(out), bytes(mic_out), bytes(system_out)) if out else None
+
+
+    def flush(self) -> tuple[bytes, bytes, bytes] | None:
+        """Flush partial track tails with zero-padding while preserving length."""
+        n = max(len(self._buffers[0]), len(self._buffers[1]))
+        if n <= 0:
+            return None
+        mic_frame = bytes(self._buffers[0]) + bytes(max(0, n - len(self._buffers[0])))
+        system_frame = bytes(self._buffers[1]) + bytes(max(0, n - len(self._buffers[1])))
+        a = np.frombuffer(mic_frame, dtype=np.int16).astype(np.int32)
+        b = np.frombuffer(system_frame, dtype=np.int16).astype(np.int32)
+        mixed = np.clip(a + b, -32768, 32767).astype(np.int16).tobytes()
+        self._buffers = {0: bytearray(), 1: bytearray()}
+        return mixed, mic_frame, system_frame

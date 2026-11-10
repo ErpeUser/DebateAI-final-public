@@ -36,6 +36,36 @@ _INSIGHT_TEXT_FIELDS = (
 )
 
 
+# Excel interprets text beginning with formula operators as formulas. This
+# includes DDE payloads such as "=cmd|' /C calc'!A0". Scan every workbook
+# sheet after all reader-facing views are built, including helper-generated
+# sheets. Excel hides a leading apostrophe while treating the cell as literal.
+_EXCEL_FORMULA_PREFIXES = frozenset("=+-@")
+_EXCEL_CONTROL_PREFIXES = frozenset("\t\r\n")
+
+
+def _looks_like_excel_formula(value: str) -> bool:
+    if not value:
+        return False
+    if value[0] in _EXCEL_CONTROL_PREFIXES:
+        return True
+    stripped = value.lstrip(" \t\r\n")
+    return bool(stripped) and stripped[0] in _EXCEL_FORMULA_PREFIXES
+
+
+def _sanitize_excel_workbook(workbook) -> None:
+    """Force formula-like untrusted text to literal Excel cells."""
+    for worksheet in workbook.worksheets:
+        for row in worksheet.iter_rows():
+            for cell in row:
+                value = cell.value
+                if not isinstance(value, str) or not _looks_like_excel_formula(value):
+                    continue
+                cell.value = "'" + value
+                cell.data_type = "s"
+                cell.quotePrefix = True
+
+
 def _stream_bytes(data: bytes):
     """Stream in-memory bytes — nothing ever touches disk."""
     with runtime_activity.track("artifact export"):
@@ -289,6 +319,7 @@ async def export_insights(
         opportunities_ws, questions=live, participants=participants, rename=_apply_speaker_names
     )
 
+    _sanitize_excel_workbook(wb)
     buf = BytesIO()
     wb.save(buf)
     content = buf.getvalue()

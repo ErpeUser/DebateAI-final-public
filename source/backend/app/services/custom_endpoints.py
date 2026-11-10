@@ -14,6 +14,7 @@ route an id to the OpenAI-compatible dialect without touching the database.
 """
 
 import ipaddress
+import json
 import logging
 import re
 from dataclasses import dataclass
@@ -26,7 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import CustomEndpoint
 from app.services.privacy_state import get_local_only
-from app.services.redaction import exempt_from_redaction, redact_text
+from app.services.redaction import redact_text
 from app.services.secrets import decrypt_value, encrypt_value
 
 logger = logging.getLogger(__name__)
@@ -95,8 +96,11 @@ def validate_base_url(raw: str) -> str:
         raise EndpointError("Base URL is required")
     if not url.startswith(("http://", "https://")):
         raise EndpointError("Base URL must start with http:// or https://")
-    if not urlparse(url).netloc:
-        raise EndpointError("Base URL must include a host, e.g. http://localhost:1234/v1")
+    parsed = urlparse(url)
+    if not parsed.netloc or parsed.username or parsed.password:
+        raise EndpointError("Base URL must include a host and must not contain URL credentials")
+    if parsed.query or parsed.fragment:
+        raise EndpointError("Base URL must not contain query parameters or fragments")
     return url
 
 
@@ -135,19 +139,19 @@ def is_on_prem(base_url: str) -> bool:
     host = (urlparse(base_url).hostname or "").lower()
     if not host:
         return False
-    if host in _DOCKER_HOST_ALIASES or host.endswith(_PRIVATE_SUFFIXES):
+    if host in _DOCKER_HOST_ALIASES or host in {"localhost", "ip6-localhost"}:
+        return True
+    if host.endswith(_PRIVATE_SUFFIXES):
         return True
     try:
         address = ipaddress.ip_address(host)
     except ValueError:
-        if "." in host:
-            # A dotted name that is not a canonical IP is a public hostname.
-            return False
-        # No dot: either an alternate IP encoding (judge by its real value) or a
-        # genuine single-label LAN hostname.
+        # Hostname suffixes and arbitrary single-label names are not proof of
+        # locality. Only an explicit Docker alias or a literal private address
+        # opts into Privacy First routing.
         numeric = _numeric_ipv4(host)
         if numeric is None:
-            return True
+            return False
         address = numeric
     if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped:
         # ::ffff:8.8.8.8 must be judged by its embedded IPv4 on every
@@ -220,9 +224,8 @@ async def list_endpoints(db: AsyncSession) -> list[CustomEndpoint]:
 
 
 def _remember_slug(slug: str) -> None:
-    """An endpoint's slug is part of every model id and log line about it, so
-    it must never be scrubbed - even if the user reused the word as its key."""
-    exempt_from_redaction(slug)
+    """Remembering a model slug must never alter the secret redaction set."""
+    return None
 
 
 async def get_endpoint(db: AsyncSession, endpoint_id: str) -> CustomEndpoint | None:
@@ -364,20 +367,40 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
     except EndpointError as exc:
         return False, str(exc), []
     try:
-        async with httpx.AsyncClient(timeout=timeout) as client:
-            response = await client.get(f"{url}/models", headers=auth_headers(api_key))
-            response.raise_for_status()
-            payload = response.json()
+        limits = httpx.Limits(max_connections=4, max_keepalive_connections=2)
+        request_timeout = httpx.Timeout(timeout, connect=min(timeout, 5.0))
+        async with httpx.AsyncClient(
+            timeout=request_timeout,
+            limits=limits,
+            follow_redirects=False,
+        ) as client:
+            stream = client.stream("GET", f"{url}/models", headers=auth_headers(api_key))
+            # A few lightweight test doubles expose stream() as an async
+            # factory, while httpx returns an async context manager directly.
+            if hasattr(stream, "__await__"):
+                stream = await stream
+            async with stream as response:
+                response.raise_for_status()
+                content_length = int(response.headers.get("content-length", "0") or 0)
+                if content_length > 1_048_576:
+                    raise ValueError("Endpoint model catalog is too large")
+                body = await response.aread()
+                if len(body) > 1_048_576:
+                    raise ValueError("Endpoint model catalog is too large")
+                payload = json.loads(body)
     except httpx.HTTPStatusError as exc:
         return False, f"Server returned HTTP {exc.response.status_code}", []
     except httpx.ConnectError:
         return False, f"Could not connect to {redact_text(url)}. Is the server running and reachable?", []
     except Exception as exc:  # noqa: BLE001 - surfaced to the operator, minus any credential
         return False, redact_text(str(exc))[:300], []
+    raw_models = payload.get("data") if isinstance(payload, dict) else []
+    if not isinstance(raw_models, list) or len(raw_models) > 64:
+        return False, "Endpoint returned an invalid or oversized model catalog", []
     served = [
-        str(item.get("id"))
-        for item in (payload.get("data") or [])
-        if isinstance(item, dict) and item.get("id")
+        str(item.get("id"))[:160]
+        for item in raw_models
+        if isinstance(item, dict) and item.get("id") and len(str(item.get("id"))) <= 160
     ]
     return True, f"Connected. {len(served)} model(s) available.", served
 

@@ -5,8 +5,12 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_db
+from app.models import Session
+from pydantic import BaseModel, Field
 
 from app.services.windows_audio_capture import native_windows_audio
 
@@ -17,16 +21,20 @@ router = APIRouter(prefix="/api/native-audio", tags=["native-audio"])
 class NativeAudioStart(BaseModel):
     session_id: uuid.UUID
     system_audio: bool = True
-    microphone_index: int | None = None
-    loopback_index: int | None = None
-    microphone_id: str | None = None
-    loopback_id: str | None = None
+    microphone_index: int | None = Field(default=None, ge=0, le=10000)
+    loopback_index: int | None = Field(default=None, ge=0, le=10000)
+    microphone_id: str | None = Field(default=None, max_length=512)
+    loopback_id: str | None = Field(default=None, max_length=512)
     microphone_mode: Literal["fixed", "follow_default"] = "follow_default"
     loopback_mode: Literal["fixed", "follow_default"] = "follow_default"
 
 
 class NativeAudioProbe(BaseModel):
-    microphone_index: int
+    microphone_index: int = Field(ge=0, le=10000)
+
+
+class NativeAudioStop(BaseModel):
+    session_id: uuid.UUID | None = None
 
 
 @router.get("/status")
@@ -43,7 +51,12 @@ async def native_audio_devices():
 
 
 @router.post("/start")
-async def start_native_audio(request: NativeAudioStart):
+async def start_native_audio(request: NativeAudioStart, db: AsyncSession = Depends(get_db)):
+    session = await db.get(Session, request.session_id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if str(session.state) not in {"pre_call", "active"}:
+        raise HTTPException(status_code=409, detail="Session is not recordable")
     if not native_windows_audio.available:
         raise HTTPException(status_code=503, detail="Native Windows-Audioaufnahme ist nicht verfuegbar")
     try:
@@ -64,12 +77,19 @@ async def start_native_audio(request: NativeAudioStart):
 
 
 @router.post("/stop")
-async def stop_native_audio():
+async def stop_native_audio(request: NativeAudioStop | None = None, db: AsyncSession = Depends(get_db)):
+    if request and request.session_id:
+        session = await db.get(Session, request.session_id)
+        if session is None:
+            raise HTTPException(status_code=404, detail="Session not found")
+        return await native_windows_audio.stop_session(request.session_id)
+    # Backward-compatible desktop shutdown; the middleware still requires the
+    # instance token for this mutating route.
     return await native_windows_audio.stop()
 
 
 @router.post("/probe")
-async def probe_native_audio(request: NativeAudioProbe):
+async def probe_native_audio(request: NativeAudioProbe, db: AsyncSession = Depends(get_db)):
     try:
         level = await native_windows_audio.probe_microphone(request.microphone_index)
         return {"level": level}

@@ -503,14 +503,25 @@ async def _run_audio_pipeline(
                         break
                     continue
             elif "text" in message:
-                await _handle_text_message(
-                    message["text"],
-                    session_id,
-                    orchestrator,
-                    state,
-                    requested_drain_mode,
-                    on_system_track_stopped=_flush_system_track_at_stop,
-                )
+                try:
+                    await _handle_text_message(
+                        message["text"],
+                        session_id,
+                        orchestrator,
+                        state,
+                        requested_drain_mode,
+                        on_system_track_stopped=_flush_system_track_at_stop,
+                    )
+                except (TypeError, ValueError, KeyError, OverflowError) as exc:
+                    # A malformed control frame must not tear down an otherwise
+                    # healthy audio call. Reject this message and continue.
+                    await _send_status(
+                        websocket,
+                        "control_error",
+                        "WebSocket control message was rejected.",
+                        details={"error": str(exc)[:200]},
+                    )
+                    continue
                 if state.stopped:
                     break
             await _maintain_audio_gateway(websocket, orchestrator, state)
@@ -527,6 +538,25 @@ async def _run_audio_pipeline(
         except Exception:
             pass
     finally:
+        # Preserve sub-frame tails from either track before closing the
+        # persistent writers and gateway sender.
+        try:
+            mixer_tail = mixer.flush()
+            if mixer_tail:
+                mixed_tail, mic_tail, system_tail = mixer_tail
+                if audio_writers:
+                    _append_audio_frames(
+                        audio_writers,
+                        (mixed_tail, mic_tail, system_tail),
+                        state.split_track_established,
+                    )
+                if state.gateway_available:
+                    try:
+                        gateway_queue.put_nowait(mixed_tail)
+                    except asyncio.QueueFull:
+                        state.gateway_frames_dropped += 1
+        except Exception:
+            logger.exception("Audio mixer tail flush failed during shutdown")
         try:
             gateway_queue.put_nowait(None)
         except asyncio.QueueFull:

@@ -1,4 +1,5 @@
 import logging
+import shutil
 import uuid
 from datetime import datetime, timezone
 
@@ -95,6 +96,16 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
     if body.name is not None:
         session.name = await shield.protect_text(db, session_id, body.name)
     if body.state is not None:
+        allowed_transitions = {
+            "pre_call": {"pre_call", "active"},
+            "active": {"active", "completed"},
+            "completed": {"completed", "active"},
+        }
+        if body.state not in allowed_transitions.get(session.state, set()):
+            raise HTTPException(
+                409,
+                f"Invalid session state transition: {session.state} -> {body.state}",
+            )
         if body.state == "active" and session.state == "pre_call":
             session.started_at = datetime.now(timezone.utc)
         elif body.state == "active" and session.state == "completed":
@@ -171,13 +182,23 @@ async def get_segment_audio(
     segment = result.scalar_one_or_none()
     if not segment or not segment.audio_path:
         raise HTTPException(404, "No stored audio for this segment")
-    path = data_dir() / segment.audio_path
+    audio_root = data_dir().resolve()
+    path = (audio_root / segment.audio_path).resolve()
+    try:
+        path.relative_to(audio_root)
+    except ValueError:
+        raise HTTPException(404, "Stored audio file is unavailable") from None
     if not path.exists():
         raise HTTPException(404, "Stored audio file is missing")
 
     if not raw and segment.mic_audio_path and segment.system_audio_path:
-        mic_path = data_dir() / segment.mic_audio_path
-        system_path = data_dir() / segment.system_audio_path
+        mic_path = (audio_root / segment.mic_audio_path).resolve()
+        system_path = (audio_root / segment.system_audio_path).resolve()
+        try:
+            mic_path.relative_to(audio_root)
+            system_path.relative_to(audio_root)
+        except ValueError:
+            raise HTTPException(404, "Stored audio file is unavailable") from None
         cleaned = path.with_name(f"{path.stem}_clean.wav")
         if mic_path.exists() and system_path.exists():
             try:
@@ -214,6 +235,14 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     await db.delete(session)
     await db.commit()
     shield.forget_session(session_id)
+    audio_root = (data_dir() / "audio").resolve()
+    session_audio = (audio_root / str(session_id)).resolve()
+    try:
+        session_audio.relative_to(audio_root)
+    except ValueError:
+        logger.error("Refusing to delete audio outside the session root: %s", session_audio)
+    else:
+        await run_in_threadpool(shutil.rmtree, session_audio, True)
 
 
 @router.post("/{session_id}/enhance-insights", response_model=EnhanceInsightsOut)
@@ -315,6 +344,14 @@ async def set_session_agents(
     session = await db.get(Session, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
+
+    if len(overrides) > 64:
+        raise HTTPException(422, "At most 64 agent overrides are allowed")
+    known_result = await db.execute(select(AgentConfig.slug))
+    known_slugs = {row[0] for row in known_result.all()}
+    unknown = sorted({ov.agent_slug for ov in overrides} - known_slugs)
+    if unknown:
+        raise HTTPException(422, f"Unknown agent slug(s): {', '.join(unknown[:5])}")
 
     # Delete existing overrides
     existing = await db.execute(

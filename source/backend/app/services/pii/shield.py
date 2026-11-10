@@ -70,10 +70,23 @@ class ShieldSettings:
             data = json.loads(raw)
         except ValueError:
             return cls()
-        categories = [c for c in data.get("categories", DEFAULT_CATEGORIES) if c in CATEGORIES]
+        if not isinstance(data, dict):
+            return cls()
+        raw_categories = data.get("categories", DEFAULT_CATEGORIES)
+        if not isinstance(raw_categories, list):
+            raw_categories = DEFAULT_CATEGORIES
+        categories = list(dict.fromkeys(
+            c for c in raw_categories if isinstance(c, str) and c in CATEGORIES
+        ))[:32]
+        raw_terms = data.get("protected_terms", [])
+        if not isinstance(raw_terms, list):
+            raw_terms = []
         terms = [
-            {"value": str(t.get("value", "")).strip(), "category": t.get("category", ORG)}
-            for t in data.get("protected_terms", [])
+            {
+                "value": str(t.get("value", "")).strip()[:200],
+                "category": str(t.get("category") or ORG).strip().upper(),
+            }
+            for t in raw_terms[:256]
             if isinstance(t, dict) and str(t.get("value", "")).strip()
         ]
         return cls(
@@ -137,12 +150,12 @@ async def get_settings_standalone() -> ShieldSettings:
             return await get_settings(db)
     except Exception:  # noqa: BLE001 - the database, not the shield, is the problem here
         # Keep the last known settings rather than let a database hiccup
-        # decide the policy either way; with nothing known the shield is off,
-        # which is the state a fresh install is in.
+        # disable an already enabled policy. A cold-start failure below fails closed.
         if _settings_cache:
             return _settings_cache[1]
-        logger.warning("PII Shield settings could not be read; assuming the shield is off", exc_info=True)
-        return ShieldSettings()
+        logger.error("PII Shield settings could not be read; failing closed", exc_info=True)
+        # A database outage must never silently disable protection.
+        return ShieldSettings(enabled=True)
 
 
 async def is_enabled() -> bool:

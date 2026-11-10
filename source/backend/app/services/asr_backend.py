@@ -19,7 +19,7 @@ from collections.abc import Awaitable, Callable, Hashable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
-from urllib.parse import quote, urlsplit, urlunsplit
+from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
 
@@ -233,19 +233,26 @@ class NemotronStreamingASRBackend:
     def _websocket_url(self) -> str:
         parts = urlsplit(self._base_url)
         scheme = "wss" if parts.scheme == "https" else "ws"
-        query = f"api_key={quote(self._api_key, safe='')}" if self._api_key else ""
-        return urlunsplit((scheme, parts.netloc, NEMOTRON_REALTIME_PATH, query, ""))
+        # Credentials must not travel in the URL: proxies, access logs, browser
+        # history, and exception messages routinely persist query strings.
+        return urlunsplit((scheme, parts.netloc, NEMOTRON_REALTIME_PATH, "", ""))
 
     async def _connect(self):
         if self._connect_override is not None:
             return await self._connect_override(self._websocket_url())
         import websockets
 
+        headers = {"Authorization": f"Bearer {self._api_key}"} if self._api_key else {}
         return await websockets.connect(
             self._websocket_url(),
+            additional_headers=headers,
             open_timeout=self._event_timeout,
             close_timeout=2,
             max_size=2**20,
+            max_queue=16,
+            ping_interval=20,
+            ping_timeout=20,
+            compression=None,
         )
 
     async def _check_readiness(self) -> None:
@@ -280,6 +287,8 @@ class NemotronStreamingASRBackend:
         return event
 
     async def _open_stream(self, track: Hashable) -> _TrackStream:
+        if self._closed:
+            raise RuntimeError("Nemotron streaming backend is closed")
         await self._check_readiness()
         socket = await self._connect()
         try:
@@ -321,6 +330,9 @@ class NemotronStreamingASRBackend:
                 stream = await self._replace_stream(track, stream)
                 return stream
             stream = await self._open_stream(track)
+            if self._closed:
+                await self._close_stream(stream)
+                raise RuntimeError("Nemotron streaming backend is closed")
             self._streams[track] = stream
             return stream
 
@@ -360,7 +372,12 @@ class NemotronStreamingASRBackend:
     async def _replace_stream(self, track: Hashable, previous: _TrackStream) -> _TrackStream:
         replay = bytes(previous.pending_audio)
         await self._close_stream(previous)
+        if self._closed:
+            raise RuntimeError("Nemotron streaming backend is closed")
         replacement = await self._open_stream(track)
+        if self._closed:
+            await self._close_stream(replacement)
+            raise RuntimeError("Nemotron streaming backend is closed")
         replacement.pending_audio.extend(replay)
         replacement.revision = previous.revision
         self._streams[track] = replacement

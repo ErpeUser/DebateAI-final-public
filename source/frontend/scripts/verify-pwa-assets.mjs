@@ -196,5 +196,6 @@ test('HTML links install metadata from origin-root URLs', async () => {
   const html = await readFile(file(htmlPath), 'utf8');
   assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/);
   assert.match(html, /<meta name="theme-color" content="#0f172a" \/>/);
+  assert.match(html, /<meta name="description" content="Backchannel is a self-hosted AI meeting assistant/);
   assert.match(html, /<link rel="apple-touch-icon" href="\/icons\/icon-192\.png" \/>/);
 });

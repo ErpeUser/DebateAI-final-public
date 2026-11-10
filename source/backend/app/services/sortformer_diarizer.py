@@ -45,10 +45,16 @@ class SortformerDiarizer:
         registry: SpeakerRegistry | None = None,
         embedding_extractor: Callable[[np.ndarray, int], np.ndarray] = extract_speaker_embedding,
     ):
+        if not 1 <= int(sample_rate) <= 192000:
+            raise ValueError("sample_rate must be between 1 and 192000 Hz")
+        configured_window_ms = window_ms if window_ms is not None else settings.SORTFORMER_WINDOW_MS
+        if not 1 <= int(configured_window_ms) <= 60000:
+            raise ValueError("window_ms must be between 1 and 60000 ms")
         self._model_id = model_id
-        self._sample_rate = sample_rate
+        self._sample_rate = int(sample_rate)
         self._bytes_per_sample = 2
-        self._window_bytes = int((window_ms or settings.SORTFORMER_WINDOW_MS) * sample_rate / 1000) * self._bytes_per_sample
+        raw_window_bytes = int(int(configured_window_ms) * self._sample_rate / 1000) * self._bytes_per_sample
+        self._window_bytes = max(self._bytes_per_sample, raw_window_bytes - (raw_window_bytes % self._bytes_per_sample))
         self._min_segment_bytes = int(settings.MIN_SEGMENT_MS * sample_rate / 1000) * self._bytes_per_sample
         self._min_new_speaker_bytes = (
             int(settings.MIN_NEW_SPEAKER_MS * sample_rate / 1000) * self._bytes_per_sample

@@ -29,6 +29,75 @@ class ProvisionalTranscriptPostgresConcurrencyTests(unittest.IsolatedAsyncioTest
     async def asyncTearDown(self):
         await self.engine.dispose()
 
+    async def test_invalid_or_non_monotone_revisions_are_rejected(self):
+        from app.services.provisional_transcripts import (
+            MAX_PROVISIONAL_SEGMENT_CHARS,
+        )
+
+        first_data = {
+            "segment_id": "segment-1",
+            "segment_revision": 1,
+            "text": "Erste Hypothese.",
+            "mode": "replace",
+        }
+
+        with patch(
+            "app.services.provisional_transcripts.shield.protect_text",
+            AsyncMock(side_effect=lambda _db, _session_id, text: text),
+        ):
+            async with self.sessions() as db:
+                first = await persist_provisional_revision(
+                    db, self.session_id, first_data
+                )
+                await db.commit()
+
+                malformed = await persist_provisional_revision(
+                    db,
+                    self.session_id,
+                    {
+                        **first_data,
+                        "segment_revision": "not-a-number",
+                        "text": "Wird verworfen.",
+                    },
+                )
+                stale = await persist_provisional_revision(
+                    db,
+                    self.session_id,
+                    {
+                        **first_data,
+                        "text": "Stale replay.",
+                    },
+                )
+                oversized_append = await persist_provisional_revision(
+                    db,
+                    self.session_id,
+                    {
+                        **first_data,
+                        "segment_revision": 2,
+                        "text": "x" * MAX_PROVISIONAL_SEGMENT_CHARS,
+                        "mode": "append",
+                    },
+                )
+                await db.commit()
+
+        self.assertTrue(first.created)
+        self.assertFalse(malformed.created)
+        self.assertIsNone(malformed.row)
+        self.assertFalse(stale.created)
+        self.assertIsNotNone(stale.row)
+        self.assertEqual(1, stale.row.revision)
+        self.assertFalse(oversized_append.created)
+        self.assertIsNotNone(oversized_append.row)
+        self.assertEqual(1, oversized_append.row.revision)
+
+        async with self.sessions() as db:
+            count = await db.scalar(
+                select(func.count(ProvisionalTranscriptRevision.id)).where(
+                    ProvisionalTranscriptRevision.session_id == self.session_id
+                )
+            )
+        self.assertEqual(1, count)
+
     async def test_identical_concurrent_replay_commits_exactly_one_revision(self):
         data = {
             "segment_id": "segment-1",

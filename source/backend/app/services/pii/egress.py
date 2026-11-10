@@ -19,11 +19,14 @@ scrubbed record could not show a leak. It never leaves the machine.
 
 from __future__ import annotations
 
+import asyncio
+import hashlib
 import json
 import logging
 import os
 import re
 import uuid
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -35,9 +38,10 @@ logger = logging.getLogger(__name__)
 LOG_FILE_NAME = "outbound.jsonl"
 MAX_LOG_BYTES = 25 * 1024 * 1024
 MAX_PROMPT_CHARS_STORED = 60_000
-# Values shorter than this are too easily part of an ordinary word to judge.
-MIN_VALUE_LENGTH = 5
+# Values shorter than three characters are ignored; three-character roster values are still protected with whole-word matching.
+MIN_VALUE_LENGTH = 3
 _DIGIT_CATEGORIES = {PHONE, SSN, CARD, IP}
+_RECORD_LOCK = threading.Lock()
 
 
 class PiiEgressBlocked(ValueError):
@@ -111,11 +115,15 @@ def _rotate_if_large(path: Path) -> None:
 def record(entry: dict) -> None:
     """Append one outbound-prompt record. Never raises."""
     try:
-        path = _log_path()
-        path.parent.mkdir(parents=True, exist_ok=True)
-        _rotate_if_large(path)
-        with open(path, "a", encoding="utf-8") as handle:
-            handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        with _RECORD_LOCK:
+            path = _log_path()
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.parent.chmod(0o700)
+            _rotate_if_large(path)
+            if path.exists():
+                path.chmod(0o600)
+            with open(path, "a", encoding="utf-8") as handle:
+                handle.write(json.dumps(entry, ensure_ascii=False) + "\n")
     except OSError:
         logger.warning("Could not write the prompt log", exc_info=True)
 
@@ -163,6 +171,15 @@ def clear() -> int:
     return removed
 
 
+def _safe_prompt_for_log(text: str, leaks: list[tuple[str, str]]) -> str:
+    """Return diagnostic context without persisting any vault value."""
+    safe = text
+    for value, _category in sorted(leaks, key=lambda item: len(item[0]), reverse=True):
+        if value:
+            safe = safe.replace(value, "[REDACTED]")
+    return safe
+
+
 async def guard(
     prompt: str,
     *,
@@ -181,7 +198,7 @@ async def guard(
     leaks = find_leaks(text) if settings.enabled else []
     blocked = bool(leaks)
     if settings.prompt_log:
-        record({
+        await asyncio.to_thread(record, {
             "at": datetime.now(timezone.utc).isoformat(),
             "source": source,
             "model_id": model_id,
@@ -189,8 +206,15 @@ async def guard(
             "chars": len(text),
             "tokens_present": bool(vault.has_tokens(text)),
             "blocked": blocked,
-            "leaks": [{"category": category, "value": value} for value, category in leaks],
-            "prompt": text[:MAX_PROMPT_CHARS_STORED],
+            "leaks": [
+                {
+                    "category": category,
+                    "length": len(value),
+                    "fingerprint": hashlib.sha256(value.encode("utf-8")).hexdigest()[:16],
+                }
+                for value, category in leaks
+            ],
+            "prompt": _safe_prompt_for_log(text, leaks)[:MAX_PROMPT_CHARS_STORED],
             "truncated": len(text) > MAX_PROMPT_CHARS_STORED,
         })
     if blocked:

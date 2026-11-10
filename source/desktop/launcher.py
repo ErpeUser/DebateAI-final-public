@@ -1028,6 +1028,10 @@ def _run_owned(headless: bool = False) -> int:
     _hydrate_windows_provider_environment()
     data_dir = app_data_dir()
     data_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        data_dir.chmod(0o700)
+    except OSError:
+        pass
     _cleanup_owned_runtime_files(data_dir)
     oracle_jobs = data_dir / "chatgpt-web" / "oracle-home" / "jobs"
     if oracle_jobs.is_dir():
@@ -1038,8 +1042,14 @@ def _run_owned(headless: bool = False) -> int:
                 pass
     _configure_gemini_web_login(data_dir)
     _configure_chatgpt_web_login(data_dir)
+    log_path = data_dir / "backchannel.log"
+    try:
+        log_path.touch(exist_ok=True)
+        log_path.chmod(0o600)
+    except OSError:
+        pass
     logging.basicConfig(
-        filename=str(data_dir / "backchannel.log"),
+        filename=str(log_path),
         level=logging.INFO,
         format="%(asctime)s %(name)s %(levelname)s %(message)s",
     )

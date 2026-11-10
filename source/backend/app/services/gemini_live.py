@@ -156,11 +156,11 @@ class GeminiLiveSession:
                 has_input_tx = hasattr(sc, 'input_transcription') and bool(sc.input_transcription)
                 if has_input_tx:
                     text = sc.input_transcription.text
-                    logger.info(f"Live input_transcription: {repr(text)[:120]}")
+                    logger.info("Live input_transcription received (%d chars)", len(text))
                     if text and text.strip():
                         from app.services.batch_transcriber import _is_hallucination
                         if _is_hallucination(text):
-                            logger.info(f"Filtered hallucinated input transcription: '{text[:80]}'")
+                            logger.info("Filtered hallucinated input transcription (%d chars)", len(text))
                         else:
                             yield {"type": "transcript", "data": text}
 
@@ -168,7 +168,7 @@ class GeminiLiveSession:
                 if hasattr(sc, 'model_turn') and sc.model_turn:
                     for part in sc.model_turn.parts or []:
                         if hasattr(part, 'text') and part.text and part.text.strip():
-                            logger.debug(f"Unexpected model text in gateway: '{part.text[:80]}'")
+                            logger.debug("Unexpected model text in gateway (%d chars)", len(part.text))
                         # inline_data (audio) is intentionally ignored - gateway is silent
         finally:
             # The loop ends on disconnect, error, or the consumer stopping;

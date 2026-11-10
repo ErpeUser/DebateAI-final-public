@@ -852,6 +852,7 @@ function MainApp() {
       const message = errorMessage(err, "Die Audioaufnahme ist fehlgeschlagen.");
       setCaptureError(message);
       console.error("Failed to start audio capture", err);
+      throw err;
     } finally {
       if (generation === audioStartGenerationRef.current) {
         setAudioStarting(false);
@@ -930,6 +931,13 @@ function MainApp() {
         await Promise.all([refreshSession(), refreshSessions()]);
       } catch (err) {
         if (!isCurrent()) return;
+        await api.updateSession(sessionId, { state: "pre_call" }).catch(() => undefined);
+        stopCapture();
+        await api.stopNativeAudio().catch(() => undefined);
+        disconnect();
+        liveSessionIdRef.current = null;
+        setLiveSessionId(null);
+        setRuntimeSessionId(null);
         const message = errorMessage(err, "Das Gespräch konnte nicht gestartet werden.");
         setCaptureError(message);
         console.error("Failed to start call", err);
@@ -937,7 +945,7 @@ function MainApp() {
         if (isCurrent()) setCallStarting(false);
       }
     });
-  }, [activeSessionId, notice, refreshSession, refreshSessions, refreshSpeakers, speakers, startAudioFeed]);
+  }, [activeSessionId, disconnect, notice, refreshSession, refreshSessions, refreshSpeakers, speakers, startAudioFeed, stopCapture]);
 
   const handleStartCall = useCallback(() => beginCall(), [beginCall]);
 

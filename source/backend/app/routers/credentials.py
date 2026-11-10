@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
@@ -30,14 +30,15 @@ _ENDPOINT_PATH = f"/{OPENAI_COMPATIBLE_PROVIDER}/endpoint"
 
 
 class CredentialIn(BaseModel):
-    api_key: str
+    api_key: str = Field(min_length=1, max_length=4096)
 
 
 class TextEndpointIn(BaseModel):
     # Omitted fields are left untouched; an empty string clears the setting
     # back to the environment variable or built-in default.
-    base_url: str | None = None
-    model_id: str | None = None
+    base_url: str | None = Field(default=None, max_length=2048)
+    model_id: str | None = Field(default=None, max_length=200)
+    api_key: str | None = Field(default=None, max_length=4096)
 
 
 def _check_provider(provider: str):
@@ -58,6 +59,17 @@ async def read_text_endpoint(db: AsyncSession = Depends(get_db)):
 
 @router.put(_ENDPOINT_PATH)
 async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(get_db)):
+    current = await get_endpoint_config(db)
+    if body.base_url and body.base_url.strip() != current.get("base_url"):
+        existing = await get_provider_key(db, OPENAI_COMPATIBLE_PROVIDER)
+        if existing and body.api_key is None:
+            raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")
+    if body.api_key is not None:
+        await set_secret(
+            db,
+            f"credentials.{OPENAI_COMPATIBLE_PROVIDER}.api_key",
+            body.api_key.strip(),
+        )
     try:
         config = await set_endpoint_config(db, base_url=body.base_url, model_id=body.model_id)
     except ValueError as exc:
@@ -91,6 +103,7 @@ async def delete_credential(provider: str, db: AsyncSession = Depends(get_db)):
     _check_provider(provider)
     await set_secret(db, f"credentials.{provider}.api_key", "")
     await clear_test_outcome(db, provider)
+    await db.commit()
 
 
 @router.post("/{provider}/test")
@@ -103,4 +116,5 @@ async def test_credential(provider: str, db: AsyncSession = Depends(get_db)):
         return {"ok": False, "message": "No API key configured"}
     ok, message = await run_connection_test(provider, key, await resolve_base_url(db, provider))
     await record_test_outcome(db, provider, key, ok)
+    await db.commit()
     return {"ok": ok, "message": message}

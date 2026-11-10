@@ -40,7 +40,7 @@ ANSWER_TRUNCATION_MARKER = "\n\n[Answer truncated at 4000 characters.]"
 
 
 class AskIn(BaseModel):
-    model_id: str
+    model_id: str = Field(min_length=1, max_length=160)
     question: str = Field(min_length=1, max_length=MAX_QUESTION_CHARS)
 
 
@@ -166,6 +166,11 @@ async def ask(session_id: uuid.UUID, body: AskIn, db: AsyncSession = Depends(get
     question = await shield.protect_text(db, session_id, body.question)
     context = await load_live_context(session_id, db)
     prompt = build_live_prompt(context, question)
+
+    # Persist any newly minted PII-vault tokens and release the read
+    # transaction before model inference. A slow provider must not hold a DB
+    # connection or snapshot while the user waits for the answer.
+    await db.commit()
 
     started = time.monotonic()
     try:

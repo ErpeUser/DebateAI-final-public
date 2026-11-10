@@ -449,11 +449,23 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
 
 
 def cancel_and_mix(mic: np.ndarray, system: np.ndarray, rate: int) -> np.ndarray:
-    """Remove the system track's bleed from mic, then remix both cleanly."""
-    n = min(len(mic), len(system))
-    system = np.asarray(system[:n], dtype=np.float64)
-    near = cancel_echo(np.asarray(mic[:n], dtype=np.float64), system, rate)
-    return np.clip(near + system, -32768, 32767)
+    """Remove the system track's bleed from mic, then remix both cleanly.
+
+    Device start/stop can leave the tracks at different lengths. Pad the
+    shorter track so the longer tail is preserved instead of being silently
+    discarded at call end.
+    """
+    mic_array = np.asarray(mic, dtype=np.float64)
+    system_array = np.asarray(system, dtype=np.float64)
+    n = max(len(mic_array), len(system_array))
+    if n == 0:
+        return np.zeros(0, dtype=np.float64)
+    mic_padded = np.zeros(n, dtype=np.float64)
+    system_padded = np.zeros(n, dtype=np.float64)
+    mic_padded[: len(mic_array)] = mic_array
+    system_padded[: len(system_array)] = system_array
+    near = cancel_echo(mic_padded, system_padded, rate)
+    return np.clip(near + system_padded, -32768, 32767)
 
 
 def write_wav(path: Path, samples: np.ndarray, rate: int) -> None:

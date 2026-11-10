@@ -36,9 +36,9 @@ class ProtectedTerm(BaseModel):
 
 class ShieldUpdate(BaseModel):
     enabled: bool | None = None
-    categories: list[str] | None = None
+    categories: list[str] | None = Field(default=None, max_length=32)
     ner: bool | None = None
-    protected_terms: list[ProtectedTerm] | None = None
+    protected_terms: list[ProtectedTerm] | None = Field(default=None, max_length=256)
     prompt_log: bool | None = None
 
 

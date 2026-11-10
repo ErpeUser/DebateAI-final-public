@@ -13,6 +13,7 @@ regardless of whether a model also supports server VAD, so it stays until a
 live run shows VAD-gated commits read better.
 """
 
+import asyncio
 import base64
 import json
 import logging
@@ -101,7 +102,7 @@ def _parse_event(event: dict) -> str | None:
     if not text:
         return None
     if _is_hallucination(text):
-        logger.info(f"Filtered hallucinated realtime transcription: '{text[:80]}'")
+        logger.info("Filtered hallucinated realtime transcription (%d chars)", len(text))
         return None
     return text
 
@@ -130,6 +131,10 @@ class OpenAIRealtimeSession:
             REALTIME_URL,
             additional_headers={"Authorization": f"Bearer {key}"},
             max_size=16 * 1024 * 1024,
+            max_queue=16,
+            ping_interval=20,
+            ping_timeout=20,
+            compression=None,
         )
         await self._ws.send(json.dumps(
             _session_update_payload(self._transcribe_model, self._language)
@@ -150,8 +155,8 @@ class OpenAIRealtimeSession:
         }))
         self._bytes_since_commit += len(audio_data)
         if self._bytes_since_commit >= COMMIT_INTERVAL_BYTES:
-            self._bytes_since_commit = 0
             await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+            self._bytes_since_commit = 0
 
     async def receive_responses(self):
         if not self._ws:
@@ -182,6 +187,12 @@ class OpenAIRealtimeSession:
     async def close(self):
         if self._ws:
             try:
+                # Flush the final sub-interval before closing. Otherwise the
+                # last <3s of audio is silently discarded by the provider.
+                if self._bytes_since_commit > 0:
+                    await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+                    self._bytes_since_commit = 0
+                    await asyncio.sleep(0)
                 await self._ws.close()
             except Exception as e:
                 logger.warning(f"Error closing OpenAI Realtime session: {e}")

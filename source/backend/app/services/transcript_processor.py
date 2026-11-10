@@ -65,6 +65,7 @@ class TranscriptBuffer:
         if not text or not text.strip():
             return
 
+        emit = None
         async with self._lock:
             # Add space between fragments if needed
             if self._buffer and not self._buffer.endswith(' ') and not text.startswith(' '):
@@ -77,10 +78,12 @@ class TranscriptBuffer:
 
             # Check for sentence boundaries
             if self._has_sentence_boundary() or len(self._buffer) >= self._max_buffer_chars:
-                await self._flush()
+                emit = self._drain()
             else:
                 # Set timer for silence-based flush
                 self._flush_timer = asyncio.create_task(self._delayed_flush())
+        if emit:
+            await self._on_flush(emit)
 
     def _has_sentence_boundary(self) -> bool:
         """Check if the buffer ends with a sentence boundary."""
@@ -92,27 +95,32 @@ class TranscriptBuffer:
         try:
             await asyncio.sleep(self._flush_delay)
             async with self._lock:
-                await self._flush()
+                emit = self._drain()
+            if emit:
+                await self._on_flush(emit)
         except asyncio.CancelledError:
             pass
 
-    async def _flush(self):
-        """Process and emit the buffered text."""
+    def _drain(self) -> str | None:
+        """Detach and clean buffered text; the callback runs outside the lock."""
         if not self._buffer.strip():
             self._buffer = ""
-            return
+            return None
 
         raw = self._buffer.strip()
         self._buffer = ""
 
         cleaned = clean_transcript_text(raw)
         if cleaned and len(cleaned) > 1:  # Skip single-character artifacts
-            logger.debug(f"Transcript flush: '{raw}' -> '{cleaned}'")
-            await self._on_flush(cleaned)
+            logger.debug("Transcript flush: %r -> %r", raw, cleaned)
+            return cleaned
+        return None
 
     async def flush_remaining(self):
         """Force flush any remaining text (call on session end)."""
         if self._flush_timer and not self._flush_timer.done():
             self._flush_timer.cancel()
         async with self._lock:
-            await self._flush()
+            emit = self._drain()
+        if emit:
+            await self._on_flush(emit)

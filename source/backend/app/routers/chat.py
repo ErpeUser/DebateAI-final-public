@@ -56,7 +56,7 @@ class ChatMessage(BaseModel):
 
 
 class ChatIn(BaseModel):
-    model_id: str
+    model_id: str = Field(min_length=1, max_length=160)
     session_ids: list[uuid.UUID] = Field(min_length=1, max_length=20)
     messages: list[ChatMessage] = Field(min_length=1, max_length=MAX_CHAT_HISTORY_MESSAGES)
 
@@ -201,6 +201,12 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         for m in body.messages
     ]
     prompt = build_chat_prompt(sessions_data, messages)
+
+    # Persist any tokens created for the typed question and release the read
+    # transaction before waiting on the provider. Chat can span several
+    # sessions, so keeping this connection open during inference needlessly
+    # reduces pool capacity.
+    await db.commit()
 
     try:
         reply = await generate_text(

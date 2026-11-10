@@ -162,42 +162,58 @@ async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, valu
     The new row is flushed, not committed: it belongs to the caller's
     transaction so a rolled-back transcript write leaves no orphan token.
     """
-    vault = await _ensure_loaded(db, session_id)
     digest = value_hmac(category, value)
-    existing = vault.by_hmac.get(digest)
-    if existing:
-        return existing
-    with _lock:
-        ordinal = vault.next_ordinal.get(category, 1)
-        vault.next_ordinal[category] = ordinal + 1
-    token = make_token(category, ordinal)
     _remember_plaintext(value, category)
-    row = PiiVaultEntry(
-        session_id=session_id,
-        category=category,
-        ordinal=ordinal,
-        token=token,
-        value_hmac=digest,
-        value_encrypted=encrypt(value.strip()),
-    )
-    db.add(row)
-    try:
-        await db.flush()
-    except IntegrityError:
-        # Another writer minted this value first (two imports racing). Drop
-        # our row, reload, and use theirs.
-        await db.rollback()
-        with _lock:
-            _vaults.pop(session_id, None)
+
+    # Both the digest and the category/ordinal pair are unique. Concurrent
+    # imports can therefore collide on either constraint: retry from a fresh
+    # cache after the savepoint rolls back, while leaving the caller's outer
+    # transaction intact.
+    last_error: IntegrityError | None = None
+    for _attempt in range(4):
         vault = await _ensure_loaded(db, session_id)
-        found = vault.by_hmac.get(digest)
-        if found:
-            return found
-        raise
-    with _lock:
-        vault.by_hmac[digest] = token
-        vault.by_token[token] = row.value_encrypted
-    return token
+        existing = vault.by_hmac.get(digest)
+        if existing:
+            return existing
+
+        with _lock:
+            ordinal = vault.next_ordinal.get(category, 1)
+            vault.next_ordinal[category] = ordinal + 1
+        token = make_token(category, ordinal)
+        row = PiiVaultEntry(
+            session_id=session_id,
+            category=category,
+            ordinal=ordinal,
+            token=token,
+            value_hmac=digest,
+            value_encrypted=encrypt(value.strip()),
+        )
+        try:
+            # Use a savepoint so a duplicate from a concurrent writer does not
+            # roll back the caller's surrounding transcript transaction.
+            async with db.begin_nested():
+                db.add(row)
+                await db.flush()
+        except IntegrityError as exc:
+            last_error = exc
+            # Another writer may have won either the value or the ordinal.
+            # Reload after the savepoint rollback and use/retry its result.
+            with _lock:
+                _vaults.pop(session_id, None)
+            vault = await _ensure_loaded(db, session_id)
+            found = vault.by_hmac.get(digest)
+            if found:
+                return found
+            continue
+
+        with _lock:
+            vault.by_hmac[digest] = token
+            vault.by_token[token] = row.value_encrypted
+        return token
+
+    if last_error is not None:
+        raise last_error
+    raise RuntimeError("Could not mint a PII vault token")
 
 
 async def reveal_map(db: AsyncSession, session_id: uuid.UUID) -> dict[str, str]:
