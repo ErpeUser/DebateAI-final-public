@@ -28,6 +28,7 @@ import hashlib
 import logging
 import os
 import sys
+import threading
 from pathlib import Path
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -48,6 +49,7 @@ DPAPI_MODE = "dpapi"
 _DPAPI_PREFIX = b"dpapi:"
 
 _fernet: Fernet | None = None
+_MASTER_KEY_LOCK = threading.Lock()
 
 
 class MasterKeyUnavailable(RuntimeError):
@@ -176,7 +178,7 @@ def _upgrade_plaintext_file(key_file: Path, key: bytes) -> None:
         logger.warning("Could not DPAPI-wrap the master key; leaving the file as is")
 
 
-def _master_key() -> bytes:
+def _master_key_unlocked() -> bytes:
     env_key = os.environ.get("CREDENTIALS_MASTER_KEY")
     if env_key:
         register_secret(env_key)
@@ -204,6 +206,14 @@ def _master_key() -> bytes:
     register_secret(key)
     logger.info(f"Generated new credentials master key at {key_file}")
     return key
+
+ 
+ 
+def _master_key() -> bytes:
+    # Concurrent first-use requests must not generate competing master.key
+    # files or overwrite the shared temporary file while it is being renamed.
+    with _MASTER_KEY_LOCK:
+        return _master_key_unlocked()
 
 
 def derive_subkey(purpose: bytes, length: int = 32) -> bytes:
