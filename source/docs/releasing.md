@@ -19,15 +19,18 @@ source tags and notes only; they never contain executable files.
 
 ### Local Windows debate bundle (not a publication flow)
 
-For a local, credential-free Windows artifact of the current checkout, use
-Python 3.12 and run:
+For a local, credential-free Windows artifact of the current checkout, open
+PowerShell in the clone root, enter `source`, use Python 3.12, and run:
 
 ```powershell
-.\scripts\build_debate_assistant.ps1 -Python .\.venv\Scripts\python.exe
+Set-Location .\source
+$python312 = py -3.12 -c "import sys; print(sys.executable)"
+.\scripts\build_debate_assistant.ps1 -Python $python312 -IncludeOracle
 ```
 
-This wrapper reuses the release frontend build, checked-in model/PostgreSQL/
-ffmpeg downloaders, `desktop/backchannel.spec`, and both desktop smoke tests.
+This wrapper reuses the release frontend build, checked-in model/PostgreSQL/ffmpeg/CLIProxyAPI downloaders, the pinned Gemini
+Web bridge, the ChatGPT Web runtime, `desktop/backchannel.spec`, and both
+ desktop smoke tests.
 It writes `dist\Backchannel-DebateAI-windows-x64.zip`. Use `-SkipDownloads`
 only when those three downloaded asset sets are already present. The wrapper
 does not read release credentials, require a tag, publish objects, or replace
