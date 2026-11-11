@@ -71,7 +71,7 @@ def _watch_growth(key: str, path, stop: threading.Event) -> None:
         model_downloads.advance(key, _dir_size(path))
 
 
-def _load_model(model_id: str):
+def _load_model(model_id: str, *, allow_download: bool = True):
     with _load_lock:
         if model_id not in _loaded:
             import onnx_asr
@@ -80,6 +80,8 @@ def _load_model(model_id: str):
             models_dir = data_dir() / "asr-models"
             models_dir.mkdir(parents=True, exist_ok=True)
             path = models_dir / name
+            if not allow_download and (not path.is_dir() or not any(path.iterdir())):
+                raise FileNotFoundError("Local ASR weights are absent; calibration never downloads models.")
             # onnx-asr 0.11 treats any existing local_dir as offline.
             # ponytail: populated partial caches need manual deletion; add staged downloads if recovery matters.
             if path.is_dir() and not any(path.iterdir()):
@@ -109,7 +111,7 @@ def _load_model(model_id: str):
                 # Remove it so the next attempt retries instead of treating the
                 # incomplete cache as an offline-ready model.
                 try:
-                    if path.is_dir():
+                    if fetching and path.is_dir():
                         shutil.rmtree(path)
                 except OSError:
                     logger.warning("Could not remove incomplete ASR cache %s", path, exc_info=True)
@@ -158,10 +160,11 @@ def create_transcriber(
 class LocalTranscriber:
     """Transcribes PCM16 16kHz mono segments with a local ONNX model."""
 
-    def __init__(self, model_id: str, sample_rate: int = 16000, language: str | None = None):
+    def __init__(self, model_id: str, sample_rate: int = 16000, language: str | None = None, *, allow_download: bool = True):
         if model_id not in LOCAL_MODEL_MAP:
             raise ValueError(f"Unknown local ASR model: {model_id}")
         self._model_id = model_id
+        self._allow_download = allow_download
         self._sample_rate = sample_rate
         # Only Whisper takes a language: it picks the decoder's <|xx|> token,
         # and without one it detects per segment. Parakeet v2 is English-only
@@ -180,7 +183,7 @@ class LocalTranscriber:
             return None
 
         try:
-            model = await self._native_lane.run(_load_model, self._model_id)
+            model = await self._native_lane.run(_load_model, self._model_id, allow_download=self._allow_download)
             waveform = pcm16_to_float32(pcm_bytes)
             raw = await self._native_lane.run(
                 model.recognize,

@@ -11,6 +11,7 @@ discard obsolete work and selectively integrate genuinely unique improvements.
 from __future__ import annotations
 
 import argparse
+import bisect
 import json
 import re
 import secrets
@@ -19,11 +20,11 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-REPOSITORY = "ErpeUser/backchannel-v6-private"
+REPOSITORY = "ErpeUser/DebateAI"
 MINIMUM_FIXED_COMMIT = "b7d48730bed175d4e4e7e5b2a6a6acf309f6dfb4"
 ALLOWED_ORIGIN = re.compile(
     r"^(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)"
-    r"ErpeUser/backchannel-v6-private(?:\.git)?/?$",
+    r"ErpeUser/(?:DebateAI|backchannel-v6-private)(?:\.git)?/?$",
     re.IGNORECASE,
 )
 
@@ -61,9 +62,67 @@ def checkout_root(path: Path) -> Path:
 def validate_origin(url: str, expected: str | None) -> None:
     if expected is None:
         if not ALLOWED_ORIGIN.fullmatch(url.strip()):
-            raise SyncError("origin is not the expected private Debate AI repository.")
+            raise SyncError("origin is not the expected private DebateAI repository.")
     elif url.strip() != expected.strip():
         raise SyncError("origin does not match the explicitly expected remote.")
+
+
+class WorkspaceCollision(RuntimeError):
+    pass
+
+
+def _git_paths(repo: Path, *args: str) -> list[str]:
+    result = subprocess.run(
+        ['git', '-C', str(repo), *args], capture_output=True, check=False,
+    )
+    if result.returncode:
+        raise WorkspaceCollision('Cannot inspect Git paths; no sync is safe yet.')
+    # NUL delimiters preserve spaces, newlines and quoted Unicode paths.
+    return [p.decode('utf-8', 'surrogateescape').rstrip('/')
+            for p in result.stdout.split(b'\0') if p]
+
+
+def protect_local_only_files(repo: Path, target_ref: str = 'origin/master') -> None:
+    """Fail closed on any local-only / tracked tree overlap, Windows-aware.
+
+    Case-folding is conservative on case-sensitive systems. It can require
+    manual review of two distinct Linux names, but prevents Windows data loss.
+    Empty directories have no bytes to protect; symlinks and nested repositories
+    are treated as paths, never recursively followed by Python.
+    """
+    local = set(_git_paths(repo, 'ls-files', '--others', '--exclude-standard', '-z'))
+    local.update(_git_paths(repo, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z'))
+    if not local:
+        return
+    tracked = set(_git_paths(repo, 'ls-tree', '-r', '--name-only', '-z', 'HEAD'))
+    tracked.update(_git_paths(repo, 'ls-tree', '-r', '--name-only', '-z', target_ref))
+    # Rebase may materialize a path later deleted by a subsequent local commit.
+    revisions = subprocess.run(['git', '-C', str(repo), 'rev-list', f'{target_ref}..HEAD'],
+                               capture_output=True, check=False)
+    if revisions.returncode:
+        raise WorkspaceCollision('Cannot inspect local history safely.')
+    for revision in revisions.stdout.decode('ascii').splitlines():
+        tracked.update(_git_paths(repo, 'diff-tree', '--root', '-r', '-m', '--no-commit-id',
+                                  '--name-only', '-z', revision))
+    folded = {p.casefold().rstrip('/') for p in tracked if p}
+    ordered = sorted(folded)
+    count = 0
+    for original in local:
+        path = original.casefold().rstrip('/')
+        parts = path.split('/')
+        has_parent = any('/'.join(parts[:i]) in folded for i in range(1, len(parts) + 1))
+        prefix = path + '/'
+        index = bisect.bisect_left(ordered, prefix)
+        has_child = index < len(ordered) and ordered[index].startswith(prefix)
+        if has_parent or has_child:
+            count += 1
+    if count:
+        raise WorkspaceCollision(
+            f'{count} local-only path(s) overlap tracked paths. Sync stopped BEFORE stash. '
+            'Secure these files outside the checkout and review the collision; '
+            'do not use git clean, reset --hard or overwrite-ignore to bypass this guard.'
+        )
+
 
 
 def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = None) -> dict:
@@ -107,6 +166,12 @@ def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = N
         "action": None,
         "next_action": None,
     }
+
+    # Protect ignored files before stash can restore HEAD or a merge can overwrite them.
+    try:
+        protect_local_only_files(repo)
+    except WorkspaceCollision as exc:
+        raise SyncError(str(exc)) from exc
 
     # Only stash TRACKED changes: untracked/ignored user data and .env files
     # are neither staged, cleaned, deleted nor published.

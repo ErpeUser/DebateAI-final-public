@@ -1,49 +1,39 @@
-# Debate AI V6 - private Windows release
+# DebateAI
 
-This repository contains the privately published Windows x64 onedir release
-candidate for Debate AI V6 and a sanitized source snapshot. The application
-is distributed as a release asset; the source snapshot is kept separate from
-local runtime state.
+Private, local-first German live debate assistant. Canonical product name: **DebateAI**. The integrated calibration laboratory, safety fixes and production comparison tools are versioned here, not only in a separate recovery ZIP.
 
-## Download and start
+**Status:** source integration and focused regression evidence. This is not a newly built/signed/installed Windows release. Full-project CI, the coupled native binary/archive identity migration and real Windows acceptance remain required. A source merge is not a production release.
 
-1. Download `Backchannel-windows-x64.zip` from the GitHub release.
-2. Verify it against `SHA256SUMS.txt`.
-3. Extract the complete archive without renaming its `Backchannel/` root.
-4. Start `Backchannel/Backchannel.exe`.
-5. Keep the external `Backchannel/ai/` directory beside the executable when
-   changing prompts or provider configuration.
+## Integrated laboratory
 
-The full runtime and the editable external AI files are described in
-`START_HIER.md`. `release-manifest.json` records the build toolchain,
-provenance and artifact hashes.
+Open **Testlabor** inside the app. Its same-origin dialog leaves the main application mounted. Compare the same short German recording across cached local ASR adapters; inspect WER/CER, critical words and runtime separately. Explicit recording, no silent model download or active-setting changes. Heavy diagnostics retain worker ownership until real completion, even after browser cancellation.
 
-## Scope and evidence
+Blind pair/suite imports support A/B, ties and both-unsuitable feedback; identities appear after voting. Generated experiments retain failed pairs in their denominators and verify declared context hashes. Optional ratings are not prefilled. Usefulness is not factual truth. Persistence/export is explicit and excludes audio and credentials.
 
-The release asset was built from Git HEAD
-`da2c5301f272142ae5d7bbb2ab10a7b5402ae20c` with the release Python 3.12.10
-environment and PyInstaller 6.22.3. The executable, normal startup/health
-smoke, external prompt/configuration smoke, archive update/rollback smoke,
-and release-manifest tests were run before publication.
+## Actual production-path pairs
 
-The release is private because the public upstream repository must not receive
-binary release artifacts. A private repository does not turn the remaining
-manual A06/A18/A21/A22 evaluations into automated passes.
+Stop the desktop first. In the complete backend source environment select two already installed genuinely local Ollama models:
 
-## Source code
+```sh
+cd source/backend
+python scripts/benchmark_blind_pair.py --model-a qwen3:4b --model-b SECOND_INSTALLED_LOCAL_MODEL --output comparison.json
+```
 
-The `source/` directory contains the sanitized source snapshot used for the
-current audit, including the latest German UI, mobile activity layout,
-stable transcript row identities, and visible browser-audio fallback warning,
-including backend, desktop, frontend, docs-site, tests, scripts, prompts and
-release configuration. `SOURCE_SNAPSHOT_MANIFEST.json` lists every included
-file and hash. It deliberately excludes Git metadata, virtual environments,
-node_modules, generated build/dist folders, model/native binaries, audio,
-databases, session data and `.env` files. It also excludes provider/account
-overrides, browser profiles and cookies, OAuth/API login caches, local
-storage, chat/conversation history, transcripts, logs and other per-machine
-state. The current snapshot and its complete Git history were checked for
-those data classes; the result is zero matching local-data files. Synthetic
-credential strings used by redaction tests are retained as test fixtures and
-are explicitly listed in the manifest; no live secret was included. See
-`PRIVACY_AUDIT.md` for the exact checks and result.
+Replace the second-model placeholder. The existing production replay runs in separate sequential child processes for both modes; causal output pairs and failure counts are exported for laboratory import. Missing models/remote aliases/timeouts/empty answers are not fabricated successes. No second prompt engine, synchronous judge or automatic winner settings. This is a source CLI, not a one-click frozen-EXE feature.
+
+## Identity and data preservation
+
+Fresh installs select DebateAI data paths; existing nonempty legacy data remains accessible. Never blindly remove keys, profiles, databases, transcripts, models or customized strategies. Independent API update channel requires explicit HTTPS endpoints and public trust keys; archive/signature/rollback checks stay mandatory.
+
+Target repository ErpeUser/DebateAI, stable ID1450951492, private. The authenticated rename helper previews before --apply; its existence does not prove an actual rename. Legacy binary/archive names remain until their coupled contracts are tested together. License/provenance notices and historical manifests remain; old checksums are not new release evidence.
+
+## Evidence and native completion
+
+- [Reconciliation of both deliveries](source/docs/RECONCILIATION_MATRIX_DE.md)
+- [Fresh focused tests and limitations](source/docs/FINAL_VERIFICATION_2026-11-11.md)
+- [Safe Windows runbook](source/docs/windows-final-runbook.md)
+- [Exact Codex native completion](source/docs/CODEX_DEBATEAI_FINAL.md)
+- [Research-informed decisions](source/docs/RESEARCH_DE.md)
+- [Ready-to-use Deep Research brief](source/docs/DEEP_RESEARCH_AUFTRAG_DE.md)
+
+Read root/source AGENTS and current handoff together. After verified consolidation use newest master; do not require an obsolete feature branch or overlay the old ZIP onto newer source. Never install an old executable and present it as the current revision.

@@ -23,6 +23,8 @@ from app.services.audio_store import (
     cleanup_orphan_track_audio,
     repair_wav_file,
 )
+from app.routers import calibration
+from app.services.diagnostic_upload_limit import DiagnosticUploadLimitMiddleware
 from app.services import redaction, request_guard, runtime_activity
 from app.ws import audio_handler
 
@@ -502,7 +504,7 @@ async def lifespan(app: FastAPI):
     await engine.dispose()
 
 
-app = FastAPI(title="Debate AI", version=APP_VERSION, lifespan=lifespan)
+app = FastAPI(title="DebateAI", version=APP_VERSION, lifespan=lifespan)
 
 # The API has no login, so the browser's same-origin policy is the only thing
 # between a hostile web page and the user's transcripts and provider budget.
@@ -521,6 +523,7 @@ updates.configure_app(app)
 # Session-scoped JSON responses get their protected values substituted back
 # for the person at this machine; every reveal is audited.
 app.add_middleware(PiiRevealMiddleware)
+app.add_middleware(DiagnosticUploadLimitMiddleware)
 # Outermost: a request with a foreign Host (DNS rebinding) or a foreign
 # Origin on a state-changing method never reaches a router.
 app.add_middleware(request_guard.RequestGuardMiddleware)
@@ -566,6 +569,7 @@ app.include_router(
 app.include_router(chat.router)
 app.include_router(ask.router)
 app.include_router(diagnostics.router)
+app.include_router(calibration.router)
 app.include_router(privacy.router)
 app.include_router(debate_settings.router)
 app.include_router(dossiers.router)

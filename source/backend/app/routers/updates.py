@@ -12,7 +12,8 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.database import get_db
 from app.models import Session
 from app.services import runtime_activity
-from app.services.update_service import UpdateService, get_update_service
+from app.services.update_service import UpdateService
+from app.services.debateai_update_channel import get_update_service
 
 
 router = APIRouter(prefix="/api/updates", tags=["updates"])
@@ -23,9 +24,13 @@ class GrantIn(BaseModel):
 
 
 def start_background_check():
-    if os.environ.get("BACKCHANNEL_DESKTOP") != "1":
+    desktop = os.environ.get("DEBATEAI_DESKTOP") or os.environ.get("BACKCHANNEL_DESKTOP")
+    if desktop != "1":
         return None
-    return asyncio.create_task(asyncio.to_thread(get_update_service().check))
+    service = get_update_service()
+    if not service.enabled:
+        return None
+    return asyncio.create_task(asyncio.to_thread(service.check))
 
 
 def stop_background_check(task) -> None:
@@ -40,25 +45,29 @@ async def shutdown_reserved_handler(
 
 
 def configure_app(app: FastAPI) -> None:
+    app.title = "DebateAI"
     app.add_exception_handler(
         runtime_activity.ShutdownReserved, shutdown_reserved_handler
     )
-    if os.environ.get("BACKCHANNEL_DESKTOP") == "1":
+    desktop = os.environ.get("DEBATEAI_DESKTOP") or os.environ.get("BACKCHANNEL_DESKTOP")
+    if desktop == "1":
         app.add_middleware(
             TrustedHostMiddleware,
             allowed_hosts=[
                 "localhost",
                 "127.0.0.1",
-                os.environ.get("BACKCHANNEL_BOUND_HOST", "127.0.0.1"),
+                os.environ.get("DEBATEAI_BOUND_HOST") or os.environ.get("BACKCHANNEL_BOUND_HOST", "127.0.0.1"),
             ],
         )
 
 
 def require_instance_token(
-    token: str | None = Header(default=None, alias="X-Backchannel-Instance"),
+    token: str | None = Header(default=None, alias="X-DebateAI-Instance"),
+    legacy_token: str | None = Header(default=None, alias="X-Backchannel-Instance"),
 ) -> None:
-    expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
-    if not token or not expected or not hmac.compare_digest(token, expected):
+    expected = os.environ.get("DEBATEAI_INSTANCE_TOKEN") or os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
+    supplied = token if token is not None else legacy_token
+    if not isinstance(supplied, str) or not supplied or not expected or not hmac.compare_digest(supplied, expected):
         raise HTTPException(403, "Desktop instance authorization failed")
 
 
@@ -77,15 +86,14 @@ def check_update(service: UpdateService = Depends(get_update_service)):
 
 @router.post("/download", dependencies=[Depends(require_instance_token)])
 def start_update_download(service: UpdateService = Depends(get_update_service)):
-    """Start the download. No authorization step: the asset route is public."""
+    """Start a verified independent-channel download."""
     try:
         return service.start_download()
     except (ValueError, RuntimeError) as error:
         raise HTTPException(409, str(error)) from error
 
 
-# Kept so a browser tab left open on an older build, or anything scripted
-# against it, still starts a download. The grant is ignored.
+# An already open older UI can use its established instance header and route.
 @router.post("/grant", dependencies=[Depends(require_instance_token)])
 def accept_update_grant(
     body: GrantIn,

@@ -8,7 +8,7 @@ import {inflateSync} from 'node:zlib';
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
 const target = process.argv.includes('--dist') ? 'dist' : 'public';
 const htmlPath = process.argv.includes('--dist') ? 'dist/index.html' : 'index.html';
-const expectedDescription = 'Backchannel is a self-hosted, open-source (MIT) AI meeting assistant that runs on your own hardware -- no bot joins your call, and your audio never leaves your infrastructure except for the model API calls you configure.';
+const expectedDescription = 'DebateAI: lokaler Live-Debattenassistent mit Transkription, Argumentgedaechtnis und Kalibrierungslabor.';
 const expectedThemeColor = '#0f172a';
 const expectedIcons = [
   {src: '/icons/icon-192.png', sizes: '192x192', type: 'image/png', purpose: 'any'},
@@ -147,10 +147,10 @@ function artworkRadiusRatio(image) {
   return maxRadius / image.width;
 }
 
-test('PWA manifest declares the Backchannel install target', async () => {
+test('PWA manifest declares the DebateAI install target', async () => {
   assert.deepEqual(await json(file(target, 'manifest.webmanifest')), {
-    name: 'Backchannel',
-    short_name: 'Backchannel',
+    name: 'DebateAI',
+    short_name: 'DebateAI',
     description: expectedDescription,
     start_url: '/',
     scope: '/',
@@ -196,6 +196,6 @@ test('HTML links install metadata from origin-root URLs', async () => {
   const html = await readFile(file(htmlPath), 'utf8');
   assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/);
   assert.match(html, /<meta name="theme-color" content="#0f172a" \/>/);
-  assert.match(html, /<meta name="description" content="Backchannel is a self-hosted AI meeting assistant/);
+  assert.match(html, /<meta name="description" content="DebateAI: lokaler Live-Debattenassistent/);
   assert.match(html, /<link rel="apple-touch-icon" href="\/icons\/icon-192\.png" \/>/);
 });
