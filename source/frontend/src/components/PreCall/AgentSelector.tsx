@@ -16,6 +16,7 @@ interface AgentSelectorProps {
 export default function AgentSelector({ sessionId }: AgentSelectorProps) {
   const [agents, setAgents] = useState<SessionAgent[]>([]);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -31,30 +32,37 @@ export default function AgentSelector({ sessionId }: AgentSelectorProps) {
   useEffect(() => { load(); }, [load]);
 
   const handleToggle = async (slug: string, enabled: boolean) => {
-    // Optimistic update
-    setAgents((prev) => prev.map((a) => (a.slug === slug ? { ...a, enabled, is_override: true } : a)));
-
-    // Build full override list from current state
+    if (saving) return;
+    // Keep the optimistic snapshot and the payload identical. Disabling the
+    // controls during the request prevents a second click from serializing
+    // stale state over the first change.
     const updated = agents.map((a) => ({
       agent_slug: a.slug,
       enabled: a.slug === slug ? enabled : a.enabled,
     }));
-
+    setAgents((prev) => prev.map((a) => (a.slug === slug ? { ...a, enabled, is_override: true } : a)));
+    setSaving(true);
     try {
       const result = await api.setSessionAgents(sessionId, updated);
       setAgents(result);
     } catch (err) {
       console.error("Failed to update agent override", err);
-      load(); // revert on error
+      await load(); // revert on error
+    } finally {
+      setSaving(false);
     }
   };
 
   const handleResetAll = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       const result = await api.setSessionAgents(sessionId, []);
       setAgents(result);
     } catch (err) {
       console.error("Failed to reset overrides", err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -71,7 +79,7 @@ export default function AgentSelector({ sessionId }: AgentSelectorProps) {
           Wähle die Assistenten für dieses Gespräch
         </p>
         {hasOverrides && (
-          <button onClick={handleResetAll} className="font-body text-[10px] text-brand-mid-gray hover:text-brand-teal transition-colors">
+          <button type="button" onClick={handleResetAll} disabled={saving} className="font-body text-[10px] text-brand-mid-gray hover:text-brand-teal transition-colors">
             Standard wiederherstellen
           </button>
         )}
@@ -98,8 +106,13 @@ export default function AgentSelector({ sessionId }: AgentSelectorProps) {
             </div>
           </div>
           <button
+            type="button"
+            role="switch"
+            aria-checked={agent.enabled}
+            aria-label={`${agent.name} ${agent.enabled ? "deaktivieren" : "aktivieren"}`}
             onClick={() => handleToggle(agent.slug, !agent.enabled)}
-            className={`h-5 w-9 rounded-full transition-colors shrink-0 ml-3 ${agent.enabled ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
+            disabled={saving}
+            className={`h-5 w-9 rounded-full transition-colors shrink-0 ml-3 disabled:cursor-wait disabled:opacity-60 ${agent.enabled ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
           >
             <span className={`block h-4 w-4 rounded-full bg-surface shadow transition-transform ${agent.enabled ? "translate-x-4" : "translate-x-0.5"}`} />
           </button>

@@ -605,7 +605,7 @@ export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete
             />
           </span>
           <span className="truncate text-sm font-semibold text-brand-dark-gray" title={group.name}>{group.name}</span>
-          <span className="ml-auto shrink-0 pl-2 text-xs tabular-nums text-brand-mid-gray" aria-label={`${sessionCount} sessions`}>
+          <span className="ml-auto shrink-0 pl-2 text-xs tabular-nums text-brand-mid-gray" aria-label={`${sessionCount} Gespräche`}>
             {sessionCount}
           </span>
         </button>
@@ -728,6 +728,18 @@ export default function Layout({
     }
   }, [drawerOpen]);
 
+  // Keep an off-canvas mobile drawer out of the keyboard and accessibility tree
+  // while it is closed. Desktop keeps the sidebar available in the normal flow.
+  useEffect(() => {
+    const aside = asideRef.current;
+    if (!aside) return;
+    const hidden = !isDesktop && !mobileOpen;
+    aside.toggleAttribute("inert", hidden);
+    if (hidden) aside.setAttribute("aria-hidden", "true");
+    else aside.removeAttribute("aria-hidden");
+    return () => aside.removeAttribute("inert");
+  }, [isDesktop, mobileOpen]);
+
   // Opening a live call collapses the rail: the call view is the dense screen
   // and the session list is not what you are reading during a meeting. Only on
   // the transition in, so expanding it mid-call sticks.
@@ -750,6 +762,9 @@ export default function Layout({
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    document.querySelectorAll('meta[name="theme-color"]').forEach((meta) => {
+      meta.setAttribute("content", theme === "dark" ? "#050505" : "#fafafa");
+    });
     storeTheme(theme);
   }, [theme]);
 
@@ -893,8 +908,8 @@ export default function Layout({
           if (e.key === "Escape") { setCreatingGroup(false); setNewGroupName(""); }
         }}
         onBlur={() => { if (!newGroupName.trim()) setCreatingGroup(false); }}
-        placeholder="Group name"
-        aria-label="New group name"
+        placeholder="Gruppenname"
+        aria-label="Neuer Gruppenname"
         className="h-8 w-full rounded-md border border-brand-teal bg-surface px-2 text-sm text-brand-dark-gray placeholder:text-brand-mid-gray"
       />
     </div>
@@ -909,7 +924,7 @@ export default function Layout({
             type="button"
             onClick={() => setMobileOpen(true)}
             className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal md:hidden"
-            aria-label="Open menu"
+            aria-label="Menü öffnen"
             aria-expanded={mobileOpen}
             aria-controls={SIDEBAR_ID}
           >
@@ -1059,8 +1074,8 @@ export default function Layout({
                       onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); } }}
                       onFocus={() => setQueryFocused(true)}
                       onBlur={() => setQueryFocused(false)}
-                      placeholder="Find a session"
-                      aria-label="Find a session"
+                      placeholder="Gespräch suchen"
+                      aria-label="Gespräch suchen"
                       aria-describedby="sidebar-search-hint"
                       className="bc-search h-8 w-full rounded-md border border-brand-light-gray-1 bg-canvas pl-8 pr-8 text-sm text-brand-dark-gray transition-colors placeholder:text-brand-mid-gray focus:border-brand-teal"
                     />
@@ -1113,8 +1128,8 @@ export default function Layout({
                                 <button
                                   type="button"
                                   onClick={toggleAllGroups}
-                                  aria-label={allGroupsCollapsed ? "Expand all groups" : "Collapse all groups"}
-                                  title={allGroupsCollapsed ? "Expand all" : "Collapse all"}
+                                  aria-label={allGroupsCollapsed ? "Alle Gruppen ausklappen" : "Alle Gruppen einklappen"}
+                                  title={allGroupsCollapsed ? "Alle ausklappen" : "Alle einklappen"}
                                   className="bc-action flex h-7 w-7 items-center justify-center rounded text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
                                 >
                                   {allGroupsCollapsed ? (

@@ -81,15 +81,15 @@ function EditableCell({
 
   if (!editing) {
     return (
-      <span
-        className={`cursor-pointer rounded px-1 py-0.5 transition-colors hover:bg-brand-light-gray-2 ${
-          clamp ? "line-clamp-3" : "block"
-        } ${!value ? "italic text-brand-mid-gray" : ""}`}
+      <button
+        type="button"
+        className={`block w-full cursor-pointer rounded px-1 py-0.5 text-left transition-colors hover:bg-brand-light-gray-2 ${clamp ? "line-clamp-3" : ""} ${!value ? "italic text-brand-mid-gray" : ""}`}
         onClick={() => setEditing(true)}
-        title={clamp && value ? value : "Click to edit"}
+        title={clamp && value ? value : "Zum Bearbeiten klicken"}
+        aria-label={value ? `Bearbeiten: ${value}` : `Bearbeiten: ${placeholder || "Feld"}`}
       >
         {renderValue ? renderValue(value) : value || placeholder || "—"}
-      </span>
+      </button>
     );
   }
 
@@ -202,7 +202,7 @@ function TagChips({
               setNewTag("");
             }
           }}
-          placeholder="New tag..."
+          placeholder="Neues Schlagwort ..."
           className="w-24 rounded-full border border-brand-teal-light bg-surface px-2 py-0.5 text-[10px] text-brand-dark-gray"
         />
       ) : (
@@ -210,7 +210,7 @@ function TagChips({
           type="button"
           onClick={() => setAdding(true)}
           className="rounded-full border border-dashed border-brand-light-gray-1 px-2 py-0.5 text-[10px] text-brand-mid-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
-          title="Create a new tag"
+          title="Neues Schlagwort anlegen"
         >
           + Tag
         </button>
@@ -267,7 +267,7 @@ function AddOfferingRow({
 
   return (
     <div className="rounded-lg border border-brand-teal-light/30 bg-brand-teal-light/5 p-4 space-y-3">
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <label className="block text-xs font-medium text-brand-gray mb-1">Anbieter *</label>
           <input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="z. B. Fortinet" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
@@ -291,15 +291,15 @@ function AddOfferingRow({
           <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. mit Einrichtungsdienst verkauft" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
         </div>
         <div className="flex items-end gap-2">
-          <button onClick={handleAdd} disabled={!vendor || !productName} className="rounded-lg bg-brand-teal px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:opacity-40">Hinzufügen</button>
-          <button onClick={() => { reset(); setOpen(false); }} className="rounded-lg border border-brand-light-gray-1 px-4 py-1.5 text-sm text-brand-gray transition-colors hover:bg-brand-light-gray-2">Abbrechen</button>
+          <button type="button" onClick={handleAdd} disabled={!vendor || !productName} className="rounded-lg bg-brand-teal px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:opacity-40">Hinzufügen</button>
+          <button type="button" onClick={() => { reset(); setOpen(false); }} className="rounded-lg border border-brand-light-gray-1 px-4 py-1.5 text-sm text-brand-gray transition-colors hover:bg-brand-light-gray-2">Abbrechen</button>
         </div>
       </div>
       <div>
         <label className="block text-xs font-medium text-brand-gray mb-1">Schlagwörter</label>
         <TagChips value={tags} onChange={setTags} knownTags={knownTags} onCreateTag={onCreateTag} />
       </div>
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
           <label className="block text-xs font-medium text-brand-gray mb-1">Beschreibung</label>
           <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Funktion und Nutzen ..." rows={2} className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
@@ -456,6 +456,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       <header className="flex items-center justify-between border-b border-brand-light-gray-1 bg-surface px-6 py-3">
         <div className="flex items-center gap-3">
           <button
+            type="button"
             onClick={onBack}
             className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
             title="Zurück zu den Gesprächen"
@@ -473,6 +474,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
         </div>
         <div className="flex items-center gap-2">
           <button
+            type="button"
             onClick={handleSeed}
             className="rounded-lg border border-brand-teal-light/30 px-3 py-1.5 text-sm font-medium text-brand-teal transition-colors hover:bg-brand-teal-light/10"
             title={offerings.length > 0
@@ -483,6 +485,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
           </button>
           <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImport} className="hidden" />
           <button
+            type="button"
             onClick={() => fileRef.current?.click()}
             disabled={importing}
             className="rounded-lg border border-brand-light-gray-1 px-3 py-1.5 text-sm font-medium text-brand-gray transition-colors hover:bg-brand-light-gray-2 disabled:opacity-50"
@@ -499,7 +502,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       {importResult && (
         <div className="flex items-center justify-between border-b border-brand-teal-light/20 bg-brand-teal-light/5 px-6 py-2">
           <span className="font-body text-sm text-brand-teal">{importResult}</span>
-          <button onClick={() => setImportResult(null)} className="text-brand-mid-gray hover:text-brand-dark-gray">
+          <button type="button" onClick={() => setImportResult(null)} className="text-brand-mid-gray hover:text-brand-dark-gray">
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
             </svg>
@@ -552,6 +555,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
         </div>
         {(filterVendor || filterCategory || filterTag || search) && (
           <button
+            type="button"
             onClick={() => { setFilterVendor(""); setFilterCategory(""); setFilterTag(""); setSearch(""); }}
             className="text-xs text-brand-mid-gray hover:text-brand-teal"
           >
@@ -644,6 +648,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                       </td>
                       <td className="px-3 py-2 align-top text-center">
                         <button
+                          type="button"
                           onClick={() => handleUpdate(o.id, "active", !o.active)}
                           className={`h-5 w-9 rounded-full transition-colors ${o.active ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
                           title={o.active ? "Aktiv – zum Deaktivieren klicken" : "Inaktiv – zum Aktivieren klicken"}
@@ -653,6 +658,7 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                       </td>
                       <td className="px-3 py-2 align-top">
                         <button
+                          type="button"
                           onClick={() => handleDelete(o.id)}
                           className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-500"
                           title="Angebot löschen"

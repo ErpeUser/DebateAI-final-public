@@ -205,7 +205,7 @@ export default function ActiveCallView({
   return (
     <div className="flex h-full flex-col bg-canvas">
       {/* Top bar */}
-      <header className="flex items-center justify-between gap-4 border-b border-brand-light-gray-1 bg-surface px-4 py-3 md:px-6">
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-light-gray-1 bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
           <AudioIndicator isCapturing={isCapturing} level={audioLevel} label="Mikrofonpegel" />
           {systemAudioActive && (
@@ -234,7 +234,7 @@ export default function ActiveCallView({
           )}
         </div>
 
-        <div className="flex flex-shrink-0 items-center gap-4">
+        <div className="flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-4">
           {/* Diagnostics: a quiet icon with its readout in a popover, so a
               debugging aid never competes with the call for the bar. */}
           <div className="relative flex" ref={debugRef}>
@@ -276,9 +276,9 @@ export default function ActiveCallView({
             <button
               onClick={onResumeAudio}
               disabled={postProcessingActive || isStarting}
-              className="rounded-lg border border-brand-teal px-3 py-2 font-body text-sm font-semibold text-brand-teal transition-colors hover:bg-brand-teal/10 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-brand-teal px-2.5 py-2 font-body text-sm font-semibold text-brand-teal transition-colors hover:bg-brand-teal/10 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
             >
-              {isStarting ? "Startet..." : "Aufnahme fortsetzen"}
+              {isStarting ? "Startet..." : <><span className="hidden sm:inline">Aufnahme fortsetzen</span><span className="sm:hidden">Fortsetzen</span></>}
             </button>
           )}
           {/* Session timer */}
@@ -301,7 +301,7 @@ export default function ActiveCallView({
                 onEndCall("full");
               }}
               disabled={postProcessingActive}
-              className={`flex items-center gap-2 rounded-l-lg px-4 py-2 font-body text-sm font-semibold text-white transition-colors ${
+              className={`flex items-center gap-2 rounded-l-lg px-3 py-2 font-body text-sm font-semibold text-white transition-colors sm:px-4 ${
                 postProcessingActive
                   ? "cursor-wait bg-brand-mid-gray"
                   : "bg-red-500 hover:bg-red-600"
@@ -314,7 +314,7 @@ export default function ActiveCallView({
                   d="M15.75 3.75L18 6m0 0l2.25 2.25M18 6l2.25-2.25M18 6l-2.25 2.25m-10.5 6v3.75a.75.75 0 01-.75.75H3a.75.75 0 01-.75-.75V15a9.75 9.75 0 019.75-9.75h2.25"
                 />
               </svg>
-              {postProcessingActive ? "Wird beendet..." : "Beenden"}
+              {postProcessingActive ? "Wird beendet..." : <><span className="hidden sm:inline">Beenden</span><span className="sm:hidden">Ende</span></>}
             </button>
             <button
               onClick={() => setEndMenuOpen((open) => !open)}
