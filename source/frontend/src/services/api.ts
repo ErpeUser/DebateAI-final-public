@@ -1,19 +1,22 @@
 import type { AgentConfig, AIConfiguration, AIPromptConfig, AppMeta, ArgumentGraph, AsrFitReport, CallSegment, CustomEndpoint, DebateRecommendation, DebateReview, DebateSettings, DiarizationBenchmarkResult, DiarizationDiagnostics, Directive, Document, EndpointProbeResult, EnhanceInsightsResult, KnowledgeRecord, KnowledgeSource, LocalFitReport, LocalFitSummary, MeetingType, ModelDownload, ModelDownloadsStatus, ModelInfo, ModelPricingResponse, Offering, PiiEgressEntry, PiiPreview, PiiSessionSummary, PiiShieldSettings, PiiShieldStatus, PrivacyConfig, Question, ReleaseNote, Session, SessionAgent, SessionGroup, SessionSynthesis, Speaker, TokenUsageSummary, TranscriptionConfig, TranscriptionJob, TranscriptEntry } from "../types";
 
 const BASE = "/api";
+const INSTANCE_HEADER = "X-DebateAI-Instance";
+const LEGACY_INSTANCE_HEADER = "X-Backchannel-Instance";
 let desktopInstanceToken = "";
 
 export const getDesktopInstanceToken = () => desktopInstanceToken;
 
 function desktopHeaders(headers?: HeadersInit): Headers {
   const value = new Headers(headers);
-  if (desktopInstanceToken) value.set("X-Backchannel-Instance", desktopInstanceToken);
+  if (desktopInstanceToken) value.set(INSTANCE_HEADER, desktopInstanceToken);
   return value;
 }
 
 async function desktopFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await fetch(input, { ...init, headers: desktopHeaders(init?.headers) });
-  const received = response.headers?.get?.("X-Backchannel-Instance");
+  const received = response.headers?.get?.(INSTANCE_HEADER)
+    ?? response.headers?.get?.(LEGACY_INSTANCE_HEADER);
   if (received) desktopInstanceToken = received;
   return response;
 }
@@ -160,12 +163,13 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
   if (!headers.has("Content-Type") && !(options?.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (desktopInstanceToken) headers.set("X-Backchannel-Instance", desktopInstanceToken);
+  if (desktopInstanceToken) headers.set(INSTANCE_HEADER, desktopInstanceToken);
   const res = await desktopFetch(`${BASE}${path}`, {
     ...options,
     headers,
   });
-  const receivedInstanceToken = res.headers?.get?.("X-Backchannel-Instance");
+  const receivedInstanceToken = res.headers?.get?.(INSTANCE_HEADER)
+    ?? res.headers?.get?.(LEGACY_INSTANCE_HEADER);
   if (receivedInstanceToken) desktopInstanceToken = receivedInstanceToken;
   if (!res.ok) {
     const text = await res.text();

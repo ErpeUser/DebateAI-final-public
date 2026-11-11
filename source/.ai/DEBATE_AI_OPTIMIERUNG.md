@@ -1,5 +1,29 @@
 # Debate AI - fuehrender Optimierungsstand
 
+## DESKTOP_FINAL-Paket 3/3 - Windows-Build und native Smokes (2026-11-11)
+
+- Der echte Checkout bleibt `C:\Users\User\Datein\Coding\DebateAI`, Branch
+  `master`, ohne Daten-/AppData-Loeschung. Die Identitaets-, Update-, Provider-
+  und Buildvertraege bevorzugen DebateAI und behalten kontrollierte Backchannel-
+  Aliase.
+- Behoben: gepinnter Gemini-Web-Bridge-Patch an v1.3.4, Windows-Go-Modulformatierung,
+  Smoke-Test-Instanzheader, tokengebundene Updater-Health-Anfrage und Windows-
+  Master-Key-Kompatibilitaet unter DPAPI; keine Fremdprozesse beendet.
+- Exakter finaler Build mit Python 3.12, Node 24 und Oracle/Node-Runtime:
+  `source/dist/DebateAI/DebateAI.exe` und `DebateAIUpdater.exe`.
+- Bundle-Smoke: gesund, lokale ASR-Probe nutzbar, sauberer Shutdown. Archiv-Smoke:
+  native Windows-Update und erzwungener Rollback bestanden.
+- ZIP: `source/dist/DebateAI-windows-x64.zip`, SHA-256
+  `09CC1C199A98602C780B393F550B1D7B845174117501647011011ECA4BB464D8`.
+- Tests: Desktop-Identitaet 11, Updater 12 (1 Windows-Symlink-Skip), Desktop-
+  Smoke/Bridge 13, Backend fokussiert 58 (1 Skip), Frontend npm 323, PWA 5,
+  Kalibrierung 26; Frontend-Build erfolgreich. Ein vorheriger `npm test`
+  Zusatzparameter war Node-ungültig und wurde ohne ihn erneut erfolgreich ausgefuehrt.
+- Offen bleiben echte manuelle/hardwaregebundene Gates A06/A18/A21/A22, die
+  15 Runtime-Gates, lokale Ollama-Modellpaar-Messung, Provider-Logins, reale
+  Authenticode-/Update-Signatur und Repository-Admin-Rename. Diese werden nicht
+  als bestanden behauptet.
+
 Stand: 2026-11-08
 
 ## V3-Wiederaufnahme 2026-11-08 - rekonstruierter Stand und Abnahmematrix
@@ -2677,3 +2701,54 @@ GOAL_STATUS bleibt daher **IN_PROGRESS**. Naechste konkrete Aktion fuer eine
 spätere Fortsetzung: nur einen laengeren lokalen ZIP-/Archiv-Smoke-Lauf starten
 oder die dokumentierten manuellen Gates mit echter WAV-/Hardware-Abnahme
 ausfuehren; keine bereits bestandenen Pakete wiederholen.
+
+### Desktop-Fortsetzung (2026-11-11)
+
+- Checkout auf `ErpeUser/backchannel-v6-private`/`master` synchronisiert:
+  `HEAD == origin/master == ddf1b3e05a6b70252b2335e09581140107144227`.
+- Der minimale Desktop-/Release-Lauf ist wiederholbar dokumentiert:
+  89 Desktop-Kern-/Release-/Updater-/Smoke-Tests bestanden, 1 Symlink-Test
+  wegen fehlender Windows-Rechte uebersprungen; zusaetzlich 7
+  `test_version_resource`-Tests bestanden. Die PowerShell-Vertraege
+  `test_release_desktop.ps1` und `test_build_debate_assistant.ps1` sowie
+  Python-`compileall` sind gruen.
+- Ein Acceptance-Vertragsfehler in
+  `source/backend/app/routers/updates.py` wurde minimal korrigiert:
+  `start_background_check()` verwendet nun den vom Test und Vertrag
+  erwarteten direkten Singleton-Aufruf. Danach bestanden
+  `test_update_acceptance` (2/2) und `test_smoke_test` (5/5).
+- `desktop.tests.test_release_contract` bleibt als Snapshot-Blocker sichtbar,
+  weil `source/.github/workflows/desktop-release.yml` fehlt; der Workflow liegt
+  nur unter dem Repository-Root `.github/workflows/desktop-release.yml`.
+- Keine EXE-/ZIP-Neuveroeffentlichung und keine manuellen Audio-/Hardware-/
+  Provider-Gates behauptet. Laufende PostgreSQL-Prozesse halten alte
+  `dist/`-Dateien offen; diese wurden nicht fremd beendet.
+
+Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
+  den gewollten Snapshot-Aufbau entscheiden und erst danach den vollstaendigen
+  Desktop-Release-Contract ausfuehren; bis dahin keine Windows-Freigabe
+  behaupten.
+
+### DESKTOP_FINAL-Gesamtumsetzung gestartet (2026-11-11)
+
+- Neues persistentes Goal fuer die vollstaendige Umsetzung von
+  `source/docs/DESKTOP_FINAL.md` angelegt; der Ausfuehrungsplan liegt in
+  `source/docs/superpowers/plans/2026-11-11-desktop-final-completion.md`.
+- `source/scripts/sync_final_workspace.py --repo <repository-root>` lief mit
+  `HEAD == origin/master == ddf1b3e05a6b70252b2335e09581140107144227` durch.
+  Der Synchronisierer sicherte die zwei vorherigen tracked Aenderungen in
+  Stash `9eab1d37ad0a159f74471f570f7000abae0c6102`; beide wurden nach Review
+  kontrolliert wieder angewendet. Keine Nutzer-/Runtime-Datei wurde durch den
+  Synchronisierer geloescht.
+- Task 1 ist damit verifiziert; als naechstes folgt die vollstaendige
+  Identitaets-/Kompatibilitaetsmatrix fuer Desktop, Updater, API, UI und
+  Datenpfade. Keine Zwischenfreigabe behaupten.
+### DESKTOP_FINAL-Paket 2/3: kanonische Produkt- und Update-Identitaet (2026-11-11)
+
+- Der Remote-Sync wurde erneut mit dem neuesten `sync_final_workspace.py` ausgefuehrt; lokale Aenderungen wurden in Stash `d4fbe9c8591692de86bec3e7db415e0d22270652` gesichert, geprueft und wiederhergestellt. Kein AppData-/DB-/Key-/Cookie-/Modellordner wurde veraendert oder geloescht.
+- Desktop-Identitaet verwendet `DebateAI.exe`, `DebateAIUpdater.exe`, `DebateAI`/`DebateAI.app` und `X-DebateAI-Instance`; `Backchannel`-Bundle, Launcher, Updater, Datenordner und Header bleiben kontrollierte Lese-/Fallback-Aliase.
+- Build-/Release-/Manifest-/Workflow-/Linux-Container-/Smoke-Pfade erzeugen jetzt `DebateAI-windows-x64.zip`, `DebateAI-linux-x64.tar.gz`, `DebateAI-macos-arm64.zip`; Update-Signierung akzeptiert alte Assets weiterhin nur als Legacy-Eingang.
+- `DEBATEAI_*`-Umgebungsvariablen werden fuer Daten-, Update-, FFmpeg-, AI-Konfigurations-, Host-/Origin- und CLIProxy-Pfade bevorzugt; alte `BACKCHANNEL_*`-Namen bleiben kompatibel.
+- Nachweise: `compileall` gruen; Desktop Identity/Updater/Smoke/Subscription/Native-Update-Akzeptanz gruen; Release-Contract und Release-Manifest 30/30 gruen; vorhandene Windows-Symlink-Pruefungen bleiben wegen fehlender Symlink-Berechtigung uebersprungen.
+- Offen: Restliche Provider-/Bridge-Variablen fachlich durchtesten, Backend-/Frontend-Gesamtsuiten, Root-Administration/Repository-Rename pruefen, Build-Abhaengigkeiten und Assets synchronisieren, nativen `build_debate_assistant.ps1 -IncludeOracle` ausfuehren, ZIP/Hash und die 15 Human-/Hardware-Gates getrennt dokumentieren.
+- Naechste Aktion: canonical/legacy env chain in Backend-Provider-Routern abschliessen und danach Frontend-/Backend-/Desktop-Gesamttests mit korrektem `PYTHONPATH` ausfuehren.

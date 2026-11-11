@@ -8,6 +8,8 @@ import subprocess
 import time
 from pathlib import Path
 
+from debateai_identity import env_value
+
 
 def _write_json(path: Path, payload: dict[str, object]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -44,9 +46,9 @@ def run_chatgpt_web_login(result_path: Path) -> int:
     from app.services.chatgpt_web import oracle_command
 
     result_path = Path(result_path)
-    marker = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_MARKER"])
-    profile = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_PROFILE"])
-    home = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_HOME"])
+    marker = Path(env_value("DEBATEAI_CHATGPT_WEB_MARKER", "BACKCHANNEL_CHATGPT_WEB_MARKER"))
+    profile = Path(env_value("DEBATEAI_CHATGPT_WEB_PROFILE", "BACKCHANNEL_CHATGPT_WEB_PROFILE"))
+    home = Path(env_value("DEBATEAI_CHATGPT_WEB_HOME", "BACKCHANNEL_CHATGPT_WEB_HOME"))
     home.mkdir(parents=True, exist_ok=True)
     output = home / "login-verification.md"
     output.unlink(missing_ok=True)

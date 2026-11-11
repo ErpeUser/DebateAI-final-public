@@ -31,6 +31,17 @@ class _HealthHandler(http.server.BaseHTTPRequestHandler):
 
 
 class LauncherHelperTests(unittest.TestCase):
+    def test_updater_path_prefers_canonical_and_falls_back_to_legacy(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            canonical = root / "DebateAIUpdater.exe"
+            legacy = root / "BackchannelUpdater.exe"
+            self.assertEqual(launcher.updater_path(root), canonical)
+            legacy.write_bytes(b"legacy")
+            self.assertEqual(launcher.updater_path(root), legacy)
+            canonical.write_bytes(b"canonical")
+            self.assertEqual(launcher.updater_path(root), canonical)
+
     def test_embedded_webview_close_exits_ui_child_instead_of_hiding_form(self):
         class ClosingEvent:
             def __init__(self):

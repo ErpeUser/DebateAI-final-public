@@ -26,6 +26,7 @@ from app.services.transcript_refiner import SYSTEM_PROMPT as TRANSCRIPT_REFINER_
 from app.services.transcription_runtime import SETTING_BATCH_TRANSCRIBER_MODEL
 from app.services.transcription_language import SETTING_TRANSCRIPTION_LANGUAGE
 from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.identity import env_value
 
 # Default prompt lookup by slug (used for reset endpoint)
 DEFAULT_PROMPTS = {
@@ -260,7 +261,7 @@ async def configure_desktop_debate_runtime(db: AsyncSession) -> None:
     needs the matching registry row. The marker is written once: later manual
     model choices remain authoritative instead of being reset on every start.
     """
-    if os.environ.get("BACKCHANNEL_DESKTOP") != "1":
+    if env_value("DEBATEAI_DESKTOP", "BACKCHANNEL_DESKTOP") != "1":
         return
     completed = await get_app_setting(db, _DESKTOP_DEBATE_BOOTSTRAP_KEY, "")
     first_bootstrap = completed != "1"

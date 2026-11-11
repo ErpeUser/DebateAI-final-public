@@ -163,8 +163,8 @@ foreach ($value in @(
     "publish_release_platform.ps1",
     "CLOUDFLARE_ACCESS_CLIENT_ID",
     "CLOUDFLARE_ACCESS_CLIENT_SECRET",
-    "Backchannel-windows-x64.zip",
-    "Backchannel-linux-x64.tar.gz",
+    "DebateAI-windows-x64.zip",
+    "DebateAI-linux-x64.tar.gz",
     "run watch",
     "release view",
     "Windows x64 host is required",
@@ -209,11 +209,11 @@ Assert-True $source.Contains('$releaseExists = $LASTEXITCODE -eq 0') `
 
 $now = [DateTimeOffset]::Parse("2026-07-15T18:00:00Z")
 $script:Artifacts = @(
-    [pscustomobject]@{ id = 1; name = "Backchannel-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 101 } },
-    [pscustomobject]@{ id = 2; name = "Backchannel-macos-arm64.zip"; created_at = "2026-07-15T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 102 } },
-    [pscustomobject]@{ id = 3; name = "Backchannel-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 103 } },
+    [pscustomobject]@{ id = 1; name = "DebateAI-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 101 } },
+    [pscustomobject]@{ id = 2; name = "DebateAI-macos-arm64.zip"; created_at = "2026-07-15T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 102 } },
+    [pscustomobject]@{ id = 3; name = "DebateAI-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 103 } },
     [pscustomobject]@{ id = 4; name = "Unrelated.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 104 } },
-    [pscustomobject]@{ id = 5; name = "Backchannel-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 105 } }
+    [pscustomobject]@{ id = 5; name = "DebateAI-macos-arm64.zip"; created_at = "2026-07-14T17:00:00Z"; workflow_run = [pscustomobject]@{ id = 105 } }
 )
 $script:Runs = @{
     101 = [pscustomobject]@{ path = ".github/workflows/desktop-release.yml"; status = "completed" }
@@ -289,7 +289,7 @@ $script:R2Objects["releases/$version/release.json"] = @"
 {"commit":"$commit","published_at":"$publishedAt","version":"$version"}
 "@
 $script:R2Objects["releases/$version/platforms/windows-x64.json"] = @"
-{"asset":{"content_type":"application/zip","filename":"Backchannel-windows-x64.zip","id":"windows-x64","key":"releases/$version/Backchannel-windows-x64.zip","platform":"Windows x64","sha256":"$("a" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
+{"asset":{"content_type":"application/zip","filename":"DebateAI-windows-x64.zip","id":"windows-x64","key":"releases/$version/DebateAI-windows-x64.zip","platform":"Windows x64","sha256":"$("a" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
 "@
 $state = Get-ReleasePublicationState `
     -Version $version -Commit $commit -PublishedAt $publishedAt `
@@ -298,7 +298,7 @@ Assert-True ($state["windows-x64"] -eq "Completed") "Valid Windows metadata was 
 Assert-True ($state["linux-x64"] -eq "Pending") "Missing Linux metadata was not pending"
 
 $script:R2Objects["releases/$version/platforms/macos-arm64.json"] = @"
-{"asset":{"content_type":"application/zip","filename":"Backchannel-macos-arm64.zip","id":"macos-arm64","key":"releases/$version/Backchannel-macos-arm64.zip","platform":"macOS arm64","sha256":"$("c" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"extra":true,"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
+{"asset":{"content_type":"application/zip","filename":"DebateAI-macos-arm64.zip","id":"macos-arm64","key":"releases/$version/DebateAI-macos-arm64.zip","platform":"macOS arm64","sha256":"$("c" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"extra":true,"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
 "@
 $state = Get-ReleasePublicationState `
     -Version $version -Commit $commit -PublishedAt $publishedAt `
@@ -308,7 +308,7 @@ Assert-True ($state["macos-arm64"] -eq "Failed") `
 $script:R2Objects.Remove("releases/$version/platforms/macos-arm64.json")
 
 $script:R2Objects["releases/$version/platforms/linux-x64.json"] = @"
-{"asset":{"content_type":"application/gzip","filename":"wrong.tar.gz","id":"linux-x64","key":"releases/$version/Backchannel-linux-x64.tar.gz","platform":"Linux x64","sha256":"$("b" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
+{"asset":{"content_type":"application/gzip","filename":"wrong.tar.gz","id":"linux-x64","key":"releases/$version/DebateAI-linux-x64.tar.gz","platform":"Linux x64","sha256":"$("b" * 64)","size":10},"commit":"$commit","published_at":"$publishedAt","release_notes":"test notes","update":{"key_id":"ed25519-2026-07","schema":1,"signature":"$("A" * 86)"},"version":"$version"}
 "@
 $state = Get-ReleasePublicationState `
     -Version $version -Commit $commit -PublishedAt $publishedAt `

@@ -13,6 +13,7 @@ from pathlib import Path
 
 PROVIDER_ENVIRONMENT = {
     "ANTHROPIC_API_KEY",
+    "DEBATEAI_API_KEY",
     "BACKCHANNEL_API_KEY",
     "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE",
     "BACKCHANNEL_SUBSCRIPTION_BRIDGE_OAUTH",
@@ -28,7 +29,12 @@ PROVIDER_ENVIRONMENT = {
 
 def isolated_environment(data_dir: str) -> dict[str, str]:
     env = {key: value for key, value in os.environ.items() if key not in PROVIDER_ENVIRONMENT}
-    env.update(BACKCHANNEL_HEADLESS="1", BACKCHANNEL_DATA_DIR=data_dir)
+    env.update(
+        DEBATEAI_HEADLESS="1",
+        DEBATEAI_DATA_DIR=data_dir,
+        BACKCHANNEL_HEADLESS="1",
+        BACKCHANNEL_DATA_DIR=data_dir,
+    )
     return env
 
 
@@ -46,10 +52,16 @@ def dump_logs(data_dir: Path) -> None:
 
 
 def bundle_exe(bundle: Path | None = None) -> Path:
-    bundle = bundle or (Path("dist") / "Backchannel")
-    exe = bundle / "Backchannel"
+    bundle = bundle or (Path("dist") / "DebateAI")
+    legacy_bundle = bundle.name in {"Backchannel", "Backchannel.app"}
+    exe = bundle / ("Backchannel" if legacy_bundle else "DebateAI")
     if sys.platform == "win32":
         exe = exe.with_suffix(".exe")
+    if not exe.exists() and not legacy_bundle:
+        legacy = bundle.parent / "Backchannel"
+        legacy_exe = legacy / ("Backchannel.exe" if sys.platform == "win32" else "Backchannel")
+        if legacy_exe.exists():
+            exe = legacy_exe
     if not exe.exists():
         raise SystemExit(f"bundle not found: {exe}")
     return exe
@@ -71,7 +83,10 @@ def wait_for_health(
                 if (
                     resp.status == 200
                     and "ok" in body
-                    and resp.headers.get("X-Backchannel-Instance") == token
+                    and (
+                        resp.headers.get("X-DebateAI-Instance") == token
+                        or resp.headers.get("X-Backchannel-Instance") == token
+                    )
                 ):
                     return port
         except (OSError, ValueError, KeyError):
@@ -94,7 +109,7 @@ def stop_process(proc: subprocess.Popen, stop: Path, timeout: float) -> bool:
     return True
 
 
-def check_local_asr(port: int) -> str:
+def check_local_asr(port: int, token: str) -> str:
     """Prove the bundled local ASR runtime can actually run.
 
     The bundle booting is not the same as the bundle working. Two shipped
@@ -104,7 +119,11 @@ def check_local_asr(port: int) -> str:
     Returns "" when usable, otherwise the reason (ALP-376).
     """
     url = f"http://127.0.0.1:{port}/api/diagnostics/local-asr"
-    with urllib.request.urlopen(url, timeout=30) as resp:
+    request = urllib.request.Request(
+        url,
+        headers={"X-DebateAI-Instance": token, "X-Backchannel-Instance": token},
+    )
+    with urllib.request.urlopen(request, timeout=30) as resp:
         payload = json.loads(resp.read().decode())
     if payload.get("usable"):
         return ""
@@ -135,7 +154,8 @@ def main() -> int:
             print(f"OK: healthy on port {port}")
 
             try:
-                reason = check_local_asr(port)
+                instance = json.loads(lock.read_text())
+                reason = check_local_asr(port, str(instance["token"]))
             except Exception as exc:  # noqa: BLE001
                 reason = f"probe failed ({type(exc).__name__}: {exc})"
             if reason:

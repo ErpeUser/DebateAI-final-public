@@ -109,7 +109,7 @@ jobs:
 
       - name: Build bundle
         working-directory: source
-        run: pyinstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
+        run: python -m PyInstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
 
       - name: Smoke test bundle
         working-directory: source
@@ -119,11 +119,11 @@ jobs:
         working-directory: source
         run: |
           mkdir -p ../controller/release-assets
-          ditto -c -k --keepParent dist/Backchannel.app ../controller/release-assets/Backchannel-macos-arm64.zip
+          ditto -c -k --keepParent dist/DebateAI.app ../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Smoke test macOS update archive
         working-directory: source
-        run: python desktop/scripts/smoke_update_archive.py --platform macos-arm64 --archive ../controller/release-assets/Backchannel-macos-arm64.zip
+        run: python desktop/scripts/smoke_update_archive.py --platform macos-arm64 --archive ../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Prepare macOS cache handoff
         id: handoff
@@ -133,7 +133,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bundle_sha256="$(shasum -a 256 release-assets/Backchannel-macos-arm64.zip | awk '{print $1}')"
+          bundle_sha256="$(shasum -a 256 release-assets/DebateAI-macos-arm64.zip | awk '{print $1}')"
           cache_key="backchannel-macos-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${EXPECTED_COMMIT}-${bundle_sha256}"
           echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
           echo "cache_key=$cache_key" >> "$GITHUB_OUTPUT"
@@ -141,7 +141,7 @@ jobs:
       - name: Save macOS handoff
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-macos-arm64.zip
+          path: controller/release-assets/DebateAI-macos-arm64.zip
           key: ${{ steps.handoff.outputs.cache_key }}
 
   publish-macos:
@@ -179,7 +179,7 @@ jobs:
       - name: Restore exact macOS handoff
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-macos-arm64.zip
+          path: controller/release-assets/DebateAI-macos-arm64.zip
           key: ${{ needs.build-macos.outputs.cache_key }}
           fail-on-cache-miss: true
 
@@ -188,7 +188,7 @@ jobs:
         env:
           BUNDLE_SHA256: ${{ needs.build-macos.outputs.bundle_sha256 }}
         shell: bash
-        run: echo "$BUNDLE_SHA256  release-assets/Backchannel-macos-arm64.zip" | shasum -a 256 -c -
+        run: echo "$BUNDLE_SHA256  release-assets/DebateAI-macos-arm64.zip" | shasum -a 256 -c -
 
       - name: Publish verified macOS platform
         working-directory: source
@@ -204,7 +204,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-macos.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId macos-arm64 -AssetPath ../controller/release-assets/Backchannel-macos-arm64.zip -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId macos-arm64 -AssetPath ../controller/release-assets/DebateAI-macos-arm64.zip -SigningMode Remote -Confirm:$false
 
   cleanup-macos:
     needs: [build-macos, publish-macos]
@@ -345,12 +345,12 @@ jobs:
         working-directory: source
         shell: pwsh
         run: |
-          $env:BACKCHANNEL_INCLUDE_ORACLE = "true"
+          $env:DEBATEAI_INCLUDE_ORACLE = "true"
           try {
             python -m PyInstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
             if ($LASTEXITCODE -ne 0) { throw "PyInstaller failed with exit code $LASTEXITCODE." }
           } finally {
-            Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+            Remove-Item Env:DEBATEAI_INCLUDE_ORACLE -ErrorAction SilentlyContinue
           }
 
       - name: Smoke test bundle
@@ -363,12 +363,12 @@ jobs:
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ../controller/release-assets | Out-Null
-          Compress-Archive -LiteralPath dist/Backchannel -DestinationPath ../controller/release-assets/Backchannel-windows-x64.zip -Force
+          Compress-Archive -LiteralPath dist/DebateAI -DestinationPath ../controller/release-assets/DebateAI-windows-x64.zip -Force
 
       - name: Smoke test Windows update archive
         working-directory: source
         shell: bash
-        run: python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive ../controller/release-assets/Backchannel-windows-x64.zip
+        run: python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive ../controller/release-assets/DebateAI-windows-x64.zip
 
       - name: Prepare Windows cache handoff
         id: handoff
@@ -378,7 +378,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bundle_sha256="$(sha256sum release-assets/Backchannel-windows-x64.zip | awk '{print $1}')"
+          bundle_sha256="$(sha256sum release-assets/DebateAI-windows-x64.zip | awk '{print $1}')"
           cache_key="backchannel-windows-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${EXPECTED_COMMIT}-${bundle_sha256}"
           echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
           echo "cache_key=$cache_key" >> "$GITHUB_OUTPUT"
@@ -386,7 +386,7 @@ jobs:
       - name: Save Windows handoff
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-windows-x64.zip
+          path: controller/release-assets/DebateAI-windows-x64.zip
           key: ${{ steps.handoff.outputs.cache_key }}
 
   publish-windows:
@@ -425,7 +425,7 @@ jobs:
       - name: Restore exact Windows handoff
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-windows-x64.zip
+          path: controller/release-assets/DebateAI-windows-x64.zip
           key: ${{ needs.build-windows.outputs.cache_key }}
           fail-on-cache-miss: true
 
@@ -434,7 +434,7 @@ jobs:
         env:
           BUNDLE_SHA256: ${{ needs.build-windows.outputs.bundle_sha256 }}
         shell: bash
-        run: echo "$BUNDLE_SHA256  release-assets/Backchannel-windows-x64.zip" | sha256sum -c -
+        run: echo "$BUNDLE_SHA256  release-assets/DebateAI-windows-x64.zip" | sha256sum -c -
 
       - name: Publish verified Windows platform
         working-directory: source
@@ -450,7 +450,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-windows.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId windows-x64 -AssetPath ../controller/release-assets/Backchannel-windows-x64.zip -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId windows-x64 -AssetPath ../controller/release-assets/DebateAI-windows-x64.zip -SigningMode Remote -Confirm:$false
 
   cleanup-windows:
     needs: [build-windows, publish-windows]
@@ -547,9 +547,9 @@ jobs:
           shopt -s dotglob nullglob
           files=(linux-output/*)
           [[ ${#files[@]} -eq 1 ]]
-          [[ "${files[0]}" == "linux-output/Backchannel-linux-x64.tar.gz" ]]
+          [[ "${files[0]}" == "linux-output/DebateAI-linux-x64.tar.gz" ]]
           [[ -s "${files[0]}" ]]
-          mv "${files[0]}" controller/release-assets/Backchannel-linux-x64.tar.gz
+          mv "${files[0]}" controller/release-assets/DebateAI-linux-x64.tar.gz
 
       - name: Prepare Linux cache handoff
         id: handoff
@@ -559,7 +559,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          bundle_sha256="$(sha256sum release-assets/Backchannel-linux-x64.tar.gz | awk '{print $1}')"
+          bundle_sha256="$(sha256sum release-assets/DebateAI-linux-x64.tar.gz | awk '{print $1}')"
           cache_key="backchannel-linux-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-${EXPECTED_COMMIT}-${bundle_sha256}"
           echo "bundle_sha256=$bundle_sha256" >> "$GITHUB_OUTPUT"
           echo "cache_key=$cache_key" >> "$GITHUB_OUTPUT"
@@ -567,7 +567,7 @@ jobs:
       - name: Save Linux handoff
         uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-linux-x64.tar.gz
+          path: controller/release-assets/DebateAI-linux-x64.tar.gz
           key: ${{ steps.handoff.outputs.cache_key }}
 
   publish-linux:
@@ -606,7 +606,7 @@ jobs:
       - name: Restore exact Linux handoff
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
         with:
-          path: controller/release-assets/Backchannel-linux-x64.tar.gz
+          path: controller/release-assets/DebateAI-linux-x64.tar.gz
           key: ${{ needs.build-linux.outputs.cache_key }}
           fail-on-cache-miss: true
 
@@ -615,7 +615,7 @@ jobs:
         env:
           BUNDLE_SHA256: ${{ needs.build-linux.outputs.bundle_sha256 }}
         shell: bash
-        run: echo "$BUNDLE_SHA256  release-assets/Backchannel-linux-x64.tar.gz" | sha256sum -c -
+        run: echo "$BUNDLE_SHA256  release-assets/DebateAI-linux-x64.tar.gz" | sha256sum -c -
 
       - name: Publish verified Linux platform
         working-directory: source
@@ -631,7 +631,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-linux.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId linux-x64 -AssetPath ../controller/release-assets/Backchannel-linux-x64.tar.gz -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId linux-x64 -AssetPath ../controller/release-assets/DebateAI-linux-x64.tar.gz -SigningMode Remote -Confirm:$false
 
   cleanup-linux:
     needs: [build-linux, publish-linux]

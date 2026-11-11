@@ -38,6 +38,7 @@ from app.services.update_signing import (
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from updater import apply_update, instance_is_healthy
+from debateai_identity import canonical_updater
 from desktop.scripts.smoke_test import dump_logs, stop_process
 
 
@@ -276,7 +277,12 @@ def apply_forced_rollback(
         monotonic=lambda: clock[0],
     )
     if result != 1 or not rejected_healthy[0] or not marker.is_file():
-        raise RuntimeError("native forced rollback failed")
+        dump_logs(app_data)
+        raise RuntimeError(
+            "native forced rollback failed "
+            f"(result={result}, rejected_healthy={rejected_healthy[0]}, "
+            f"marker={marker.is_file()}, install={install}, backup={service._state.get('backup_dir', '')})"
+        )
     wait_for_health(app_data, processes[-1])
     stop(processes[-1])
 
@@ -328,7 +334,12 @@ def run(archive: Path, platform_id: str) -> None:
         install_launcher.write_bytes(b"placeholder")
         if platform_id != "windows-x64":
             install_launcher.chmod(0o755)
-        helper = root / "BackchannelUpdater"
+        helper_platform = {
+            "windows-x64": "win32",
+            "linux-x64": "linux",
+            "macos-arm64": "darwin",
+        }[platform_id]
+        helper = root / Path(canonical_updater(helper_platform))
         helper.write_bytes(b"helper")
         keys_path = root / "keys.json"
         keys_path.write_text(json.dumps(key_document), encoding="utf-8")
@@ -365,10 +376,10 @@ def run(archive: Path, platform_id: str) -> None:
         marker.write_text("known good", encoding="utf-8")
         ready(service, descriptor)
 
-        original_headless = os.environ.get("BACKCHANNEL_HEADLESS")
-        original_data = os.environ.get("BACKCHANNEL_DATA_DIR")
-        os.environ["BACKCHANNEL_HEADLESS"] = "1"
-        os.environ["BACKCHANNEL_DATA_DIR"] = str(app_data)
+        original_headless = os.environ.get("DEBATEAI_HEADLESS")
+        original_data = os.environ.get("DEBATEAI_DATA_DIR")
+        os.environ["DEBATEAI_HEADLESS"] = "1"
+        os.environ["DEBATEAI_DATA_DIR"] = str(app_data)
         processes = []
         launch = launcher_factory(app_data, processes)
 
@@ -378,8 +389,8 @@ def run(archive: Path, platform_id: str) -> None:
                 service, descriptor, archive, app_data, install, processes, launch
             )
         finally:
-            restore_environment("BACKCHANNEL_HEADLESS", original_headless)
-            restore_environment("BACKCHANNEL_DATA_DIR", original_data)
+            restore_environment("DEBATEAI_HEADLESS", original_headless)
+            restore_environment("DEBATEAI_DATA_DIR", original_data)
             kill_processes(processes)
             stop_test_postgres(install, app_data)
             shutil.rmtree(app_data, ignore_errors=True)

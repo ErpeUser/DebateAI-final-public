@@ -28,10 +28,12 @@ from build_release_manifest import (
 
 
 def _private_key_from_environment() -> bytes:
-    encoded = os.environ.get("BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY", "")
+    encoded = os.environ.get("DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY") or os.environ.get(
+        "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY", ""
+    )
     if not encoded:
         raise ValueError(
-            "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY is required"
+            "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY is required"
         )
     try:
         value = base64.b64decode(encoded + "=", altchars=b"-_", validate=True)

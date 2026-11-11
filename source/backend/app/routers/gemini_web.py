@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.secrets import MasterKeyUnavailable, master_key_recovery_message
+from app.services.identity import env_value
 from app.services.subscription_bridge import (
     cleanup_gemini_web_cookie,
     gemini_web_models,
@@ -31,6 +32,10 @@ _login_process: subprocess.Popen | None = None
 _login_lock = threading.Lock()
 
 
+def _setting(name: str) -> str:
+    return env_value(f"DEBATEAI_GEMINI_WEB_{name}", f"BACKCHANNEL_GEMINI_WEB_{name}").strip()
+
+
 async def _status(
     db: AsyncSession,
     *,
@@ -42,8 +47,8 @@ async def _status(
     pro_available = _PRO_MODEL in models
     return {
         "available": bool(
-            os.environ.get("BACKCHANNEL_GEMINI_WEB_URL", "").strip()
-            and os.environ.get("BACKCHANNEL_GEMINI_WEB_KEY", "").strip()
+            _setting("URL")
+            and _setting("KEY")
         ),
         "configured": configured,
         "ready": configured and bool(models),
@@ -52,8 +57,8 @@ async def _status(
         "model": _PRO_MODEL if pro_available else "",
         "thinking": "High wird angefordert; die Antwort weist das tatsaechliche Modell aus.",
         "login_available": bool(
-            os.environ.get("BACKCHANNEL_GEMINI_WEB_LOGIN_COMMAND", "").strip()
-            and os.environ.get("BACKCHANNEL_GEMINI_WEB_LOGIN_RESULT", "").strip()
+            _setting("LOGIN_COMMAND")
+            and _setting("LOGIN_RESULT")
         ),
         "login_state": login_state,
         "message": (
@@ -110,8 +115,8 @@ def _normalize_cookie(value: str) -> str:
 
 
 def _login_configuration() -> tuple[list[str], Path]:
-    raw_command = os.environ.get("BACKCHANNEL_GEMINI_WEB_LOGIN_COMMAND", "").strip()
-    raw_result = os.environ.get("BACKCHANNEL_GEMINI_WEB_LOGIN_RESULT", "").strip()
+    raw_command = _setting("LOGIN_COMMAND")
+    raw_result = _setting("LOGIN_RESULT")
     if not raw_command or not raw_result:
         raise ValueError("Das lokale Gemini-Anmeldemodul ist nicht verfuegbar.")
     try:

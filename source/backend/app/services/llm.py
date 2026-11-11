@@ -38,6 +38,7 @@ from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
 from app.services import chatgpt_web
+from app.services.identity import env_value
 
 logger = logging.getLogger(__name__)
 
@@ -213,8 +214,8 @@ async def _prepare_call(model_id: str, feature: str, source: str = "") -> _CallT
     if (
         provider == "openai"
         and not key
-        and os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL", "").strip()
-        and os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY", "").strip()
+        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
+        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
     ):
         try:
             _bridge_id, endpoint, key = await _subscription_budget_target(model_id)

@@ -15,9 +15,9 @@ VERSION_RE = re.compile(
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 UTC_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|\+00:00)$")
 ASSETS = (
-    ("windows-x64", "Windows x64", "Backchannel-windows-x64.zip", "application/zip"),
-    ("macos-arm64", "macOS arm64", "Backchannel-macos-arm64.zip", "application/zip"),
-    ("linux-x64", "Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip"),
+    ("windows-x64", "Windows x64", "DebateAI-windows-x64.zip", "application/zip"),
+    ("macos-arm64", "macOS arm64", "DebateAI-macos-arm64.zip", "application/zip"),
+    ("linux-x64", "Linux x64", "DebateAI-linux-x64.tar.gz", "application/gzip"),
 )
 ASSETS_BY_ID = {asset[0]: asset for asset in ASSETS}
 

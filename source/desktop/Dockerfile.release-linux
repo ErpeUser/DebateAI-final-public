@@ -20,16 +20,16 @@ COPY --from=frontend /src/frontend/dist frontend/dist
 RUN python backend/scripts/download_models.py
 RUN rm -rf desktop/pgsql && python desktop/scripts/download_pg.py
 RUN rm -rf desktop/ffmpeg && python desktop/scripts/download_ffmpeg.py
-RUN pyinstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
+RUN python -m PyInstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
 COPY --from=controller smoke_test.py /tmp/backchannel-smoke-test.py
 USER nobody
 RUN python /tmp/backchannel-smoke-test.py
 USER root
-RUN mkdir /out && tar -C dist -czf "/out/Backchannel-linux-x64.tar.gz" Backchannel
+RUN mkdir /out && tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI
 USER nobody
 RUN python desktop/scripts/smoke_update_archive.py \
-    --platform linux-x64 --archive /out/Backchannel-linux-x64.tar.gz
+    --platform linux-x64 --archive /out/DebateAI-linux-x64.tar.gz
 USER root
 
 FROM scratch AS export
-COPY --from=bundle /out/Backchannel-linux-x64.tar.gz /
+COPY --from=bundle /out/DebateAI-linux-x64.tar.gz /

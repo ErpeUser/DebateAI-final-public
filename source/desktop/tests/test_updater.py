@@ -21,6 +21,10 @@ from updater import (
 
 
 class UpdaterTests(unittest.TestCase):
+    def test_canonical_bundle_names_are_the_default(self):
+        self.assertEqual(expected_launcher(), "DebateAI.exe")
+        self.assertEqual(expected_root(), "DebateAI")
+
     @unittest.skipUnless(os.name == "nt", "requires Windows extended paths")
     def test_recursive_cleanup_uses_extended_windows_path(self):
         path = Path("C:/Backchannel") / "Backchannel.backup-v999.0.0"

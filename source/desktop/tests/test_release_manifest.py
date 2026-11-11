@@ -16,9 +16,9 @@ TAG = "v1.2.3"
 COMMIT = "a" * 40
 PUBLISHED_AT = "2026-07-12T18:00:00Z"
 ASSETS = (
-    ("windows-x64", "Windows x64", "Backchannel-windows-x64.zip", "application/zip"),
-    ("macos-arm64", "macOS arm64", "Backchannel-macos-arm64.zip", "application/zip"),
-    ("linux-x64", "Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip"),
+    ("windows-x64", "Windows x64", "DebateAI-windows-x64.zip", "application/zip"),
+    ("macos-arm64", "macOS arm64", "DebateAI-macos-arm64.zip", "application/zip"),
+    ("linux-x64", "Linux x64", "DebateAI-linux-x64.tar.gz", "application/gzip"),
 )
 
 

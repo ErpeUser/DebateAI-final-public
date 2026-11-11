@@ -8,8 +8,10 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy
 repo = Path(SPECPATH).parent
 include_oracle = (
     sys.platform == "win32"
-    and os.environ.get("BACKCHANNEL_INCLUDE_ORACLE", "").lower()
-    in {"1", "true", "yes"}
+    and (
+        os.environ.get("DEBATEAI_INCLUDE_ORACLE")
+        or os.environ.get("BACKCHANNEL_INCLUDE_ORACLE", "")
+    ).lower() in {"1", "true", "yes"}
 )
 
 # Make the backend package importable for collect_submodules on clean machines.
@@ -69,7 +71,7 @@ if (repo / "desktop" / "cliproxyapi").is_dir():
     ):
         _path = repo / "desktop" / "cliproxyapi" / _relative
         if not _path.is_file():
-            raise SystemExit(f"backchannel.spec: missing CLIProxy artifact {_path}")
+            raise SystemExit(f"DebateAI spec: missing CLIProxy artifact {_path}")
         datas.append((str(_path), str(Path("cliproxyapi") / Path(_relative).parent)))
 if sys.platform == "win32" and (repo / "desktop" / "gemini_web_to_api").is_dir():
     # Bundle only immutable runtime artifacts.  The upstream provider writes a
@@ -79,7 +81,7 @@ if sys.platform == "win32" and (repo / "desktop" / "gemini_web_to_api").is_dir()
     for _name in ("gemini-web-to-api.exe", "LICENSE", "UPSTREAM.md"):
         _path = repo / "desktop" / "gemini_web_to_api" / _name
         if not _path.is_file():
-            raise SystemExit(f"backchannel.spec: missing Gemini web artifact {_path}")
+            raise SystemExit(f"DebateAI spec: missing Gemini web artifact {_path}")
         datas.append((str(_path), "gemini_web_to_api"))
 if include_oracle:
     _oracle = repo / "desktop" / "chatgpt_oracle"
@@ -94,7 +96,7 @@ if include_oracle:
     )
     for _path in _required_oracle:
         if not _path.is_file():
-            raise SystemExit(f"backchannel.spec: missing ChatGPT web artifact {_path}")
+            raise SystemExit(f"DebateAI spec: missing ChatGPT web artifact {_path}")
     datas.extend([
         (str(_oracle / "node"), "chatgpt_oracle/node"),
         (str(_oracle / "node_modules"), "chatgpt_oracle/node_modules"),
@@ -104,7 +106,7 @@ if include_oracle:
         (str(_oracle / "package-lock.json"), "chatgpt_oracle"),
     ])
 else:
-    print("backchannel.spec: ChatGPT Oracle/Node omitted (optional component)")
+    print("DebateAI spec: ChatGPT Oracle/Node omitted (optional component)")
 
 # Packages that read their own installed version at import time. Without the
 # dist-info, importlib.metadata raises PackageNotFoundError inside the bundle:
@@ -114,7 +116,7 @@ for _distribution in ("onnx-asr", "huggingface-hub", "tqdm"):
     try:
         datas += copy_metadata(_distribution)
     except Exception as exc:  # noqa: BLE001 - a missing optional dep must not break the build
-        print(f"backchannel.spec: no metadata for {_distribution}: {exc}")
+        print(f"DebateAI spec: no metadata for {_distribution}: {exc}")
 
 # Packages that load their own data files at runtime through
 # importlib.resources. PyInstaller freezes .py modules into the archive but
@@ -128,7 +130,7 @@ for _package in ("onnx_asr",):
     collected = collect_data_files(_package)
     if not collected:
         raise SystemExit(
-            f"backchannel.spec: no data files collected for {_package}; "
+            f"DebateAI spec: no data files collected for {_package}; "
             "the bundle would ship without the files it reads at runtime"
         )
     datas += collected
@@ -146,12 +148,12 @@ exe = EXE(
     pyz,
     a.scripts,
     exclude_binaries=True,
-    name="Backchannel",
+    name="DebateAI",
     console=False,
     icon=str(repo / "desktop" / "assets" / "icon.ico")
     if sys.platform == "win32"
     else None,
-    version=version_of("Backchannel.exe", "Debate AI"),
+    version=version_of("DebateAI.exe", "Debate AI"),
 )
 
 updater_a = Analysis(
@@ -165,12 +167,12 @@ updater_exe = EXE(
     updater_a.binaries,
     updater_a.datas,
     [],
-    name="BackchannelUpdater",
+    name="DebateAIUpdater",
     console=False,
     icon=str(repo / "desktop" / "assets" / "icon.ico")
     if sys.platform == "win32"
     else None,
-    version=version_of("BackchannelUpdater.exe", "Debate AI Updater"),
+    version=version_of("DebateAIUpdater.exe", "Debate AI Updater"),
 )
 
 coll = COLLECT(
@@ -178,14 +180,14 @@ coll = COLLECT(
     updater_exe,
     a.binaries,
     a.datas,
-    name="Backchannel",
+    name="DebateAI",
 )
 
 if sys.platform == "darwin":
     app = BUNDLE(
         coll,
-        name="Backchannel.app",
-        bundle_identifier="io.github.backchannel",
+        name="DebateAI.app",
+        bundle_identifier="io.github.debateai",
         icon=str(repo / "desktop" / "assets" / "icon.icns"),
         # Menu-bar (tray) app: no Dock icon.
         info_plist={"LSUIElement": True},

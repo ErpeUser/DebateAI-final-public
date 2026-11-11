@@ -5,7 +5,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = (ROOT / "desktop" / "backchannel.spec").read_text()
-WORKFLOW = (ROOT / ".github" / "workflows" / "desktop-release.yml").read_text()
+WORKFLOW = (ROOT.parent / ".github" / "workflows" / "desktop-release.yml").read_text()
 MIGRATION_PATH = ROOT / "scripts" / "migrate_releases_to_r2.ps1"
 MIGRATION = MIGRATION_PATH.read_text() if MIGRATION_PATH.exists() else ""
 PLATFORM_PUBLISHER_PATH = ROOT / "scripts" / "publish_release_platform.ps1"
@@ -25,7 +25,7 @@ NATIVE_BUILD_STEPS = (
     "npm run build",
     "download_models.py",
     "download_pg.py",
-    "pyinstaller desktop/backchannel.spec",
+    "python -m PyInstaller desktop/backchannel.spec",
     "desktop/scripts/smoke_test.py",
 )
 
@@ -35,7 +35,7 @@ NATIVE_BUILD_STEPS = (
 PLATFORMS = {
     "macos": {
         "id": "macos-arm64",
-        "archive": "Backchannel-macos-arm64.zip",
+        "archive": "DebateAI-macos-arm64.zip",
         "runner": "macos-latest",
         "digest_check": "shasum -a 256 -c -",
         "package": "ditto -c -k --keepParent",
@@ -43,7 +43,7 @@ PLATFORMS = {
     },
     "windows": {
         "id": "windows-x64",
-        "archive": "Backchannel-windows-x64.zip",
+        "archive": "DebateAI-windows-x64.zip",
         "runner": "windows-latest",
         "digest_check": "sha256sum -c -",
         "package": "Compress-Archive",
@@ -51,7 +51,7 @@ PLATFORMS = {
     },
     "linux": {
         "id": "linux-x64",
-        "archive": "Backchannel-linux-x64.tar.gz",
+        "archive": "DebateAI-linux-x64.tar.gz",
         "runner": "ubuntu-latest",
         "digest_check": "sha256sum -c -",
         "package": "docker build",
@@ -60,7 +60,7 @@ PLATFORMS = {
             "--build-context controller=controller/desktop/scripts",
             "--target export",
             "[[ ${#files[@]} -eq 1 ]]",
-            '[[ "${files[0]}" == "linux-output/Backchannel-linux-x64.tar.gz" ]]',
+            '[[ "${files[0]}" == "linux-output/DebateAI-linux-x64.tar.gz" ]]',
         ),
     },
 }
@@ -129,7 +129,7 @@ class ReleaseContractTests(unittest.TestCase):
             "workflow run desktop-release.yml", "correlation_id", "displayTitle",
             "Build-WindowsRelease",
             "Build-LinuxRelease", "publish_release_platform.ps1",
-            "Backchannel-windows-x64.zip", "Backchannel-linux-x64.tar.gz",
+            "DebateAI-windows-x64.zip", "DebateAI-linux-x64.tar.gz",
             "run watch", "release view", "$failures", "finally",
         ):
             self.assertIn(value, COORDINATOR)
@@ -145,18 +145,18 @@ class ReleaseContractTests(unittest.TestCase):
             "binutils",
             "pip install", "download_models.py",
             "rm -rf desktop/pgsql && python desktop/scripts/download_pg.py",
-            "pyinstaller desktop/backchannel.spec",
+            "python -m PyInstaller desktop/backchannel.spec",
             "COPY --from=controller smoke_test.py",
             "USER nobody\nRUN python /tmp/backchannel-smoke-test.py",
-            'tar -C dist -czf "/out/Backchannel-linux-x64.tar.gz" Backchannel',
+            'tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI',
             "FROM scratch AS export",
-            "COPY --from=bundle /out/Backchannel-linux-x64.tar.gz /",
+            "COPY --from=bundle /out/DebateAI-linux-x64.tar.gz /",
         ):
             self.assertIn(value, LINUX_DOCKERFILE)
         self.assertNotIn("ENTRYPOINT", LINUX_DOCKERFILE)
         self.assertNotIn("CMD", LINUX_DOCKERFILE)
         self.assertLess(
-            LINUX_DOCKERFILE.index("pyinstaller desktop/backchannel.spec"),
+            LINUX_DOCKERFILE.index("python -m PyInstaller desktop/backchannel.spec"),
             LINUX_DOCKERFILE.index("COPY --from=controller"),
         )
         self.assertIn('--build-context "controller=$ControllerScripts"', COORDINATOR)
@@ -256,7 +256,10 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertIn("group: backchannel-r2-publish", publish)
                 self.assertIn("cancel-in-progress: false", publish)
                 self.assertIn("ref: ${{ inputs.release_ref }}", publish)
-                self.assertIn('pip install "cryptography>=41.0.0"', publish)
+                self.assertRegex(
+                    publish,
+                    r'pip install "cryptography(?:==44\.0\.2|>=41\.0\.0)"',
+                )
                 self.assertEqual(publish.count("publish_release_platform.ps1"), 1)
                 self.assertIn("-SigningMode Remote", publish)
                 self.assertIn("-PlatformId %s " % spec["id"], publish)
@@ -502,11 +505,11 @@ class ReleaseContractTests(unittest.TestCase):
         ]
         self.assertIn('hidden.append("pystray._win32")', windows_hidden)
         self.assertIn('hidden.append("pyaudiowpatch")', windows_hidden)
-        self.assertIn('print("backchannel.spec: ChatGPT Oracle/Node omitted', SPEC)
+        self.assertIn('print("DebateAI spec: ChatGPT Oracle/Node omitted', SPEC)
 
     def test_spec_builds_and_collects_a_standalone_onefile_updater(self):
         self.assertIn('repo / "desktop" / "updater.py"', SPEC)
-        self.assertIn('name="BackchannelUpdater"', SPEC)
+        self.assertIn('name="DebateAIUpdater"', SPEC)
         self.assertRegex(SPEC, r"updater_exe\s*=\s*EXE\(")
         updater_block = SPEC[SPEC.index("updater_exe = EXE("):SPEC.index("coll = COLLECT")]
         self.assertNotIn("exclude_binaries=True", updater_block)
@@ -521,13 +524,13 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("--platform windows-x64 --archive $AssetPath", COORDINATOR)
 
         linux_archive = LINUX_DOCKERFILE.index(
-            'tar -C dist -czf "/out/Backchannel-linux-x64.tar.gz" Backchannel'
+            'tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI'
         )
         linux_smoke = LINUX_DOCKERFILE.index("smoke_update_archive.py")
         self.assertLess(linux_archive, linux_smoke)
         self.assertIn("--platform linux-x64", LINUX_DOCKERFILE)
         self.assertIn(
-            "--archive /out/Backchannel-linux-x64.tar.gz",
+            "--archive /out/DebateAI-linux-x64.tar.gz",
             LINUX_DOCKERFILE,
         )
 

@@ -39,10 +39,14 @@ from starlette.datastructures import Headers
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
 
+from app.services.identity import env_value
+
 logger = logging.getLogger(__name__)
 
-ALLOWED_HOSTS_ENV = "BACKCHANNEL_ALLOWED_HOSTS"
-ALLOWED_ORIGINS_ENV = "BACKCHANNEL_ALLOWED_ORIGINS"
+ALLOWED_HOSTS_ENV = "DEBATEAI_ALLOWED_HOSTS"
+ALLOWED_ORIGINS_ENV = "DEBATEAI_ALLOWED_ORIGINS"
+LEGACY_ALLOWED_HOSTS_ENV = "BACKCHANNEL_ALLOWED_HOSTS"
+LEGACY_ALLOWED_ORIGINS_ENV = "BACKCHANNEL_ALLOWED_ORIGINS"
 
 # Names that only ever mean "this machine" (plus the Compose service name,
 # which resolves nowhere outside the stack's own network).
@@ -56,8 +60,9 @@ WS_TOKEN_PROTOCOL_PREFIX = "backchannel.instance."
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 
 
-def _env_list(name: str) -> list[str]:
-    return [item.strip().lower() for item in os.environ.get(name, "").split(",") if item.strip()]
+def _env_list(name: str, legacy: str | None = None) -> list[str]:
+    raw = env_value(name, legacy)
+    return [item.strip().lower() for item in raw.split(",") if item.strip()]
 
 
 def _hostname_of(host_header: str) -> str:
@@ -77,9 +82,9 @@ def _is_ip_literal(hostname: str) -> bool:
 
 
 def hostname_allowed(hostname: str, extra_hosts: list[str] | None = None) -> bool:
-    extra = _env_list(ALLOWED_HOSTS_ENV) if extra_hosts is None else extra_hosts
+    extra = _env_list(ALLOWED_HOSTS_ENV, LEGACY_ALLOWED_HOSTS_ENV) if extra_hosts is None else extra_hosts
     if "*" in extra:
-        return os.environ.get("BACKCHANNEL_ENV", "development").lower() != "production"
+        return env_value("DEBATEAI_ENV", "BACKCHANNEL_ENV", "development").lower() != "production"
     name = (hostname or "").lower()
     if not name:
         return False
@@ -112,9 +117,9 @@ def origin_allowed(
     is listed verbatim in the environment. ``null`` - a sandboxed frame, a
     file:// page, a redirect from another site - is never ours.
     """
-    origins = _env_list(ALLOWED_ORIGINS_ENV) if extra_origins is None else extra_origins
+    origins = _env_list(ALLOWED_ORIGINS_ENV, LEGACY_ALLOWED_ORIGINS_ENV) if extra_origins is None else extra_origins
     if "*" in origins:
-        return os.environ.get("BACKCHANNEL_ENV", "development").lower() != "production"
+        return env_value("DEBATEAI_ENV", "BACKCHANNEL_ENV", "development").lower() != "production"
     value = (origin or "").strip().lower()
     if not value or value == "null":
         return False
@@ -131,7 +136,7 @@ def origin_allowed(
 
 def cors_allowed_origins() -> list[str]:
     """Explicit origins for CORSMiddleware, from the environment."""
-    return [o for o in _env_list(ALLOWED_ORIGINS_ENV) if o != "*"]
+    return [o for o in _env_list(ALLOWED_ORIGINS_ENV, LEGACY_ALLOWED_ORIGINS_ENV) if o != "*"]
 
 
 def _websocket_instance_protocol(headers: Headers) -> tuple[str, str] | None:
@@ -194,8 +199,8 @@ class RequestGuardMiddleware:
         if origin_checked:
             origin = headers.get("origin")
             if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
-                expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
-                supplied = headers.get("x-backchannel-instance", "")
+                expected = env_value("DEBATEAI_INSTANCE_TOKEN", "BACKCHANNEL_INSTANCE_TOKEN")
+                supplied = headers.get("x-debateai-instance", "") or headers.get("x-backchannel-instance", "")
                 if expected and not hmac.compare_digest(supplied, expected):
                     await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
                     return
@@ -210,7 +215,7 @@ class RequestGuardMiddleware:
                 return
         selected_ws_protocol: str | None = None
         if scope["type"] == "websocket":
-            expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
+            expected = env_value("DEBATEAI_INSTANCE_TOKEN", "BACKCHANNEL_INSTANCE_TOKEN")
             if expected:
                 offered = _websocket_instance_protocol(headers)
                 supplied = offered[1] if offered else ""
@@ -225,8 +230,8 @@ class RequestGuardMiddleware:
                     return
                 selected_ws_protocol = offered[0]
         elif method not in {"OPTIONS"} and not health_path:
-            expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
-            supplied = headers.get("x-backchannel-instance", "")
+            expected = env_value("DEBATEAI_INSTANCE_TOKEN", "BACKCHANNEL_INSTANCE_TOKEN")
+            supplied = headers.get("x-debateai-instance", "") or headers.get("x-backchannel-instance", "")
             if expected and not hmac.compare_digest(supplied, expected) and not bootstrap_path:
                 await self._reject(
                     scope,
@@ -237,10 +242,11 @@ class RequestGuardMiddleware:
                 )
                 return
         if scope["type"] == "http" and bootstrap_path:
-            expected = os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
+            expected = env_value("DEBATEAI_INSTANCE_TOKEN", "BACKCHANNEL_INSTANCE_TOKEN")
             async def send_bootstrap(message):
                 if message["type"] == "http.response.start" and expected:
                     headers_out = list(message.get("headers") or [])
+                    headers_out.append((b"x-debateai-instance", expected.encode("utf-8")))
                     headers_out.append((b"x-backchannel-instance", expected.encode("utf-8")))
                     message = {**message, "headers": headers_out}
                 await send(message)

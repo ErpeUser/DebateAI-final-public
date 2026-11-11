@@ -14,11 +14,16 @@ import tempfile
 from pathlib import Path
 
 from app.services.redaction import redact_text
+from app.services.identity import env_value
 
 MODEL_ID = "chatgpt-web:gpt-6"
 PROVIDER = "chatgpt-web"
 _ORACLE_LOCK = asyncio.Lock()
 _LOGIN_RESERVED = False
+
+
+def _setting(name: str) -> str:
+    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}", f"BACKCHANNEL_CHATGPT_WEB_{name}").strip()
 
 
 def reserve_login() -> bool:
@@ -40,21 +45,22 @@ def browser_busy() -> bool:
 
 
 def _path(name: str) -> Path:
-    value = os.environ.get(name, "").strip()
+    suffix = name.rsplit("_", 1)[-1]
+    value = _setting(suffix) if name.startswith("BACKCHANNEL_CHATGPT_WEB_") else os.environ.get(name, "").strip()
     return Path(value) if value else Path()
 
 
 def runtime_available() -> bool:
     return bool(
-        os.environ.get("BACKCHANNEL_CHATGPT_WEB_NODE", "").strip()
-        and os.environ.get("BACKCHANNEL_CHATGPT_WEB_ORACLE", "").strip()
+        _setting("NODE")
+        and _setting("ORACLE")
         and _path("BACKCHANNEL_CHATGPT_WEB_NODE").is_file()
         and _path("BACKCHANNEL_CHATGPT_WEB_ORACLE").is_file()
     )
 
 
 def configured() -> bool:
-    marker = os.environ.get("BACKCHANNEL_CHATGPT_WEB_MARKER", "").strip()
+    marker = _setting("MARKER")
     if not marker or not Path(marker).is_file():
         return False
     failure = _verification_failure_path()
@@ -65,7 +71,7 @@ def configured() -> bool:
 
 
 def _verification_failure_path() -> Path:
-    marker = os.environ.get("BACKCHANNEL_CHATGPT_WEB_MARKER", "").strip()
+    marker = _setting("MARKER")
     return Path(marker).with_name("verification-failed.json") if marker else Path()
 
 

@@ -29,13 +29,13 @@ function Get-DesktopBuildContract {
         Spec = Join-Path $RepositoryRoot "desktop\backchannel.spec"
         SmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_test.py"
         ArchiveSmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_update_archive.py"
-        Bundle = Join-Path $RepositoryRoot "dist\Backchannel"
-        Artifact = Join-Path $RepositoryRoot "dist\Backchannel-DebateAI-windows-x64.zip"
+        Bundle = Join-Path $RepositoryRoot "dist\DebateAI"
+        Artifact = Join-Path $RepositoryRoot "dist\DebateAI-windows-x64.zip"
         StageRoot = Join-Path $RepositoryRoot "build\release-stage"
-        StagedBundle = Join-Path $RepositoryRoot "build\release-stage\Backchannel"
-        StagedArtifact = Join-Path $RepositoryRoot "build\release-stage\Backchannel-DebateAI-windows-x64.zip"
+        StagedBundle = Join-Path $RepositoryRoot "build\release-stage\DebateAI"
+        StagedArtifact = Join-Path $RepositoryRoot "build\release-stage\DebateAI-windows-x64.zip"
         PyInstallerWork = Join-Path $RepositoryRoot "build\pyinstaller-release"
-        CanonicalSmokeArtifact = Join-Path $RepositoryRoot "dist\.debate-smoke\Backchannel-windows-x64.zip"
+        CanonicalSmokeArtifact = Join-Path $RepositoryRoot "dist\.debate-smoke\DebateAI-windows-x64.zip"
         Venv = Join-Path $RepositoryRoot ".release-venv"
         PythonConstraints = Join-Path $RepositoryRoot "desktop\constraints-windows-py312.txt"
     }
@@ -98,8 +98,8 @@ function Publish-ReleaseCandidate {
     $distRoot = Split-Path -Parent $Contract.Bundle
     New-Item -ItemType Directory -Path $distRoot -Force | Out-Null
     $suffix = [Guid]::NewGuid().ToString("N")
-    $bundleBackup = Join-Path $distRoot ".Backchannel.previous-$suffix"
-    $artifactBackup = Join-Path $distRoot ".Backchannel-DebateAI-windows-x64.previous-$suffix.zip"
+    $bundleBackup = Join-Path $distRoot ".DebateAI.previous-$suffix"
+    $artifactBackup = Join-Path $distRoot ".DebateAI-windows-x64.previous-$suffix.zip"
     $bundleWasPresent = Test-Path -LiteralPath $Contract.Bundle
     $artifactWasPresent = Test-Path -LiteralPath $Contract.Artifact
     $bundleBackedUp = $false
@@ -221,11 +221,11 @@ function Invoke-DebateDesktopBuild {
         }
         New-Item -ItemType Directory -Path $contract.StageRoot | Out-Null
 
-        $previousOracleFlag = $env:BACKCHANNEL_INCLUDE_ORACLE
+        $previousOracleFlag = $env:DEBATEAI_INCLUDE_ORACLE
         if ($IncludeOracle) {
-            $env:BACKCHANNEL_INCLUDE_ORACLE = "1"
+            $env:DEBATEAI_INCLUDE_ORACLE = "1"
         } else {
-            Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+            Remove-Item Env:DEBATEAI_INCLUDE_ORACLE -ErrorAction SilentlyContinue
         }
         try {
             Invoke-Checked "Build Windows desktop bundle" {
@@ -236,9 +236,9 @@ function Invoke-DebateDesktopBuild {
             }
         } finally {
             if ($null -eq $previousOracleFlag) {
-                Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+                Remove-Item Env:DEBATEAI_INCLUDE_ORACLE -ErrorAction SilentlyContinue
             } else {
-                $env:BACKCHANNEL_INCLUDE_ORACLE = $previousOracleFlag
+                $env:DEBATEAI_INCLUDE_ORACLE = $previousOracleFlag
             }
         }
 

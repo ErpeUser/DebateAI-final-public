@@ -34,15 +34,15 @@ Assert-True ($contract.FfmpegDownloader -eq (Join-Path $expectedRoot "desktop\sc
     "Build duplicated or bypassed the ffmpeg downloader"
 Assert-True ($contract.SmokeTest -eq (Join-Path $expectedRoot "desktop\scripts\smoke_test.py")) `
     "Build does not use the existing desktop smoke test"
-Assert-True ($contract.Artifact -eq (Join-Path $expectedRoot "dist\Backchannel-DebateAI-windows-x64.zip")) `
+Assert-True ($contract.Artifact -eq (Join-Path $expectedRoot "dist\DebateAI-windows-x64.zip")) `
     "Debate bundle artifact name drifted"
-Assert-True ($contract.CanonicalSmokeArtifact -eq (Join-Path $expectedRoot "dist\.debate-smoke\Backchannel-windows-x64.zip")) `
+Assert-True ($contract.CanonicalSmokeArtifact -eq (Join-Path $expectedRoot "dist\.debate-smoke\DebateAI-windows-x64.zip")) `
     "Archive smoke test does not stage the canonical Windows filename"
 Assert-True ($contract.StageRoot -eq (Join-Path $expectedRoot "build\release-stage")) `
     "Release candidate is not isolated in the staging directory"
-Assert-True ($contract.StagedBundle -eq (Join-Path $contract.StageRoot "Backchannel")) `
+Assert-True ($contract.StagedBundle -eq (Join-Path $contract.StageRoot "DebateAI")) `
     "Staged bundle contract drifted"
-Assert-True ($contract.StagedArtifact -eq (Join-Path $contract.StageRoot "Backchannel-DebateAI-windows-x64.zip")) `
+Assert-True ($contract.StagedArtifact -eq (Join-Path $contract.StageRoot "DebateAI-windows-x64.zip")) `
     "Staged archive contract drifted"
 Assert-True ($contract.StagedBundle -ne $contract.Bundle) `
     "Build would overwrite the final bundle before smoke verification"

@@ -12,8 +12,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.database import get_db
 from app.models import Session
 from app.services import runtime_activity
-from app.services.update_service import UpdateService
-from app.services.debateai_update_channel import get_update_service
+from app.services.update_service import UpdateService, get_update_service
 
 
 router = APIRouter(prefix="/api/updates", tags=["updates"])
@@ -30,7 +29,7 @@ def start_background_check():
     service = get_update_service()
     if not service.enabled:
         return None
-    return asyncio.create_task(asyncio.to_thread(service.check))
+    return asyncio.create_task(asyncio.to_thread(get_update_service().check))
 
 
 def stop_background_check(task) -> None:

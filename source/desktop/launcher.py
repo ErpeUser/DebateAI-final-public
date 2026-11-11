@@ -19,6 +19,13 @@ import webbrowser
 from datetime import datetime, timezone
 from pathlib import Path
 
+from debateai_identity import (
+    INSTANCE_HEADER,
+    LEGACY_INSTANCE_HEADER,
+    canonical_updater,
+    legacy_updaters,
+)
+
 
 def _guarantee_standard_streams() -> None:
     """Give the windowed build real stdout/stderr objects.
@@ -71,6 +78,16 @@ from bcdesktop.windows_console import (
 )
 from updater import validate_plan
 
+
+def _set_compat_env(canonical: str, legacy: str, value: str) -> None:
+    """Publish canonical DebateAI settings while keeping old bundles usable."""
+    os.environ[canonical] = value
+    os.environ[legacy] = value
+
+
+def _env_value(canonical: str, legacy: str, default: str = "") -> str:
+    return os.environ.get(canonical) or os.environ.get(legacy) or default
+
 install_hidden_subprocess_policy()
 
 LOCK_NAME = "launcher.json"
@@ -80,7 +97,6 @@ LOOPBACK_HOST = "127.0.0.1"
 BROWSER_HOST = "localhost"
 DEFAULT_APP_PORT = 8474
 PRODUCT_DISPLAY_NAME = "Debate AI"
-INSTANCE_HEADER = "X-Backchannel-Instance"
 _PERSISTED_PROVIDER_ENVIRONMENT = (
     "GOOGLE_GENAI_USE_VERTEXAI",
     "GOOGLE_CLOUD_PROJECT",
@@ -89,9 +105,14 @@ _PERSISTED_PROVIDER_ENVIRONMENT = (
     "SUBSCRIPTION_BRIDGE_FALLBACK_MODEL",
 )
 UPDATER_NAMES = {
-    "win32": "BackchannelUpdater.exe",
-    "darwin": "Contents/MacOS/BackchannelUpdater",
-    "linux": "BackchannelUpdater",
+    "win32": canonical_updater("win32"),
+    "darwin": canonical_updater("darwin"),
+    "linux": canonical_updater("linux"),
+}
+LEGACY_UPDATER_NAMES = {
+    "win32": legacy_updaters("win32"),
+    "darwin": legacy_updaters("darwin"),
+    "linux": legacy_updaters("linux"),
 }
 _embedded_windows: dict[str, subprocess.Popen] = {}
 _embedded_windows_lock = threading.Lock()
@@ -177,7 +198,14 @@ def install_root() -> Path:
 
 def updater_path(root: Path) -> Path:
     platform_key = "linux" if sys.platform.startswith("linux") else sys.platform
-    return root / UPDATER_NAMES[platform_key]
+    canonical = root / UPDATER_NAMES[platform_key]
+    if canonical.exists():
+        return canonical
+    for legacy in LEGACY_UPDATER_NAMES[platform_key]:
+        candidate = root / legacy
+        if candidate.exists():
+            return candidate
+    return canonical
 
 
 def bind_app_socket() -> socket.socket:
@@ -494,7 +522,7 @@ def instance_is_healthy(port: int, token: str) -> bool:
     def identified(response) -> bool:
         return (
             response.status == 200
-            and response.headers.get(INSTANCE_HEADER) == token
+            and response.headers.get(INSTANCE_HEADER, response.headers.get(LEGACY_INSTANCE_HEADER)) == token
         )
 
     try:
@@ -880,15 +908,19 @@ def _run_tray(
 def _configure_update_environment(instance_token: str, headless: bool) -> None:
     root = install_root()
     packaged = bool(getattr(sys, "frozen", False))
-    os.environ["BACKCHANNEL_DESKTOP"] = "1" if packaged else "0"
-    os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = instance_token
-    os.environ["BACKCHANNEL_INSTALL_DIR"] = str(root)
-    os.environ["BACKCHANNEL_UPDATE_KEYS"] = str(resource("release_signing_keys.json"))
-    os.environ["BACKCHANNEL_UPDATE_HELPER"] = str(updater_path(root))
-    os.environ["BACKCHANNEL_UPDATE_APPLY_DISABLED"] = (
-        "1" if headless or not packaged else "0"
+    _set_compat_env("DEBATEAI_DESKTOP", "BACKCHANNEL_DESKTOP", "1" if packaged else "0")
+    _set_compat_env("DEBATEAI_INSTANCE_TOKEN", "BACKCHANNEL_INSTANCE_TOKEN", instance_token)
+    _set_compat_env("DEBATEAI_INSTALL_DIR", "BACKCHANNEL_INSTALL_DIR", str(root))
+    _set_compat_env(
+        "DEBATEAI_UPDATE_KEYS", "BACKCHANNEL_UPDATE_KEYS",
+        str(resource("release_signing_keys.json")),
     )
-    os.environ["BACKCHANNEL_BOUND_HOST"] = LOOPBACK_HOST
+    _set_compat_env("DEBATEAI_UPDATE_HELPER", "BACKCHANNEL_UPDATE_HELPER", str(updater_path(root)))
+    _set_compat_env(
+        "DEBATEAI_UPDATE_APPLY_DISABLED", "BACKCHANNEL_UPDATE_APPLY_DISABLED",
+        "1" if headless or not packaged else "0",
+    )
+    _set_compat_env("DEBATEAI_BOUND_HOST", "BACKCHANNEL_BOUND_HOST", LOOPBACK_HOST)
 
 
 def _windows_user_environment_value(name: str) -> str | None:
@@ -929,14 +961,14 @@ def _configure_gemini_web_login(data_dir: Path) -> None:
     else:
         command = [sys.executable, str(Path(__file__).resolve())]
     result = Path(data_dir) / "gemini-web" / "login-result.json"
-    os.environ["BACKCHANNEL_GEMINI_WEB_LOGIN_COMMAND"] = json.dumps(command)
-    os.environ["BACKCHANNEL_GEMINI_WEB_LOGIN_RESULT"] = str(result)
+    _set_compat_env("DEBATEAI_GEMINI_WEB_LOGIN_COMMAND", "BACKCHANNEL_GEMINI_WEB_LOGIN_COMMAND", json.dumps(command))
+    _set_compat_env("DEBATEAI_GEMINI_WEB_LOGIN_RESULT", "BACKCHANNEL_GEMINI_WEB_LOGIN_RESULT", str(result))
 
 
 def _chatgpt_oracle_runtime(data_dir: Path) -> Path:
     """Find an explicitly installed Oracle runtime before an optional bundle."""
     cli_relative = Path("node_modules") / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
-    configured = os.environ.get("BACKCHANNEL_CHATGPT_WEB_RUNTIME", "").strip()
+    configured = _env_value("DEBATEAI_CHATGPT_WEB_RUNTIME", "BACKCHANNEL_CHATGPT_WEB_RUNTIME").strip()
     optional = Path(data_dir) / "optional" / "chatgpt_oracle"
     candidates = ([Path(configured)] if configured else []) + [optional, resource("chatgpt_oracle")]
     for candidate in candidates:
@@ -956,13 +988,14 @@ def _configure_chatgpt_web_login(data_dir: Path) -> None:
         node = Path(candidate) if candidate else bundled_node
     cli = runtime / "node_modules" / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
     web_dir = Path(data_dir) / "chatgpt-web"
-    os.environ.update({
-        "BACKCHANNEL_CHATGPT_WEB_NODE": str(node),
-        "BACKCHANNEL_CHATGPT_WEB_ORACLE": str(cli),
-        "BACKCHANNEL_CHATGPT_WEB_HOME": str(web_dir / "oracle-home"),
-        "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(web_dir / "browser-profile"),
-        "BACKCHANNEL_CHATGPT_WEB_MARKER": str(web_dir / "verified.json"),
-    })
+    for canonical, legacy, value in (
+        ("DEBATEAI_CHATGPT_WEB_NODE", "BACKCHANNEL_CHATGPT_WEB_NODE", str(node)),
+        ("DEBATEAI_CHATGPT_WEB_ORACLE", "BACKCHANNEL_CHATGPT_WEB_ORACLE", str(cli)),
+        ("DEBATEAI_CHATGPT_WEB_HOME", "BACKCHANNEL_CHATGPT_WEB_HOME", str(web_dir / "oracle-home")),
+        ("DEBATEAI_CHATGPT_WEB_PROFILE", "BACKCHANNEL_CHATGPT_WEB_PROFILE", str(web_dir / "browser-profile")),
+        ("DEBATEAI_CHATGPT_WEB_MARKER", "BACKCHANNEL_CHATGPT_WEB_MARKER", str(web_dir / "verified.json")),
+    ):
+        _set_compat_env(canonical, legacy, value)
     if not os.environ.get("CHROME_PATH", "").strip() and sys.platform == "win32":
         for browser in (
             Path(os.environ.get("PROGRAMFILES", "")) / "Google" / "Chrome" / "Application" / "chrome.exe",
@@ -974,8 +1007,8 @@ def _configure_chatgpt_web_login(data_dir: Path) -> None:
                 os.environ["CHROME_PATH"] = str(browser)
                 break
     command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, str(Path(__file__).resolve())]
-    os.environ["BACKCHANNEL_CHATGPT_WEB_LOGIN_COMMAND"] = json.dumps(command)
-    os.environ["BACKCHANNEL_CHATGPT_WEB_LOGIN_RESULT"] = str(web_dir / "login-result.json")
+    _set_compat_env("DEBATEAI_CHATGPT_WEB_LOGIN_COMMAND", "BACKCHANNEL_CHATGPT_WEB_LOGIN_COMMAND", json.dumps(command))
+    _set_compat_env("DEBATEAI_CHATGPT_WEB_LOGIN_RESULT", "BACKCHANNEL_CHATGPT_WEB_LOGIN_RESULT", str(web_dir / "login-result.json"))
 
 
 def _launch_requested_update(requested: bool, data_dir: Path, log) -> int:
@@ -983,7 +1016,7 @@ def _launch_requested_update(requested: bool, data_dir: Path, log) -> int:
         return 0
     try:
         _launch_update_helper(
-            data_dir, Path(os.environ["BACKCHANNEL_UPDATE_HELPER"])
+            data_dir, Path(_env_value("DEBATEAI_UPDATE_HELPER", "BACKCHANNEL_UPDATE_HELPER"))
         )
         return 0
     except Exception:
@@ -1159,7 +1192,7 @@ def _run_owned(headless: bool = False) -> int:
         "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
     )
     if ffmpeg.is_file():
-        os.environ["BACKCHANNEL_FFMPEG"] = str(ffmpeg)
+        _set_compat_env("DEBATEAI_FFMPEG", "BACKCHANNEL_FFMPEG", str(ffmpeg))
 
     # Export optional endpoint locations before backend import, but never wait
     # for these adapters before opening the core UI.
@@ -1344,7 +1377,7 @@ if __name__ == "__main__":
             int(sys.argv[5]),
             sys.argv[6] == "1",
         ))
-    _headless = os.environ.get("BACKCHANNEL_HEADLESS") == "1"
+    _headless = _env_value("DEBATEAI_HEADLESS", "BACKCHANNEL_HEADLESS") == "1"
     _result = run(headless=_headless)
     while _result == 2 and not _headless:
         _result = run(headless=False)

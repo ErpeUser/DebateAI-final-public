@@ -13,6 +13,8 @@ from urllib.parse import urlparse
 
 import httpx
 
+from app.services.identity import env_value
+
 GEMINI_PROVIDER = "gemini-cli"
 OPENAI_PROVIDER = "codex"
 GEMINI_31_PRO_MODEL = "gemini-3.1-pro-preview"
@@ -54,8 +56,8 @@ class BridgeConnection:
 
 
 def connection() -> BridgeConnection | None:
-    raw_url = os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL", "").strip()
-    key = os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY", "").strip()
+    raw_url = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
+    key = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
     if not raw_url or not key:
         return None
     parsed = urlparse(raw_url)

@@ -15,8 +15,16 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable
 
+from debateai_identity import (
+    INSTANCE_HEADER,
+    LEGACY_INSTANCE_HEADER,
+    canonical_launcher,
+    canonical_root,
+    legacy_launchers,
+    legacy_roots,
+)
 
-INSTANCE_HEADER = "X-Backchannel-Instance"
+
 VERSION = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
 PLAN_FIELDS = {
@@ -66,17 +74,17 @@ class ApplyPlan:
 
 
 def expected_launcher() -> str:
-    if sys.platform == "win32":
-        return "Backchannel.exe"
-    if sys.platform == "darwin":
-        return "Contents/MacOS/Backchannel"
-    if sys.platform.startswith("linux"):
-        return "Backchannel"
-    raise PlanError("unsupported updater platform")
+    try:
+        return canonical_launcher(sys.platform)
+    except ValueError as error:
+        raise PlanError(str(error)) from error
 
 
 def expected_root() -> str:
-    return "Backchannel.app" if sys.platform == "darwin" else "Backchannel"
+    try:
+        return canonical_root(sys.platform)
+    except ValueError as error:
+        raise PlanError(str(error)) from error
 
 
 def _existing_path(value: object) -> Path:
@@ -139,12 +147,15 @@ def _bundle_roots(value: dict, plan_path: Path):
     if (
         not install.is_dir()
         or not staged.is_dir()
-        or install.name != expected_root()
-        or staged.name != expected_root()
+        or install.name not in {expected_root(), *legacy_roots(sys.platform)}
+        or staged.name not in {expected_root(), *legacy_roots(sys.platform)}
     ):
         raise PlanError("invalid bundle roots")
-    expected_stage_parent = install.parent / f".backchannel-stage-{value['version']}"
-    if staged.parent != expected_stage_parent or staged.parent.resolve(strict=True) != staged.parent:
+    expected_stage_parents = {
+        install.parent / f".debateai-stage-{value['version']}",
+        install.parent / f".backchannel-stage-{value['version']}",
+    }
+    if staged.parent not in expected_stage_parents or staged.parent.resolve(strict=True) != staged.parent:
         raise PlanError("invalid staging root")
     return plan_path, app_data, updates, install, staged
 
@@ -165,7 +176,8 @@ def _recovery_paths(value: dict, install: Path):
 
 def _validate_launcher(value: dict, install: Path, staged: Path) -> str:
     launcher = value["launcher"]
-    if launcher != expected_launcher():
+    allowed_launchers = {expected_launcher(), *legacy_launchers(sys.platform)}
+    if launcher not in allowed_launchers:
         raise PlanError("invalid launcher")
     for root in (install, staged):
         executable = root / Path(launcher)
@@ -273,14 +285,22 @@ def instance_is_healthy(app_data: Path) -> bool:
             or not token
         ):
             return False
-        with urllib.request.urlopen(
-            f"http://127.0.0.1:{port}/api/health", timeout=2
-        ) as response:
+        request = urllib.request.Request(
+            f"http://127.0.0.1:{port}/api/health",
+            headers={INSTANCE_HEADER: token, LEGACY_INSTANCE_HEADER: token},
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
             body = response.read(1025)
             return (
                 response.status == 200
                 and len(body) <= 1024
-                and hmac.compare_digest(response.headers.get(INSTANCE_HEADER, ""), token)
+                and hmac.compare_digest(
+                    response.headers.get(
+                        INSTANCE_HEADER,
+                        response.headers.get(LEGACY_INSTANCE_HEADER, ""),
+                    ),
+                    token,
+                )
                 and json.loads(body.decode("utf-8")) == {"status": "ok"}
             )
     except Exception:

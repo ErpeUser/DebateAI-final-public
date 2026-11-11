@@ -5,6 +5,8 @@ from math import ceil
 
 import numpy as np
 
+from app.services.identity import env_value
+
 
 def make_wav_header(
     pcm_data: bytes,
@@ -47,7 +49,7 @@ def resolve_ffmpeg() -> str | None:
     import os
     import shutil
 
-    override = os.environ.get("BACKCHANNEL_FFMPEG")
+    override = env_value("DEBATEAI_FFMPEG", "BACKCHANNEL_FFMPEG")
     if override and os.path.isfile(override):
         return override
     return shutil.which("ffmpeg")

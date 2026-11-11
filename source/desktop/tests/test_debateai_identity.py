@@ -19,7 +19,15 @@ class IdentityTests(unittest.TestCase):
         return module
 
     def test_brand_is_canonical(self):
-        self.assertEqual(self.load().PRODUCT_NAME, 'DebateAI')
+        module = self.load()
+        self.assertEqual(module.PRODUCT_NAME, 'DebateAI')
+        self.assertEqual(module.WINDOWS_LAUNCHER, 'DebateAI.exe')
+        self.assertEqual(module.WINDOWS_UPDATER, 'DebateAIUpdater.exe')
+
+    def test_legacy_executable_names_remain_explicit_aliases(self):
+        module = self.load()
+        self.assertIn('Backchannel.exe', module.legacy_launchers('win32'))
+        self.assertIn('BackchannelUpdater.exe', module.legacy_updaters('win32'))
 
     def test_new_install_uses_independent_directory(self):
         m = self.load()

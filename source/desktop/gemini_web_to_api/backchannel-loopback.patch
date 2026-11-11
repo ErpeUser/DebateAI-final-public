@@ -1,19 +1,14 @@
 diff --git a/internal/commons/configs/configs.go b/internal/commons/configs/configs.go
-index 61369c8..bc8c4fb 100644
 --- a/internal/commons/configs/configs.go
 +++ b/internal/commons/configs/configs.go
-@@ -38,7 +38,9 @@ type OpenAIConfig struct {
- }
- 
+@@ -54,3 +54,5 @@ type OpenAIConfig struct {
  type ServerConfig struct {
 -	Port string
 +	Host   string
 +	Port   string
 +	APIKey string
  }
- 
- const (
-@@ -58,7 +60,9 @@ func New() (*Config, error) {
+@@ -76,5 +76,7 @@ func New() (*Config, error) {
  	var cfg Config
  
  	// Server
@@ -21,21 +16,15 @@ index 61369c8..bc8c4fb 100644
  	cfg.Server.Port = getEnv("PORT", defaultServerPort)
 +	cfg.Server.APIKey = strings.TrimSpace(os.Getenv("BACKCHANNEL_API_KEY"))
  
- 	// General
- 	cfg.LogLevel = getEnv("LOG_LEVEL", defaultLogLevel)
 diff --git a/internal/server/server.go b/internal/server/server.go
-index 85ebc12..c1293bd 100644
 --- a/internal/server/server.go
 +++ b/internal/server/server.go
-@@ -3,6 +3,7 @@ package server
- import (
+@@ -4,3 +4,4 @@ import (
  	"context"
  	"fmt"
 +	"strings"
  	"time"
- 
- 	"gemini-web-to-api/internal/commons/configs"
-@@ -19,6 +20,22 @@ func NewGeminiWebToAPI(log *zap.Logger, cfg *configs.Config) *fiber.App {
+@@ -20,6 +20,21 @@ func NewGeminiWebToAPI(log *zap.Logger, cfg *configs.Config) *fiber.App {
  	app := fiber.New(fiber.Config{
  		AppName: "Gemini Web To API",
  	})
@@ -57,13 +46,8 @@ index 85ebc12..c1293bd 100644
  
  	app.Use(cors.New(cors.Config{
  		AllowOrigins:     []string{"*"},
-@@ -65,7 +82,7 @@ func Register404Handler(app *fiber.App) {
- // RegisterFiberLifecycle registers the Fiber app lifecycle hooks
- func RegisterFiberLifecycle(lc fx.Lifecycle, app *fiber.App, cfg *configs.Config, log *zap.Logger) {
+@@ -70,3 +86,3 @@ func RegisterFiberLifecycle(lc fx.Lifecycle, app *fiber.App, cfg *configs.Config, log *zap.Logger) {
  	port := cfg.Server.Port
 -	address := fmt.Sprintf(":%s", port)
 +	address := fmt.Sprintf("%s:%s", cfg.Server.Host, port)
  
- 	lc.Append(fx.Hook{
- 		OnStart: func(ctx context.Context) error {
-

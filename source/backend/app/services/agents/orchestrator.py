@@ -26,6 +26,7 @@ from sqlalchemy import select
 
 from app.config import settings
 from app.database import async_session
+from app.services.identity import env_value
 from app.models import Directive, Question
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
@@ -1525,15 +1526,15 @@ class AgentOrchestrator:
             served_subscription_models = {
                 str(value).strip()
                 for value in json.loads(
-                    os.environ.get("BACKCHANNEL_SUBSCRIPTION_MODELS", "[]")
+                    env_value("DEBATEAI_SUBSCRIPTION_MODELS", "BACKCHANNEL_SUBSCRIPTION_MODELS", "[]")
                 )
                 if str(value).strip()
             }
         except (TypeError, ValueError):
             served_subscription_models = set()
         bridge_configured = bool(
-            os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL", "").strip()
-            and os.environ.get("BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY", "").strip()
+            env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
+            and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
         )
         from app.services.subscription_bridge import (
             gemini_web_cookie_configured,

@@ -36,15 +36,34 @@ MAX_EXPANDED_BYTES = 20 * 1024 * 1024 * 1024
 CACHE_AGE = timedelta(hours=24)
 GRANT_RE = re.compile(r"^[A-Za-z0-9_-]{43}$")
 ROOT_NAMES = {
+    "windows-x64": "DebateAI",
+    "linux-x64": "DebateAI",
+    "macos-arm64": "DebateAI.app",
+}
+LAUNCHERS = {
+    "windows-x64": "DebateAI.exe",
+    "linux-x64": "DebateAI",
+    "macos-arm64": "Contents/MacOS/DebateAI",
+}
+LEGACY_ROOT_NAMES = {
     "windows-x64": "Backchannel",
     "linux-x64": "Backchannel",
     "macos-arm64": "Backchannel.app",
 }
-LAUNCHERS = {
+LEGACY_LAUNCHERS = {
     "windows-x64": "Backchannel.exe",
     "linux-x64": "Backchannel",
     "macos-arm64": "Contents/MacOS/Backchannel",
 }
+
+
+def _env(name: str, *legacy: str, default: str = "") -> str:
+    """Read the canonical DebateAI variable, then legacy aliases."""
+    for key in (name, *legacy):
+        value = os.environ.get(key)
+        if value is not None and value != "":
+            return value
+    return default
 STATE_FIELDS = {
     "enabled",
     "state",
@@ -140,7 +159,9 @@ class UpdateService:
         helper_path: Path | str | None = None,
     ):
         self.enabled = (
-            os.environ.get("BACKCHANNEL_DESKTOP") == "1" if enabled is None else enabled
+            _env("DEBATEAI_DESKTOP", "BACKCHANNEL_DESKTOP") == "1"
+            if enabled is None
+            else enabled
         )
         self._lock = threading.Lock()
         self._check_done = threading.Event()
@@ -161,8 +182,8 @@ class UpdateService:
         self.data_root = runtime_data.resolve()
         self.update_root = self.data_root / "updates"
         self.state_path = self.update_root / "state.json"
-        raw_install = install_root or os.environ.get("BACKCHANNEL_INSTALL_DIR")
-        raw_keys = keys_path or os.environ.get("BACKCHANNEL_UPDATE_KEYS")
+        raw_install = install_root or _env("DEBATEAI_INSTALL_DIR", "BACKCHANNEL_INSTALL_DIR")
+        raw_keys = keys_path or _env("DEBATEAI_UPDATE_KEYS", "BACKCHANNEL_UPDATE_KEYS")
         if not raw_install or not raw_keys:
             raise ValueError("desktop update paths are not configured")
         self.install_root = Path(raw_install).resolve()
@@ -178,11 +199,11 @@ class UpdateService:
             raise ValueError("update sources must share one origin")
         self.timeout = timeout
         self.apply_disabled = (
-            os.environ.get("BACKCHANNEL_UPDATE_APPLY_DISABLED") == "1"
+            _env("DEBATEAI_UPDATE_APPLY_DISABLED", "BACKCHANNEL_UPDATE_APPLY_DISABLED") == "1"
             if apply_disabled is None
             else apply_disabled
         )
-        raw_helper = helper_path or os.environ.get("BACKCHANNEL_UPDATE_HELPER")
+        raw_helper = helper_path or _env("DEBATEAI_UPDATE_HELPER", "BACKCHANNEL_UPDATE_HELPER")
         self.helper_path = Path(raw_helper).resolve() if raw_helper else None
         _, self.public_keys = parse_release_signing_keys(
             json.loads(self.keys_path.read_text(encoding="utf-8"))
@@ -276,7 +297,7 @@ class UpdateService:
             self.descriptor_url.format(platform_id=self.platform_id),
             headers={
                 "Accept": "application/json",
-                "User-Agent": f"Backchannel/{self.current_version}",
+            "User-Agent": f"Backchannel/{self.current_version}",
             },
         )
         context = ssl.create_default_context(cafile=certifi.where())
@@ -399,11 +420,21 @@ class UpdateService:
         version = self._state["available_version"]
         if not version:
             raise RuntimeError("no update is available")
-        return self.install_root.parent / f".backchannel-stage-{version}"
+        return self.install_root.parent / f".debateai-stage-{version}"
 
     @property
     def staged_root(self) -> Path:
-        return self.stage_dir / ROOT_NAMES[self.platform_id]
+        canonical = self.stage_dir / ROOT_NAMES[self.platform_id]
+        legacy = self.stage_dir / LEGACY_ROOT_NAMES[self.platform_id]
+        return canonical if canonical.exists() else legacy
+
+    @property
+    def legacy_staged_root(self) -> Path:
+        return self.stage_dir / LEGACY_ROOT_NAMES[self.platform_id]
+
+    @property
+    def active_staged_root(self) -> Path:
+        return self.staged_root
 
     def start_download(self, grant: str = "") -> dict:
         """Begin fetching the staged update.
@@ -638,7 +669,10 @@ class UpdateService:
         path = PurePosixPath(name.rstrip("/"))
         if (
             not path.parts
-            or path.parts[0] != ROOT_NAMES[self.platform_id]
+            or path.parts[0] not in {
+                ROOT_NAMES[self.platform_id],
+                LEGACY_ROOT_NAMES[self.platform_id],
+            }
             or any(part in {"", ".", ".."} for part in path.parts)
             or (self.platform_id == "windows-x64" and any(":" in part for part in path.parts))
         ):
@@ -653,7 +687,10 @@ class UpdateService:
             raise InvalidUpdate("unsafe archive link")
         base = PurePosixPath() if hard else member.parent
         normalized = PurePosixPath(posixpath.normpath(str(base / link)))
-        if not normalized.parts or normalized.parts[0] != ROOT_NAMES[self.platform_id]:
+        if not normalized.parts or normalized.parts[0] not in {
+            ROOT_NAMES[self.platform_id],
+            LEGACY_ROOT_NAMES[self.platform_id],
+        }:
             raise InvalidUpdate("unsafe archive link")
         if ".." in normalized.parts:
             raise InvalidUpdate("unsafe archive link")
@@ -745,7 +782,10 @@ class UpdateService:
                             raise InvalidUpdate("archive contains a symbolic link")
                         archive.extract(member, extraction_root)
             children = list(self.stage_dir.iterdir())
-            if children != [self.staged_root] or not self.staged_root.is_dir():
+            if len(children) != 1 or children[0].name not in {
+                ROOT_NAMES[self.platform_id],
+                LEGACY_ROOT_NAMES[self.platform_id],
+            } or not self.active_staged_root.is_dir():
                 raise InvalidUpdate("archive root mismatch")
         except InvalidUpdate:
             self._remove_stage()
@@ -763,15 +803,15 @@ class UpdateService:
         if (
             not self.install_root.is_dir()
             or self.install_root.is_symlink()
-            or not self.staged_root.is_dir()
-            or self.staged_root.is_symlink()
+            or not self.active_staged_root.is_dir()
+            or self.active_staged_root.is_symlink()
             or not self.helper_path
             or not self.helper_path.is_file()
         ):
             raise RuntimeError("The staged update is unavailable.")
         parent = self.install_root.parent.resolve(strict=True)
         install = self.install_root.resolve(strict=True)
-        staged = self.staged_root.resolve(strict=True)
+        staged = self.active_staged_root.resolve(strict=True)
         if install.parent != parent or staged.parent != self.stage_dir.resolve(strict=True):
             raise RuntimeError("The staged update path is invalid.")
         if os.stat(parent).st_dev != os.stat(staged).st_dev or not os.access(parent, os.W_OK):
@@ -786,6 +826,8 @@ class UpdateService:
         if backup.exists() or failed.exists() or backup.is_symlink() or failed.is_symlink():
             raise RuntimeError("A previous update needs recovery.")
         launcher = LAUNCHERS[self.platform_id]
+        if not (install / Path(launcher)).is_file():
+            launcher = LEGACY_LAUNCHERS[self.platform_id]
         if not (install / Path(launcher)).is_file():
             raise RuntimeError("The current launcher is unavailable.")
         return {
@@ -829,7 +871,12 @@ _service: UpdateService | None = None
 
 
 def get_update_service() -> UpdateService:
-    global _service
-    if _service is None:
-        _service = UpdateService()
-    return _service
+    """Return the configured independent-channel singleton.
+
+    The router depends on this stable module-level hook so tests and older
+    integrations can override one dependency while the channel policy remains
+    the sole production owner of enablement and trust configuration.
+    """
+    from app.services.debateai_update_channel import get_update_service as channel_get
+
+    return channel_get()

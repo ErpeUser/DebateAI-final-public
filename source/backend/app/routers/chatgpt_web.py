@@ -13,17 +13,22 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 
 from app.services import chatgpt_web
+from app.services.identity import env_value
 
 router = APIRouter(prefix="/api/chatgpt-web", tags=["chatgpt-web"])
 _login_process: subprocess.Popen | None = None
 _login_lock = threading.Lock()
 
 
+def _setting(name: str) -> str:
+    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}", f"BACKCHANNEL_CHATGPT_WEB_{name}").strip()
+
+
 def _archive_dedicated_account(*, include_profile: bool) -> Path:
     """Recoverably detach only Backchannel's dedicated ChatGPT account state."""
-    home = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_HOME"])
-    profile = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_PROFILE"])
-    marker = Path(os.environ["BACKCHANNEL_CHATGPT_WEB_MARKER"])
+    home = Path(_setting("HOME"))
+    profile = Path(_setting("PROFILE"))
+    marker = Path(_setting("MARKER"))
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
     archive = home / "account-backups" / stamp
     archive.mkdir(parents=True, exist_ok=False)
@@ -46,8 +51,8 @@ def _archive_dedicated_account(*, include_profile: bool) -> Path:
 
 
 def _configuration() -> tuple[list[str], Path]:
-    raw_command = os.environ.get("BACKCHANNEL_CHATGPT_WEB_LOGIN_COMMAND", "").strip()
-    raw_result = os.environ.get("BACKCHANNEL_CHATGPT_WEB_LOGIN_RESULT", "").strip()
+    raw_command = _setting("LOGIN_COMMAND")
+    raw_result = _setting("LOGIN_RESULT")
     if not raw_command or not raw_result:
         raise ValueError("Das lokale ChatGPT-Anmeldemodul ist nicht verfuegbar.")
     try:
@@ -60,7 +65,7 @@ def _configuration() -> tuple[list[str], Path]:
 
 
 def _evidence() -> dict[str, object]:
-    marker = os.environ.get("BACKCHANNEL_CHATGPT_WEB_MARKER", "").strip()
+    marker = _setting("MARKER")
     if not marker:
         return {}
     try:
@@ -83,7 +88,7 @@ def _status(*, state: str = "idle", message: str = "") -> dict[str, object]:
         "latency_ms": evidence.get("latency_ms"),
         "verified_at": evidence.get("verified_at", ""),
         "verification": evidence.get("verification", ""),
-        "login_available": bool(os.environ.get("BACKCHANNEL_CHATGPT_WEB_LOGIN_COMMAND", "").strip()),
+        "login_available": bool(_setting("LOGIN_COMMAND")),
         "login_state": state,
         "message": message or (
             "GPT-6 mit Extra High wurde in der ChatGPT-Oberflaeche bestaetigt und ist bereit."

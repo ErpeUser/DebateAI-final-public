@@ -4,7 +4,7 @@ param(
 
 $ErrorActionPreference = "Stop"
 
-if (-not $IsWindows -and $env:OS -ne "Windows_NT") {
+if ($env:OS -ne "Windows_NT") {
     throw "This pinned dependency build currently targets Windows amd64 only."
 }
 
@@ -45,8 +45,13 @@ try {
     $go = Join-Path $goRoot "go\bin\go.exe"
     $env:GOMODCACHE = Join-Path $temporaryRoot "gomodcache"
     $env:GOCACHE = Join-Path $temporaryRoot "gocache"
-    & $go fmt "$source\internal\commons\configs" "$source\internal\server"
-    if ($LASTEXITCODE -ne 0) { throw "go fmt failed." }
+    Push-Location $source
+    try {
+        & $go fmt "./internal/commons/configs" "./internal/server"
+        if ($LASTEXITCODE -ne 0) { throw "go fmt failed." }
+    } finally {
+        Pop-Location
+    }
     $built = Join-Path $temporaryRoot "gemini-web-to-api.exe"
     Push-Location $source
     try {

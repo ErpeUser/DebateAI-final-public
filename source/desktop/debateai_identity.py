@@ -9,6 +9,88 @@ from pathlib import Path
 PRODUCT_NAME = 'DebateAI'
 REPOSITORY = 'ErpeUser/DebateAI'
 LEGACY_PRODUCT_NAME = 'Backchannel'
+WINDOWS_LAUNCHER = 'DebateAI.exe'
+WINDOWS_UPDATER = 'DebateAIUpdater.exe'
+INSTANCE_HEADER = 'X-DebateAI-Instance'
+LEGACY_INSTANCE_HEADER = 'X-Backchannel-Instance'
+
+
+def env_value(canonical: str, legacy: str | None = None, default: str = '') -> str:
+    value = os.environ.get(canonical)
+    if value:
+        return value
+    if legacy:
+        value = os.environ.get(legacy)
+        if value:
+            return value
+    return default
+
+
+def set_compat_env(canonical: str, legacy: str, value: str) -> None:
+    os.environ[canonical] = value
+    os.environ[legacy] = value
+
+
+def canonical_launcher(platform: str | None = None) -> str:
+    platform = platform or sys.platform
+    if platform == 'win32':
+        return WINDOWS_LAUNCHER
+    if platform == 'darwin':
+        return 'Contents/MacOS/DebateAI'
+    if platform.startswith('linux'):
+        return 'DebateAI'
+    raise ValueError(f'unsupported platform: {platform}')
+
+
+def canonical_updater(platform: str | None = None) -> str:
+    platform = platform or sys.platform
+    if platform == 'win32':
+        return WINDOWS_UPDATER
+    if platform == 'darwin':
+        return 'Contents/MacOS/DebateAIUpdater'
+    if platform.startswith('linux'):
+        return 'DebateAIUpdater'
+    raise ValueError(f'unsupported platform: {platform}')
+
+
+def canonical_root(platform: str | None = None) -> str:
+    platform = platform or sys.platform
+    if platform == 'darwin':
+        return 'DebateAI.app'
+    if platform == 'win32' or platform.startswith('linux'):
+        return 'DebateAI'
+    raise ValueError(f'unsupported platform: {platform}')
+
+
+def legacy_launchers(platform: str | None = None) -> tuple[str, ...]:
+    platform = platform or sys.platform
+    if platform == 'win32':
+        return ('Backchannel.exe',)
+    if platform == 'darwin':
+        return ('Contents/MacOS/Backchannel',)
+    if platform.startswith('linux'):
+        return ('Backchannel',)
+    raise ValueError(f'unsupported platform: {platform}')
+
+
+def legacy_updaters(platform: str | None = None) -> tuple[str, ...]:
+    platform = platform or sys.platform
+    if platform == 'win32':
+        return ('BackchannelUpdater.exe',)
+    if platform == 'darwin':
+        return ('Contents/MacOS/BackchannelUpdater',)
+    if platform.startswith('linux'):
+        return ('BackchannelUpdater',)
+    raise ValueError(f'unsupported platform: {platform}')
+
+
+def legacy_roots(platform: str | None = None) -> tuple[str, ...]:
+    platform = platform or sys.platform
+    if platform == 'darwin':
+        return ('Backchannel.app',)
+    if platform == 'win32' or platform.startswith('linux'):
+        return ('Backchannel',)
+    raise ValueError(f'unsupported platform: {platform}')
 
 
 def resolve_data_root(*, base: Path, environment: Mapping[str, str], lowercase: bool = False) -> Path:

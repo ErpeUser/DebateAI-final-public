@@ -19,6 +19,8 @@ from string import Formatter
 from types import MappingProxyType
 from typing import Any
 
+from app.services.identity import env_value
+
 
 _PROMPT_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,119}$")
 _EFFORTS = {"low", "medium", "high", "xhigh"}
@@ -113,7 +115,7 @@ def _contains_symlink(path: Path) -> bool:
 def _explicit_external_directory() -> Path | None:
     raw = (
         os.environ.get("DEBATE_AI_CONFIG_DIR", "").strip()
-        or os.environ.get("BACKCHANNEL_PROMPT_DIR", "").strip()
+        or env_value("DEBATEAI_PROMPT_DIR", "BACKCHANNEL_PROMPT_DIR").strip()
     )
     if not raw:
         return None
@@ -152,7 +154,7 @@ def ai_directory() -> Path:
         # Portable mode is explicit.  The executable directory is resolved
         # from sys.executable, never from the current working directory or the
         # temporary PyInstaller resource root.
-        if os.environ.get("BACKCHANNEL_PORTABLE", "").casefold() in _TRUTHY:
+        if env_value("DEBATEAI_PORTABLE", "BACKCHANNEL_PORTABLE").casefold() in _TRUTHY:
             executable_dir = _frozen_executable_directory()
             if executable_dir is not None:
                 data_dir = executable_dir / "data"

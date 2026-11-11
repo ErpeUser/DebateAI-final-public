@@ -163,9 +163,9 @@ function Get-ReleasePublicationState {
     )
 
     $platforms = [ordered]@{
-        "windows-x64" = @("Windows x64", "Backchannel-windows-x64.zip", "application/zip")
-        "linux-x64" = @("Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip")
-        "macos-arm64" = @("macOS arm64", "Backchannel-macos-arm64.zip", "application/zip")
+        "windows-x64" = @("Windows x64", "DebateAI-windows-x64.zip", "application/zip")
+        "linux-x64" = @("Linux x64", "DebateAI-linux-x64.tar.gz", "application/gzip")
+        "macos-arm64" = @("macOS arm64", "DebateAI-macos-arm64.zip", "application/zip")
     }
     $state = [ordered]@{}
     foreach ($platformId in $platforms.Keys) {
@@ -317,7 +317,7 @@ function Remove-StaleMacArtifacts {
     ))
     foreach ($page in $pages) {
         foreach ($artifact in @($page.artifacts)) {
-            if ($artifact.name -cne "Backchannel-macos-arm64.zip") {
+            if ($artifact.name -cne "DebateAI-macos-arm64.zip") {
                 continue
             }
             if ($null -eq $artifact.workflow_run -or $null -eq $artifact.workflow_run.id) {
@@ -422,7 +422,7 @@ function Build-WindowsRelease {
     } finally {
         Pop-Location
     }
-    $bundle = Join-Path $Source "dist\Backchannel"
+    $bundle = Join-Path $Source "dist\DebateAI"
     if (-not (Test-Path -LiteralPath $bundle -PathType Container)) {
         throw "Windows bundle directory is missing"
     }
@@ -457,7 +457,7 @@ function Build-LinuxRelease {
             $Source
     } | Out-Null
     $files = @(Get-ChildItem -LiteralPath $OutputDirectory -File -Force)
-    if ($files.Count -ne 1 -or $files[0].Name -cne "Backchannel-linux-x64.tar.gz" -or
+    if ($files.Count -ne 1 -or $files[0].Name -cne "DebateAI-linux-x64.tar.gz" -or
         $files[0].Length -le 0) {
         throw "Linux export must contain exactly one positive-length trusted tarball"
     }
@@ -647,7 +647,7 @@ try {
         $failures.Add("windows-x64")
     } elseif ($state["windows-x64"] -eq "Pending") {
         try {
-            $windowsAsset = Join-Path $assetDirectory "Backchannel-windows-x64.zip"
+            $windowsAsset = Join-Path $assetDirectory "DebateAI-windows-x64.zip"
             $windowsAsset = Build-WindowsRelease `
                 -Source $sourceRoot -AssetPath $windowsAsset -Python $python
             Invoke-WithR2Credentials -Credentials $releaseCredentials -Command {
@@ -665,7 +665,7 @@ try {
         $failures.Add("linux-x64")
     } elseif ($state["linux-x64"] -eq "Pending") {
         try {
-            $linuxAsset = Join-Path $assetDirectory "Backchannel-linux-x64.tar.gz"
+            $linuxAsset = Join-Path $assetDirectory "DebateAI-linux-x64.tar.gz"
             $linuxAsset = Build-LinuxRelease `
                 -Source $sourceRoot `
                 -Dockerfile (Join-Path $repoRoot "desktop\Dockerfile.release-linux") `
@@ -713,7 +713,7 @@ try {
         } | Out-Null
     } else {
         Invoke-Checked "Creating GitHub release notes" {
-            & $script:Gh release create $Version --title "Backchannel $Version" --notes-file $notes
+            & $script:Gh release create $Version --title "DebateAI $Version" --notes-file $notes
         } | Out-Null
     }
 

@@ -2,6 +2,8 @@ import type { DesktopUpdateStatus } from "../types";
 import { request } from "./api";
 
 const BASE = "/api";
+const INSTANCE_HEADER = "X-DebateAI-Instance";
+const LEGACY_INSTANCE_HEADER = "X-Backchannel-Instance";
 
 export const getDesktopUpdate = () => request<DesktopUpdateStatus>("/updates");
 
@@ -17,7 +19,9 @@ export async function getDesktopInstanceToken(): Promise<string> {
   ) {
     throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
-  const token = response.headers.get("X-Backchannel-Instance") ?? "";
+  const token = response.headers.get(INSTANCE_HEADER)
+    ?? response.headers.get(LEGACY_INSTANCE_HEADER)
+    ?? "";
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
     throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
@@ -33,7 +37,7 @@ const mutation = (
   method,
   headers: {
     "Content-Type": "application/json",
-    "X-Backchannel-Instance": token,
+    [INSTANCE_HEADER]: token,
   },
   body: body === undefined ? undefined : JSON.stringify(body),
 });

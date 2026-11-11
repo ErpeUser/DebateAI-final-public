@@ -16,19 +16,24 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
 TRUSTED_ASSETS = {
     "windows-x64": (
         "Windows x64",
-        "Backchannel-windows-x64.zip",
+        "DebateAI-windows-x64.zip",
         "application/zip",
     ),
     "macos-arm64": (
         "macOS arm64",
-        "Backchannel-macos-arm64.zip",
+        "DebateAI-macos-arm64.zip",
         "application/zip",
     ),
     "linux-x64": (
         "Linux x64",
-        "Backchannel-linux-x64.tar.gz",
+        "DebateAI-linux-x64.tar.gz",
         "application/gzip",
     ),
+}
+LEGACY_TRUSTED_ASSETS = {
+    "windows-x64": ("Windows x64", "Backchannel-windows-x64.zip", "application/zip"),
+    "macos-arm64": ("macOS arm64", "Backchannel-macos-arm64.zip", "application/zip"),
+    "linux-x64": ("Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip"),
 }
 VERSION_RE = re.compile(
     r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
@@ -86,10 +91,13 @@ def _validate_asset(value: object, version: str, *, private: bool) -> dict:
     keys = public_keys | ({"key", "content_type"} if private else set())
     asset = _exact_dict(value, keys, "asset")
     trusted = TRUSTED_ASSETS.get(asset["id"])
+    legacy = LEGACY_TRUSTED_ASSETS.get(asset["id"])
+    accepted = {trusted, legacy} - {None}
     if (
-        trusted is None
-        or asset["platform"] != trusted[0]
-        or asset["filename"] != trusted[1]
+        not any(
+            asset["platform"] == item[0] and asset["filename"] == item[1]
+            for item in accepted
+        )
         or type(asset["size"]) is not int
         or asset["size"] <= 0
         or not isinstance(asset["sha256"], str)
@@ -97,8 +105,8 @@ def _validate_asset(value: object, version: str, *, private: bool) -> dict:
     ):
         raise ValueError("invalid trusted asset")
     if private and (
-        asset["key"] != f"releases/{version}/{trusted[1]}"
-        or asset["content_type"] != trusted[2]
+        asset["key"] != f"releases/{version}/{asset['filename']}"
+        or asset["content_type"] not in {item[2] for item in accepted}
     ):
         raise ValueError("invalid private asset metadata")
     return asset

@@ -21,6 +21,7 @@ from pathlib import Path
 
 from bcdesktop.paths import free_port, resource
 from bcdesktop.windows_console import hidden_startupinfo
+from debateai_identity import set_compat_env
 
 
 class GeminiWebBridge:
@@ -58,12 +59,10 @@ class GeminiWebBridge:
                 pass
 
     def _export_connection(self) -> None:
-        os.environ["BACKCHANNEL_GEMINI_WEB_URL"] = (
-            f"http://127.0.0.1:{self.port}/openai/v1"
-        )
-        os.environ["BACKCHANNEL_GEMINI_WEB_KEY"] = self.client_key
-        os.environ["BACKCHANNEL_GEMINI_WEB_COOKIE_FILE"] = str(self.cookie_file)
-        os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = "[]"
+        set_compat_env("DEBATEAI_GEMINI_WEB_URL", "BACKCHANNEL_GEMINI_WEB_URL", f"http://127.0.0.1:{self.port}/openai/v1")
+        set_compat_env("DEBATEAI_GEMINI_WEB_KEY", "BACKCHANNEL_GEMINI_WEB_KEY", self.client_key)
+        set_compat_env("DEBATEAI_GEMINI_WEB_COOKIE_FILE", "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE", str(self.cookie_file))
+        set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]")
 
     def _request_json(self, path: str, *, authenticated: bool) -> dict | None:
         headers = (
@@ -104,6 +103,7 @@ class GeminiWebBridge:
             {
                 "HOST": "127.0.0.1",
                 "PORT": str(self.port),
+                "DEBATEAI_API_KEY": self.client_key,
                 "BACKCHANNEL_API_KEY": self.client_key,
                 "GEMINI_COOKIES": cookie,
                 "GEMINI_TEMPORARY": "true",
@@ -117,7 +117,7 @@ class GeminiWebBridge:
         return environment
 
     def _stop_process(self) -> None:
-        os.environ["BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE"] = "0"
+        set_compat_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE", "0")
         process = self.process
         self.process = None
         if process is None or process.poll() is not None:
@@ -168,10 +168,8 @@ class GeminiWebBridge:
                 # the process is restarted because this startup probe is the
                 # only place that exports the catalog.
                 if models:
-                    os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = json.dumps(
-                        models, separators=(",", ":")
-                    )
-                    os.environ["BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE"] = "1"
+                    set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", json.dumps(models, separators=(",", ":")))
+                    set_compat_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE", "1")
                     self.log.info(
                         "Gemini web provider started with %s account models",
                         len(models),
@@ -200,8 +198,8 @@ class GeminiWebBridge:
                             continue
                         self.stop_event.wait(1.0)
                         continue
-                    os.environ["BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE"] = "0"
-                    os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = "[]"
+                set_compat_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE", "0")
+                set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]")
                 # One unchanged rejected credential must not relaunch the
                 # provider forever. A new login rewrites the handoff file and
                 # therefore changes the signature, which triggers a new try.
@@ -210,7 +208,7 @@ class GeminiWebBridge:
                 last_signature = signature
                 if signature is None:
                     self._stop_process()
-                    os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = "[]"
+                    set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]")
                     continue
                 try:
                     cookie = self.cookie_file.read_text(encoding="utf-8").strip()
@@ -222,7 +220,7 @@ class GeminiWebBridge:
                     # used after a successful one-time credential handoff.
                     self._restart_cookie = ""
                     self._stop_process()
-                    os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = "[]"
+                    set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]")
                     self.cookie_file.unlink(missing_ok=True)
                     shutil.rmtree(self.cookie_cache, ignore_errors=True)
                     last_signature = None
@@ -274,6 +272,6 @@ class GeminiWebBridge:
         self._stop_process()
         self._restart_cookie = ""
         self.cookie_file.unlink(missing_ok=True)
-        os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"] = "[]"
-        os.environ["BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE"] = "0"
+        set_compat_env("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]")
+        set_compat_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE", "0")
         self.log.info("Gemini web provider stopped")
