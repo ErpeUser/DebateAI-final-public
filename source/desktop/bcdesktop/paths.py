@@ -1,11 +1,12 @@
 """Platform paths, port picking, and bundle resource resolution."""
 
-import os
 import socket
 import sys
 from pathlib import Path
 
-APP_NAME = "Backchannel"
+from debateai_identity import PRODUCT_NAME, app_data_dir
+
+APP_NAME = PRODUCT_NAME
 
 # Repo-checkout locations for each bundled resource (dev mode). In a
 # PyInstaller bundle every resource sits directly under sys._MEIPASS.
@@ -21,17 +22,6 @@ _DEV_RESOURCES = {
     "chatgpt_oracle": _REPO_ROOT / "desktop" / "chatgpt_oracle",
     "release_signing_keys.json": _REPO_ROOT / "desktop" / "release_signing_keys.json",
 }
-
-
-def app_data_dir() -> Path:
-    override = os.environ.get("BACKCHANNEL_DATA_DIR")
-    if override:
-        return Path(override)
-    if sys.platform == "win32":
-        return Path(os.environ["LOCALAPPDATA"]) / APP_NAME
-    if sys.platform == "darwin":
-        return Path.home() / "Library" / "Application Support" / APP_NAME
-    return Path.home() / ".local" / "share" / APP_NAME.lower()
 
 
 def free_port() -> int:
