@@ -1,1 +1,141 @@
-"""Deterministic response/event contract for DebateAI experiments.\n\nThis module is independent of the live orchestrator and database. It validates\nlineage, timing and failure states at replay/laboratory boundaries without\npretending to prove semantic truth.\n"""\nfrom __future__ import annotations\n\nfrom dataclasses import dataclass, fields\nfrom math import isfinite\nfrom typing import Any, Mapping\n\nSCHEMA_VERSION = 1\nSTATUSES = frozenset({"ok", "timeout", "empty", "stale", "error", "abstent"})\nFAILURE_CLASSES = frozenset({\n    "none", "timeout", "empty", "stale", "provider", "parse", "privacy",\n    "cancelled", "resource", "unknown",\n})\nLATENCY_FIELDS = (\n    "first_speakable_ms", "first_update_ms", "final_update_ms",\n    "deep_revision_ms", "accepted_model_ms",\n)\n\n\nclass ResponseContractError(ValueError):\n    """Raised when a replay/result cannot be trusted as a contract record."""\n\n\n@dataclass(frozen=True, slots=True)\nclass ResponseEvent:\n    case_id: str\n    turn_id: str\n    status: str = "ok"\n    failure_class: str = "none"\n    schema_version: int = SCHEMA_VERSION\n    claim_id: str | None = None\n    revision_of: str | None = None\n    transcript_revision: int | None = None\n    prompt_hash: str | None = None\n    model_id: str | None = None\n    model_revision: str | None = None\n    provider_kind: str | None = None\n    source_passage_id: str | None = None\n    source_hash: str | None = None\n    retrieved_at: str | None = None\n    valid_time: str | None = None\n    population: str | None = None\n    unit: str | None = None\n    first_speakable_ms: float | None = None\n    first_update_ms: float | None = None\n    final_update_ms: float | None = None\n    deep_revision_ms: float | None = None\n    accepted_model_ms: float | None = None\n    queue_depth: int | None = None\n\n    def to_dict(self) -> dict[str, Any]:\n        return {field.name: getattr(self, field.name) for field in fields(self) if getattr(self, field.name) is not None}\n\n    @classmethod\n    def from_mapping(cls, value: Mapping[str, Any]) -> "ResponseEvent":\n        normalized = normalize_response_event(value)\n        names = {field.name for field in fields(cls)}\n        return cls(**{name: normalized.get(name) for name in names})\n\n\ndef _text(value: Any, field: str, *, required: bool = False) -> str | None:\n    if value is None and not required:\n        return None\n    if not isinstance(value, str) or not value.strip():\n        raise ResponseContractError(f"{field} must be a non-empty string")\n    if len(value) > 512:\n        raise ResponseContractError(f"{field} exceeds the contract length limit")\n    return value.strip()\n\n\ndef _latency(value: Any, field: str) -> float | None:\n    if value is None:\n        return None\n    if isinstance(value, bool) or not isinstance(value, (int, float)):\n        raise ResponseContractError(f"{field} must be a finite non-negative number")\n    result = float(value)\n    if not isfinite(result) or result < 0:\n        raise ResponseContractError(f"{field} must be a finite non-negative number")\n    return result\n\n\ndef normalize_response_event(value: Mapping[str, Any]) -> dict[str, Any]:\n    """Validate and normalize one replay/laboratory response event.\n\n    Unknown keys are preserved for forward compatibility. Deterministic checks\n    cover shape, lineage, timing and failure state; they do not classify truth.\n    """\n    if not isinstance(value, Mapping):\n        raise ResponseContractError("response event must be a mapping")\n    case_id = _text(value.get("case_id"), "case_id", required=True)\n    turn_id = _text(value.get("turn_id"), "turn_id", required=True)\n    status = value.get("status", "ok")\n    failure_class = value.get("failure_class", "none")\n    if not isinstance(status, str) or status not in STATUSES:\n        raise ResponseContractError(f"unsupported status: {status!r}")\n    if not isinstance(failure_class, str) or failure_class not in FAILURE_CLASSES:\n        raise ResponseContractError(f"unsupported failure_class: {failure_class!r}")\n    schema_version = value.get("schema_version", SCHEMA_VERSION)\n    if schema_version != SCHEMA_VERSION:\n        raise ResponseContractError(f"unsupported schema_version: {schema_version!r}")\n    claim_id = _text(value.get("claim_id"), "claim_id")\n    revision_of = _text(value.get("revision_of"), "revision_of")\n    if revision_of is not None and claim_id is None:\n        raise ResponseContractError("revision_of requires claim_id")\n    if status == "ok" and failure_class != "none":\n        raise ResponseContractError("ok events must use failure_class=none")\n    if status != "ok" and failure_class == "none":\n        failure_class = status\n    transcript_revision = value.get("transcript_revision")\n    if transcript_revision is not None and (\n        isinstance(transcript_revision, bool) or not isinstance(transcript_revision, int) or transcript_revision < 0\n    ):\n        raise ResponseContractError("transcript_revision must be a non-negative integer")\n    queue_depth = value.get("queue_depth")\n    if queue_depth is not None and (\n        isinstance(queue_depth, bool) or not isinstance(queue_depth, int) or queue_depth < 0\n    ):\n        raise ResponseContractError("queue_depth must be a non-negative integer")\n    result = dict(value)\n    result.update({\n        "schema_version": SCHEMA_VERSION, "case_id": case_id, "turn_id": turn_id,\n        "status": status, "failure_class": failure_class, "claim_id": claim_id,\n        "revision_of": revision_of, "transcript_revision": transcript_revision,\n        "queue_depth": queue_depth,\n    })\n    for field in LATENCY_FIELDS:\n        result[field] = _latency(value.get(field), field)\n    if (result["first_update_ms"] is not None and result["final_update_ms"] is not None\n            and result["final_update_ms"] < result["first_update_ms"]):\n        raise ResponseContractError("final_update_ms cannot precede first_update_ms")\n    return result\n\n\ndef validate_response_event(value: Mapping[str, Any]) -> None:\n    """Raise ResponseContractError unless *value* satisfies the contract."""\n    normalize_response_event(value)\n
+"""Deterministic response/event contract for DebateAI experiments.
+
+This module is independent of the live orchestrator and database. It validates
+lineage, timing and failure states at replay/laboratory boundaries without
+pretending to prove semantic truth.
+"""
+from __future__ import annotations
+
+from dataclasses import dataclass, fields
+from math import isfinite
+from typing import Any, Mapping
+
+SCHEMA_VERSION = 1
+STATUSES = frozenset({"ok", "timeout", "empty", "stale", "error", "abstent"})
+FAILURE_CLASSES = frozenset({
+    "none", "timeout", "empty", "stale", "provider", "parse", "privacy",
+    "cancelled", "resource", "unknown",
+})
+LATENCY_FIELDS = (
+    "first_speakable_ms", "first_update_ms", "final_update_ms",
+    "deep_revision_ms", "accepted_model_ms",
+)
+
+
+class ResponseContractError(ValueError):
+    """Raised when a replay/result cannot be trusted as a contract record."""
+
+
+@dataclass(frozen=True, slots=True)
+class ResponseEvent:
+    case_id: str
+    turn_id: str
+    status: str = "ok"
+    failure_class: str = "none"
+    schema_version: int = SCHEMA_VERSION
+    claim_id: str | None = None
+    revision_of: str | None = None
+    transcript_revision: int | None = None
+    prompt_hash: str | None = None
+    model_id: str | None = None
+    model_revision: str | None = None
+    provider_kind: str | None = None
+    source_passage_id: str | None = None
+    source_hash: str | None = None
+    retrieved_at: str | None = None
+    valid_time: str | None = None
+    population: str | None = None
+    unit: str | None = None
+    first_speakable_ms: float | None = None
+    first_update_ms: float | None = None
+    final_update_ms: float | None = None
+    deep_revision_ms: float | None = None
+    accepted_model_ms: float | None = None
+    queue_depth: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {field.name: getattr(self, field.name) for field in fields(self) if getattr(self, field.name) is not None}
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, Any]) -> "ResponseEvent":
+        normalized = normalize_response_event(value)
+        names = {field.name for field in fields(cls)}
+        return cls(**{name: normalized.get(name) for name in names})
+
+
+def _text(value: Any, field: str, *, required: bool = False) -> str | None:
+    if value is None and not required:
+        return None
+    if not isinstance(value, str) or not value.strip():
+        raise ResponseContractError(f"{field} must be a non-empty string")
+    if len(value) > 512:
+        raise ResponseContractError(f"{field} exceeds the contract length limit")
+    return value.strip()
+
+
+def _latency(value: Any, field: str) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ResponseContractError(f"{field} must be a finite non-negative number")
+    result = float(value)
+    if not isfinite(result) or result < 0:
+        raise ResponseContractError(f"{field} must be a finite non-negative number")
+    return result
+
+
+def normalize_response_event(value: Mapping[str, Any]) -> dict[str, Any]:
+    """Validate and normalize one replay/laboratory response event.
+
+    Unknown keys are preserved for forward compatibility. Deterministic checks
+    cover shape, lineage, timing and failure state; they do not classify truth.
+    """
+    if not isinstance(value, Mapping):
+        raise ResponseContractError("response event must be a mapping")
+    case_id = _text(value.get("case_id"), "case_id", required=True)
+    turn_id = _text(value.get("turn_id"), "turn_id", required=True)
+    status = value.get("status", "ok")
+    failure_class = value.get("failure_class", "none")
+    if not isinstance(status, str) or status not in STATUSES:
+        raise ResponseContractError(f"unsupported status: {status!r}")
+    if not isinstance(failure_class, str) or failure_class not in FAILURE_CLASSES:
+        raise ResponseContractError(f"unsupported failure_class: {failure_class!r}")
+    schema_version = value.get("schema_version", SCHEMA_VERSION)
+    if schema_version != SCHEMA_VERSION:
+        raise ResponseContractError(f"unsupported schema_version: {schema_version!r}")
+    claim_id = _text(value.get("claim_id"), "claim_id")
+    revision_of = _text(value.get("revision_of"), "revision_of")
+    if revision_of is not None and claim_id is None:
+        raise ResponseContractError("revision_of requires claim_id")
+    if status == "ok" and failure_class != "none":
+        raise ResponseContractError("ok events must use failure_class=none")
+    if status != "ok" and failure_class == "none":
+        failure_class = status
+    transcript_revision = value.get("transcript_revision")
+    if transcript_revision is not None and (
+        isinstance(transcript_revision, bool) or not isinstance(transcript_revision, int) or transcript_revision < 0
+    ):
+        raise ResponseContractError("transcript_revision must be a non-negative integer")
+    queue_depth = value.get("queue_depth")
+    if queue_depth is not None and (
+        isinstance(queue_depth, bool) or not isinstance(queue_depth, int) or queue_depth < 0
+    ):
+        raise ResponseContractError("queue_depth must be a non-negative integer")
+    result = dict(value)
+    result.update({
+        "schema_version": SCHEMA_VERSION, "case_id": case_id, "turn_id": turn_id,
+        "status": status, "failure_class": failure_class, "claim_id": claim_id,
+        "revision_of": revision_of, "transcript_revision": transcript_revision,
+        "queue_depth": queue_depth,
+    })
+    for field in LATENCY_FIELDS:
+        result[field] = _latency(value.get(field), field)
+    if (result["first_update_ms"] is not None and result["final_update_ms"] is not None
+            and result["final_update_ms"] < result["first_update_ms"]):
+        raise ResponseContractError("final_update_ms cannot precede first_update_ms")
+    return result
+
+
+def validate_response_event(value: Mapping[str, Any]) -> None:
+    """Raise ResponseContractError unless *value* satisfies the contract."""
+    normalize_response_event(value)
