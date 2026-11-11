@@ -102,18 +102,18 @@ def build_suite(turns: list[dict], reports: dict, candidate_ids: list[str], prov
                 primary = 'counter_question' if rec.get('primary_move') == 'question' else 'answer_now'
                 text = rec.get(primary)
                 contract_status = row.get('status') if row.get('status') in {'ok', 'timeout', 'empty', 'stale', 'error', 'abstent'} else 'error'
-        normalize_response_event({
-            'case_id': case_id,
-            'turn_id': str(i),
-            'status': contract_status,
-            'failure_class': 'none' if contract_status == 'ok' else contract_status,
-            'first_speakable_ms': _latency(row.get('first_update_ms')),
-            'first_update_ms': _latency(row.get('first_update_ms')),
-            'final_update_ms': _latency(row.get('current_update_ms')),
-            'deep_revision_ms': _latency(row.get('deep_revision_ms')),
-            'accepted_model_ms': _latency(row.get('accepted_model_ms')),
-        })
-        if row.get('status') != 'ok' or not isinstance(text, str) or not text.strip() or len(text) > 4000:
+                normalize_response_event({
+                    'case_id': case_id,
+                    'turn_id': str(i),
+                    'status': contract_status,
+                    'failure_class': 'none' if contract_status == 'ok' else contract_status,
+                    'first_speakable_ms': _latency(row.get('first_update_ms')),
+                    'first_update_ms': _latency(row.get('first_update_ms')),
+                    'final_update_ms': _latency(row.get('current_update_ms')),
+                    'deep_revision_ms': _latency(row.get('deep_revision_ms')),
+                    'accepted_model_ms': _latency(row.get('accepted_model_ms')),
+                })
+                if row.get('status') != 'ok' or not isinstance(text, str) or not text.strip() or len(text) > 4000:
                     failed_candidates += 1
                     # Never copy provider exceptions, paths, endpoint credentials or raw logs.
                     errors.append({'candidate_id': candidate_ids[j], 'status': 'failed',
