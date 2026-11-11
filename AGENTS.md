@@ -1,8 +1,8 @@
 # DebateAI: mandatory final Windows workspace contract
 
-Product identity: **DebateAI**. Canonical target repository `ErpeUser/DebateAI`, stable repository ID **1450951492**, always **private**. `ErpeUser/backchannel-v6-private` remains the migration alias until an actual rename is verified. No second repository, history rewriting, force-push, fake signing keys or domains. Required copyright/license/provenance notices remain.
+Product identity: **DebateAI**. Canonical target repository `ErpeUser/DebateAI`, stable repository ID **1450951492**, always **private**. No second repository, history rewriting, force-push, fake signing keys or domains. Required copyright/license/provenance notices remain.
 
-Read together: source/AGENTS.md; source/docs/DESKTOP_FINAL.md; source/docs/windows-final-recovery.md; source/docs/releasing.md; relevant latest entries of source/.ai/DEBATE_AI_OPTIMIERUNG.md and source/.ai/FINAL_INTEGRATION_2026-11-11.md. The reconciliation matrix resolves both earlier deliveries. New explicit user instructions supersede obsolete branch/branding guidance, not privacy, data protection or test requirements.
+Read together: source/AGENTS.md; source/docs/DEBATEAI_CANONICAL_INDEX.md; source/docs/DESKTOP_FINAL.md; source/docs/windows-final-recovery.md; source/docs/releasing.md; relevant latest entries of source/.ai/DEBATE_AI_OPTIMIERUNG.md and source/.ai/FINAL_INTEGRATION_2026-11-11.md. The reconciliation matrix resolves both earlier deliveries. New explicit user instructions supersede obsolete branch/branding guidance, not privacy, data protection or test requirements.
 
 ## The actual existing checkout is mandatory
 
@@ -10,7 +10,7 @@ Find the Windows worktree actually used by the user; record absolute root, branc
 
 Known fixed ancestor b7d48730bed175d4e4e7e5b2a6a6acf309f6dfb4 is a floor, not a pin. After the consolidation merge, master must contain 9d88baae677083770c2c81943687713d6fc393a6 and subsequent finalization fixes. Do not require an old feature branch that may have been safely deleted after merge.
 
-Preserve %LOCALAPPDATA%\Backchannel, %LOCALAPPDATA%\DebateAI, %USERPROFILE%\.ollama, master.key/DPAPI, API/OAuth sessions, browser profiles/cookies, .env, node_modules, databases/volumes, model caches, recordings/transcripts, settings and customized AI files. Never git clean -fdx. Never commit secrets or machine runtime state. A named stash/backup is recovery, not the semantic merge decision.
+Migrate %LOCALAPPDATA%\Backchannel into %LOCALAPPDATA%\DebateAI without deleting the legacy source until the canonical copy is validated. Preserve %USERPROFILE%\.ollama, master.key/DPAPI, API/OAuth sessions, browser profiles/cookies, .env, node_modules, databases/volumes, model caches, recordings/transcripts, settings and customized AI files. Never git clean -fdx. Never commit secrets or machine runtime state. A named stash/backup is recovery, not the semantic merge decision.
 
 ## Bootstrap from the newest fetched source
 
@@ -22,7 +22,7 @@ $repo = (git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $repo) { throw 'Existing local checkout not found' }
 Set-Location $repo
 $remote = (git remote get-url origin).Trim()
-if ($LASTEXITCODE -ne 0 -or $remote -notmatch '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)ErpeUser/(DebateAI|backchannel-v6-private)(\.git)?/?$') { throw 'Unexpected origin' }
+if ($LASTEXITCODE -ne 0 -or $remote -notmatch '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)ErpeUser/DebateAI(\.git)?/?$') { throw 'Unexpected origin' }
 git fetch origin '+refs/heads/master:refs/remotes/origin/master'
 if ($LASTEXITCODE -ne 0) { throw 'Fetch failed' }
 $scriptText = git show origin/master:source/scripts/sync_final_workspace.py
@@ -57,7 +57,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Python 3.12 required' }
 if ($LASTEXITCODE -ne 0) { throw 'Windows build failed' }
 ```
 
-Actual current wrapper output remains source/dist/Backchannel-DebateAI-windows-x64.zip until the coupled binary/archive/updater contract is migrated and tested; target DebateAI.exe/Updater/archive. Renaming one file is not completed decoupling. Include frontend/laboratory, backend, ONNX resources, PostgreSQL, ffmpeg, Ollama, CLIProxyAPI/Gemini, Web bridge, Oracle/Node24, PyInstaller, bundle and native archive/rollback smokes.
+The active wrapper output is the DebateAI archive and executable contract; historical Backchannel filenames are migration evidence only. Renaming one file is not completed decoupling. Include frontend/laboratory, backend, ONNX resources, PostgreSQL, ffmpeg, Ollama, CLIProxyAPI/Gemini, Web bridge, Oracle/Node24, PyInstaller, bundle and native archive/rollback smokes.
 
 Never delete old installation before the new archive/staging passes validation. Use existing updater, same-filesystem staging, preserve old binaries, stop own processes after work drains, then verify exact new EXE and token-bound health. Never call a live PostgreSQL file copy a consistent backup. Schema migration needs a separate tested data recovery path; binary rollback is not DB rollback. Never delete AppData or kill unrelated processes.
 

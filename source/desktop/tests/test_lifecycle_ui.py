@@ -1,6 +1,6 @@
 import unittest
 
-from bcdesktop.lifecycle_ui import LifecycleSplash
+from debateai_desktop.lifecycle_ui import LifecycleSplash
 
 
 class _Window:

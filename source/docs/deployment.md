@@ -1,6 +1,6 @@
-# Deployment
+The deployment and release domains below are placeholders. Set them from the actual deployment configuration; this repository does not embed a product DNS dependency.\n\n# Deployment
 
-The Backchannel app deploys as a self-hosted Docker Compose stack:
+The DebateAI app deploys as a self-hosted Docker Compose stack:
 nginx-served frontend, FastAPI backend, and PostgreSQL. Anything that runs
 Docker can host the app. The public documentation site is a separate
 Cloudflare Worker with static assets, private D1 access records, and private R2
@@ -28,9 +28,9 @@ apply without rebuilding -- a development convenience to disable for
 production-like deployments.
 
 If people open the frontend by a hostname rather than `localhost` or an IP
-address (`http://backchannel.lan:3000`), the backend refuses the proxied
+address (`http://debateai.lan:3000`), the backend refuses the proxied
 requests with `400 Host header is not allowed` until that name is listed in
-`BACKCHANNEL_ALLOWED_HOSTS` in `.env`. Names are the only thing a
+`DEBATEAI_ALLOWED_HOSTS` in `.env`. Names are the only thing a
 DNS-rebinding page can forge, which is why addresses need no listing.
 
 ## Backend build arguments
@@ -165,15 +165,15 @@ uvicorn (honoring `BACKEND_RELOAD`) after the database is reachable.
 The desktop bundle is the no-Docker deployment: a PyInstaller launcher runs
 the same backend with an embedded per-user PostgreSQL and serves the built
 frontend, keeping everything under a per-user data root
-(`%LOCALAPPDATA%\Backchannel` on Windows,
-`~/Library/Application Support/Backchannel` on macOS,
-`~/.local/share/backchannel` on Linux). Update downloads and state live in
+(`%LOCALAPPDATA%\DebateAI` on Windows,
+`~/Library/Application Support/DebateAI` on macOS,
+`~/.local/share/debateai` on Linux). Update downloads and state live in
 the data root's `updates/` directory; staged bundles sit next to the install
-root so the final swap is a same-filesystem rename. `BACKCHANNEL_DESKTOP=1`
+root so the final swap is a same-filesystem rename. `DEBATEAI_DESKTOP=1`
 gates the desktop-only behavior: it enables `TrustedHostMiddleware`
 (loopback hosts only) and activates the `/api/updates` routes, whose
-mutating endpoints additionally require an `X-Backchannel-Instance` header
-matching the launcher's `BACKCHANNEL_INSTANCE_TOKEN`
+mutating endpoints additionally require an `X-DebateAI-Instance` header
+matching the launcher's `DEBATEAI_INSTANCE_TOKEN`
 (`backend/app/routers/updates.py`).
 
 ## Cloudflare release-access deployment gate
@@ -215,19 +215,19 @@ migration:
 
 ```powershell
 cd docs-site
-$backupPath = $env:BACKCHANNEL_D1_BACKUP_PATH
+$backupPath = $env:DEBATEAI_D1_BACKUP_PATH
 if ([string]::IsNullOrWhiteSpace($backupPath) -or -not [IO.Path]::IsPathRooted($backupPath)) {
-    throw 'BACKCHANNEL_D1_BACKUP_PATH must be an absolute path in approved encrypted storage outside the repository.'
+    throw 'DEBATEAI_D1_BACKUP_PATH must be an absolute path in approved encrypted storage outside the repository.'
 }
 $backupPath = [IO.Path]::GetFullPath($backupPath)
 $repoRoot = (Resolve-Path ..).Path
 if ($backupPath.StartsWith($repoRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'BACKCHANNEL_D1_BACKUP_PATH must be outside the repository.'
+    throw 'DEBATEAI_D1_BACKUP_PATH must be outside the repository.'
 }
 npx wrangler d1 export INTEREST_DB --remote --output="$backupPath"
 ```
 
-Set `BACKCHANNEL_D1_BACKUP_PATH` to an operator-controlled absolute path in
+Set `DEBATEAI_D1_BACKUP_PATH` to an operator-controlled absolute path in
 approved encrypted storage before running the command. The export contains
 personal and authentication data; never create it in the repository first.
 Restrict it to the minimum operators and retain it through deployment
@@ -276,7 +276,7 @@ identity is unrelated to the local application PostgreSQL database.
 Create the bucket once:
 
 ```powershell
-npx wrangler r2 bucket create backchannel-desktop-releases
+npx wrangler r2 bucket create <deployment-configured-r2-bucket>
 ```
 
 In the R2 dashboard, disable the bucket's `r2.dev` development URL and remove
@@ -285,16 +285,28 @@ either path. The only delivery path is the authenticated Worker binding.
 
 ### 4. Bind R2 and configure Worker hosts
 
-`docs-site/wrangler.jsonc` must bind bucket `backchannel-desktop-releases` as
-`RELEASES`, include `downloads.backchannel.page` as a custom-domain route, and
-keep both `workers_dev` and `preview_urls` false. The existing public and admin
-custom domains remain. Confirm DNS and certificate activation before continuing.
+The checked-in `docs-site/wrangler.jsonc` deliberately keeps product-specific
+routes and storage bindings empty. Before production, create an operator-owned
+Wrangler overlay outside the repository (or an equivalent deployment config) and
+run it with `npm run deploy -- --config <operator-config>`. The overlay must keep
+`workers_dev` and `preview_urls` false, bind the release bucket as `RELEASES`,
+bind the D1 database as `INTEREST_DB`, and define the four host variables that
+`worker.js` requires:
+
+- `DEBATEAI_PUBLIC_HOST=<documentation-domain>`
+- `DEBATEAI_WWW_HOST=<www-documentation-domain>`
+- `DEBATEAI_ADMIN_HOST=<operator-console-domain>`
+- `DEBATEAI_DOWNLOAD_HOST=<download-domain>`
+
+Configure the public, www, admin, and download custom-domain routes in that same
+operator overlay. The Worker fails closed with 503 until all four host values
+are present. Confirm DNS and certificate activation before continuing.
 
 ### 5. Configure recipient abuse controls
 
 Create a managed Turnstile widget for recipient login with exactly:
 
-- hostname: `downloads.backchannel.page`
+- hostname: `<download-domain>`
 - action: `download_login`
 - pre-clearance: disabled
 
@@ -306,7 +318,7 @@ npx wrangler secret put TURNSTILE_SECRET
 ```
 
 Create a Cloudflare rate-limit rule matching method `POST` and path
-`/api/download/login` on `downloads.backchannel.page`. Rate limit before the
+`/api/download/login` on `<download-domain>`. Rate limit before the
 Worker executes, use an operator-approved low per-IP threshold, and return a
 generic denial. Do not weaken the Worker's same-origin, body-size, generic
 authentication, or exact Turnstile hostname/action checks.
@@ -314,7 +326,7 @@ authentication, or exact Turnstile hostname/action checks.
 ### 6. Merge the control-plane branch and deploy Worker/assets together
 
 Retain the public-interest Turnstile secret separately as
-`TURNSTILE_SECRET_KEY`. Protect all of `admin.backchannel.page` with the
+`TURNSTILE_SECRET_KEY`. Protect all of `<operator-console-domain>` with the
 existing Cloudflare Access self-hosted application and one exact-email Allow
 policy. Enter its values interactively:
 
@@ -371,11 +383,11 @@ or approve a recipient before both checks pass.
 ### 7. Configure an independent R2 writer
 
 Create a bucket-scoped Cloudflare R2 API token with Object Read & Write
-permission for `backchannel-desktop-releases`. Cloudflare exposes its
+permission for `<deployment-configured-r2-bucket>`. Cloudflare exposes its
 S3-compatible writer credentials as access-key and secret fields. Configure the
 GitHub production environment with secrets `CLOUDFLARE_ACCOUNT_ID`,
 `R2_ACCESS_KEY_ID`, and `R2_SECRET_ACCESS_KEY`, plus variable
-`R2_RELEASES_BUCKET=backchannel-desktop-releases`. These credentials are
+`R2_RELEASES_BUCKET=<deployment-configured-r2-bucket>`. These credentials are
 separate from the site deployment token; do not expand that token.
 
 The checked-in `scripts/r2-object.mjs` client calls Cloudflare R2 directly and
@@ -427,7 +439,7 @@ release; keep all GitHub source tags and release notes.
 
 Public `POST /api/interest` remains Turnstile-protected and stores normalized
 consent records in D1. Its widget remains restricted to hostname
-`backchannel.page`, action `interest`, and no pre-clearance. There is no public
+`<documentation-domain>`, action `interest`, and no pre-clearance. There is no public
 list or mutation route.
 
 List consent records for an approved communication operation:
@@ -455,16 +467,16 @@ table directly to an operator-controlled absolute path in approved encrypted
 storage, then delete it after the record-count check:
 
 ```powershell
-$exportPath = $env:BACKCHANNEL_INTEREST_EXPORT_PATH
+$exportPath = $env:DEBATEAI_INTEREST_EXPORT_PATH
 if ([string]::IsNullOrWhiteSpace($exportPath) -or -not [IO.Path]::IsPathRooted($exportPath)) {
-    throw 'BACKCHANNEL_INTEREST_EXPORT_PATH must be an absolute path in approved encrypted storage outside the repository.'
+    throw 'DEBATEAI_INTEREST_EXPORT_PATH must be an absolute path in approved encrypted storage outside the repository.'
 }
 $exportPath = [IO.Path]::GetFullPath($exportPath)
 $repoRoot = (Resolve-Path ..).Path
 if ($exportPath.StartsWith($repoRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
-    throw 'BACKCHANNEL_INTEREST_EXPORT_PATH must be outside the repository.'
+    throw 'DEBATEAI_INTEREST_EXPORT_PATH must be outside the repository.'
 }
-npx wrangler d1 export backchannel-interest --remote --table=interest_subscribers --output="$exportPath"
+npx wrangler d1 export <deployment-configured-d1-database> --remote --table=interest_subscribers --output="$exportPath"
 ```
 
 Rotate either Turnstile secret by replacing only its encrypted Worker binding

@@ -1,15 +1,15 @@
-# Releasing Backchannel
+# Releasing DebateAI
 
 This is the authoritative release checklist. GitHub keeps source tags and
 release notes; customer executables are published to private Cloudflare R2 and
-delivered through `https://downloads.backchannel.page/`.
+delivered through a deployment-specific HTTPS update endpoint configured by the operator.
 
 ## Delivery paths
 
 | Target | Publication trigger | Result |
 | --- | --- | --- |
 | Docker Compose | Source commit or tag; users rebuild locally | Public source-built `backend` and `frontend` images; no container registry image is published |
-| Documentation site | Push to `master` changing site/docs inputs | Cloudflare deploy of `backchannel.page`, `admin.backchannel.page`, and `downloads.backchannel.page` |
+| Documentation site | Push to `master` changing site/docs inputs | Cloudflare deploy of the configured documentation, operator-console and update endpoints |
 | Desktop | `scripts/release_desktop.ps1 -Version vX.Y.Z` after an annotated tag exists | Windows and Linux build locally while macOS builds in GitHub; each smoke-tested platform publishes to private R2 as soon as it finishes. The `desktop-release.yml` workflow's `platforms` input can instead build and publish any platform entirely inside GitHub when local egress to the R2 storage domain is blocked |
 
 The coordinator dispatches the macOS workflow and builds Windows before Linux.
@@ -30,8 +30,8 @@ $python312 = py -3.12 -c "import sys; print(sys.executable)"
 
 This wrapper reuses the release frontend build, checked-in model, PostgreSQL,
 ffmpeg and CLIProxyAPI downloaders, the pinned Gemini Web bridge, the ChatGPT
-Web runtime, `desktop/backchannel.spec`, and both desktop smoke tests.
-It writes `dist\Backchannel-DebateAI-windows-x64.zip`. Use
+Web runtime, `desktop/debateai.spec`, and both desktop smoke tests.
+It writes `dist\DebateAI-windows-x64.zip`. Use
 `-SkipDownloads` only when every downloaded asset and generated bridge/runtime
 is already present. The wrapper
 does not read release credentials, require a tag, publish objects, or replace
@@ -80,7 +80,7 @@ finish before announcing portal availability.
 
 ## R2 publication contract
 
-The private bucket is exactly `backchannel-desktop-releases`, bound to the site
+The private bucket is exactly `<deployment-configured-R2-bucket>`, bound to the site
 Worker as `RELEASES`. Keep both its `r2.dev` URL and every bucket custom domain
 disabled. Objects use this layout:
 
@@ -90,9 +90,9 @@ releases/vX.Y.Z/release.json
 releases/vX.Y.Z/platforms/windows-x64.json
 releases/vX.Y.Z/platforms/macos-arm64.json
 releases/vX.Y.Z/platforms/linux-x64.json
-releases/vX.Y.Z/Backchannel-windows-x64.zip
-releases/vX.Y.Z/Backchannel-macos-arm64.zip
-releases/vX.Y.Z/Backchannel-linux-x64.tar.gz
+releases/vX.Y.Z/DebateAI-windows-x64.zip
+releases/vX.Y.Z/DebateAI-macos-arm64.zip
+releases/vX.Y.Z/DebateAI-linux-x64.tar.gz
 ```
 
 `release.json` is immutable release identity. Each `platforms/{id}.json` is an
@@ -132,9 +132,9 @@ has the signing key ID, schema, and unpadded base64url Ed25519 signature:
 {
   "asset": {
     "content_type": "application/zip",
-    "filename": "Backchannel-windows-x64.zip",
+    "filename": "DebateAI-windows-x64.zip",
     "id": "windows-x64",
-    "key": "releases/vX.Y.Z/Backchannel-windows-x64.zip",
+    "key": "releases/vX.Y.Z/DebateAI-windows-x64.zip",
     "platform": "Windows x64",
     "sha256": "<64 lowercase hex characters>",
     "size": 1
@@ -177,19 +177,21 @@ secrets:
 - `CLOUDFLARE_ACCESS_CLIENT_ID`
 - `CLOUDFLARE_ACCESS_CLIENT_SECRET`
 
-The protected environment also requires
-`BACKCHANNEL_RELEASE_SIGNING_URL=https://signing.backchannel.page/v1/sign`.
-`R2_RELEASES_BUCKET`, with value `backchannel-desktop-releases`, is the one
+The protected environment also requires `DEBATEAI_RELEASE_SIGNING_URL` and
+`DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL`, set to the same deployment-owned
+HTTPS signing endpoint.
+`R2_RELEASES_BUCKET`, with value `<deployment-configured-R2-bucket>`, is the one
 repository-scoped release variable. Create a separate bucket-scoped Cloudflare
 R2 API token with Object Read & Write permission; Cloudflare exposes its
 S3-compatible writer credentials as access-key and secret fields. Do not reuse
 or expand the site deployment token.
 
 The publisher environment, whether local or the protected macOS publish job,
-must provide `BACKCHANNEL_RELEASE_SIGNING_URL`,
-`CLOUDFLARE_ACCESS_CLIENT_ID`, and `CLOUDFLARE_ACCESS_CLIENT_SECRET`. The
-protected job uses `-SigningMode Remote`; never expose those credentials to the
-credential-free build or cleanup jobs.
+must provide `DEBATEAI_RELEASE_SIGNING_URL`,
+`DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL`,
+`CLOUDFLARE_ACCESS_CLIENT_ID`, and `CLOUDFLARE_ACCESS_CLIENT_SECRET`.
+The protected job uses `-SigningMode Remote`; never expose those credentials to
+the credential-free build or cleanup jobs.
 
 The Access application allows only the dedicated release publisher service
 token. The signing Worker verifies the Access issuer and audience, then
@@ -198,8 +200,8 @@ it reads the request body or signing secret.
 
 The local coordinator also requires `CLOUDFLARE_ACCOUNT_ID`,
 `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, and `R2_RELEASES_BUCKET` as
-user-scoped environment variables. Set the signer URL to the exact endpoint
-above and provide the Access client ID and secret in the same shell. The
+user-scoped environment variables. Set both signing URL variables to the same deployment-owned HTTPS endpoint
+and provide the Access client ID and secret in the same shell. The
 coordinator clears the four R2 values and both Access values before setup,
 build, and smoke subprocesses; it restores only the R2 values for publication
 preflight and all six values around each explicit platform publisher call.
@@ -215,12 +217,12 @@ completed. It is recorded here as the audit trail; later releases inherit the
 established trust root and do not repeat it:
 
 1. Provision the dedicated Access application and service-token policy,
-   Secrets Store, and `signing.backchannel.page` custom domain.
+   Secrets Store and a deployment-owned HTTPS signing endpoint.
 2. From the repository root, preflight the required IDs and Wrangler
    authentication, then run the no-disk ceremony:
 
    ```powershell
-   foreach ($name in @("CLOUDFLARE_ACCOUNT_ID", "BACKCHANNEL_RELEASE_SIGNING_STORE_ID")) {
+   foreach ($name in @("CLOUDFLARE_ACCOUNT_ID", "DEBATEAI_RELEASE_SIGNING_STORE_ID")) {
        if ([string]::IsNullOrWhiteSpace([Environment]::GetEnvironmentVariable($name))) {
            throw "Missing required environment variable: $name"
        }
@@ -273,7 +275,7 @@ Stage two exercises Local only in tests. There is no stored local production
 key and no automatic fallback from remote mode. An emergency operator must
 supply newly generated matching key material explicitly. If no path is passed,
 the publisher checks
-`%LOCALAPPDATA%\Backchannel\release-signing\ed25519-2026-07b.private`.
+`%LOCALAPPDATA%\DebateAI\release-signing\ed25519-2026-07b.private`.
 Afterward, publish a new patch release, clean up the transient key, and
 communicate directly with affected users. An offline client cannot receive an
 emergency revocation; the persisted greatest-seen version/time only limits
@@ -304,9 +306,9 @@ and launchers are:
 
 | Platform | Install/archive root | Launcher |
 | --- | --- | --- |
-| Windows x64 | `Backchannel/` | `Backchannel.exe` |
-| Linux x64 | `Backchannel/` | `Backchannel` |
-| macOS arm64 | `Backchannel.app/` | `Contents/MacOS/Backchannel` |
+| Windows x64 | `DebateAI/` | `DebateAI.exe` |
+| Linux x64 | `DebateAI/` | `DebateAI` |
+| macOS arm64 | `DebateAI.app/` | `Contents/MacOS/DebateAI` |
 
 Before extraction, require free space for the archive, declared expanded
 files, the installed backup, and a 10 percent margin. macOS extraction uses
@@ -327,7 +329,7 @@ Run a real Windows archive through native extraction, token-bound health,
 successful swap, and forced rollback:
 
 ```powershell
-python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive .\release-assets\vX.Y.Z\Backchannel-windows-x64.zip
+python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive .\release-assets\vX.Y.Z\DebateAI-windows-x64.zip
 ```
 
 The Linux release-container build performs the same native archive smoke after
@@ -385,7 +387,7 @@ is tagged and published.
    cutover above before its tag; later releases skip that ceremony):
 
    ```powershell
-   git tag -a vX.Y.Z -m "Backchannel vX.Y.Z"
+   git tag -a vX.Y.Z -m "DebateAI vX.Y.Z"
    git push origin vX.Y.Z
    ```
 
@@ -477,7 +479,7 @@ Every platform publisher performs this fail-closed sequence:
    or `If-None-Match: *`; an older version never replaces a newer Latest.
 
 The macOS handoff is a non-secret Actions cache entry keyed as
-`backchannel-macos-{run_id}-{run_attempt}-{commit}-{sha256}`. A fresh protected
+`debateai-macos-{run_id}-{run_attempt}-{commit}-{sha256}`. A fresh protected
 macOS runner restores only that full key with no fallback, verifies its SHA-256,
 and publishes it. A separate secret-free cleanup job deletes the cache by exact
 ID after publication, including publisher failure paths. GitHub's cache eviction
@@ -495,8 +497,8 @@ $publishedAt = [DateTimeOffset]::Parse(
     (& git for-each-ref '--format=%(taggerdate:iso-strict)' "refs/tags/$version").Trim()
 ).ToUniversalTime().ToString("yyyy-MM-dd'T'HH:mm:ss'Z'")
 
-.\scripts\publish_release_platform.ps1 -Version $version -Commit $commit -PublishedAt $publishedAt -PlatformId windows-x64 -AssetPath ".\release-assets\$version\Backchannel-windows-x64.zip" -Confirm:$false
-.\scripts\publish_release_platform.ps1 -Version $version -Commit $commit -PublishedAt $publishedAt -PlatformId linux-x64 -AssetPath ".\release-assets\$version\Backchannel-linux-x64.tar.gz" -Confirm:$false
+.\scripts\publish_release_platform.ps1 -Version $version -Commit $commit -PublishedAt $publishedAt -PlatformId windows-x64 -AssetPath ".\release-assets\$version\DebateAI-windows-x64.zip" -Confirm:$false
+.\scripts\publish_release_platform.ps1 -Version $version -Commit $commit -PublishedAt $publishedAt -PlatformId linux-x64 -AssetPath ".\release-assets\$version\DebateAI-linux-x64.tar.gz" -Confirm:$false
 ```
 
 A retry is safe only when release and platform metadata match byte-for-byte.
@@ -524,7 +526,7 @@ Set the four publication environment variables without printing their values,
 then resolve each original peeled tag commit and time and migrate in order:
 
 ```powershell
-$env:R2_RELEASES_BUCKET = 'backchannel-desktop-releases'
+$env:R2_RELEASES_BUCKET = '<deployment-configured-R2-bucket>'
 
 $v010Commit = (& git rev-parse 'v0.1.0^{commit}').Trim()
 $v010Time = [DateTimeOffset]::Parse(

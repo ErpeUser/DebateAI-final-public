@@ -14,7 +14,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = (ROOT / "desktop" / "backchannel.spec").read_text()
+SPEC = (ROOT / "desktop" / "debateai.spec").read_text()
 LAUNCHER_PATH = ROOT / "desktop" / "launcher.py"
 LAUNCHER_SOURCE = LAUNCHER_PATH.read_text()
 
@@ -67,7 +67,7 @@ class StreamGuardTests(unittest.TestCase):
     def test_launcher_installs_the_guard_before_importing_the_backend(self):
         """Order matters: a late guard is no guard at all."""
         call = LAUNCHER_SOURCE.index("\n_guarantee_standard_streams()")
-        backend_import = LAUNCHER_SOURCE.index("from bcdesktop.paths import")
+        backend_import = LAUNCHER_SOURCE.index("from debateai_desktop.paths import")
         self.assertLess(call, backend_import)
 
     def test_launcher_installs_the_windowless_child_policy_before_backend_imports(self):

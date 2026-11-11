@@ -56,8 +56,8 @@ class BridgeConnection:
 
 
 def connection() -> BridgeConnection | None:
-    raw_url = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
-    key = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
+    raw_url = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL").strip()
+    key = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY").strip()
     if not raw_url or not key:
         return None
     parsed = urlparse(raw_url)

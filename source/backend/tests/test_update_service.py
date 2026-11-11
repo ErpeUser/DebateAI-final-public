@@ -32,6 +32,7 @@ from app.services.update_service import (
     CHUNK_SIZE,
     InvalidUpdate,
     UpdateService,
+    _update_origin,
     _zip_extraction_root,
 )
 from app.services.update_service import get_update_service
@@ -46,7 +47,7 @@ GRANT = "g" * 43
 def zip_bundle(files=None) -> bytes:
     output = io.BytesIO()
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        for name, body in (files or {"Backchannel/Backchannel.exe": b"app"}).items():
+        for name, body in (files or {"DebateAI/DebateAI.exe": b"app"}).items():
             archive.writestr(name, body)
     return output.getvalue()
 
@@ -54,12 +55,12 @@ def zip_bundle(files=None) -> bytes:
 class WindowsArchivePathTests(unittest.TestCase):
     @unittest.skipUnless(sys.platform == "win32", "requires Windows extended paths")
     def test_zip_staging_uses_extended_path_without_changing_destination(self):
-        path = Path("C:/Backchannel") / ".backchannel-stage-v999.0.0"
+        path = Path("C:/DebateAI") / ".debateai-stage-v999.0.0"
 
         extended = _zip_extraction_root(path)
 
         self.assertTrue(extended.startswith("\\\\?\\"))
-        self.assertTrue(extended.endswith("Backchannel\\.backchannel-stage-v999.0.0"))
+        self.assertTrue(extended.endswith("DebateAI\\.debateai-stage-v999.0.0"))
 
 
 def descriptor(archive: bytes, version="v0.4.0", published_at="2026-07-26T18:00:00Z"):
@@ -71,10 +72,10 @@ def descriptor(archive: bytes, version="v0.4.0", published_at="2026-07-26T18:00:
         "asset": {
             "id": "windows-x64",
             "platform": "Windows x64",
-            "filename": "Backchannel-windows-x64.zip",
+            "filename": "DebateAI-windows-x64.zip",
             "size": len(archive),
             "sha256": hashlib.sha256(archive).hexdigest(),
-            "key": f"releases/{version}/Backchannel-windows-x64.zip",
+            "key": f"releases/{version}/DebateAI-windows-x64.zip",
             "content_type": "application/zip",
         },
     }
@@ -181,9 +182,9 @@ class UpdateServiceTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.data_root = self.root / "data"
-        self.install_root = self.root / "Backchannel"
+        self.install_root = self.root / "DebateAI"
         self.install_root.mkdir()
-        (self.install_root / "Backchannel.exe").write_bytes(b"old")
+        (self.install_root / "DebateAI.exe").write_bytes(b"old")
         public = Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY).public_key().public_bytes(
             serialization.Encoding.Raw,
             serialization.PublicFormat.Raw,
@@ -241,6 +242,10 @@ class UpdateServiceTests(unittest.TestCase):
             asset_url="http://127.0.0.1:8123/assets/{version}/{platform_id}",
         )
         self.assertEqual(service.platform_id, "windows-x64")
+
+    def test_update_origin_normalizes_default_ports(self):
+        self.assertEqual(_update_origin("https://updates.example/path"), _update_origin("https://updates.example:443/path"))
+        self.assertEqual(_update_origin("http://127.0.0.1/path"), _update_origin("http://127.0.0.1:80/path"))
 
     def test_check_verifies_caches_and_persists_without_blocking_status(self):
         archive = zip_bundle()
@@ -317,7 +322,7 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertEqual(service.check(force=True)["state"], "available")
         self.assertIsInstance(captured["context"], ssl.SSLContext)
         self.assertEqual(captured["timeout"], 10)
-        self.assertEqual(captured["user_agent"], "Backchannel/v0.3.8")
+        self.assertEqual(captured["user_agent"], "DebateAI/v0.3.8")
 
     def test_download_resumes_streams_verifies_and_stages(self):
         archive = zip_bundle()
@@ -333,8 +338,8 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertEqual(service.status()["state"], "ready")
             self.assertEqual(fixture.asset_requests[0]["Range"], "bytes=7-")
             self.assertEqual(fixture.asset_requests[0]["Authorization"], f"Bearer {GRANT}")
-            self.assertEqual(fixture.asset_requests[0]["User-Agent"], "Backchannel/v0.3.8")
-            self.assertTrue((service.staged_root / "Backchannel.exe").is_file())
+            self.assertEqual(fixture.asset_requests[0]["User-Agent"], "DebateAI/v0.3.8")
+            self.assertTrue((service.staged_root / "DebateAI.exe").is_file())
             persisted = service.state_path.read_text()
             self.assertNotIn(GRANT, persisted)
 
@@ -356,9 +361,9 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertEqual(service.status()["state"], "ready")
             self.assertNotIn("Authorization", fixture.asset_requests[0])
             self.assertEqual(
-                fixture.asset_requests[0]["User-Agent"], "Backchannel/v0.3.8"
+                fixture.asset_requests[0]["User-Agent"], "DebateAI/v0.3.8"
             )
-            self.assertTrue((service.staged_root / "Backchannel.exe").is_file())
+            self.assertTrue((service.staged_root / "DebateAI.exe").is_file())
 
     def test_a_grant_from_an_older_build_still_starts_a_download(self):
         """An install predating the fix posts its grant; it must still work."""
@@ -394,7 +399,7 @@ class UpdateServiceTests(unittest.TestCase):
 
             self.assertEqual(service.status()["state"], "ready")
             self.assertEqual(fixture.asset_requests, [])
-            self.assertTrue((service.staged_root / "Backchannel.exe").is_file())
+            self.assertTrue((service.staged_root / "DebateAI.exe").is_file())
 
     def test_range_ignored_restarts_and_expired_grant_preserves_partial(self):
         archive = zip_bundle()
@@ -417,7 +422,7 @@ class UpdateServiceTests(unittest.TestCase):
             service.partial_path.write_bytes(b"old")
             service.start_download(GRANT)
             service.wait_for_download()
-            self.assertEqual(service.status()["state"], "needs_authorization")
+            self.assertEqual(service.status()["state"], "error")
             self.assertEqual(service.partial_path.read_bytes(), b"old")
 
     def test_wrong_content_range_restarts_from_zero(self):
@@ -453,7 +458,7 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertNotIn("Range", fixture.asset_requests[1])
 
     def test_download_is_single_flight(self):
-        archive = zip_bundle({"Backchannel/payload.bin": os.urandom(2_000_000)})
+        archive = zip_bundle({"DebateAI/payload.bin": os.urandom(2_000_000)})
         with UpdateFixture(descriptor(archive), archive) as fixture:
             fixture.slow_asset = True
             service = self.service(fixture)
@@ -505,13 +510,13 @@ class UpdateServiceTests(unittest.TestCase):
             return path
 
         for path in [
-            write_zip("/Backchannel/file"),
-            write_zip("Backchannel/../outside"),
+            write_zip("/DebateAI/file"),
+            write_zip("DebateAI/../outside"),
             write_zip("Other/file"),
-            write_zip("Backchannel/device", mode=stat.S_IFCHR | 0o600),
+            write_zip("DebateAI/device", mode=stat.S_IFCHR | 0o600),
             write_zip(
-                "Backchannel/link",
-                body=b"Backchannel.exe",
+                "DebateAI/link",
+                body=b"DebateAI.exe",
                 mode=stat.S_IFLNK | 0o777,
             ),
         ]:
@@ -520,19 +525,19 @@ class UpdateServiceTests(unittest.TestCase):
 
         mac = self.service(platform_id="macos-arm64")
         safe_link = write_zip(
-            "Backchannel.app/current",
-            body=b"Contents/MacOS/Backchannel",
+            "DebateAI.app/current",
+            body=b"Contents/MacOS/DebateAI",
             mode=stat.S_IFLNK | 0o777,
         )
         self.assertEqual(mac._zip_size(safe_link), 0)
         with self.assertRaises(InvalidUpdate):
             mac._zip_size(write_zip(
-                "Backchannel.app/current",
+                "DebateAI.app/current",
                 body=b"../../outside",
                 mode=stat.S_IFLNK | 0o777,
             ))
 
-        expanded = write_zip("Backchannel/payload", body=b"xx")
+        expanded = write_zip("DebateAI/payload", body=b"xx")
         with patch("app.services.update_service.MAX_EXPANDED_BYTES", 1):
             with self.assertRaises(InvalidUpdate):
                 service._zip_size(expanded)
@@ -544,34 +549,34 @@ class UpdateServiceTests(unittest.TestCase):
         def write_tar(target):
             path = self.root / f"{abs(hash(target))}.tar.gz"
             with tarfile.open(path, "w:gz") as archive:
-                regular = tarfile.TarInfo("Backchannel/Backchannel")
+                regular = tarfile.TarInfo("DebateAI/DebateAI")
                 regular.size = 3
                 archive.addfile(regular, io.BytesIO(b"app"))
-                link = tarfile.TarInfo("Backchannel/current")
+                link = tarfile.TarInfo("DebateAI/current")
                 link.type = tarfile.SYMTYPE
                 link.linkname = target
                 archive.addfile(link)
             return path
 
-        self.assertEqual(service._tar_size(write_tar("Backchannel")), 3)
+        self.assertEqual(service._tar_size(write_tar("DebateAI")), 3)
         with self.assertRaises(InvalidUpdate):
             service._tar_size(write_tar("../../outside"))
 
     @unittest.skipUnless(sys.platform == "darwin", "requires native macOS ditto")
     def test_macos_ditto_round_trip_preserves_mode_and_symlink(self):
-        app = self.root / "fixture" / "Backchannel.app"
-        executable = app / "Contents" / "MacOS" / "Backchannel"
+        app = self.root / "fixture" / "DebateAI.app"
+        executable = app / "Contents" / "MacOS" / "DebateAI"
         executable.parent.mkdir(parents=True)
         executable.write_text("#!/bin/sh\nexit 0\n")
         executable.chmod(0o755)
         link = app / "Contents" / "MacOS" / "current"
-        link.symlink_to("Backchannel")
-        archive = self.root / "Backchannel-macos-arm64.zip"
+        link.symlink_to("DebateAI")
+        archive = self.root / "DebateAI-macos-arm64.zip"
         subprocess.run(
             ["/usr/bin/ditto", "-c", "-k", "--keepParent", str(app), str(archive)],
             check=True,
         )
-        install = self.root / "installed" / "Backchannel.app"
+        install = self.root / "installed" / "DebateAI.app"
         (install / "Contents" / "MacOS").mkdir(parents=True)
         service = self.service(
             platform_id="macos-arm64",
@@ -580,15 +585,15 @@ class UpdateServiceTests(unittest.TestCase):
         )
         service._state.update({
             "available_version": "v0.4.0",
-            "filename": "Backchannel-macos-arm64.zip",
+            "filename": "DebateAI-macos-arm64.zip",
         })
         service._stage_archive(archive, {"asset": {"size": archive.stat().st_size}})
         staged = service.staged_root / "Contents" / "MacOS"
-        self.assertTrue((staged / "Backchannel").stat().st_mode & stat.S_IXUSR)
+        self.assertTrue((staged / "DebateAI").stat().st_mode & stat.S_IXUSR)
         self.assertTrue((staged / "current").is_symlink())
 
     def test_cancel_keeps_a_bounded_partial_for_later_resume(self):
-        archive = zip_bundle({"Backchannel/payload.bin": os.urandom(2_000_000)})
+        archive = zip_bundle({"DebateAI/payload.bin": os.urandom(2_000_000)})
         with UpdateFixture(descriptor(archive), archive) as fixture:
             fixture.slow_asset = True
             service = self.service(fixture)
@@ -603,7 +608,7 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertLess(service.partial_path.stat().st_size, len(archive))
 
     def test_free_space_preflight_includes_archive_stage_backup_and_margin(self):
-        archive = zip_bundle({"Backchannel/payload.bin": b"x" * 4096})
+        archive = zip_bundle({"DebateAI/payload.bin": b"x" * 4096})
         with UpdateFixture(descriptor(archive), archive) as fixture:
             service = self.service(fixture)
             service.check(force=True)
@@ -618,7 +623,7 @@ class UpdateServiceTests(unittest.TestCase):
 
     def test_apply_writes_one_bounded_plan_and_stale_marker_returns_to_ready(self):
         archive = zip_bundle()
-        helper = self.root / "BackchannelUpdater.exe"
+        helper = self.root / "DebateAIUpdater.exe"
         helper.write_bytes(b"helper")
         with UpdateFixture(descriptor(archive), archive) as fixture:
             service = self.service(fixture, helper_path=helper)
@@ -643,7 +648,7 @@ class UpdateServiceTests(unittest.TestCase):
                 "lock_path",
                 "state_path",
             })
-            self.assertEqual(plan["launcher"], "Backchannel.exe")
+            self.assertEqual(plan["launcher"], "DebateAI.exe")
             self.assertEqual(Path(plan["staged_dir"]), service.staged_root)
             self.assertNotIn(GRANT, plan_path.read_text())
             self.assertFalse(plan_path.with_suffix(".tmp").exists())
@@ -673,15 +678,15 @@ response = client.get('/api/health', headers={
 assert response.status_code == 200
 assert response.json() == {'status': 'ok'}
 assert 'instance-secret' not in response.text
-assert 'x-backchannel-instance' not in response.headers.get(
+assert 'x-debateai-instance' not in response.headers.get(
     'access-control-expose-headers', ''
 ).lower()
 """
         environment = {
             **os.environ,
             "PYTHONPATH": str(Path.cwd() / "backend"),
-            "BACKCHANNEL_DESKTOP": "1",
-            "BACKCHANNEL_INSTANCE_TOKEN": "instance-secret",
+            "DEBATEAI_DESKTOP": "1",
+            "DEBATEAI_INSTANCE_TOKEN": "instance-secret",
         }
         result = subprocess.run(
             [sys.executable, "-c", code],
@@ -738,7 +743,7 @@ class UpdateRouterTests(unittest.TestCase):
         app.dependency_overrides[get_db] = database_override
         self.client = TestClient(app)
         self.environment = patch.dict(
-            os.environ, {"BACKCHANNEL_INSTANCE_TOKEN": "instance-secret"}
+            os.environ, {"DEBATEAI_INSTANCE_TOKEN": "instance-secret"}
         )
         self.environment.start()
 
@@ -747,7 +752,7 @@ class UpdateRouterTests(unittest.TestCase):
         self.environment.stop()
 
     def mutation(self, method, path, **kwargs):
-        headers = {"X-Backchannel-Instance": "instance-secret"}
+        headers = {"X-DebateAI-Instance": "instance-secret"}
         return self.client.request(method, path, headers=headers, **kwargs)
 
     def test_read_is_open_but_every_mutation_requires_the_instance_token(self):
@@ -761,7 +766,7 @@ class UpdateRouterTests(unittest.TestCase):
             self.assertEqual(self.client.request(method, path).status_code, 403)
             self.assertEqual(
                 self.client.request(
-                    method, path, headers={"X-Backchannel-Instance": "wrong"}
+                    method, path, headers={"X-DebateAI-Instance": "wrong"}
                 ).status_code,
                 403,
             )

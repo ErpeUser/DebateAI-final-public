@@ -23,7 +23,7 @@ class GrantIn(BaseModel):
 
 
 def start_background_check():
-    desktop = os.environ.get("DEBATEAI_DESKTOP") or os.environ.get("BACKCHANNEL_DESKTOP")
+    desktop = os.environ.get("DEBATEAI_DESKTOP", "")
     if desktop != "1":
         return None
     service = get_update_service()
@@ -48,24 +48,23 @@ def configure_app(app: FastAPI) -> None:
     app.add_exception_handler(
         runtime_activity.ShutdownReserved, shutdown_reserved_handler
     )
-    desktop = os.environ.get("DEBATEAI_DESKTOP") or os.environ.get("BACKCHANNEL_DESKTOP")
+    desktop = os.environ.get("DEBATEAI_DESKTOP", "")
     if desktop == "1":
         app.add_middleware(
             TrustedHostMiddleware,
             allowed_hosts=[
                 "localhost",
                 "127.0.0.1",
-                os.environ.get("DEBATEAI_BOUND_HOST") or os.environ.get("BACKCHANNEL_BOUND_HOST", "127.0.0.1"),
+                os.environ.get("DEBATEAI_BOUND_HOST") or "127.0.0.1",
             ],
         )
 
 
 def require_instance_token(
     token: str | None = Header(default=None, alias="X-DebateAI-Instance"),
-    legacy_token: str | None = Header(default=None, alias="X-Backchannel-Instance"),
-) -> None:
-    expected = os.environ.get("DEBATEAI_INSTANCE_TOKEN") or os.environ.get("BACKCHANNEL_INSTANCE_TOKEN", "")
-    supplied = token if token is not None else legacy_token
+    ) -> None:
+    expected = os.environ.get("DEBATEAI_INSTANCE_TOKEN", "")
+    supplied = token
     if not isinstance(supplied, str) or not supplied or not expected or not hmac.compare_digest(supplied, expected):
         raise HTTPException(403, "Desktop instance authorization failed")
 

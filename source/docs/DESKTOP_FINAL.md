@@ -1,6 +1,6 @@
 # DebateAI - verbindlicher Desktop-Abschlussauftrag und Windows-Runbook
 
-Stand: 2026-11-11, konsolidiert nach Source-Merge #4. Produktname DebateAI; Zielrepository ErpeUser/DebateAI, stabile Repository-ID 1450951492, **privat**, Zielbranch master. Bis zur bestaetigten echten Umbenennung lautet der Name ErpeUser/backchannel-v6-private. Kein zweites Repository, keine umgeschriebene Historie und kein Force-Push.
+Stand: 2026-11-11, konsolidiert nach Source-Merge #4. Produktname DebateAI; Zielrepository ErpeUser/DebateAI, stabile Repository-ID 1450951492, **privat**, Zielbranch master. Die kanonische Identität ist DebateAI in ErpeUser/DebateAI. Kein zweites Repository, keine umgeschriebene Historie und kein Force-Push.
 
 **Prioritaet bei Widerspruechen:** Neueste explizite Nutzervorgaben und verbindliche Datenschutz-, Sicherheits- und Datenbewahrungsregeln der Root-/source-AGENTS haben Vorrang. Fuer die zwei hier konsolidierten Dokumente gilt die neuere, konkretere und pruefbare Vorgabe (besonders die Ergaenzungen vom 2026-11-11); sichere Ablaufdetails des Windows-Runbooks bleiben erhalten. Vor jeder Ausfuehrung den neuesten `origin/master` pruefen. Diese Datei ist ein Arbeitsauftrag, keine Behauptung einer Windows-Freigabe.
 
@@ -22,7 +22,7 @@ $repo = (git rev-parse --show-toplevel).Trim()
 if ($LASTEXITCODE -ne 0 -or -not $repo) { throw 'Existing local checkout not found' }
 Set-Location $repo
 $remote = (git remote get-url origin).Trim()
-if ($LASTEXITCODE -ne 0 -or $remote -notmatch '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)ErpeUser/(DebateAI|backchannel-v6-private)(\.git)?/?$') { throw 'Unexpected origin' }
+if ($LASTEXITCODE -ne 0 -or $remote -notmatch '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)ErpeUser/DebateAI(\.git)?/?$') { throw 'Unexpected origin' }
 git fetch origin '+refs/heads/master:refs/remotes/origin/master'
 if ($LASTEXITCODE -ne 0) { throw 'Fetch failed' }
 $scriptText = git show origin/master:source/scripts/sync_final_workspace.py
@@ -37,7 +37,7 @@ try {
 
 Nach Konsolidierung muss origin/master 9d88baae677083770c2c81943687713d6fc393a6 und die nachfolgenden Finalisierungsfixes enthalten. Feature-Branch nicht als zwingend existent voraussetzen: nach verifiziertem Merge darf er geloescht sein. PR #2, #3 und #4 sind bereits gemergt; vor weiteren Integrationen neu verifizieren, keine alten ZIP-Overlays. Original-ZIP nicht ueber integrierten Source kopieren; apply_package.py ist historisch ersetzt.
 
-Erhalte beide AppData-Ordner, alle DBs, DPAPI/master.key, Keys/OAuth/Cookies/Browserprofile, Ollama-Modelle, Audio/Transkripte/Sitzungen, .env und Benutzerkonfiguration. Backup ist kein Ersatz fuer semantische Entscheidung.
+Migriere den Legacy-Ordner `%LOCALAPPDATA%\\Backchannel` einmalig nach `%LOCALAPPDATA%\\DebateAI`; lösche die Quelle nicht und überschreibe keinen nichtleeren Zielordner. Erhalte alle DBs, DPAPI/master.key, Keys/OAuth/Cookies/Browserprofile, Ollama-Modelle, Audio/Transkripte/Sitzungen, .env und Benutzerkonfiguration. Backup ist kein Ersatz fuer semantische Entscheidung.
 
 ## 2. Reale Repository-Administration
 
@@ -52,25 +52,25 @@ Bestehende sichere gh-Anmeldung verwenden, keine Tokens aus Profilen extrahieren
 
 Alte Branches nur bei bewiesener Integration loeschen. Falls hardening/debateai-standalone noch existiert: fetch dieses Ref; git merge-base --is-ancestor origin/hardening/debateai-standalone origin/master muss0 liefern; erst dann git push origin --delete hardening/debateai-standalone. Bei fehlendem Ref nicht als Fehler neu erzeugen. Andere Branches separat auf einzigartige Arbeit pruefen, Default/aktive oder ungesicherte lokale Arbeit nicht loeschen. Kein Branchschutz-Bypass. Wenn die Chat-Schnittstelle keine Admin-/Deleteaktion bietet, ist dies ein echter verbleibender nativer CLI-Schritt.
 
-## 3. Noch offene interne Entkopplung abschliessen
+## 3. Kanonische Runtime-Verträge und verbleibende Gates
 
-Diese Teile sind NICHT fertig migriert und muessen zusammen getestet werden, kein blindes Suchen/Ersetzen:
+Die Identitätsmigration ist im Branch umgesetzt. Diese Verträge bleiben gemeinsam zu testen; kein blindes Suchen/Ersetzen:
 
 | Bereich | Dateien / Zielvertrag |
 |---|---|
-| Desktop | desktop/launcher.py, desktop/backchannel.spec, desktop/updater.py, desktop/bcdesktop/ und Imports/Ressourcen. Ziel DebateAI.exe, DebateAIUpdater.exe, Bundle DebateAI. |
+| Desktop | desktop/launcher.py, desktop/debateai.spec, desktop/updater.py, desktop/debateai_desktop/ und Imports/Ressourcen. Ziel DebateAI.exe, DebateAIUpdater.exe, Bundle DebateAI. |
 | Archive/Build | scripts/build_debate_assistant.ps1, release_desktop.ps1, Publisher/Manifeste, desktop/scripts/smoke_bundle.py und smoke_update_archive.py; Ziel DebateAI-windows-x64.zip. |
 | Update | backend/app/services/update_service.py ROOT_NAMES/LAUNCHERS, update_signing.py TRUSTED_ASSETS, Helper-/Health-/Signaturtests gemeinsam. Eigener Kanal ohne echte Konfiguration deaktiviert. |
 | UI/Packages | Verbliebene React/Tray/About/Fenster/Exportnamen; package.json und Lockfile gemeinsam. PWA-Metadaten/Gate sind bereits DebateAI. Kein blosses CSS-Verstecken. |
-| Kompatibilitaet | DEBATEAI_* und X-DebateAI-Instance bevorzugen, alte Namen kontrollierte Migrationsalias; niemals zwei Prozesse auf dieselbe DB. |
+| Kompatibilitaet | DEBATEAI_* und X-DebateAI-Instance sind die aktiven Verträge; alte Namen werden ausschließlich in isolierten, nicht destruktiven Migrationen gelesen. Niemals zwei Prozesse auf dieselbe DB. |
 | Infrastruktur | Root/source workflows, docs-site/Worker/R2/Signer inventarisieren. Root deploy-site.yml wurde gelesen und baut nur, nicht blind wegen Dateinamen deaktivieren. Keine geerbten fremden Domains/Keys als eigenen Produktionskanal ausgeben. |
 | Herkunft | Lizenzen, Credits, historische Pruefsummen/Manifeste erhalten, nicht als neue Releasebelege verwenden. |
 
 ```powershell
-git grep -n -i -E 'backchannel|bcdesktop|call.helper' -- source .github AGENTS.md README.md
+python -m unittest desktop.tests.test_debateai_identity backend.tests.test_no_legacy_runtime_identifiers
 ```
 
-Treffer fachlich klassifizieren. Vor jedem Programm-/Datenordnerwechsel alte Version und konsistente DB sichern. Kein Live-DB-Copy als Backup. Datenstaging getrennt, Hashes/DPAPI unter gleichem Benutzer pruefen, Originale behalten. Binaerrollback ist kein Schemarollback. Vollstaendige Migration erst nach nativer Pruefung behaupten.
+Wenn der Scan fehlschlägt, Treffer fachlich klassifizieren. Vor jedem Programm-/Datenordnerwechsel alte Version und konsistente DB sichern. Kein Live-DB-Copy als Backup. Datenstaging getrennt, Hashes/DPAPI unter gleichem Benutzer pruefen, Originale behalten. Binaerrollback ist kein Schemarollback. Vollstaendige Migration erst nach nativer Pruefung behaupten.
 
 ## 4. Playbooks/Prompts und echte Modellkalibrierung
 
@@ -142,12 +142,12 @@ $python312 = py -3.12 -c "import sys; print(sys.executable)"
 if ($LASTEXITCODE -ne 0) { throw 'Python 3.12 unavailable.' }
 .\scripts\build_debate_assistant.ps1 -Python $python312 -IncludeOracle
 if ($LASTEXITCODE -ne 0) { throw 'Windows build failed.' }
-$zip = Join-Path $repo 'source\dist\Backchannel-DebateAI-windows-x64.zip'
-if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) { throw 'Archivname nur nach vollstaendig getesteter Umstellung ersetzen.' }
+$zip = Join-Path $repo 'source\dist\DebateAI-windows-x64.zip'
+if (-not (Test-Path -LiteralPath $zip -PathType Leaf)) { throw 'DebateAI archive missing after build.' }
 Get-FileHash -LiteralPath $zip -Algorithm SHA256
 ```
 
-Vor vollstaendiger Namensmigration lautet der vorhandene Output weiterhin dist/Backchannel-DebateAI-windows-x64.zip. Nie einfach umbenennen. Erforderliche Frontend/Labor/Backend/ONNX/PostgreSQL/ffmpeg/Ollama/CLIProxy/Gemini/Oracle-Node24-Komponenten, Bundle-Smoke und nativen Archiv-/Rollback-Smoke nachweisen. Nur fehlerbetroffene Schritte wiederholen.
+Der aktive Output ist dist/DebateAI-windows-x64.zip. Die Archivstruktur, der Launcher und der Updater muessen gemeinsam verifiziert werden; ein einzelnes Umbenennen reicht nicht. Erforderliche Frontend/Labor/Backend/ONNX/PostgreSQL/ffmpeg/Ollama/CLIProxy/Gemini/Oracle-Node24-Komponenten, Bundle-Smoke und nativen Archiv-/Rollback-Smoke nachweisen. Nur fehlerbetroffene Schritte wiederholen.
 
 ### Native Installation und Rollback ohne Datenverlust
 
@@ -216,9 +216,7 @@ Runner-/Dispatchfehler und kein gruenes Gate. Testkommandos nicht blind aendern.
 Markdown-Cleanup ist referenzbewusst: historische Audit-, Release-, Provenance-
 und Superpowers-Dokumente bleiben erhalten. Vor dem Loeschen eines Dokuments
 muss eine statische Referenzsuche, eine Manifestpruefung und ein Testlauf zeigen,
-dass es kein Build-, Release-, Prompt- oder Recoveryvertrag ist. `backchannel.spec`,
-Backchannel.exe, `BACKCHANNEL_*` und `%LOCALAPPDATA%\\Backchannel` bleiben bis
-zur vollstaendig getesteten Migration kontrollierte Legacy-Aliase.
+dass es kein Build-, Release-, Prompt- oder Recoveryvertrag ist. Historische Backchannel-Bezeichner bleiben ausschließlich in expliziten Migrations- und Evidenzgrenzen. Der aktive Runtime-Vertrag verwendet DebateAI; die Branch-Umstellung ist implementiert und darf erst nach den im Plan dokumentierten Tests in master integriert werden.
 
 Die vier externen Evidenzgates A06, A18, A21 und A22 bleiben echte manuelle
 Windows-/Human-Review-Gates. Source-Tests, Linux-CI oder Mock-Audio duerfen sie

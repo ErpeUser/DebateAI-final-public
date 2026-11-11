@@ -1,6 +1,6 @@
 # Architecture
 
-Backchannel is a React SPA, a FastAPI backend, and PostgreSQL -- deployed
+DebateAI is a React SPA, a FastAPI backend, and PostgreSQL -- deployed
 either as the Docker Compose stack or as the desktop bundle, a PyInstaller
 launcher with an embedded per-user PostgreSQL (see
 [Quickstart](quickstart.md)) -- plus external AI providers (Google Gemini,

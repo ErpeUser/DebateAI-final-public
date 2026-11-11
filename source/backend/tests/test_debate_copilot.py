@@ -688,9 +688,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             patch.dict(
                 "app.services.agents.orchestrator.os.environ",
                 {
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY": "local-key",
-                    "BACKCHANNEL_SUBSCRIPTION_MODELS": (
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_KEY": "local-key",
+                    "DEBATEAI_SUBSCRIPTION_MODELS": (
                         '["gpt-6-sol","gpt-6.1-sol","gemini-3.1-pro-high",'
                         '"gemini-3.1-pro-preview","gemini-3.8-flash-high"]'
                     ),

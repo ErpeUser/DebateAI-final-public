@@ -4,7 +4,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SPEC = (ROOT / "desktop" / "backchannel.spec").read_text()
+SPEC = (ROOT / "desktop" / "debateai.spec").read_text()
 WORKFLOW = (ROOT.parent / ".github" / "workflows" / "desktop-release.yml").read_text()
 MIGRATION_PATH = ROOT / "scripts" / "migrate_releases_to_r2.ps1"
 MIGRATION = MIGRATION_PATH.read_text() if MIGRATION_PATH.exists() else ""
@@ -25,7 +25,7 @@ NATIVE_BUILD_STEPS = (
     "npm run build",
     "download_models.py",
     "download_pg.py",
-    "python -m PyInstaller desktop/backchannel.spec",
+    "python -m PyInstaller desktop/debateai.spec",
     "desktop/scripts/smoke_test.py",
 )
 
@@ -73,12 +73,12 @@ PRODUCTION_SECRET_NAMES = (
     "R2_ACCESS_KEY_ID",
     "R2_SECRET_ACCESS_KEY",
     "R2_RELEASES_BUCKET",
-    "BACKCHANNEL_RELEASE_SIGNING_URL",
+    "DEBATEAI_RELEASE_SIGNING_URL",
     "CLOUDFLARE_ACCESS_CLIENT_ID",
     "CLOUDFLARE_ACCESS_CLIENT_SECRET",
 )
 # The local signing key never reaches GitHub in any job.
-LOCAL_SIGNING_KEY = "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY"
+LOCAL_SIGNING_KEY = "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"
 
 # Only these first-party actions may run, and only at a full commit SHA.
 ALLOWED_ACTIONS = {
@@ -145,9 +145,9 @@ class ReleaseContractTests(unittest.TestCase):
             "binutils",
             "pip install", "download_models.py",
             "rm -rf desktop/pgsql && python desktop/scripts/download_pg.py",
-            "python -m PyInstaller desktop/backchannel.spec",
+            "python -m PyInstaller desktop/debateai.spec",
             "COPY --from=controller smoke_test.py",
-            "USER nobody\nRUN python /tmp/backchannel-smoke-test.py",
+            "USER nobody\nRUN python /tmp/debateai-smoke-test.py",
             'tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI',
             "FROM scratch AS export",
             "COPY --from=bundle /out/DebateAI-linux-x64.tar.gz /",
@@ -156,7 +156,7 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertNotIn("ENTRYPOINT", LINUX_DOCKERFILE)
         self.assertNotIn("CMD", LINUX_DOCKERFILE)
         self.assertLess(
-            LINUX_DOCKERFILE.index("python -m PyInstaller desktop/backchannel.spec"),
+            LINUX_DOCKERFILE.index("python -m PyInstaller desktop/debateai.spec"),
             LINUX_DOCKERFILE.index("COPY --from=controller"),
         )
         self.assertIn('--build-context "controller=$ControllerScripts"', COORDINATOR)
@@ -253,7 +253,7 @@ class ReleaseContractTests(unittest.TestCase):
                     self.assertIn(name, publish)
                 self.assertIn("environment: production", publish)
                 self.assertNotIn("actions: write", publish)
-                self.assertIn("group: backchannel-r2-publish", publish)
+                self.assertIn("group: debateai-r2-publish", publish)
                 self.assertIn("cancel-in-progress: false", publish)
                 self.assertIn("ref: ${{ inputs.release_ref }}", publish)
                 self.assertRegex(
@@ -320,7 +320,7 @@ class ReleaseContractTests(unittest.TestCase):
                     "published_at: ${{ steps.release.outputs.published_at }}",
                     "cache_key: ${{ steps.handoff.outputs.cache_key }}",
                     "bundle_sha256: ${{ steps.handoff.outputs.bundle_sha256 }}",
-                    'cache_key="backchannel-%s-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}'
+                    'cache_key="debateai-%s-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}'
                     '-${EXPECTED_COMMIT}-${bundle_sha256}"' % platform,
                     "path: controller/release-assets/%s" % spec["archive"],
                     "key: ${{ steps.handoff.outputs.cache_key }}",
@@ -454,13 +454,13 @@ class ReleaseContractTests(unittest.TestCase):
             'SigningMode = "Remote"',
             "ValidateRange(1, 300)",
             "SigningTimeoutSeconds = 30",
-            "BACKCHANNEL_RELEASE_SIGNING_URL",
+            "DEBATEAI_RELEASE_SIGNING_URL",
             "CF-Access-Client-Id",
             "CF-Access-Client-Secret",
             "--signing-request-out",
             "--detached-key-id",
             "--detached-signature",
-            "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY",
+            "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY",
             "--keys-file",
             "--release-notes-file",
         ):

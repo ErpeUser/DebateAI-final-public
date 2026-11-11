@@ -62,10 +62,10 @@ function Start-BundledPostgres {
         throw "Docker läuft nicht und die gebündelten PostgreSQL-Binärdateien fehlen."
     }
 
-    $dataRoot = if ($env:BACKCHANNEL_DATA_DIR) {
-        $env:BACKCHANNEL_DATA_DIR
+    $dataRoot = if ($env:DEBATEAI_DATA_DIR) {
+        $env:DEBATEAI_DATA_DIR
     } else {
-        Join-Path $env:LOCALAPPDATA "Backchannel"
+        Join-Path $env:LOCALAPPDATA "DebateAI"
     }
     $pgData = Join-Path $dataRoot "pgdata"
     $passwordFile = Join-Path $dataRoot "pgpassword"
@@ -108,7 +108,7 @@ function Start-BundledPostgres {
             ([Guid]::NewGuid().ToString("N") + [Guid]::NewGuid().ToString("N")) |
                 Set-Content -LiteralPath $passwordFile -Encoding ascii -NoNewline
         }
-        & $initDb -D $pgData -U backchannel -A scram-sha-256 `
+        & $initDb -D $pgData -U debateai -A scram-sha-256 `
             --pwfile $passwordFile --no-locale -E UTF8
         if ($LASTEXITCODE -ne 0) { throw "Die lokale PostgreSQL-Datenbank konnte nicht initialisiert werden." }
     }
@@ -148,8 +148,8 @@ $databasePort = 5432
 $backend = $null
 $frontend = $null
 $oldDatabaseUrl = $env:DATABASE_URL
-$oldPromptDir = $env:BACKCHANNEL_PROMPT_DIR
-$oldApiTarget = $env:BACKCHANNEL_API_TARGET
+$oldPromptDir = $env:DEBATEAI_PROMPT_DIR
+$oldApiTarget = $env:DEBATEAI_API_TARGET
 
 try {
     if (-not $SkipDatabase -and -not $env:DATABASE_URL -and -not (Test-TcpPort -Port 5432)) {
@@ -165,7 +165,7 @@ try {
                 $ErrorActionPreference = $savedErrorPreference
             }
         }
-        $desktopCluster = Join-Path $env:LOCALAPPDATA "Backchannel\pgdata\PG_VERSION"
+        $desktopCluster = Join-Path $env:LOCALAPPDATA "DebateAI\pgdata\PG_VERSION"
         if (Test-Path -LiteralPath $desktopCluster -PathType Leaf) {
             Write-Host "[dev] Verwende die vorhandene eingebettete PostgreSQL-Datenbank ..."
             $embeddedDatabase = Start-BundledPostgres
@@ -191,12 +191,12 @@ try {
 
     if (-not $env:DATABASE_URL) {
         if ($databaseStarted -in @("embedded", "existing")) {
-            $env:DATABASE_URL = "postgresql+asyncpg://backchannel:$($embeddedDatabase.Password)@127.0.0.1:$databasePort/postgres"
+            $env:DATABASE_URL = "postgresql+asyncpg://debateai:$($embeddedDatabase.Password)@127.0.0.1:$databasePort/postgres"
         } else {
             $env:DATABASE_URL = "postgresql+asyncpg://callhelper:changeme@127.0.0.1:5432/callhelper"
         }
     }
-    $env:BACKCHANNEL_PROMPT_DIR = $promptRoot
+    $env:DEBATEAI_PROMPT_DIR = $promptRoot
 
     Write-Host "[dev] Backend mit Python-Reload und externen Prompts ..."
     $backend = Start-Process -FilePath $python -ArgumentList @(
@@ -213,7 +213,7 @@ try {
     }
 
     Write-Host "[dev] Frontend mit Vite Fast Refresh ..."
-    $env:BACKCHANNEL_API_TARGET = "http://127.0.0.1:$BackendPort"
+    $env:DEBATEAI_API_TARGET = "http://127.0.0.1:$BackendPort"
     $frontend = Start-Process -FilePath $node -ArgumentList @(
         $vite, "--host", "127.0.0.1", "--port", "$FrontendPort", "--strictPort"
     ) -WorkingDirectory $frontendRoot -PassThru -NoNewWindow
@@ -246,6 +246,6 @@ try {
         & $embeddedDatabase.PgCtl -D $embeddedDatabase.PgData -m fast -w stop 2>$null | Out-Null
     }
     $env:DATABASE_URL = $oldDatabaseUrl
-    $env:BACKCHANNEL_PROMPT_DIR = $oldPromptDir
-    $env:BACKCHANNEL_API_TARGET = $oldApiTarget
+    $env:DEBATEAI_PROMPT_DIR = $oldPromptDir
+    $env:DEBATEAI_API_TARGET = $oldApiTarget
 }

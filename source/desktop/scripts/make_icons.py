@@ -1,4 +1,4 @@
-"""Regenerate platform containers from the committed Backchannel mark.
+"""Regenerate platform containers from the committed DebateAI mark.
 
 ``desktop/assets/icon.png`` is the canonical generated brand asset.  This
 script only derives the Windows and macOS containers; it deliberately does

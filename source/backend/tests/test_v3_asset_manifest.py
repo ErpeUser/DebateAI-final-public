@@ -27,15 +27,15 @@ class V3AssetManifestTests(unittest.TestCase):
             "backend/models/voxceleb_resnet152_LM.onnx",
             "desktop/ffmpeg/ffmpeg.exe",
             "desktop/pgsql",
-            "dist/BackchannelUpdater.exe",
+            "dist/DebateAIUpdater.exe",
         ):
             self.assertEqual("needed", artifacts[path]["status"])
             self.assertTrue(artifacts[path]["owner"])
             self.assertTrue(artifacts[path]["reason"])
 
         for path in (
-            "dist/Backchannel-DebateAI-windows-x64.zip",
-            "dist/.Backchannel*.previous*",
+            "dist/DebateAI-windows-x64.zip",
+            "dist/.DebateAI*.previous*",
         ):
             self.assertEqual("rollback-candidate", artifacts[path]["status"])
             self.assertTrue(artifacts[path]["rollback"])

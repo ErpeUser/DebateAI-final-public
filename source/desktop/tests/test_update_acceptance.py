@@ -48,7 +48,7 @@ class NativeSmokeHarnessTests(unittest.TestCase):
             def wait(self, timeout=None):
                 self.waits += 1
                 if self.waits == 1:
-                    raise subprocess.TimeoutExpired("Backchannel", timeout)
+                    raise subprocess.TimeoutExpired("DebateAI", timeout)
                 self.returncode = 0
                 return 0
 
@@ -98,10 +98,10 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.root = Path(self.temp.name)
         self.data = self.root / "app-data"
-        self.install = self.root / "Backchannel"
+        self.install = self.root / "DebateAI"
         self.install.mkdir()
-        (self.install / "Backchannel.exe").write_bytes(b"known-good")
-        self.helper = self.root / "BackchannelUpdater.exe"
+        (self.install / "DebateAI.exe").write_bytes(b"known-good")
+        self.helper = self.root / "DebateAIUpdater.exe"
         self.helper.write_bytes(b"helper")
 
         public = Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY).public_key().public_bytes(
@@ -146,8 +146,8 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
     def test_signed_update_resumes_swaps_and_rolls_back_with_bounded_memory(self):
         payload = random.Random(150).randbytes(3 * CHUNK_SIZE)
         archive = zip_bundle({
-            "Backchannel/Backchannel.exe": b"new-launcher",
-            "Backchannel/payload.bin": payload,
+            "DebateAI/DebateAI.exe": b"new-launcher",
+            "DebateAI/payload.bin": payload,
         })
         self.assertGreater(len(archive), 3 * CHUNK_SIZE)
 
@@ -206,7 +206,7 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
                     sleep=lambda _seconds: None,
                 )
             self.assertEqual(result, 0)
-            self.assertEqual((self.install / "Backchannel.exe").read_bytes(), b"new-launcher")
+            self.assertEqual((self.install / "DebateAI.exe").read_bytes(), b"new-launcher")
 
             # Repeat the same verified download, then reject the new health and
             # prove the known-good install is relaunched.
@@ -216,7 +216,7 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
             service.start_download(GRANT)
             service.wait_for_download()
             self.assertEqual(service.status()["state"], "ready")
-            (self.install / "Backchannel.exe").write_bytes(b"known-good")
+            (self.install / "DebateAI.exe").write_bytes(b"known-good")
             service.request_apply()
 
             failed = Mock()
@@ -234,9 +234,9 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
                 sleep=lambda _seconds: None,
             )
             self.assertEqual(result, 1)
-            self.assertEqual((self.install / "Backchannel.exe").read_bytes(), b"known-good")
+            self.assertEqual((self.install / "DebateAI.exe").read_bytes(), b"known-good")
             self.assertEqual(
-                (self.root / "Backchannel.failed-v0.4.0" / "Backchannel.exe").read_bytes(),
+                (self.root / "DebateAI.failed-v0.4.0" / "DebateAI.exe").read_bytes(),
                 b"new-launcher",
             )
             self.assertEqual(launches.call_count, 2)

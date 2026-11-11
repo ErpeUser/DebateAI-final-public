@@ -4,7 +4,7 @@ The desktop owns the process and OAuth files.  This module owns the backend
 wire contract: strict loopback validation, lossless model metadata, explicit
 reasoning/streaming parameters, and bounded rate-limit handling.  It never
 retries a provider request; CLIProxyAPI may fail over between its configured
-credentials, while Backchannel records only the affected provider/model pair.
+credentials, while DebateAI records only the affected provider/model pair.
 """
 
 from __future__ import annotations

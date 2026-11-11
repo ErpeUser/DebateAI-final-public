@@ -129,7 +129,7 @@ class DesktopDebateRuntimeTests(unittest.IsolatedAsyncioTestCase):
         objection.model_id = "gemini-3-flash-preview"
         db = _DesktopFakeSession(objection=objection)
 
-        with mock.patch.dict("os.environ", {"BACKCHANNEL_DESKTOP": "1"}):
+        with mock.patch.dict("os.environ", {"DEBATEAI_DESKTOP": "1"}):
             await configure_desktop_debate_runtime(db)
 
         self.assertEqual(DESKTOP_DEBATE_MODEL_ID, objection.model_id)
@@ -150,7 +150,7 @@ class DesktopDebateRuntimeTests(unittest.IsolatedAsyncioTestCase):
         marker = SimpleNamespace(key="debate.desktop.local_live.v1", value="1")
         db = _DesktopFakeSession(objection=objection, settings={marker.key: marker})
 
-        with mock.patch.dict("os.environ", {"BACKCHANNEL_DESKTOP": "1"}):
+        with mock.patch.dict("os.environ", {"DEBATEAI_DESKTOP": "1"}):
             await configure_desktop_debate_runtime(db)
 
         self.assertEqual("gemini-3.8-flash", objection.model_id)

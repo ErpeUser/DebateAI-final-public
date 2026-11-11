@@ -190,7 +190,7 @@ def build_summary_sheet(
 
 
 def _summary_masthead(ws, session, questions: list, participants: list, rename: Rename) -> int:
-    row = _write(ws, 1, ["BACKCHANNEL BRIEFING"], bold=True, size=9, color=TEAL_DARK)
+    row = _write(ws, 1, ["DEBATEAI BRIEFING"], bold=True, size=9, color=TEAL_DARK)
     name = rename(_clean(getattr(session, "name", ""))) or "Session"
     row = _write(ws, row, [name], bold=True, size=20)
     ws.row_dimensions[row - 1].height = 30

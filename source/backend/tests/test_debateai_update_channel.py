@@ -50,8 +50,8 @@ class UpdateChannelTests(unittest.TestCase):
 
     def test_legacy_download_service_is_rejected(self):
         c=self.config()
-        c['DEBATEAI_UPDATE_DESCRIPTOR_URL']='https://downloads.backchannel.page/latest/{platform_id}'
-        c['DEBATEAI_UPDATE_ASSET_URL']='https://downloads.backchannel.page/assets/{version}/{platform_id}'
+        c['DEBATEAI_UPDATE_DESCRIPTOR_URL']='https://updates.invalid/latest/{platform_id}'
+        c['DEBATEAI_UPDATE_ASSET_URL']='https://updates.invalid/assets/{version}/{platform_id}'
         with self.assertRaises(ValueError): self.load().channel_configuration(c)
 
     def test_origin_mismatch_rejected(self):

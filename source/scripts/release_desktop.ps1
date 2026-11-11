@@ -173,7 +173,7 @@ function Get-ReleasePublicationState {
     }
 
     $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-    $temporary = Join-Path $tempRoot ("backchannel-release-preflight-" + [guid]::NewGuid().ToString("N"))
+    $temporary = Join-Path $tempRoot ("debateai-release-preflight-" + [guid]::NewGuid().ToString("N"))
     New-Item -ItemType Directory -Path $temporary | Out-Null
     try {
         $identityPath = Join-Path $temporary "release.json"
@@ -402,18 +402,18 @@ function Build-WindowsRelease {
     }
     Push-Location $Source
     try {
-        $previousOracleFlag = $env:BACKCHANNEL_INCLUDE_ORACLE
-        $env:BACKCHANNEL_INCLUDE_ORACLE = "true"
+        $previousOracleFlag = $env:DEBATEAI_INCLUDE_ORACLE
+        $env:DEBATEAI_INCLUDE_ORACLE = "true"
         try {
             Invoke-Checked "Building Windows desktop bundle" {
-                & $venvPython -m PyInstaller desktop/backchannel.spec `
+                & $venvPython -m PyInstaller desktop/debateai.spec `
                     --distpath dist --workpath build --noconfirm
             } | Out-Null
         } finally {
             if ($null -eq $previousOracleFlag) {
-                Remove-Item Env:BACKCHANNEL_INCLUDE_ORACLE -ErrorAction SilentlyContinue
+                Remove-Item Env:DEBATEAI_INCLUDE_ORACLE -ErrorAction SilentlyContinue
             } else {
-                $env:BACKCHANNEL_INCLUDE_ORACLE = $previousOracleFlag
+                $env:DEBATEAI_INCLUDE_ORACLE = $previousOracleFlag
             }
         }
         Invoke-Checked "Smoke testing Windows desktop bundle" {
@@ -533,7 +533,7 @@ $python = Resolve-Python312
 Push-Location $repoRoot
 $oldPath = $env:PATH
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
-$temporary = Join-Path $tempRoot ("backchannel-desktop-release-" + [guid]::NewGuid().ToString("N"))
+$temporary = Join-Path $tempRoot ("debateai-desktop-release-" + [guid]::NewGuid().ToString("N"))
 $sourceRoot = Join-Path $temporary "source"
 $worktreeAdded = $false
 $failures = [Collections.Generic.List[string]]::new()

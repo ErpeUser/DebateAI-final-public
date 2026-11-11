@@ -10,7 +10,11 @@ import time
 import ctypes
 from pathlib import Path
 
-from bcdesktop.windows_console import hidden_startupinfo
+from debateai_desktop.windows_console import hidden_startupinfo
+
+
+DB_ROLE = "debateai"
+_LEGACY_DB_ROLE = "backchannel"
 
 
 def _windows_creation_flags() -> int:
@@ -177,12 +181,26 @@ class EmbeddedPostgres:
         self._run([
             str(self.bin / "initdb"),
             "-D", str(self.pgdata),
-            "-U", "backchannel",
+            "-U", "debateai",
             "-A", "scram-sha-256",
             "--pwfile", str(self.pwfile),
             "--no-locale",
             "-E", "UTF8",
         ])
+
+    def ensure_role(self, port: int) -> None:
+        """Rename a pre-DebateAI cluster role once, preserving its password."""
+        psql = self.bin / ("psql.exe" if sys.platform == "win32" else "psql")
+        env = os.environ.copy()
+        env["PGPASSWORD"] = self.password()
+        base = [str(psql), "-h", "127.0.0.1", "-p", str(port), "-d", "postgres"]
+        probe = subprocess.run([*base, "-U", DB_ROLE, "-c", "SELECT 1"], capture_output=True, text=True, env=env, creationflags=_windows_creation_flags(), startupinfo=hidden_startupinfo())
+        if probe.returncode == 0:
+            return
+        migrate = subprocess.run([*base, "-U", _LEGACY_DB_ROLE, "-c", f'ALTER ROLE "{_LEGACY_DB_ROLE}" RENAME TO "{DB_ROLE}"'], capture_output=True, text=True, env=env, creationflags=_windows_creation_flags(), startupinfo=hidden_startupinfo())
+        if migrate.returncode != 0:
+            detail = (migrate.stderr or migrate.stdout or probe.stderr).strip()
+            raise RuntimeError(f"postgres role migration failed: {detail}")
 
     def recover_stale(self) -> None:
         # A postmaster.pid left by a crash blocks the next start. pg_ctl
@@ -266,6 +284,6 @@ class EmbeddedPostgres:
     def database_url(self, port: int) -> str:
         # token_hex passwords are URL-safe by construction.
         return (
-            f"postgresql+asyncpg://backchannel:{self.password()}"
+            f"postgresql+asyncpg://debateai:{self.password()}"
             f"@127.0.0.1:{port}/postgres"
         )

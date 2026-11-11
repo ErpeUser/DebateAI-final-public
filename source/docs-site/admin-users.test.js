@@ -34,10 +34,10 @@ const credential = {
   password_expires_at: resetItem.password_expires_at,
 };
 const expectedCredential = [
-  'Backchannel desktop access',
+  'DebateAI desktop access',
   `Account: ${user.email}`,
   'Temporary password: generated-value',
-  'Sign in: https://downloads.backchannel.page/',
+  'Sign in: https://downloads.debateai.test/',
   `Password expires: ${resetItem.password_expires_at}`,
 ].join('\n');
 

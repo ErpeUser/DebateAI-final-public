@@ -18,10 +18,22 @@ import {
 import { applyEdgePolicy, canonicalRedirect } from './edge-policy.js';
 
 const API_PATH = '/api/interest';
-const PUBLIC_HOST = 'backchannel.page';
-const WWW_HOST = 'www.backchannel.page';
-const ADMIN_HOST = 'admin.backchannel.page';
-const DOWNLOAD_HOST = 'downloads.backchannel.page';
+
+function hostConfig(env) {
+  const normalize = (value) => typeof value === 'string'
+    ? value.trim().toLowerCase()
+    : value;
+  const hosts = {
+    publicHost: normalize(env.DEBATEAI_PUBLIC_HOST),
+    wwwHost: normalize(env.DEBATEAI_WWW_HOST),
+    adminHost: normalize(env.DEBATEAI_ADMIN_HOST),
+    downloadHost: normalize(env.DEBATEAI_DOWNLOAD_HOST),
+  };
+  if (Object.values(hosts).some((value) => (
+    typeof value !== 'string' || !/^[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?$/i.test(value)
+  ))) return null;
+  return hosts;
+}
 const ADMIN_INTERESTS_PATH = '/api/admin/interests';
 const ADMIN_USERS_PATH = '/api/admin/users';
 const ADMIN_AUTHORIZATION_PATH = '/api/admin/authorization';
@@ -293,7 +305,7 @@ export async function handleAdminReleases(request, env) {
 
 async function readAdminBody(
   request,
-  host = ADMIN_HOST,
+  host = new URL(request.url).hostname,
   maxBytes = MAX_ADMIN_BODY_BYTES,
   respond = privateJson,
 ) {
@@ -1128,7 +1140,7 @@ async function streamReleaseAsset(request, env, manifest, asset, email, dependen
 }
 
 async function readDownloadBody(request) {
-  return readAdminBody(request, DOWNLOAD_HOST, MAX_DOWNLOAD_BODY_BYTES, downloadJson);
+  return readAdminBody(request, new URL(request.url).hostname, MAX_DOWNLOAD_BODY_BYTES, downloadJson);
 }
 
 function validUpdateGrantBody(body) {
@@ -1265,7 +1277,7 @@ async function handleDownloadLogin(request, env, dependencies) {
   } catch {
     return downloadUnavailable();
   }
-  if (verification?.success !== true || verification.hostname !== DOWNLOAD_HOST
+  if (verification?.success !== true || verification.hostname !== new URL(request.url).hostname
     || verification.action !== 'download_login') return signInDenied();
 
   let account;
@@ -1636,25 +1648,20 @@ export async function handleInterest(request, env, fetcher = fetch) {
   });
 }
 
-const EDGE_HOSTS = {
-  publicHost: PUBLIC_HOST,
-  wwwHost: WWW_HOST,
-  adminHost: ADMIN_HOST,
-  downloadHost: DOWNLOAD_HOST,
-};
-
 export async function route(request, env, verify = verifyAccessToken, dependencies = {}) {
+  const hosts = hostConfig(env);
+  if (!hosts) return privateJson(503, { ok: false, message: 'Site host configuration is unavailable.' });
   const url = new URL(request.url);
-  const redirect = canonicalRedirect(url, EDGE_HOSTS);
+  const redirect = canonicalRedirect(url, hosts);
   if (redirect) return redirect;
-  return applyEdgePolicy(url, await dispatch(url, request, env, verify, dependencies), EDGE_HOSTS);
+  return applyEdgePolicy(url, await dispatch(url, request, env, verify, dependencies, hosts), hosts);
 }
 
-async function dispatch(url, request, env, verify, dependencies) {
-  if (![PUBLIC_HOST, ADMIN_HOST, DOWNLOAD_HOST].includes(url.hostname)) {
+async function dispatch(url, request, env, verify, dependencies, hosts) {
+  if (![hosts.publicHost, hosts.adminHost, hosts.downloadHost].includes(url.hostname)) {
     return privateJson(404, { ok: false, message: 'Not found.' });
   }
-  if (url.hostname === DOWNLOAD_HOST) {
+  if (url.hostname === hosts.downloadHost) {
     const assetPath = DOWNLOAD_ASSETS.get(url.pathname);
     if (assetPath) return handleDownloadAsset(request, env, assetPath);
     if (url.pathname.startsWith('/api/update/latest/')) {
@@ -1672,7 +1679,7 @@ async function dispatch(url, request, env, verify, dependencies) {
     }
     return handleDownloadRequest(request, env, dependencies);
   }
-  if (url.hostname === ADMIN_HOST) {
+  if (url.hostname === hosts.adminHost) {
     const denied = await authorizeAdmin(request, env, verify);
     if (denied) return denied;
     if (url.pathname === ADMIN_INTERESTS_PATH) {

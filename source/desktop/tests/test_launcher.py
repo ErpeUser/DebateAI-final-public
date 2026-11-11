@@ -35,7 +35,7 @@ class LauncherHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             canonical = root / "DebateAIUpdater.exe"
-            legacy = root / "BackchannelUpdater.exe"
+            legacy = root / "DebateAIUpdater.exe"
             self.assertEqual(launcher.updater_path(root), canonical)
             legacy.write_bytes(b"legacy")
             self.assertEqual(launcher.updater_path(root), legacy)
@@ -535,22 +535,22 @@ class LauncherHelperTests(unittest.TestCase):
             ws_max_queue=2048,
             ws_max_size=65_536,
         )
-        self.assertEqual(launcher.os.environ["BACKCHANNEL_DESKTOP"], "1")
-        self.assertEqual(launcher.os.environ["BACKCHANNEL_INSTANCE_TOKEN"], "ours")
+        self.assertEqual(launcher.os.environ["DEBATEAI_DESKTOP"], "1")
+        self.assertEqual(launcher.os.environ["DEBATEAI_INSTANCE_TOKEN"], "ours")
         self.assertEqual(
-            launcher.os.environ["BACKCHANNEL_INSTALL_DIR"],
+            launcher.os.environ["DEBATEAI_INSTALL_DIR"],
             str(launcher.install_root()),
         )
         self.assertEqual(
-            launcher.os.environ["BACKCHANNEL_UPDATE_KEYS"],
+            launcher.os.environ["DEBATEAI_UPDATE_KEYS"],
             str(Path(tmp)),
         )
         self.assertEqual(
-            launcher.os.environ["BACKCHANNEL_UPDATE_HELPER"],
+            launcher.os.environ["DEBATEAI_UPDATE_HELPER"],
             str(launcher.updater_path(launcher.install_root())),
         )
         self.assertEqual(
-            launcher.os.environ["BACKCHANNEL_UPDATE_APPLY_DISABLED"],
+            launcher.os.environ["DEBATEAI_UPDATE_APPLY_DISABLED"],
             "0",
         )
 
@@ -683,7 +683,7 @@ class LauncherHelperTests(unittest.TestCase):
             marker = data_dir / "updates" / "apply.json"
             marker.parent.mkdir()
             marker.write_text(json.dumps({"version": "v0.4.0"}))
-            helper = data_dir / "installed" / "BackchannelUpdater.exe"
+            helper = data_dir / "installed" / "DebateAIUpdater.exe"
             helper.parent.mkdir()
             helper.write_bytes(b"helper")
             with (
@@ -786,7 +786,7 @@ class LauncherHelperTests(unittest.TestCase):
         self.assertFalse(launcher.wait_healthy(port, timeout=0.2))
 
     def test_wait_healthy_false_when_nothing_listens(self):
-        from bcdesktop.paths import free_port
+        from debateai_desktop.paths import free_port
 
         self.assertFalse(
             launcher.wait_healthy(free_port(), timeout=1, token="ours")

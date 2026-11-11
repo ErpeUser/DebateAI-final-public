@@ -1,10 +1,10 @@
 <p align="center">
-  <img src="assets/wordmark.svg" alt="Backchannel" width="420" />
+  <img src="assets/wordmark.svg" alt="DebateAI" width="420" />
 </p>
 
-# Backchannel Documentation
+# DebateAI Documentation
 
-Backchannel is a real-time meeting analysis app. A React frontend captures
+DebateAI is a real-time meeting analysis app. A React frontend captures
 microphone (and optionally tab/system) audio, streams it to a FastAPI backend
 over WebSocket, and the backend produces a speaker-attributed transcript while
 a set of provider-routed AI agents surface questions, observations,
@@ -13,10 +13,11 @@ call's command bar also answers a question put to the conversation so far,
 without interrupting it ([Agent System](agents.md#asking-during-a-call)).
 
 This folder is the deeper technical reference behind the top-level
-[README](../README.md). For how Backchannel differs from the other meeting
-assistants people evaluate, the public site's
-[comparison hub](https://backchannel.page/open-source-meeting-assistants/)
-indexes every open-source and commercial comparison.
+[README](../README.md). For how DebateAI differs from the other meeting
+assistants people evaluate, the public site's historical
+[comparison hub](https://github.com/ErpeUser/DebateAI/blob/master/source/site/open-source-meeting-assistants/index.html)
+indexes every open-source and commercial comparison; it is informational and
+is not a runtime or update dependency.
 
 For desktop operations, [Releasing](releasing.md) and the private R2 manifests
 are authoritative. GitHub releases retain public source tags and notes without
@@ -68,9 +69,9 @@ npm run build
 
 ## DebateAI V6 canonical contracts
 
-The canonical product identity is DebateAI. Backchannel paths, bundle names and
-environment variables remain compatibility aliases until the native migration
-and rollback gates are complete.
+The canonical product identity is DebateAI. Active paths, bundle names and
+environment variables use DebateAI exclusively. Legacy identifiers occur only in
+the explicit migration code and historical evidence.
 
 - [Product vision](DEBATE_AI_VISION_FINAL.md)
 - [Desktop completion and Windows runbook](DESKTOP_FINAL.md)

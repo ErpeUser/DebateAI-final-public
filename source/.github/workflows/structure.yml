@@ -50,13 +50,13 @@ jobs:
     continue-on-error: true
     steps:
       - name: Check out the head
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           path: head
 
       - name: Check out the base
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
           path: base
@@ -69,7 +69,7 @@ jobs:
         if: >-
           github.event_name == 'push' &&
           github.event.before != '0000000000000000000000000000000000000000'
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         continue-on-error: true
         with:
           ref: ${{ github.event.before }}

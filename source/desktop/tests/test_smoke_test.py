@@ -14,7 +14,7 @@ except ModuleNotFoundError:
 
 class _Response:
     status = 200
-    headers = {"X-Backchannel-Instance": "ours"}
+    headers = {"X-DebateAI-Instance": "ours"}
 
     def __enter__(self):
         return self
@@ -38,8 +38,8 @@ class SmokeTestTests(unittest.TestCase):
         self.assertNotIn("GEMINI_API_KEY", environment)
         self.assertNotIn("OPENAI_API_KEY", environment)
         self.assertEqual(environment["SAFE"], "kept")
-        self.assertEqual(environment["BACKCHANNEL_DATA_DIR"], "isolated-data")
-        self.assertEqual(environment["BACKCHANNEL_HEADLESS"], "1")
+        self.assertEqual(environment["DEBATEAI_DATA_DIR"], "isolated-data")
+        self.assertEqual(environment["DEBATEAI_HEADLESS"], "1")
 
     def test_archive_smoke_uses_a_space_and_non_ascii_path(self):
         with smoke_update_archive.temporary_directory() as root:
@@ -47,8 +47,8 @@ class SmokeTestTests(unittest.TestCase):
             self.assertTrue(any(ord(character) > 127 for character in str(root)))
 
     def test_bundle_exe_accepts_an_explicit_staged_bundle(self):
-        bundle = Path("release stage") / "Backchannel"
-        expected = bundle / "Backchannel.exe"
+        bundle = Path("release stage") / "DebateAI"
+        expected = bundle / "DebateAI.exe"
         with patch.object(Path, "exists", return_value=True):
             self.assertEqual(smoke_test.bundle_exe(bundle), expected)
 
@@ -76,7 +76,7 @@ class SmokeTestTests(unittest.TestCase):
     def test_stop_process_repeats_signal_until_launcher_observes_it(self):
         proc = Mock()
         proc.poll.side_effect = [None, None, 0]
-        proc.wait.side_effect = [subprocess.TimeoutExpired("Backchannel", 1), 0]
+        proc.wait.side_effect = [subprocess.TimeoutExpired("DebateAI", 1), 0]
         with tempfile.TemporaryDirectory() as tmp:
             stop = Path(tmp) / "stop"
             with patch.object(smoke_test.time, "monotonic", side_effect=[0, 0, 1]):

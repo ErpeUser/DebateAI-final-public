@@ -1,6 +1,26 @@
 # Finale Bestandsaufnahme und offene Arbeiten
 Stand: 2026-11-10; Basis bei Sichtung: `master` = `a5ada5a51a16423be5f5027ac10a080e786ac738`. Dies ist ein **Evidenzregister**, kein pauschaler Fertigstellungsbericht.
 
+## Aktueller Branch-Nachtrag — 2026-11-11
+
+Die Bestandsaufnahme darunter bleibt als historisches Evidenzregister für den
+damaligen `master`-Stand erhalten. Der aktuelle Branch
+`codex/debateai-identity-decoupling` enthält inzwischen die vollständige
+DebateAI-Identitätsumstellung:
+
+- Aktive Desktop-, Backend-, Frontend-, Docker-, Update- und Releasepfade
+  verwenden die kanonischen DebateAI-Namen.
+- Alte AppData-, PostgreSQL-, PII- und Browser-Schlüssel werden ausschließlich
+  in isolierten, nicht destruktiven Migrationen gelesen.
+- Die Produktions-Signaturprüfung verlangt eine explizite HTTPS-URL aus der
+  Deployment-Konfiguration; es gibt keinen eingebetteten Hersteller- oder
+  Download-Domain-Fallback.
+- Ein aktiver Laufzeitscan schützt die wichtigsten Runtime-Verzeichnisse vor
+  der Rückkehr alter Env-/Header-/Paket-/Archiv-/Domain-Bezeichner.
+- Windows-Build, reale Audio-/ASR-Messung, Hardware-/DPI-/Rollback-Abnahme,
+  Authenticode, reale Signatur-/DNS-Veröffentlichung und CI-Provisionierung
+  bleiben externe Gates, bis frische Belege vorliegen.
+
 ## Gesichtet: bestehende und bereits versionierte Fähigkeiten
 - Desktop-/Windows-Launcher: WebView2, Tray, separates Always-on-top-Overlay, Laufzeitverwaltung für PostgreSQL/Ollama/Bridges; Dateiverweis `source/desktop/launcher.py`.
 - Debate-Backend: `source/backend/app/services/agents/orchestrator.py`, `objection_handler.py` mit kurzem `answer_now`, `counter_question`, strategischem `primary_move`, Revisionen, lokalem Qwen-Pfad über native Ollama-API.
@@ -59,6 +79,7 @@ Pro Bereich `bestanden` / `fehlgeschlagen` / `nicht ausführbar`, genaue Befehle
   reruns; a run with `steps: []` remains an Actions infrastructure blocker.
 - The native Windows, A06/A18/A21/A22, update/rollback and human-review gates
   remain open until their real evidence is produced.
-- Backchannel file, EXE and AppData names remain compatibility aliases until an
-  atomic DebateAI migration is tested; historical documentation is retained
-  when referenced by build, release or audit contracts.
+- Historical Backchannel file, EXE and AppData names are retained only as
+  migration inputs or evidence records. The active branch uses DebateAI names;
+  migration remains non-destructive and historical documentation is retained
+  when it is referenced by an audit or integrity contract.

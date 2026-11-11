@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Private Meeting AI: Keep Clients' Names Out of Every Model | Backchannel</title>
-  <meta name="description" content="Use an AI meeting assistant without handing over your clients' names. Backchannel tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source." />
-  <link rel="canonical" href="https://backchannel.page/private-meeting-ai/" />
-  <meta property="og:title" content="Private Meeting AI: Keep Clients' Names Out of Every Model | Backchannel" />
-  <meta property="og:description" content="Use an AI meeting assistant without handing over your clients' names. Backchannel tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source." />
+  <title>Private Meeting AI: Keep Clients' Names Out of Every Model | DebateAI</title>
+  <meta name="description" content="Use an AI meeting assistant without handing over your clients' names. DebateAI tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source." />
+  <link rel="canonical" href="/private-meeting-ai/" />
+  <meta property="og:title" content="Private Meeting AI: Keep Clients' Names Out of Every Model | DebateAI" />
+  <meta property="og:description" content="Use an AI meeting assistant without handing over your clients' names. DebateAI tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source." />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Backchannel" />
-  <meta property="og:url" content="https://backchannel.page/private-meeting-ai/" />
-  <meta property="og:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta property="og:site_name" content="DebateAI" />
+  <meta property="og:url" content="/private-meeting-ai/" />
+  <meta property="og:image" content="/assets/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Backchannel: live meeting transcription and real-time insight agents, self-hosted." />
+  <meta property="og:image:alt" content="DebateAI: live meeting transcription and real-time insight agents, self-hosted." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta name="twitter:image" content="/assets/og-image.png" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="stylesheet" href="../style.css" />
   <script type="application/ld+json">
@@ -25,15 +25,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "url": "https://backchannel.page/private-meeting-ai/",
-        "name": "Private Meeting AI: Keep Clients' Names Out of Every Model | Backchannel",
-        "description": "Use an AI meeting assistant without handing over your clients' names. Backchannel tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source.",
+        "url": "/private-meeting-ai/",
+        "name": "Private Meeting AI: Keep Clients' Names Out of Every Model | DebateAI",
+        "description": "Use an AI meeting assistant without handing over your clients' names. DebateAI tokenizes personal data the moment it is written, so every model, local or cloud, reads [PERSON_1] and not Owen. The mechanism, its limits, and where to verify each claim in the source.",
         "dateModified": "2026-09-03",
         "isPartOf": {
-          "@id": "https://backchannel.page/#website"
+          "@id": "/#website"
         },
         "about": {
-          "@id": "https://backchannel.page/#software"
+          "@id": "/#software"
         }
       },
       {
@@ -42,8 +42,8 @@
           {
             "@type": "ListItem",
             "position": 1,
-            "name": "Backchannel",
-            "item": "https://backchannel.page/"
+            "name": "DebateAI",
+            "item": "/"
           },
           {
             "@type": "ListItem",
@@ -117,13 +117,13 @@
   <div class="wrap">
     <a class="brand" href="/">
       <img src="/assets/favicon.svg" alt="" />
-      backchannel
+      DebateAI
     </a>
     <nav class="site-nav">
       <a href="/#features">Features</a>
       <a href="/blog/">Writing</a>
       <a href="/docs/">Docs</a>
-      <a class="btn primary nav-cta" href="https://github.com/talberthoule/backchannel">Star on GitHub</a>
+      <a class="btn primary nav-cta" href="https://github.com/ErpeUser/DebateAI">Star on GitHub</a>
     </nav>
   </div>
 </header>
@@ -134,7 +134,7 @@
     <div class="wrap">
       <h1>Put AI in the meeting. Keep <span class="accent">the names</span> out of the model.</h1>
       <p class="lede">
-        Backchannel is an open-source meeting assistant you run yourself. With
+        DebateAI is an open-source meeting assistant you run yourself. With
         its PII Shield on, a client's name, company, email address or phone
         number becomes a per-session token the moment it is written, and every
         model, on this machine or in a cloud, reads the token. This page is the
@@ -143,9 +143,9 @@
         check it yourself.
       </p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="#mechanism">Read the mechanism</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
       <p class="quickstart-note">Off by default &middot; detection runs on this machine &middot; MIT licensed &middot; free desktop downloads, no sign-in needed</p>
     </div>
@@ -224,7 +224,7 @@
           is the leak.
         </p>
         <p>
-          Backchannel encodes at ingress instead. Every path that writes human
+          DebateAI encodes at ingress instead. Every path that writes human
           text passes through <code>protect_text</code> (or
           <code>protect_name</code>, for speakers) in
           <code>backend/app/services/pii/shield.py</code> before the row
@@ -390,7 +390,7 @@
               <picture>
                 <source srcset="/assets/shots/live-call-dark.webp" media="(prefers-color-scheme: dark)" />
                 <img src="/assets/shots/live-call.webp" width="1440" height="900" loading="lazy"
-                     alt="Backchannel during a live call: three strategic signals across the top, 125 live insights with a question you asked already answered, and a live transcription column on the right where Owen, Me and Maya are named on each line. The ask bar along the bottom shows a Gemini model selected." />
+                     alt="DebateAI during a live call: three strategic signals across the top, 125 live insights with a question you asked already answered, and a live transcription column on the right where Owen, Me and Maya are named on each line. The ask bar along the bottom shows a Gemini model selected." />
               </picture>
             </div>
             <figcaption class="fig-caption"><span class="fig-no">FIG. 4</span><span>A live call with the names on screen. The transcript column, the answered question and the signal cards all reached the browser through the revealing WebSocket; the models that produced them saw tokens.</span></figcaption>
@@ -632,9 +632,9 @@ grep -rl "reveal_" backend/app/services/agents backend/app/services/llm.py
       <h2>Try it on a sentence before you try it on a client</h2>
       <p class="sub">Install, open Admin, Privacy, and paste the worst sentence you can think of into the try-a-sentence box. Nothing typed there is stored, and the legend tells you which layer caught what.</p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/docs/configuration/">Read the configuration docs</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -673,7 +673,7 @@ grep -rl "reveal_" backend/app/services/agents backend/app/services/llm.py
     <a href="/fireflies-alternative/">Fireflies.ai alternative without the bot</a>
     <a href="/granola-alternative/">Open-source Granola alternative</a>
     <a href="/fathom-alternative/">Fathom alternative</a>
-    <a href="/gong-and-backchannel/">Gong and Backchannel</a>
+    <a href="/gong-and-backchannel/">Gong and DebateAI</a>
     <a href="/teams-premium-alternative/">Teams Premium alternative</a>
   </div>
   <div class="wrap footer-compare">
@@ -682,8 +682,8 @@ grep -rl "reveal_" backend/app/services/agents backend/app/services/llm.py
     <a href="/blog/three-degrees-of-local/">Three degrees of local</a>
   </div>
   <div class="wrap">
-    <span>Backchannel -- an open-source, self-hosted AI meeting assistant.</span>
-    <span>Released under the <a href="https://github.com/talberthoule/backchannel/blob/master/LICENSE">MIT License</a>.</span>
+    <span>DebateAI -- an open-source, self-hosted AI meeting assistant.</span>
+    <span>Released under the <a href="https://github.com/ErpeUser/DebateAI/blob/master/LICENSE">MIT License</a>.</span>
     <span><a href="/releases/">All releases</a></span>
   </div>
 </footer>

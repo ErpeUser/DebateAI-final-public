@@ -18,7 +18,7 @@ interface ChatMsg {
 }
 
 const MAX_HISTORY_MESSAGES = 8;
-const CHAT_STORAGE_PREFIX = "backchannel:meeting-chat:";
+const CHAT_STORAGE_PREFIX = "debateai:meeting-chat:";
 
 function trimHistory(messages: ChatMsg[]): ChatMsg[] {
   return messages.slice(-MAX_HISTORY_MESSAGES);

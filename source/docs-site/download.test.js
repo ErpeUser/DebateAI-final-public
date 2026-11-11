@@ -106,7 +106,7 @@ test('desktop update handoff validates exact loopback parameters and sends the g
   assert.match(script, /globalThis\.opener/);
   assert.match(script, /globalThis\.opener\.postMessage\(\{/);
   for (const field of [
-    "type: 'backchannel-update-grant'",
+    "type: 'debateai-update-grant'",
     'nonce: updateRequest.nonce',
     'version: result.version',
     'asset_id: result.asset_id',
@@ -253,7 +253,7 @@ test('recipient release rendering executes with safe fields, encoded links, and 
       assets: [{
         id: 'windows/x64',
         platform: 'Windows x64',
-        filename: 'Backchannel-windows-x64.zip',
+        filename: 'DebateAI-windows-x64.zip',
         size: 2048,
         sha256: 'a'.repeat(64),
       }],
@@ -292,11 +292,11 @@ test('recipient release rendering executes with safe fields, encoded links, and 
     const link = article.children.find(({ tagName }) => tagName === 'a');
     assert.equal(release.children[0].textContent, 'v1.2.3 (Latest)');
     assert.equal(article.children[0].textContent, 'Windows x64');
-    assert.equal(article.children[1].textContent, 'Backchannel-windows-x64.zip - 2.0 KiB');
+    assert.equal(article.children[1].textContent, 'DebateAI-windows-x64.zip - 2.0 KiB');
     assert.equal(article.children[2].textContent, `SHA-256: ${'a'.repeat(64)}`);
     assert.equal(link.href, '/api/download/releases/v1.2.3/windows%2Fx64');
     link.handlers.get('click')();
-    assert.equal(releasesIntro.textContent, 'Starting download: Backchannel-windows-x64.zip');
+    assert.equal(releasesIntro.textContent, 'Starting download: DebateAI-windows-x64.zip');
     assert.equal(release.focused, true);
     assert.equal(release.scrolled, true);
   } finally {
@@ -458,7 +458,7 @@ test('download contract is runnable and static assets contain no secrets', () =>
   assert.doesNotMatch(`${html}\n${script}\n${css}`, /ADMIN_EMAIL|ACCESS_AUD|TURNSTILE_SECRET|owner@example\.com|cloudflareaccess\.com/i);
 });
 
-test('Wrangler disables public Worker URLs and binds private releases on four custom domains', () => {
+test('Wrangler requires deployment-provided routes and storage bindings', () => {
   assert.equal(wrangler.workers_dev, false);
   assert.equal(wrangler.preview_urls, false);
   assert.deepEqual(wrangler.observability, {
@@ -467,15 +467,8 @@ test('Wrangler disables public Worker URLs and binds private releases on four cu
   });
   assert.equal(wrangler.compatibility_flags, undefined);
   assert.equal(packageJson.dependencies?.['@noble/hashes'], '2.2.0');
-  assert.deepEqual(wrangler.routes, [
-    { pattern: 'backchannel.page', custom_domain: true },
-    { pattern: 'www.backchannel.page', custom_domain: true },
-    { pattern: 'admin.backchannel.page', custom_domain: true },
-    { pattern: 'downloads.backchannel.page', custom_domain: true },
-  ]);
-  assert.deepEqual(wrangler.r2_buckets, [{
-    binding: 'RELEASES', bucket_name: 'backchannel-desktop-releases',
-  }]);
-  assert.equal(wrangler.d1_databases[0].binding, 'INTEREST_DB');
+  assert.deepEqual(wrangler.routes, []);
+  assert.deepEqual(wrangler.r2_buckets, []);
+  assert.deepEqual(wrangler.d1_databases, []);
   assert.equal(wrangler.assets.binding, 'ASSETS');
 });

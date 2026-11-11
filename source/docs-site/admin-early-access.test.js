@@ -24,10 +24,10 @@ const credential = {
   password_expires_at: '2026-07-16T12:00:00.000Z',
 };
 const expectedCredential = [
-  'Backchannel desktop access',
+  'DebateAI desktop access',
   'Account: person@example.com',
   'Temporary password: generated-value',
-  'Sign in: https://downloads.backchannel.page/',
+  'Sign in: https://downloads.debateai.test/',
   'Password expires: 2026-07-16T12:00:00.000Z',
 ].join('\n');
 
@@ -160,7 +160,7 @@ test('Approve Cancel sends nothing, then posts only email and patches without re
   assert.equal(await route.saved[0].text(), expectedCredential);
   assert.equal(
     route.createdAnchors[0].download,
-    'backchannel-access-person-example-com.txt',
+    'debateai-access-person-example-com.txt',
   );
   await route.document.getElementById('credential-close').click();
   assert.equal(credentialText.value, '');

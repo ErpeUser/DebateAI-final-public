@@ -8,7 +8,7 @@ Die alte funktionierende Installation bleibt erhalten, bis neues Archiv und Stag
 
 ## Daten sind ein eigener Rueckweg
 
-%LOCALAPPDATA%\Backchannel und %LOCALAPPDATA%\DebateAI, PostgreSQL, master.key/DPAPI, AI-Prompts/Playbooks, Browserprofile, API-/OAuth-Sessions, Transkripte und Modelle niemals loeschen. Eine laufende DB-Dateikopie ist kein konsistenter Backup. Vor Schemaaenderung den vorhandenen kontrollierten Backupweg oder gestoppte DB nutzen und Wiederherstellbarkeit pruefen. Binaerrollback ist kein Schemarollback. Zwei verschiedene Programmversionen duerfen nicht parallel denselben Datenbestand benutzen. Kein automatisches Verschmelzen zweier nichtleerer Datenordner.
+Migriere %LOCALAPPDATA%\Backchannel einmalig nach %LOCALAPPDATA%\DebateAI; lösche die Quelle nicht und überschreibe keinen nichtleeren Zielordner. PostgreSQL, master.key/DPAPI, AI-Prompts/Playbooks, Browserprofile, API-/OAuth-Sessions, Transkripte und Modelle niemals loeschen. Eine laufende DB-Dateikopie ist kein konsistenter Backup. Vor Schemaaenderung den vorhandenen kontrollierten Backupweg oder gestoppte DB nutzen und Wiederherstellbarkeit pruefen. Binaerrollback ist kein Schemarollback. Zwei verschiedene Programmversionen duerfen nicht parallel denselben Datenbestand benutzen. Kein automatisches Verschmelzen zweier nichtleerer Datenordner.
 
 ## Konfiguration und Produktidentitaet
 

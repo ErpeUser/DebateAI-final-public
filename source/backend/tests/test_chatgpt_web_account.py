@@ -23,9 +23,9 @@ class ChatGPTWebAccountTests(unittest.TestCase):
         with mock.patch.dict(
             os.environ,
             {
-                "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(profile),
-                "BACKCHANNEL_CHATGPT_WEB_MARKER": str(marker),
-                "BACKCHANNEL_CHATGPT_WEB_HOME": str(home),
+                "DEBATEAI_CHATGPT_WEB_PROFILE": str(profile),
+                "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
+                "DEBATEAI_CHATGPT_WEB_HOME": str(home),
             },
             clear=False,
         ):
@@ -52,9 +52,9 @@ class ChatGPTWebAccountTests(unittest.TestCase):
         with mock.patch.dict(
             os.environ,
             {
-                "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(profile),
-                "BACKCHANNEL_CHATGPT_WEB_MARKER": str(marker),
-                "BACKCHANNEL_CHATGPT_WEB_HOME": str(home),
+                "DEBATEAI_CHATGPT_WEB_PROFILE": str(profile),
+                "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
+                "DEBATEAI_CHATGPT_WEB_HOME": str(home),
             },
             clear=False,
         ):

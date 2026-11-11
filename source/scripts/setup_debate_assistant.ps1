@@ -241,7 +241,7 @@ function Invoke-ApiJson {
     return Invoke-RestMethod @params
 }
 
-function Configure-Backchannel {
+function Configure-DebateAI {
     Write-Host "[setup] Configure local endpoint and German debate agents"
     if ($DryRun) {
         $endpointId = "german-debate-ollama"
@@ -282,7 +282,7 @@ function Configure-Backchannel {
 function Invoke-DebateAssistantSetup {
     Push-Location $script:RepoRoot
     try {
-        Write-Host "Backchannel German Debate Copilot setup"
+        Write-Host "DebateAI German Debate Copilot setup"
         $hasNvidia = Test-Program "nvidia-smi"
         if ($hasNvidia) {
             if (-not $DryRun) { & nvidia-smi --query-gpu=name,memory.total --format=csv,noheader }
@@ -311,13 +311,13 @@ function Invoke-DebateAssistantSetup {
             $composeArguments += @("-f", "docker-compose.gpu.yml")
         }
         $composeArguments += @("up", "-d", "--build")
-        Invoke-Checked "docker" $composeArguments "Start Backchannel"
+        Invoke-Checked "docker" $composeArguments "Start DebateAI"
         Wait-HttpReady -Uri "$($script:ApiBase)/api/privacy" -TimeoutSeconds 300
-        Configure-Backchannel
+        Configure-DebateAI
 
         Write-Host ""
         Write-Host (Get-ResearchEgressMessage -Research:$Research)
-        Write-Host "Backchannel: http://localhost:3000"
+        Write-Host "DebateAI: http://localhost:3000"
         Write-Host "Local model: $($script:WireModel) via Ollama"
         Write-Host "Transcription: Parakeet v3 (German, local)"
     } finally {

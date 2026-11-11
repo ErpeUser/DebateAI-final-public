@@ -33,9 +33,9 @@ class PackagedAiDirectoryTests(unittest.TestCase):
             patch.dict(
                 os.environ,
                 {
-                    "DATA_DIR": "C:/Backchannel/data",
+                    "DATA_DIR": "C:/DebateAI/data",
                     "DEBATE_AI_CONFIG_DIR": "",
-                    "BACKCHANNEL_PROMPT_DIR": "",
+                    "DEBATEAI_PROMPT_DIR": "",
                 },
                 clear=False,
             ),
@@ -48,9 +48,9 @@ class PackagedAiDirectoryTests(unittest.TestCase):
             second = ai_config_module.ai_directory()
 
         ai_config_module._packaged_ai_directory.cache_clear()
-        self.assertEqual(Path("C:/Backchannel/ai"), first)
+        self.assertEqual(Path("C:/DebateAI/ai"), first)
         self.assertEqual(first, second)
-        merge.assert_called_once_with(Path("C:/bundle/ai"), Path("C:/Backchannel/ai"))
+        merge.assert_called_once_with(Path("C:/bundle/ai"), Path("C:/DebateAI/ai"))
 
     def test_known_old_bundled_provider_order_migrates_to_new_web_first_default(self):
         with tempfile.TemporaryDirectory(dir=Path(__file__).resolve().parents[1]) as root:
@@ -101,8 +101,8 @@ class PackagedAiDirectoryTests(unittest.TestCase):
                 {
                     "DATA_DIR": "C:/ignored/data",
                     "DEBATE_AI_CONFIG_DIR": "",
-                    "BACKCHANNEL_PROMPT_DIR": "",
-                    "BACKCHANNEL_PORTABLE": "1",
+                    "DEBATEAI_PROMPT_DIR": "",
+                    "DEBATEAI_PORTABLE": "1",
                 },
                 clear=False,
             ),

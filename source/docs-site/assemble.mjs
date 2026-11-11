@@ -23,11 +23,11 @@ const sections = names.map((name) => {
     .replace(/^<p align="center">[\s\S]*?<\/p>\s*/, '')
     .trim();
   const page = name === 'README' ? '' : `${name}/`;
-  return `<!-- Canonical page: https://backchannel.page/docs/${page} -->\n\n${text}`;
+  return `<!-- Canonical page: /docs/${page} -->\n\n${text}`;
 });
 writeFileSync(join(out, 'llms-full.txt'),
-  '# Backchannel - full documentation\n\n' +
-  '> Every page of https://backchannel.page/docs/ concatenated as plain\n' +
-  '> markdown. Overview and key facts: https://backchannel.page/llms.txt\n\n' +
+  '# DebateAI - full documentation\n\n' +
+  '> Every page of /docs/ concatenated as plain\n' +
+  '> markdown. Overview and key facts: /llms.txt\n\n' +
   sections.join('\n\n---\n\n') + '\n');
 console.log('Assembled', out, `(llms-full.txt: ${names.length} docs)`);

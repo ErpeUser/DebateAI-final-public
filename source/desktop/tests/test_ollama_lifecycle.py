@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from bcdesktop.ollama_lifecycle import ManagedOllama
+from debateai_desktop.ollama_lifecycle import ManagedOllama
 
 
 class _Process:

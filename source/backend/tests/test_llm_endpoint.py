@@ -175,8 +175,8 @@ class KeylessPathTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.dict(
                 llm.os.environ,
                 {
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": bridge.base_url,
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY": "bridge-key",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_URL": bridge.base_url,
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_KEY": "bridge-key",
                 },
             ),
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="")),

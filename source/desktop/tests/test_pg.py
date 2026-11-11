@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from bcdesktop.pg import EmbeddedPostgres, _postgres_data_root, _windows_creation_flags
+from debateai_desktop.pg import EmbeddedPostgres, _postgres_data_root, _windows_creation_flags
 
 
 class EmbeddedPostgresTests(unittest.TestCase):
@@ -18,12 +18,12 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_copies_runtime_when_install_path_has_no_ascii_alias(self):
         ascii_root = self.data_dir / "data"
         unicode_pg = Path("C:/Pruefung ä/pgsql")
-        with mock.patch("bcdesktop.pg.sys.platform", "win32"), \
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
                 mock.patch(
-                    "bcdesktop.pg._postgres_data_root",
+                    "debateai_desktop.pg._postgres_data_root",
                     side_effect=[ascii_root, unicode_pg],
                 ), \
-                mock.patch("bcdesktop.pg.shutil.copytree") as copytree:
+                mock.patch("debateai_desktop.pg.shutil.copytree") as copytree:
             pg = EmbeddedPostgres(unicode_pg, ascii_root)
 
         copytree.assert_called_once_with(unicode_pg, ascii_root / "pgsql-runtime")
@@ -41,25 +41,25 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertGreaterEqual(len(first), 32)
 
     def test_password_file_permissions_restricted(self):
-        with mock.patch("bcdesktop.pg.os.chmod") as chmod:
+        with mock.patch("debateai_desktop.pg.os.chmod") as chmod:
             self.pg.password()
         chmod.assert_called_once_with(self.pg.pwfile, 0o600)
 
     def test_initdb_runs_with_password_auth(self):
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
         cmd = run.call_args.args[0]
         self.assertIn("initdb", str(cmd[0]))
         self.assertIn("-A", cmd)
         self.assertIn("scram-sha-256", cmd)
-        self.assertIn("backchannel", cmd)
+        self.assertIn("debateai", cmd)
         self.assertIn("--no-locale", cmd)
 
     def test_initdb_grants_windows_acl_first(self):
-        with mock.patch("bcdesktop.pg.sys.platform", "win32"), \
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
                 mock.patch.dict("os.environ", {"USERNAME": "tester"}), \
-                mock.patch("bcdesktop.pg.subprocess.run") as run:
+                mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
         first_cmd = run.call_args_list[0].args[0]
@@ -68,8 +68,8 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("initdb", str(last_cmd[0]))
 
     def test_initdb_skips_acl_grant_off_windows(self):
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
         self.assertNotIn(
@@ -79,7 +79,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_initdb_skipped_when_cluster_exists(self):
         (self.data_dir / "pgdata").mkdir(parents=True)
         (self.data_dir / "pgdata" / "PG_VERSION").write_text("16")
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             self.pg.ensure_initdb()
         run.assert_not_called()
 
@@ -87,7 +87,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
         pgdata = self.data_dir / "pgdata"
         pgdata.mkdir(parents=True)
         (pgdata / "stray.txt").write_text("leftover from a crashed initdb")
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
         # rmtree removed the wedged dir entirely; nothing recreated it
@@ -97,8 +97,8 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("initdb", str(cmd[0]))
 
     def test_start_binds_localhost_only_on_given_port(self):
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.start(54321)
         cmd = run.call_args.args[0]
@@ -108,7 +108,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("listen_addresses=127.0.0.1", opts)
 
     def test_windows_helpers_request_no_console_window(self):
-        with mock.patch("bcdesktop.pg.sys.platform", "win32"), \
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
                 mock.patch.object(
                     __import__("subprocess"),
                     "CREATE_NO_WINDOW",
@@ -118,7 +118,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self.assertEqual(0x08000000, _windows_creation_flags())
 
     def test_windows_start_hides_pg_ctl_console(self):
-        with mock.patch("bcdesktop.pg.sys.platform", "win32"), \
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
                 mock.patch.object(
                     __import__("subprocess"),
                     "CREATE_NO_WINDOW",
@@ -126,7 +126,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
                     create=True,
                 ), \
                 mock.patch.object(self.pg, "_wait_for_postgres", return_value=True), \
-                mock.patch("bcdesktop.pg.subprocess.Popen") as popen:
+                mock.patch("debateai_desktop.pg.subprocess.Popen") as popen:
             popen.return_value = mock.Mock(pid=4321)
             self.pg.start(54321)
 
@@ -135,9 +135,9 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_starts_postgres_directly_without_a_cmd_wrapper(self):
         process = mock.Mock(pid=4321)
         process.poll.return_value = None
-        with mock.patch("bcdesktop.pg.sys.platform", "win32"), \
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
                 mock.patch.object(self.pg, "_wait_for_postgres", return_value=True), \
-                mock.patch("bcdesktop.pg.subprocess.Popen", return_value=process) as popen:
+                mock.patch("debateai_desktop.pg.subprocess.Popen", return_value=process) as popen:
             self.pg.start(54321)
 
         cmd = popen.call_args.args[0]
@@ -153,15 +153,15 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("FATAL: could not bind IPv4 address\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run", side_effect=fake_run):
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
             with self.assertRaises(RuntimeError) as ctx:
                 self.pg.start(54321)
         self.assertIn("pg_ctl", str(ctx.exception))
         self.assertIn("could not bind IPv4 address", str(ctx.exception))
 
     def test_stop_is_noop_without_pidfile(self):
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             self.pg.stop()
         run.assert_not_called()
 
@@ -176,21 +176,21 @@ class EmbeddedPostgresTests(unittest.TestCase):
         # A lingering instance quitting must not stop a postmaster that a
         # newer instance started on the shared pgdata.
         self._write_pidfile(4242)
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             self.pg.stop()
         run.assert_not_called()
 
     def test_stop_skips_when_another_postmaster_took_over(self):
         self.pg.started_pid = 111
         self._write_pidfile(222)
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             self.pg.stop()
         run.assert_not_called()
 
     def test_stop_stops_the_postmaster_it_started(self):
         self.pg.started_pid = 333
         self._write_pidfile(333)
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)
             self.pg.stop()
         cmd = run.call_args.args[0]
@@ -202,8 +202,8 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self._write_pidfile(4321)
             return mock.Mock(returncode=0)
 
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run", side_effect=fake_run):
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
             self.pg.start(54321)
         self.assertEqual(4321, self.pg.started_pid)
 
@@ -215,8 +215,8 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("server did not start in time\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run", side_effect=fake_run):
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
             with self.assertRaises(RuntimeError):
                 self.pg.start(54321)
         self.assertEqual(5555, self.pg.started_pid)
@@ -228,8 +228,8 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("lock file exists\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("bcdesktop.pg.sys.platform", "linux"), \
-                mock.patch("bcdesktop.pg.subprocess.run", side_effect=fake_run):
+        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
+                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
             with self.assertRaises(RuntimeError):
                 self.pg.start(54321)
         self.assertIsNone(self.pg.started_pid)
@@ -239,7 +239,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
         pgdata.mkdir(parents=True)
         pidfile = pgdata / "postmaster.pid"
         pidfile.write_text("99999")
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=3)  # pg_ctl status: not running
             self.pg.recover_stale()
         self.assertFalse(pidfile.exists())
@@ -249,20 +249,20 @@ class EmbeddedPostgresTests(unittest.TestCase):
         pgdata.mkdir(parents=True)
         pidfile = pgdata / "postmaster.pid"
         pidfile.write_text("1234")
-        with mock.patch("bcdesktop.pg.subprocess.run") as run:
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
             run.return_value = mock.Mock(returncode=0)  # pg_ctl status: running
             self.pg.recover_stale()
         self.assertTrue(pidfile.exists())
 
     def test_database_url_shape(self):
         url = self.pg.database_url(54321)
-        self.assertTrue(url.startswith("postgresql+asyncpg://backchannel:"))
+        self.assertTrue(url.startswith("postgresql+asyncpg://debateai:"))
         self.assertIn("@127.0.0.1:54321/postgres", url)
 
     def test_is_running_checks_the_bound_database_port(self):
         connection = mock.MagicMock()
         with mock.patch(
-            "bcdesktop.pg.socket.create_connection",
+            "debateai_desktop.pg.socket.create_connection",
             return_value=connection,
         ) as connect:
             self.assertTrue(self.pg.is_running(54321))
@@ -271,7 +271,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
 
     def test_is_running_is_false_when_database_port_is_closed(self):
         with mock.patch(
-            "bcdesktop.pg.socket.create_connection",
+            "debateai_desktop.pg.socket.create_connection",
             side_effect=OSError("closed"),
         ):
             self.assertFalse(self.pg.is_running(54321))

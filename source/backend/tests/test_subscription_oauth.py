@@ -41,8 +41,8 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
         self.environment = mock.patch.dict(
             os.environ,
             {
-                "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
-                "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY": "local-only-key",
+                "DEBATEAI_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
+                "DEBATEAI_SUBSCRIPTION_BRIDGE_KEY": "local-only-key",
             },
             clear=True,
         )
@@ -137,7 +137,7 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
     def test_public_bridge_address_is_rejected(self):
         with mock.patch.dict(
             os.environ,
-            {"BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": "https://example.com/v1"},
+            {"DEBATEAI_SUBSCRIPTION_BRIDGE_URL": "https://example.com/v1"},
         ):
             self.assertIsNone(self.oauth.connection())
 

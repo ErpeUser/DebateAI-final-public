@@ -3,23 +3,23 @@
 ## Desktop app (easiest)
 
 Prefer the shortest path? Download the latest desktop build from the
-[Backchannel download portal](https://downloads.backchannel.page/).
-Downloads are open to everyone; no account, GitHub identity, or repository
-membership is required. See the public [v0.4.0 release notes](https://backchannel.page/releases/v0.4.0/)
-for the current asset inventory.
+a deployment-specific HTTPS update endpoint configured by the operator.
+Downloads are open to everyone when the configured endpoint is public. The
+application never assumes a vendor portal; see the release notes shipped with
+your deployment for its current asset inventory.
 
-- **Windows** -- `Backchannel-windows-x64.zip`; unzip and run `Backchannel.exe`.
-- **macOS** (Apple Silicon) -- `Backchannel-macos-arm64.zip`; unzip and open `Backchannel.app`.
-- **Linux** (x64) -- `Backchannel-linux-x64.tar.gz`; a portable bundle (not a
-  package-manager installer): `tar -xzf` it and run `Backchannel/Backchannel`.
+- **Windows** -- `DebateAI-windows-x64.zip`; unzip and run `DebateAI.exe`.
+- **macOS** (Apple Silicon) -- `DebateAI-macos-arm64.zip`; unzip and open `DebateAI.app`.
+- **Linux** (x64) -- `DebateAI-linux-x64.tar.gz`; a portable bundle (not a
+  package-manager installer): `tar -xzf` it and run `DebateAI/DebateAI`.
 
 The complete German Windows install, provider-login, Ollama, audio, build,
 update and signing procedure is in the [final Windows runbook](DESKTOP_FINAL.md).
 
 The app runs from your system tray / menu bar and stores data per-user --
-`%LOCALAPPDATA%\Backchannel` on Windows,
-`~/Library/Application Support/Backchannel` on macOS,
-`~/.local/share/backchannel` on Linux -- no Docker needed. Set a Gemini API key in Admin -> Connections on first run ([Getting API Keys](api-keys.md) shows how to create one in about two minutes). For the full self-hosted stack, use Docker Compose below.
+`%LOCALAPPDATA%\DebateAI` on Windows,
+`~/Library/Application Support/DebateAI` on macOS,
+`~/.local/share/debateai` on Linux -- no Docker needed. Set a Gemini API key in Admin -> Connections on first run ([Getting API Keys](api-keys.md) shows how to create one in about two minutes). For the full self-hosted stack, use Docker Compose below.
 
 ### Keeping the desktop app up to date
 
@@ -88,16 +88,16 @@ by the local model can be sent to public Wikimedia and DuckDuckGo endpoints.
 Audio and the transcript remain local. Without that switch, Privacy First
 blocks this research path as well.
 
-Backchannel data lives in the Docker volumes `pgdata` and `backend_data`.
+DebateAI data lives in the Docker volumes `pgdata` and `backend_data`.
 Ollama stores its model files in the current Windows user's Ollama data
 directory (normally `%USERPROFILE%\.ollama`). `docker compose down` keeps the
-volumes; `docker compose down -v` permanently removes the Backchannel database
+volumes; `docker compose down -v` permanently removes the DebateAI database
 and audio data.
 
 For a Discord or WhatsApp Web call, use a Chromium browser and include the
 call tab or system audio when the browser's sharing dialog asks what to share.
 For the installed Discord or WhatsApp desktop app, choose the system-audio
-source in Backchannel; Windows must allow loopback/system capture. Keep the
+source in DebateAI; Windows must allow loopback/system capture. Keep the
 microphone source enabled separately so local and remote speech remain on two
 tracks. If the audio meter for either track stays flat, stop the call, select
 that source again, and verify the Windows privacy permission for the browser.

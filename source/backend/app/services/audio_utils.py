@@ -49,7 +49,7 @@ def resolve_ffmpeg() -> str | None:
     import os
     import shutil
 
-    override = env_value("DEBATEAI_FFMPEG", "BACKCHANNEL_FFMPEG")
+    override = env_value("DEBATEAI_FFMPEG")
     if override and os.path.isfile(override):
         return override
     return shutil.which("ffmpeg")

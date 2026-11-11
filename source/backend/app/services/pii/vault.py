@@ -38,8 +38,11 @@ from app.services.secrets import derive_subkey
 
 logger = logging.getLogger(__name__)
 
-_VAULT_PURPOSE = b"backchannel.pii.vault.v1"
-_LOOKUP_PURPOSE = b"backchannel.pii.lookup.v1"
+_VAULT_PURPOSE = b"debateai.pii.vault.v2"
+_LOOKUP_PURPOSE = b"debateai.pii.lookup.v2"
+# Read-only fallbacks for rows created before the identity migration. New writes use the canonical purposes.
+_LEGACY_VAULT_PURPOSE = b"backchannel.pii.vault.v1"
+_LEGACY_LOOKUP_PURPOSE = b"backchannel.pii.lookup.v1"
 
 _CATEGORY_ALTERNATION = "|".join(CATEGORIES)
 # The bracketed form is what the shield writes; the bare form is what a model
@@ -67,6 +70,8 @@ _vaults: dict[uuid.UUID, _SessionVault] = {}
 _lock = threading.Lock()
 _fernet: Fernet | None = None
 _lookup_key: bytes | None = None
+_legacy_fernet: Fernet | None = None
+_legacy_lookup_key: bytes | None = None
 
 
 def _get_fernet() -> Fernet:
@@ -83,9 +88,28 @@ def _get_lookup_key() -> bytes:
     return _lookup_key
 
 
+def _get_legacy_fernet() -> Fernet:
+    global _legacy_fernet
+    if _legacy_fernet is None:
+        _legacy_fernet = Fernet(base64.urlsafe_b64encode(derive_subkey(_LEGACY_VAULT_PURPOSE)))
+    return _legacy_fernet
+
+
+def _get_legacy_lookup_key() -> bytes:
+    global _legacy_lookup_key
+    if _legacy_lookup_key is None:
+        _legacy_lookup_key = derive_subkey(_LEGACY_LOOKUP_PURPOSE)
+    return _legacy_lookup_key
+
+
 def value_hmac(category: str, value: str) -> str:
     normalized = normalize_value(value, category)
     return hmac.new(_get_lookup_key(), f"{category}\x00{normalized}".encode("utf-8"), hashlib.sha256).hexdigest()
+
+
+def _legacy_value_hmac(category: str, value: str) -> str:
+    normalized = normalize_value(value, category)
+    return hmac.new(_get_legacy_lookup_key(), f"{category}\x00{normalized}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def encrypt(value: str) -> str:
@@ -122,13 +146,15 @@ def _category_of(token: str) -> str:
 
 
 def decrypt(ciphertext: str, category: str = "") -> str:
-    try:
-        value = _get_fernet().decrypt(ciphertext.encode("ascii")).decode("utf-8")
-        _remember_plaintext(value, category)
-        return value
-    except (InvalidToken, ValueError):
-        logger.warning("A PII vault entry could not be decrypted; master key changed?")
-        return ""
+    for fernet in (_get_fernet(), _get_legacy_fernet()):
+        try:
+            value = fernet.decrypt(ciphertext.encode("ascii")).decode("utf-8")
+            _remember_plaintext(value, category)
+            return value
+        except (InvalidToken, ValueError):
+            continue
+    logger.warning("A PII vault entry could not be decrypted; master key changed?")
+    return ""
 
 
 def _vault(session_id: uuid.UUID) -> _SessionVault:
@@ -172,7 +198,7 @@ async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, valu
     last_error: IntegrityError | None = None
     for _attempt in range(4):
         vault = await _ensure_loaded(db, session_id)
-        existing = vault.by_hmac.get(digest)
+        existing = vault.by_hmac.get(digest) or vault.by_hmac.get(_legacy_value_hmac(category, value))
         if existing:
             return existing
 

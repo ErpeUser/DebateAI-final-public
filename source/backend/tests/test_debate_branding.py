@@ -15,7 +15,7 @@ class DebateBrandingTests(unittest.TestCase):
         self.assertEqual("DebateAI", app.title)
         self.assertIn("<b>Debate AI</b>", document)
         self.assertIn("Prepared by Debate AI", document)
-        self.assertNotIn("Prepared by Backchannel", document)
+        self.assertNotIn("Prepared by DebateAI", document)
 
     def test_frontend_declares_german_document_language(self):
         index = Path(__file__).resolve().parents[2] / "frontend" / "index.html"

@@ -19,7 +19,7 @@ import {
 } from '../r2-object.mjs';
 
 const ACCOUNT_ID = '0123456789abcdef0123456789abcdef';
-const BUCKET = 'backchannel-desktop-releases';
+const BUCKET = 'debateai-desktop-releases';
 const NOW = new Date('2026-07-12T15:04:05.000Z');
 const CREDENTIALS = {
   CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID,
@@ -39,10 +39,10 @@ test('buildObjectUrl cannot redirect credentials away from Cloudflare', () => {
   const url = buildObjectUrl(
     ACCOUNT_ID,
     BUCKET,
-    'releases/v0.2.1/Backchannel macos.zip',
+    'releases/v0.2.1/DebateAI macos.zip',
   );
   assert.equal(url.origin, `https://${ACCOUNT_ID}.r2.cloudflarestorage.com`);
-  assert.equal(url.pathname, `/${BUCKET}/releases/v0.2.1/Backchannel%20macos.zip`);
+  assert.equal(url.pathname, `/${BUCKET}/releases/v0.2.1/DebateAI%20macos.zip`);
   assert.equal(url.search, '');
 });
 
@@ -73,7 +73,7 @@ test('signRequest produces deterministic Cloudflare wire authorization', () => {
   const original = new Headers({'Content-Type': '  application/zip  '});
   const signed = signRequest({
     method: 'PUT',
-    url: buildObjectUrl(ACCOUNT_ID, BUCKET, 'releases/v0.2.1/Backchannel macos.zip'),
+    url: buildObjectUrl(ACCOUNT_ID, BUCKET, 'releases/v0.2.1/DebateAI macos.zip'),
     headers: original,
     payloadHash: EMPTY_HASH,
     credentials: {accessKeyId: 'R2TESTACCESS', secretAccessKey: 'r2-test-secret'},
@@ -167,7 +167,7 @@ function clientFor(fetchImpl) {
 }
 
 async function temporaryDirectory(t) {
-  const directory = await mkdtemp(join(tmpdir(), 'backchannel-r2-object-'));
+  const directory = await mkdtemp(join(tmpdir(), 'debateai-r2-object-'));
   t.after(() => rm(directory, {recursive: true, force: true}));
   return directory;
 }

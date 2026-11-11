@@ -261,7 +261,7 @@ async def configure_desktop_debate_runtime(db: AsyncSession) -> None:
     needs the matching registry row. The marker is written once: later manual
     model choices remain authoritative instead of being reset on every start.
     """
-    if env_value("DEBATEAI_DESKTOP", "BACKCHANNEL_DESKTOP") != "1":
+    if env_value("DEBATEAI_DESKTOP") != "1":
         return
     completed = await get_app_setting(db, _DESKTOP_DEBATE_BOOTSTRAP_KEY, "")
     first_bootstrap = completed != "1"

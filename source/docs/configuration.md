@@ -23,16 +23,16 @@ Configuration comes from three layers, lowest precedence first:
 | `DATABASE_URL` | `postgresql+asyncpg://callhelper:changeme@db:5432/callhelper` | Async SQLAlchemy connection string; set by Docker Compose for the backend container |
 | `FRONTEND_DIST` | empty | Path to a built frontend for the backend to serve directly (the desktop launcher sets it); empty means nginx serves the frontend (Docker) |
 | `DATA_DIR` | `/app/data` | Root for recorded audio, downloaded ASR models, and the credentials master key; a named Docker volume (`backend_data`) in Compose |
-| `BACKCHANNEL_FFMPEG` | empty | Explicit path to the ffmpeg executable used for compressed-audio decoding; the desktop launcher sets it to the bundled copy on Windows and Linux, and `PATH` lookup is the fallback |
+| `DEBATEAI_FFMPEG` | empty | Explicit path to the ffmpeg executable used for compressed-audio decoding; the desktop launcher sets it to the bundled copy on Windows and Linux, and `PATH` lookup is the fallback |
 | `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `callhelper` / `changeme` / `callhelper` | Consumed by the db container and interpolated into `DATABASE_URL` in Compose |
 | `CREDENTIALS_MASTER_KEY` | auto-generated | Overrides the Fernet master key used for encrypted credentials |
 | `CREDENTIALS_MASTER_KEY_PROTECTION` | empty (`dpapi` on the Windows desktop build) | `dpapi` wraps `DATA_DIR/master.key` with Windows DPAPI so only the same Windows user on the same machine can read it; a plaintext file is upgraded in place on first read |
-| `BACKCHANNEL_ALLOWED_HOSTS` | empty | Extra hostnames the API accepts in the `Host` header, comma-separated. Loopback names, any IP address, and the Compose service name are always accepted; a request for any other name is refused (DNS-rebinding defense). `*` disables the check |
-| `BACKCHANNEL_ALLOWED_ORIGINS` | empty | Extra browser origins (`https://tools.example`) allowed to call the API cross-origin, also granted by CORS. Local origins are always allowed; a state-changing request from any other origin is refused. `*` disables the origin check |
+| `DEBATEAI_ALLOWED_HOSTS` | empty | Extra hostnames the API accepts in the `Host` header, comma-separated. Loopback names, any IP address, and the Compose service name are always accepted; a request for any other name is refused (DNS-rebinding defense). `*` disables the check |
+| `DEBATEAI_ALLOWED_ORIGINS` | empty | Extra browser origins (`https://tools.example`) allowed to call the API cross-origin, also granted by CORS. Local origins are always allowed; a state-changing request from any other origin is refused. `*` disables the origin check |
 
-`DATA_DIR`, `BACKCHANNEL_FFMPEG`, `CREDENTIALS_MASTER_KEY`,
-`CREDENTIALS_MASTER_KEY_PROTECTION`, `BACKCHANNEL_ALLOWED_HOSTS`, and
-`BACKCHANNEL_ALLOWED_ORIGINS` are read straight from the process
+`DATA_DIR`, `DEBATEAI_FFMPEG`, `CREDENTIALS_MASTER_KEY`,
+`CREDENTIALS_MASTER_KEY_PROTECTION`, `DEBATEAI_ALLOWED_HOSTS`, and
+`DEBATEAI_ALLOWED_ORIGINS` are read straight from the process
 environment (`os.environ`), not through the pydantic `Settings` object, so
 they must be set as real environment variables; in Compose the backend's
 `env_file: .env` makes a `.env` entry reach them, but a bare local run needs
@@ -65,7 +65,7 @@ What the app does to keep a stored key from getting out:
   text shown in Admin or stored on an endpoint row is scrubbed the same way.
 - The API has no login, so the server refuses requests whose `Host` is not a
   local name or address and state-changing requests from a foreign browser
-  `Origin`; see `BACKCHANNEL_ALLOWED_HOSTS` and `BACKCHANNEL_ALLOWED_ORIGINS`
+  `Origin`; see `DEBATEAI_ALLOWED_HOSTS` and `DEBATEAI_ALLOWED_ORIGINS`
   above for deployments reached by another name.
 - The Docker stack publishes the backend and database ports on loopback
   only; the frontend on `:3000` is the only LAN-reachable surface.
@@ -314,7 +314,7 @@ Privacy First is on, and without Privacy First it requires
 machine or network (`update_endpoint()` in
 `backend/app/services/custom_endpoints.py`).
 
-Running Backchannel in Docker? Inside the container `localhost` is the
+Running DebateAI in Docker? Inside the container `localhost` is the
 container, not your machine. Use `http://host.docker.internal:1234/v1` to
 reach a server running on the host.
 

@@ -1,6 +1,6 @@
 """Manage the single loopback CLIProxyAPI process used by the desktop app.
 
-CLIProxyAPI owns OAuth login and refresh state. Backchannel owns only the
+CLIProxyAPI owns OAuth login and refresh state. DebateAI owns only the
 versioned executable, loopback configuration, client key, and child lifetime.
 """
 
@@ -17,9 +17,9 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from bcdesktop.paths import resource
-from bcdesktop.windows_console import hidden_startupinfo
-from debateai_identity import env_value, set_compat_env
+from debateai_desktop.paths import resource
+from debateai_desktop.windows_console import hidden_startupinfo
+from debateai_identity import env_value, set_env
 
 
 DEFAULT_PORT = 8317
@@ -76,9 +76,7 @@ class SubscriptionBridge:
         self.managed_executable = self.root / (
             "cli-proxy-api.exe" if sys.platform == "win32" else "cli-proxy-api"
         )
-        configured_executable = env_value(
-            "DEBATEAI_CLIPROXYAPI_EXECUTABLE", "BACKCHANNEL_CLIPROXYAPI_EXECUTABLE"
-        ).strip()
+        configured_executable = env_value("DEBATEAI_CLIPROXYAPI_EXECUTABLE").strip()
         self.external_executable = (
             Path(configured_executable).expanduser()
             if configured_executable
@@ -98,9 +96,7 @@ class SubscriptionBridge:
         self.config = self.root / "config.yaml"
         self.key_file = self.root / "client-key"
         self.log = logger
-        configured_auth_dir = env_value(
-            "DEBATEAI_CLIPROXYAPI_AUTH_DIR", "BACKCHANNEL_CLIPROXYAPI_AUTH_DIR"
-        ).strip()
+        configured_auth_dir = env_value("DEBATEAI_CLIPROXYAPI_AUTH_DIR").strip()
         candidate_auth_dir = (
             Path(configured_auth_dir).expanduser()
             if configured_auth_dir
@@ -120,7 +116,7 @@ class SubscriptionBridge:
         self.auth_dir = candidate_auth_dir
         try:
             configured_port = int(
-                env_value("DEBATEAI_CLIPROXYAPI_PORT", "BACKCHANNEL_CLIPROXYAPI_PORT", str(DEFAULT_PORT))
+                env_value("DEBATEAI_CLIPROXYAPI_PORT", str(DEFAULT_PORT))
             )
         except ValueError:
             configured_port = DEFAULT_PORT
@@ -253,10 +249,10 @@ class SubscriptionBridge:
 
     def _export_connection(self) -> None:
         url = f"http://127.0.0.1:{self.port}/v1"
-        set_compat_env("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL", url)
-        set_compat_env("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY", self.client_key)
-        set_compat_env(
-            "DEBATEAI_SUBSCRIPTION_MODELS", "BACKCHANNEL_SUBSCRIPTION_MODELS",
+        set_env("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", url)
+        set_env("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", self.client_key)
+        set_env(
+            "DEBATEAI_SUBSCRIPTION_MODELS", "DEBATEAI_SUBSCRIPTION_MODELS",
             json.dumps(self.served_models, separators=(",", ":")),
         )
         os.environ.setdefault("SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK", "true")

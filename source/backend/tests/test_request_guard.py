@@ -73,8 +73,8 @@ class HostRuleTests(unittest.TestCase):
                 self.assertFalse(request_guard.host_header_allowed(host))
 
     def test_environment_allowlist_and_wildcard(self):
-        os.environ[request_guard.ALLOWED_HOSTS_ENV] = "backchannel.lan, Meeting-Box.internal"
-        self.assertTrue(request_guard.host_header_allowed("backchannel.lan:3000"))
+        os.environ[request_guard.ALLOWED_HOSTS_ENV] = "debateai.lan, Meeting-Box.internal"
+        self.assertTrue(request_guard.host_header_allowed("debateai.lan:3000"))
         self.assertTrue(request_guard.host_header_allowed("meeting-box.internal"))
         self.assertFalse(request_guard.host_header_allowed("evil.example"))
         os.environ[request_guard.ALLOWED_HOSTS_ENV] = "*"
@@ -111,8 +111,8 @@ class OriginRuleTests(unittest.TestCase):
         self.assertEqual([], request_guard.cors_allowed_origins())
 
     def test_allowed_hosts_also_admit_origins(self):
-        os.environ[request_guard.ALLOWED_HOSTS_ENV] = "backchannel.lan"
-        self.assertTrue(request_guard.origin_allowed("http://backchannel.lan:3000"))
+        os.environ[request_guard.ALLOWED_HOSTS_ENV] = "debateai.lan"
+        self.assertTrue(request_guard.origin_allowed("http://debateai.lan:3000"))
 
 
 class MiddlewareTests(unittest.TestCase):
@@ -147,14 +147,14 @@ class MiddlewareTests(unittest.TestCase):
             self.assertEqual("hi", ws.receive_text())
 
     def test_websocket_instance_token_uses_subprotocol_not_query(self):
-        os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = "test-token"
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
         with self.client.websocket_connect(
             "/ws/echo",
             headers={"Host": "localhost:8474"},
-            subprotocols=["backchannel.instance.test-token"],
+            subprotocols=["debateai.instance.test-token"],
         ) as ws:
             self.assertEqual("hi", ws.receive_text())
-            self.assertEqual("backchannel.instance.test-token", ws.accepted_subprotocol)
+            self.assertEqual("debateai.instance.test-token", ws.accepted_subprotocol)
         with self.assertRaises(Exception):
             with self.client.websocket_connect(
                 "/ws/echo?instance_token=test-token",
@@ -218,12 +218,18 @@ class MiddlewareTests(unittest.TestCase):
 
     def test_mutation_without_origin_requires_instance_token(self):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = ""
-        os.environ["BACKCHANNEL_INSTANCE_TOKEN"] = "test-token"
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
         self.assertEqual(403, self.client.post("/api/mutate").status_code)
         self.assertEqual(
             200,
-            self.client.post("/api/mutate", headers={"X-Backchannel-Instance": "test-token"}).status_code,
+            self.client.post("/api/mutate", headers={"X-DebateAI-Instance": "test-token"}).status_code,
         )
+
+    def test_legacy_instance_header_is_not_accepted(self):
+        os.environ[request_guard.ALLOWED_ORIGINS_ENV] = ""
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
+        response = self.client.post("/api/mutate", headers={"X-Backchannel-Instance": "test-token"})
+        self.assertEqual(403, response.status_code)
 
     def test_cross_origin_read_gets_no_cors_grant(self):
         response = self.client.get("/api/ping", headers={"Origin": "https://attacker.example"})

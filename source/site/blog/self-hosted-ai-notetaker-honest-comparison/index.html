@@ -3,21 +3,21 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>The Free AI Notetaker Is Genuinely Free. Here Is Why I Self-Host Anyway. | Backchannel</title>
+  <title>The Free AI Notetaker Is Genuinely Free. Here Is Why I Self-Host Anyway. | DebateAI</title>
   <meta name="description" content="Sourced competitive research against Fathom, Otter, Read AI, tl;dv, and Avoma, starting with the concessions: the free tier is real, 'no bot' stopped being special, and real-time AI stopped being novel. What survives is where the audio goes." />
-  <link rel="canonical" href="https://backchannel.page/blog/self-hosted-ai-notetaker-honest-comparison/" />
+  <link rel="canonical" href="/blog/self-hosted-ai-notetaker-honest-comparison/" />
   <meta property="og:title" content="The Free AI Notetaker Is Genuinely Free. Here Is Why I Self-Host Anyway." />
   <meta property="og:description" content="Sourced competitive research against Fathom, Otter, Read AI, tl;dv, and Avoma, starting with the concessions: the free tier is real, 'no bot' stopped being special, and real-time AI stopped being novel. What survives is where the audio goes." />
   <meta property="og:type" content="article" />
   <meta property="article:published_time" content="2026-07-28" />
-  <meta property="og:site_name" content="Backchannel" />
-  <meta property="og:url" content="https://backchannel.page/blog/self-hosted-ai-notetaker-honest-comparison/" />
-  <meta property="og:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta property="og:site_name" content="DebateAI" />
+  <meta property="og:url" content="/blog/self-hosted-ai-notetaker-honest-comparison/" />
+  <meta property="og:image" content="/assets/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Backchannel: live meeting transcription and real-time insight agents, self-hosted." />
+  <meta property="og:image:alt" content="DebateAI: live meeting transcription and real-time insight agents, self-hosted." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta name="twitter:image" content="/assets/og-image.png" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="stylesheet" href="../../style.css" />
   <script type="application/ld+json">
@@ -30,21 +30,21 @@
         "description": "Sourced competitive research against Fathom, Otter, Read AI, tl;dv, and Avoma, starting with the concessions: the free tier is real, 'no bot' stopped being special, and real-time AI stopped being novel. What survives is where the audio goes.",
         "datePublished": "2026-07-28",
         "dateModified": "2026-07-28",
-        "url": "https://backchannel.page/blog/self-hosted-ai-notetaker-honest-comparison/",
+        "url": "/blog/self-hosted-ai-notetaker-honest-comparison/",
         "mainEntityOfPage": {
-          "@id": "https://backchannel.page/blog/self-hosted-ai-notetaker-honest-comparison/"
+          "@id": "/blog/self-hosted-ai-notetaker-honest-comparison/"
         },
         "author": {
           "@type": "Person",
           "name": "Talbert Houle",
-          "url": "https://backchannel.page/"
+          "url": "/"
         },
         "publisher": {
           "@type": "Organization",
-          "name": "Backchannel",
-          "url": "https://backchannel.page/"
+          "name": "DebateAI",
+          "url": "/"
         },
-        "image": "https://backchannel.page/assets/og-image.png"
+        "image": "/assets/og-image.png"
       },
       {
         "@type": "BreadcrumbList",
@@ -52,14 +52,14 @@
           {
             "@type": "ListItem",
             "position": 1,
-            "name": "Backchannel",
-            "item": "https://backchannel.page/"
+            "name": "DebateAI",
+            "item": "/"
           },
           {
             "@type": "ListItem",
             "position": 2,
             "name": "Writing",
-            "item": "https://backchannel.page/blog/"
+            "item": "/blog/"
           },
           {
             "@type": "ListItem",
@@ -78,13 +78,13 @@
   <div class="wrap">
     <a class="brand" href="/">
       <img src="/assets/favicon.svg" alt="" />
-      backchannel
+      DebateAI
     </a>
     <nav class="site-nav">
       <a href="/#features">Features</a>
       <a href="/blog/">Writing</a>
       <a href="/docs/">Docs</a>
-      <a class="btn primary nav-cta" href="https://github.com/talberthoule/backchannel">Star on GitHub</a>
+      <a class="btn primary nav-cta" href="https://github.com/ErpeUser/DebateAI">Star on GitHub</a>
     </nav>
   </div>
 </header>
@@ -96,7 +96,7 @@
       <span class="kicker">28 July 2026</span>
       <h1>The free AI notetaker is genuinely free. <span class="accent">Here is why I self-host anyway.</span></h1>
       <p class="lede">
-        I build and maintain Backchannel, an open-source, self-hosted meeting
+        I build and maintain DebateAI, an open-source, self-hosted meeting
         assistant. In July I spent several days doing competitive research
         against the tools it gets compared to -- Fathom, Otter, Read AI,
         tl;dv, Avoma -- with one rule: every claim needs a primary source,
@@ -124,7 +124,7 @@
           and features like AI action items and follow-up emails are Premium.
         </p>
         <p>
-          Backchannel is $0 in license terms. It is not $0 in practice. It
+          DebateAI is $0 in license terms. It is not $0 in practice. It
           costs a Docker host or a desktop machine, optionally a GPU, and
           either LLM API spend on your own key or the accuracy hit of running
           local ONNX models.
@@ -179,7 +179,7 @@
           system over content that was written before the call started.
         </p>
         <p>
-          Backchannel's objection handler does something else. Every 10
+          DebateAI's objection handler does something else. Every 10
           seconds it sends the trailing 90 seconds of the actual transcript to
           a low-latency model, with the meeting context, the speaker roster,
           your standing directives, and a do-not-repeat list. It generates two
@@ -256,7 +256,7 @@
         <ul>
           <li>
             Where audio is processed. Fathom, Otter, Read AI, tl;dv, and
-            Avoma all process audio in their cloud. Backchannel processes it
+            Avoma all process audio in their cloud. DebateAI processes it
             on your server. Diarization -- who said what -- is always local
             (Silero VAD plus WeSpeaker ResNet152 speaker embeddings, both
             ONNX, both on your machine). Transcription is local ONNX
@@ -276,7 +276,7 @@
             Read AI's live layer is summaries and behavioral metrics.
           </li>
           <li>
-            Whether you can change the machine. Every Backchannel agent's
+            Whether you can change the machine. Every DebateAI agent's
             model, prompt, and trigger interval is editable in the admin
             panel. You can also replay any recorded call through a different
             transcription model later and diff the results.
@@ -289,7 +289,7 @@
         </ul>
         <p>
           And the honest inverse list -- what the incumbents have that
-          Backchannel does not: compliance attestations (SOC 2, ISO, HIPAA
+          DebateAI does not: compliance attestations (SOC 2, ISO, HIPAA
           badges -- I have an architectural argument, not an audit), CRM
           sync, mobile apps, marketed language support, mature account and
           permission systems, and hundreds of thousands of companies of
@@ -313,7 +313,7 @@
         <p>
           The full sourced comparison tables, with access dates on every
           claim, are at
-          <a href="/open-source-meeting-assistants/">backchannel.page/open-source-meeting-assistants/</a>.
+          <a href="/open-source-meeting-assistants/">DebateAI/open-source-meeting-assistants/</a>.
           The code is MIT and runs with docker compose up.
         </p>
       </div>
@@ -350,9 +350,9 @@
       <h2>Meeting AI that runs on your hardware</h2>
       <p class="sub">Self-hosted, open source, MIT licensed. No bot in the room, no audio in anyone's cloud.</p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/#quickstart">Self-host in minutes</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -367,7 +367,7 @@
     <a href="/fireflies-alternative/">Fireflies.ai alternative without the bot</a>
     <a href="/granola-alternative/">Open-source Granola alternative</a>
     <a href="/fathom-alternative/">Fathom alternative</a>
-    <a href="/gong-and-backchannel/">Gong and Backchannel</a>
+    <a href="/gong-and-backchannel/">Gong and DebateAI</a>
     <a href="/teams-premium-alternative/">Teams Premium alternative</a>
   </div>
   <div class="wrap footer-compare">
@@ -376,8 +376,8 @@
     <a href="/blog/three-degrees-of-local/">Three degrees of local</a>
   </div>
   <div class="wrap">
-    <span>Backchannel -- an open-source, self-hosted AI meeting assistant.</span>
-    <span>Released under the <a href="https://github.com/talberthoule/backchannel/blob/master/LICENSE">MIT License</a>.</span>
+    <span>DebateAI -- an open-source, self-hosted AI meeting assistant.</span>
+    <span>Released under the <a href="https://github.com/ErpeUser/DebateAI/blob/master/LICENSE">MIT License</a>.</span>
     <span><a href="/releases/">All releases</a></span>
   </div>
 </footer>

@@ -1,6 +1,6 @@
 # German debate copilot
 
-Backchannel can run as a local-first German debate assistant on Windows. It
+DebateAI can run as a local-first German debate assistant on Windows. It
 transcribes the meeting, reacts to new final transcript turns, and keeps one
 current recommendation with three speaking moves:
 
@@ -56,7 +56,7 @@ The verified target machine uses:
 | GPU | NVIDIA GeForce RTX 4070 Laptop GPU, 8,188 MiB |
 
 The endpoint is registered as `german-debate-ollama`; its model identifier in
-Backchannel is `endpoint:german-debate-ollama:qwen3:4b`. Structured requests
+DebateAI is `endpoint:german-debate-ollama:qwen3:4b`. Structured requests
 disable Qwen's visible reasoning channel so the application receives the JSON
 recommendation instead of an empty answer.
 
@@ -136,7 +136,7 @@ Build the self-contained desktop archive with:
 ```
 
 The verified artifact is
-`dist\Backchannel-DebateAI-windows-x64.zip` (280.8 MiB), SHA-256
+`dist\DebateAI-DebateAI-windows-x64.zip` (280.8 MiB), SHA-256
 `F25F5CC98E6BF3516242AF9FF24441B6E33260D7EC3BEF7C9F22ECB9DE100845`.
 Its launcher smoke test reached the health endpoint, found the bundled local
 speech model usable, and shut down cleanly.

@@ -59,7 +59,7 @@ class RedactTextTests(unittest.TestCase):
                 self.assertIn("[redacted]", result)
 
     def test_master_key_diagnostics_survive_redaction(self):
-        path = r"C:\Users\someone\AppData\Local\Backchannel\data\master.key"
+        path = r"C:\Users\someone\AppData\Local\DebateAI\data\master.key"
         message = (
             "Stored credentials.google.api_key credential is unreadable because the "
             f"master key cannot be used - {path} is DPAPI-protected and can only be "
@@ -69,7 +69,7 @@ class RedactTextTests(unittest.TestCase):
         recovery = (
             f"The credentials master key at {path} cannot be used on this account or "
             "machine (CryptUnprotectData failed (error 13)). Provider keys stored with "
-            "it are unreadable until it is replaced: stop Backchannel, delete that file, "
+            "it are unreadable until it is replaced: stop DebateAI, delete that file, "
             "start again, and re-enter the provider keys in Admin -> Connections."
         )
         self.assertEqual(recovery, redaction.redact_text(recovery))

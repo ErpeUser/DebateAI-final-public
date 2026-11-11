@@ -26,7 +26,7 @@ PLUGIN_ARCHIVE = (
 
 def _download(base_url: str, name: str) -> bytes:
     request = urllib.request.Request(
-        f"{base_url}/{name}", headers={"User-Agent": "Backchannel-build"}
+        f"{base_url}/{name}", headers={"User-Agent": "DebateAI-build"}
     )
     with urllib.request.urlopen(request, timeout=60) as response:
         return response.read()

@@ -25,7 +25,7 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
 
         with mock.patch.dict(
             os.environ,
-            {"BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE": "1"},
+            {"DEBATEAI_GEMINI_WEB_SESSION_ACTIVE": "1"},
             clear=True,
         ):
             self.assertTrue(subscription_bridge.gemini_web_cookie_configured())
@@ -39,8 +39,8 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.dict(
                 os.environ,
                 {
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY": "local-secret",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_KEY": "local-secret",
                 },
             ),
             mock.patch.object(
@@ -83,8 +83,8 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.dict(
                 os.environ,
                 {
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
-                    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY": "local-secret",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_URL": "http://127.0.0.1:8317/v1",
+                    "DEBATEAI_SUBSCRIPTION_BRIDGE_KEY": "local-secret",
                 },
             ),
             mock.patch.object(
@@ -119,9 +119,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
                 mock.patch.dict(
                     os.environ,
                     {
-                        "BACKCHANNEL_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
-                        "BACKCHANNEL_GEMINI_WEB_KEY": "local-secret",
-                        "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE": str(cookie),
+                        "DEBATEAI_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
+                        "DEBATEAI_GEMINI_WEB_KEY": "local-secret",
+                        "DEBATEAI_GEMINI_WEB_COOKIE_FILE": str(cookie),
                     },
                 ),
                 mock.patch.object(
@@ -169,9 +169,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
                 mock.patch.dict(
                     os.environ,
                     {
-                        "BACKCHANNEL_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
-                        "BACKCHANNEL_GEMINI_WEB_KEY": "local-secret",
-                        "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE": str(cookie),
+                        "DEBATEAI_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
+                        "DEBATEAI_GEMINI_WEB_KEY": "local-secret",
+                        "DEBATEAI_GEMINI_WEB_COOKIE_FILE": str(cookie),
                     },
                 ),
                 mock.patch.object(
@@ -216,9 +216,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
                 mock.patch.dict(
                     os.environ,
                     {
-                        "BACKCHANNEL_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
-                        "BACKCHANNEL_GEMINI_WEB_KEY": "local-secret",
-                        "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE": str(cookie),
+                        "DEBATEAI_GEMINI_WEB_URL": "http://127.0.0.1:4981/openai/v1",
+                        "DEBATEAI_GEMINI_WEB_KEY": "local-secret",
+                        "DEBATEAI_GEMINI_WEB_COOKIE_FILE": str(cookie),
                     },
                 ),
                 mock.patch.object(

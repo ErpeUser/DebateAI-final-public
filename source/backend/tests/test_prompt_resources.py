@@ -23,7 +23,7 @@ class PromptResourceTests(unittest.TestCase):
         from app.services.agents.prompt_resources import load_prompt_resource
 
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 self.assertEqual(
                     "fallback prompt",
                     load_prompt_resource("debate_live_v2", "fallback prompt"),
@@ -35,7 +35,7 @@ class PromptResourceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / "debate_live_v2.txt"
             path.write_text("version one", encoding="utf-8")
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 self.assertEqual(
                     "version one",
                     load_prompt_resource("debate_live_v2", "fallback"),
@@ -53,7 +53,7 @@ class PromptResourceTests(unittest.TestCase):
             (Path(tmp) / "debate_live_v2.txt").write_text(
                 "external default", encoding="utf-8"
             )
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 agent = ObjectionHandlerAgent(
                     prompt_override="Custom {transcript_window}",
                     recommendation_only=True,
@@ -71,7 +71,7 @@ class PromptResourceTests(unittest.TestCase):
                 "SOURCES={evidence}\nRELATIONEN NUR MIT CLAIM-ID",
                 encoding="utf-8",
             )
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 prompt = build_deep_analysis_prompt(
                     claim="Die Kosten steigen.",
                     own_position="Gesamtkosten vergleichen.",
@@ -85,7 +85,7 @@ class PromptResourceTests(unittest.TestCase):
 
     def test_provider_background_file_keeps_placeholders_across_claims(self):
         with tempfile.TemporaryDirectory() as tmp:
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 first = build_deep_analysis_prompt(
                     claim="Erster konkreter Claim.",
                     own_position="Erste Position.",
@@ -116,7 +116,7 @@ class PromptResourceTests(unittest.TestCase):
             path = Path(tmp) / "debate_deep_v1.txt"
             original = "ungueltig {"
             path.write_text(original, encoding="utf-8")
-            with patch.dict(os.environ, {"BACKCHANNEL_PROMPT_DIR": tmp}):
+            with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 fallback = "Claim {claim}\nPosition {own_position}\nContext {relevant_context}\nEvidence {evidence}"
                 self.assertEqual(fallback, load_prompt_resource("debate_deep_v1", fallback))
             self.assertEqual(original, path.read_text(encoding="utf-8"))

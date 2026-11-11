@@ -30,11 +30,6 @@ TRUSTED_ASSETS = {
         "application/gzip",
     ),
 }
-LEGACY_TRUSTED_ASSETS = {
-    "windows-x64": ("Windows x64", "Backchannel-windows-x64.zip", "application/zip"),
-    "macos-arm64": ("macOS arm64", "Backchannel-macos-arm64.zip", "application/zip"),
-    "linux-x64": ("Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip"),
-}
 VERSION_RE = re.compile(
     r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
 )
@@ -91,8 +86,7 @@ def _validate_asset(value: object, version: str, *, private: bool) -> dict:
     keys = public_keys | ({"key", "content_type"} if private else set())
     asset = _exact_dict(value, keys, "asset")
     trusted = TRUSTED_ASSETS.get(asset["id"])
-    legacy = LEGACY_TRUSTED_ASSETS.get(asset["id"])
-    accepted = {trusted, legacy} - {None}
+    accepted = {trusted} - {None}
     if (
         not any(
             asset["platform"] == item[0] and asset["filename"] == item[1]

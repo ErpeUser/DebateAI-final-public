@@ -1,4 +1,4 @@
-"""Hide console windows created by Backchannel-managed child processes."""
+"""Hide console windows created by DebateAI-managed child processes."""
 
 from __future__ import annotations
 
