@@ -64,3 +64,22 @@ npm run test:site
 node --test *.test.js
 npm run build
 ```
+
+
+## DebateAI V6 canonical contracts
+
+The canonical product identity is DebateAI. Backchannel paths, bundle names and
+environment variables remain compatibility aliases until the native migration
+and rollback gates are complete.
+
+- [Product vision](DEBATE_AI_VISION_FINAL.md)
+- [Native Windows completion prompt](CODEX_DEBATEAI_FINAL.md)
+- [Final status and open gates](FINAL_STATUS_AND_OPEN_ITEMS.md)
+- [Reconciliation matrix](RECONCILIATION_MATRIX_DE.md)
+- [Research decisions](RESEARCH_DE.md)
+- [Windows runbook](windows-final-runbook.md)
+- [Windows recovery](windows-final-recovery.md)
+
+Historical audit, provenance, release and Superpowers documents are retained
+when referenced by build scripts, manifests, prompts or verification records.
+A filename similarity alone is not sufficient reason to delete a document.
