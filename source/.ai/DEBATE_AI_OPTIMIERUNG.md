@@ -23,6 +23,11 @@
   15 Runtime-Gates, lokale Ollama-Modellpaar-Messung, Provider-Logins, reale
   Authenticode-/Update-Signatur und Repository-Admin-Rename. Diese werden nicht
   als bestanden behauptet.
+- Volltree-Backend-Scan: 1855 Tests, 5 Failures/11 Errors/4 Skips. Die Fehler
+  sind getrennt dokumentiert: fehlendes pytest im isolierten Release-Venv,
+  umgebungs-/modellabhängige Tests sowie historische Branding-/Orchestrator-
+  Erwartungen, die dem kanonischen DebateAI-Vertrag widersprechen. Der
+  fokussierte produktrelevante Satz und alle nativen Release-Smokes bleiben grün.
 
 Stand: 2026-11-08
 
