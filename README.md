@@ -1,49 +1,57 @@
-# Debate AI V6 - private Windows release
+# DebateAI
 
-This repository contains the privately published Windows x64 onedir release
-candidate for Debate AI V6 and a sanitized source snapshot. The application
-is distributed as a release asset; the source snapshot is kept separate from
-local runtime state.
+DebateAI is a private, local-first live debate assistant. The canonical product
+name is **DebateAI**. This branch integrates its German calibration laboratory
+into the application and begins a migration-safe separation from the inherited
+product identity and hosted update infrastructure.
 
-## Download and start
+**Status:** integrated source and focused regression tests, not a newly built,
+signed or installed Windows release. The complete desktop binary/package rename,
+full-project release gates and native acceptance are still required. A repository
+rename alone does not complete that migration.
 
-1. Download `Backchannel-windows-x64.zip` from the GitHub release.
-2. Verify it against `SHA256SUMS.txt`.
-3. Extract the complete archive without renaming its `Backchannel/` root.
-4. Start `Backchannel/Backchannel.exe`.
-5. Keep the external `Backchannel/ai/` directory beside the executable when
-   changing prompts or provider configuration.
+## Use the integrated test laboratory
 
-The full runtime and the editable external AI files are described in
-`START_HIER.md`. `release-manifest.json` records the build toolchain,
-provenance and artifact hashes.
+Open the application and select **Testlabor**. The same-origin dialog keeps the
+live application mounted. It compares the same short recording across cached
+German local ASR models, displays recognition errors and latency separately, and
+supports blinded answer-pair/suite import, human ratings and JSON export.
 
-## Scope and evidence
+Opening the laboratory does not request microphone access. Recording is explicit.
+Heavy diagnostic work is blocked while tracked live work is running. Closing the
+laboratory stops its recording, preserves its displayed results, and does not
+pretend that a still-running native inference worker has stopped.
 
-The release asset was built from Git HEAD
-`da2c5301f272142ae5d7bbb2ab10a7b5402ae20c` with the release Python 3.12.10
-environment and PyInstaller 6.22.3. The executable, normal startup/health
-smoke, external prompt/configuration smoke, archive update/rollback smoke,
-and release-manifest tests were run before publication.
+The entry page is `source/frontend/public/calibration.html`; the production API
+is `source/backend/app/routers/calibration.py`. Test sources live inside this
+repository under `source/backend/tests/`, `source/frontend/calibration-tests/`,
+`source/desktop/tests/` and `source/scripts/tests/`. No separate recovery ZIP or
+manual source overlay is needed.
 
-The release is private because the public upstream repository must not receive
-binary release artifacts. A private repository does not turn the remaining
-manual A06/A18/A21/A22 evaluations into automated passes.
+## Independent identity and safe migration
 
-## Source code
+Fresh desktop installs select a DebateAI data directory. Existing nonempty legacy
+data remains readable through narrowly scoped compatibility aliases; credentials,
+model caches, profiles and databases are never silently discarded or moved while
+running. Automatic updates are disabled unless independently configured HTTPS
+endpoints and an explicit public trust-key file are supplied. Existing signature,
+archive-validation and rollback requirements remain in force.
 
-The `source/` directory contains the sanitized source snapshot used for the
-current audit, including the latest German UI, mobile activity layout,
-stable transcript row identities, and visible browser-audio fallback warning,
-including backend, desktop, frontend, docs-site, tests, scripts, prompts and
-release configuration. `SOURCE_SNAPSHOT_MANIFEST.json` lists every included
-file and hash. It deliberately excludes Git metadata, virtual environments,
-node_modules, generated build/dist folders, model/native binaries, audio,
-databases, session data and `.env` files. It also excludes provider/account
-overrides, browser profiles and cookies, OAuth/API login caches, local
-storage, chat/conversation history, transcripts, logs and other per-machine
-state. The current snapshot and its complete Git history were checked for
-those data classes; the result is zero matching local-data files. Synthetic
-credential strings used by redaction tests are retained as test fixtures and
-are explicitly listed in the manifest; no live secret was included. See
-`PRIVACY_AUDIT.md` for the exact checks and result.
+The intended repository name is `ErpeUser/DebateAI`. The checked-in
+`source/scripts/rename_debateai_repository.py` verifies the immutable repository
+ID and private visibility, previews by default, and changes the remote and local
+origin only with `--apply` using an existing authenticated GitHub CLI. Its presence
+does **not** mean that the GitHub repository has already been renamed.
+
+## Finalization and verification
+
+Read [the exact Codex handoff](source/docs/CODEX_DEBATEAI_FINAL.md),
+[verification evidence and limits](source/docs/debateai-verification-2026-11-11.md),
+`AGENTS.md`, `source/AGENTS.md`, `source/docs/windows-final-runbook.md`, and
+`source/docs/releasing.md` together. The latest user-authorized standalone identity
+supersedes older branding instructions, not data protection or signing checks.
+
+Historical release manifests, privacy audit, source provenance and required
+copyright/license notices are retained. Historical checksums describe their
+original artifacts; they are not evidence of a new DebateAI Windows build. Do not
+install an old archive and call it the current source revision.
