@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/wordmark.svg" alt="Backchannel" width="440" />
+  <img src="docs/assets/wordmark.svg" alt="DebateAI (legacy Backchannel)" width="440" />
 </p>
 
 <p align="center">
@@ -16,7 +16,7 @@
 
 ---
 
-Backchannel is a self-hosted, open-source (MIT) AI meeting assistant that
+DebateAI (historically Backchannel) is a self-hosted, open-source (MIT) AI meeting assistant that
 runs on your own hardware -- no bot joins your call, and your audio never
 leaves your infrastructure except for the model API calls you configure.
 
