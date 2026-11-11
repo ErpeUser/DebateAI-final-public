@@ -13,7 +13,7 @@ from typing import Any, Mapping
 SCHEMA_VERSION = 1
 STATUSES = frozenset({"ok", "timeout", "empty", "stale", "error", "abstent"})
 FAILURE_CLASSES = frozenset({
-    "none", "timeout", "empty", "stale", "provider", "parse", "privacy",
+    "none", "timeout", "empty", "stale", "error", "provider", "parse", "privacy",
     "cancelled", "resource", "unknown",
 })
 LATENCY_FIELDS = (

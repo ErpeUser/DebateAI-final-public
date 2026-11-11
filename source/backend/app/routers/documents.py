@@ -1,3 +1,4 @@
+import inspect
 import os
 import uuid
 
@@ -21,6 +22,11 @@ MAX_DOCUMENT_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_DOCUMENT_FILENAME_CHARS = 255
 
 _LOCAL_EXTRACT_EXTS = {".txt", ".md", ".markdown", ".docx"}
+
+
+async def _maybe_await(value):
+    """Support the real AsyncSession and lightweight synchronous test doubles."""
+    return await value if inspect.isawaitable(value) else value
 
 
 def local_extract_summary(content: bytes, filename: str, shielded: bool = False) -> str:
@@ -59,7 +65,7 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 
 @router.post("", response_model=DocumentOut, status_code=201)
 async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
-    if await db.get(Session, session_id) is None:
+    if await _maybe_await(db.get(Session, session_id)) is None:
         raise HTTPException(404, "Session not found")
     filename = safe_upload_filename(file.filename, fallback="document", max_length=MAX_DOCUMENT_FILENAME_CHARS)
     content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)

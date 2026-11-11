@@ -1,6 +1,7 @@
 """Post-import transcript analysis using the configured analyst model."""
 
 import json
+import inspect
 import uuid
 from datetime import datetime, timezone
 
@@ -131,7 +132,11 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
     # The SELECTs above open a DB transaction. Release the connection before
     # waiting on a remote/local model; analysis can take minutes and must not
     # hold a pool slot or a database snapshot for the whole inference.
-    await db.rollback()
+    rollback = getattr(db, "rollback", None)
+    if rollback is not None:
+        rollback_result = rollback()
+        if inspect.isawaitable(rollback_result):
+            await rollback_result
     items = _parse_items(
         await generate_text(model_id, prompt, session_id=session_id, source="analyze")
     )

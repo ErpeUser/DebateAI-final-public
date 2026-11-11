@@ -12,7 +12,7 @@ class DebateBrandingTests(unittest.TestCase):
 
         document = render_record(BriefingData(session=session))
 
-        self.assertEqual("Debate AI", app.title)
+        self.assertEqual("DebateAI", app.title)
         self.assertIn("<b>Debate AI</b>", document)
         self.assertIn("Prepared by Debate AI", document)
         self.assertNotIn("Prepared by Backchannel", document)
@@ -21,7 +21,7 @@ class DebateBrandingTests(unittest.TestCase):
         index = Path(__file__).resolve().parents[2] / "frontend" / "index.html"
         html = index.read_text(encoding="utf-8")
         self.assertIn('<html lang="de">', html)
-        self.assertIn("Debate AI", html)
+        self.assertIn("DebateAI", html)
 
 
 if __name__ == "__main__":

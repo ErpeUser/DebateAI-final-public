@@ -2757,3 +2757,26 @@ Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
 - Nachweise: `compileall` gruen; Desktop Identity/Updater/Smoke/Subscription/Native-Update-Akzeptanz gruen; Release-Contract und Release-Manifest 30/30 gruen; vorhandene Windows-Symlink-Pruefungen bleiben wegen fehlender Symlink-Berechtigung uebersprungen.
 - Offen: Restliche Provider-/Bridge-Variablen fachlich durchtesten, Backend-/Frontend-Gesamtsuiten, Root-Administration/Repository-Rename pruefen, Build-Abhaengigkeiten und Assets synchronisieren, nativen `build_debate_assistant.ps1 -IncludeOracle` ausfuehren, ZIP/Hash und die 15 Human-/Hardware-Gates getrennt dokumentieren.
 - Naechste Aktion: canonical/legacy env chain in Backend-Provider-Routern abschliessen und danach Frontend-/Backend-/Desktop-Gesamttests mit korrektem `PYTHONPATH` ausfuehren.
+
+### DESKTOP_FINAL-Paket 3/3: Volltest, Vertragsluecken und Wiederaufnahmepunkt (2026-11-11)
+
+- Der Volltest wurde aus dem echten `source`-Arbeitsverzeichnis mit der
+  Release-Umgebung ausgefuehrt: **1.854 Backend-Tests OK, 4 uebersprungen**
+  (`python -m unittest discover -s backend/tests`, 138,8 Sekunden). Der
+  Root-Aufruf wird nicht als Produktfehler gewertet, weil ein Test seinen
+  Unterprozess-PYTHONPATH relativ zu `source` aufloest.
+- Die Response-Contract-Luecke ist geschlossen: `error` ist jetzt neben
+  `ok`, `timeout`, `empty`, `stale` und `abstent` auch als Failure-Klasse
+  zulaessig. Die Blind-Benchmark-Exporte bewahren damit Fehler im Nenner,
+  ohne Providerdetails oder Geheimnisse zu exportieren.
+- Upload- und Analyse-Routen akzeptieren weiterhin echte AsyncSessions und
+  sind zugleich gegen synchrone Test-Doubles fehlertolerant; ein fehlendes
+  optionales `rollback` kann den eigentlichen Analysefehler nicht mehr
+  verdecken. Die beiden Orchestrator-/Prompt-Regressionen und die kanonischen
+  DebateAI-Branding-Erwartungen sind ebenfalls behoben.
+- Der Fortschritt ist dadurch unterbrechungsfest: vor jedem weiteren Build
+  sind `git status`, `git rev-parse HEAD`, `git rev-parse origin/master` und
+  der letzte Eintrag dieses Logs zu pruefen. Der naechste erlaubte Schritt ist
+  der Frontend-/Desktop-Gesamtlauf und anschliessend ein neuer Build aus exakt
+  diesem Source-Stand; keine Human-/Hardware-/Provider- oder
+  Authenticode-Abnahme darf automatisiert als bestanden ausgegeben werden.

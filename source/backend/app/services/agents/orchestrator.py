@@ -3241,11 +3241,14 @@ class AgentOrchestrator:
         )
         revision_is_current = context.claim_revision == current_revision
         if allow_newer_revision_same_claim:
-            revision_is_current = (
-                context.claim_revision <= current_revision
-                and bool(active_claim_id)
-                and context.claim_id == str(active_claim_id)
-            )
+            if active_claim_id:
+                revision_is_current = (
+                    context.claim_revision <= current_revision
+                    and context.claim_id == str(active_claim_id)
+                )
+            # Before the first persisted claim exists, the exact transcript
+            # revision is still authoritative. Requiring an active claim here
+            # would discard the initial live partial and its saved objection.
         return bool(
             not self._stopped
             and context.session_id == str(self.session_id)
