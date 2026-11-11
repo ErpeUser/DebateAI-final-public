@@ -46,3 +46,19 @@ Die im Chat zuletzt angekündigten/teilweise vorbereiteten **Sprachlabor-, Antwo
 
 ## Abnahmebericht Pflicht
 Pro Bereich `bestanden` / `fehlgeschlagen` / `nicht ausführbar`, genaue Befehle, Testanzahl, Commit, ZIP-Pfad+SHA256, installierter EXE-Pfad, Log-/Fehlerhinweis. Keine falschen Aussagen über erfolgreichen Test oder aktuelle Produktivinstallation.
+
+
+## Additive implementation delta – 2026-11-11
+
+- `app/services/response_contract.py` now validates deterministic replay and
+  laboratory event invariants without changing the live orchestrator or adding
+  a database migration.
+- `benchmark_blind_pair.py` validates each candidate record at the export
+  boundary and keeps timeout, empty, stale and error outcomes in the denominator.
+- `tests.yml` and `security.yml` expose `workflow_dispatch` for explicit
+  reruns; a run with `steps: []` remains an Actions infrastructure blocker.
+- The native Windows, A06/A18/A21/A22, update/rollback and human-review gates
+  remain open until their real evidence is produced.
+- Backchannel file, EXE and AppData names remain compatibility aliases until an
+  atomic DebateAI migration is tested; historical documentation is retained
+  when referenced by build, release or audit contracts.
