@@ -113,3 +113,44 @@ Vorhandene Credentials nur ueber App, interaktiven sicheren Login dem Benutzer u
 Konkrete Fehler beheben, relevante Tests, commit/push ohne force, neuesten master integrieren, dann aus genau diesem Source bauen. Spaeterer Sourcefix erfordert neuen Buildnachweis. git fetch origin master; git status --short; git rev-parse HEAD und origin/master muessen uebereinstimmen. Retained user files nicht als Sourcegarbage entfernen.
 
 Bericht: echter Projektpfad, finalerSHA/Gleichheit, verworfene/integrerte lokale Aenderungen, ZIP-Pfad/SHA256, gestarteteEXE/Buildursprung, automatische Tests getrennt von Hardware, alle15Gates, Provider/Keys/Login, echter Repositoryname und Branchstand, exakte Restblocker. Signierter Release erst nach erfolgreichem Protokoll; Source-Merge ist keine fertige Windows-Installation. Unabhaengige Aufgaben trotz externerBlocker fertigstellen.
+
+
+## 8. Ergaenzungen fuer die Umsetzung vom 2026-11-11
+
+Die additive Contract-Schicht `source/backend/app/services/response_contract.py`
+validiert Replay- und Laborereignisse, ohne den Live-Orchestrator oder die
+Datenbank zu ersetzen. Verwende sie zuerst am Export-/Benchmark-Rand. Pflicht-
+pruefungen sind schema_version, case_id/turn_id, Claim-Lineage, endliche nicht-
+negative Latenzen, monotone first_update/final_update-Zeitpunkte sowie der
+vollstaendige Status-/Failure-Satz ok, timeout, empty, stale, error und abstent.
+Unbekannte Felder bleiben fuer Vorwaertskompatibilitaet erhalten. Semantische
+Wahrheit, Entailment und Quellenqualitaet niemals aus Hashes ableiten.
+
+Der Produktions-Replay muss fuer jede Variante alle gestarteten Faelle im
+Nenner behalten. Fehlende Ausgabe, Timeout, leere Antwort, stale Ergebnis,
+Providerfehler und Parsingfehler werden nicht herausgefiltert. Ersthilfe,
+spaetere Revision, correct-to-wrong und wrong-to-correct getrennt protokollieren.
+
+Fuer die GitHub-Actions-Diagnose sind `workflow_dispatch`-Einstiege in
+`.github/workflows/tests.yml` und `.github/workflows/security.yml` vorhanden.
+Manuell ausfuehren und die Joblogs pruefen. Ein Lauf mit `steps: []` ist ein
+Runner-/Dispatchfehler und kein gruenes Gate. Testkommandos nicht blind aendern.
+
+Markdown-Cleanup ist referenzbewusst: historische Audit-, Release-, Provenance-
+und Superpowers-Dokumente bleiben erhalten. Vor dem Loeschen eines Dokuments
+muss eine statische Referenzsuche, eine Manifestpruefung und ein Testlauf zeigen,
+dass es kein Build-, Release-, Prompt- oder Recoveryvertrag ist. `backchannel.spec`,
+Backchannel.exe, `BACKCHANNEL_*` und `%LOCALAPPDATA%\\Backchannel` bleiben bis
+zur vollstaendig getesteten Migration kontrollierte Legacy-Aliase.
+
+Die vier externen Evidenzgates A06, A18, A21 und A22 bleiben echte manuelle
+Windows-/Human-Review-Gates. Source-Tests, Linux-CI oder Mock-Audio duerfen sie
+nicht als bestanden markieren. Eine Produktionspromotion eines ASR-Modells,
+einer neuen Antwortpolicy oder der Repository-/EXE-Namensmigration ist erst
+nach diesen Nachweisen erlaubt.
+
+Vor dem finalen Merge immer: Branch-Head und erwartete SHA pruefen, relevante
+Tests mit Exitcode ausfuehren, Arbeitsbaum/Remote vergleichen, PR gegen master
+mit vollstaendigem Ergebnisbericht anlegen und nur bei sauberer Review-/Gate-
+Lage ohne Force-Merge integrieren. Der Merge eines Source-PRs bestaetigt keine
+Windows-Installation oder Signatur.
