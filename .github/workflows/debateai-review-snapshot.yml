@@ -1,0 +1,32 @@
+name: DebateAI private review snapshot
+
+on:
+  push:
+    branches: [hardening/debateai-standalone]
+    paths: [.github/workflows/debateai-review-snapshot.yml]
+
+permissions:
+  contents: read
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - name: Export tracked source only
+        shell: bash
+        run: |
+          set -euo pipefail
+          git archive --format=zip --output="$RUNNER_TEMP/debateai-review-source.zip" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/debateai-review-commit.txt"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: debateai-private-review-source
+          path: |
+            ${{ runner.temp }}/debateai-review-source.zip
+            ${{ runner.temp }}/debateai-review-commit.txt
+          retention-days: 1
+          if-no-files-found: error
