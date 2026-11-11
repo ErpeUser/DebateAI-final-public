@@ -2797,7 +2797,6 @@ Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
   `source/dist/DebateAI/DebateAI.exe` und `DebateAIUpdater.exe` stammen aus
   demselben Staging. Bundle-Smoke meldet `healthy`, lokales ASR und sauberen
   Shutdown; der native Update-/erzwungene-Rollback-Smoke ist bestanden.
-- Der Quellstand ist nach Push verifiziert: `HEAD == origin/master ==
-  97e4b3e3446de9cd69a4c6d84cff737d6a4b42d7`. Die verbleibenden 15
+- Der Runtime-Quellstand des Kandidaten ist `97e4b3e3446de9cd69a4c6d84cff737d6a4b42d7`; die nachgelagerte Evidenz-Dokumentation ist in `d1e68455161535e58110104a22147275df4b3d64` gepusht und aktuell gilt `HEAD == origin/master == d1e68455161535e58110104a22147275df4b3d64`. Die verbleibenden 15
   Human-/Hardware-/Provider-/Authenticode-Gates sind vorbereitet, aber nicht
   als automatisiert bestanden ausgegeben.
