@@ -18,4 +18,4 @@ Review focus: retained credentials; legacy data directories; invalid update URLs
 Ruling: this environment cannot launch independent coding agents. Reviews are separate author passes, not multiple-agent verification.
 Ruling: native Windows build/install and a repository-administration rename are not established by a source push.
 
-Remaining whole-product work is explicitly tracked in CODEX_DEBATEAI_FINAL.md and debateai-verification-2026-11-11.md; these completed package checkboxes do not mean a completed standalone Windows release.
+Remaining whole-product work is explicitly tracked in DESKTOP_FINAL.md and debateai-verification-2026-11-11.md; these completed package checkboxes do not mean a completed standalone Windows release.

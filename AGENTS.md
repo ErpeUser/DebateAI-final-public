@@ -2,7 +2,7 @@
 
 Product identity: **DebateAI**. Canonical target repository `ErpeUser/DebateAI`, stable repository ID **1450951492**, always **private**. `ErpeUser/backchannel-v6-private` remains the migration alias until an actual rename is verified. No second repository, history rewriting, force-push, fake signing keys or domains. Required copyright/license/provenance notices remain.
 
-Read together: source/AGENTS.md; source/docs/CODEX_DEBATEAI_FINAL.md; source/docs/windows-final-runbook.md; source/docs/windows-final-recovery.md; source/docs/releasing.md; relevant latest entries of source/.ai/DEBATE_AI_OPTIMIERUNG.md and source/.ai/FINAL_INTEGRATION_2026-11-11.md. The reconciliation matrix resolves both earlier deliveries. New explicit user instructions supersede obsolete branch/branding guidance, not privacy, data protection or test requirements.
+Read together: source/AGENTS.md; source/docs/DESKTOP_FINAL.md; source/docs/windows-final-recovery.md; source/docs/releasing.md; relevant latest entries of source/.ai/DEBATE_AI_OPTIMIERUNG.md and source/.ai/FINAL_INTEGRATION_2026-11-11.md. The reconciliation matrix resolves both earlier deliveries. New explicit user instructions supersede obsolete branch/branding guidance, not privacy, data protection or test requirements.
 
 ## The actual existing checkout is mandatory
 

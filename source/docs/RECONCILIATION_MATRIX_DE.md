@@ -9,7 +9,7 @@ Basis: Recovery-ZIP SHA256 5e26c00f2615d7712efb1e2c648ba307db6c013ddb20964a672c0
 | Upload/Decoder | Integrierte ASGI-Grenze, diagnostic_audio und asynchroner Decoder erhalten. | Native Bundle-Gates offen. |
 | Worker bei Abbruch | Exklusive Diagnosejobs erhalten; Produktions-Replay/Prozess-Timeout und Quarantaene ergaenzt. | Cancellation beweist kein physisches Threadende. |
 | apply_package.py | Historischer ZIP-Installationshelfer absichtlich nicht als zweiter Installer eingebaut. Direkte Git-Integration ersetzt seinen Zweck. | Seine neun Tests nicht als neue Produkttests zaehlen. |
-| Gefaehrlicher Installer | windows-final-runbook.md wirklich ersetzt; windows-final-recovery.md integriert. Kein Loeschen vor Entpacken/Pruefung. | Native Installation/Rollback noch ausfuehren. |
+| Gefaehrlicher Installer | DESKTOP_FINAL.md wirklich ersetzt; windows-final-recovery.md integriert. Kein Loeschen vor Entpacken/Pruefung. | Native Installation/Rollback noch ausfuehren. |
 | 13 deutsche Testtypen | Vorhandenes Labor mit Aufnahme/Import, gleichem Clip, WER/CER, RTF, Zahlen/Negation/Stille behalten. | Kein Dual-Track-/Streaming-/Sprecherbeweis. |
 | Blindvergleich | Mehrfall-Import/zufaellige A/B/Identitaet erst nach Wahl behalten; echte Kontext-Hashpruefung und Fehlernenner hinzugefuegt. | Nutzen ist kein Faktenlabel. |
 | Bewertungen | Unberuehrte Skalen erzeugen nicht mehr automatische 3/5-Werte. | Historische Exporte mit Defaults nicht als bewusste Ratings interpretieren. |
@@ -20,7 +20,7 @@ Basis: Recovery-ZIP SHA256 5e26c00f2615d7712efb1e2c648ba307db6c013ddb20964a672c0
 | In-App-Zugang | Neueren Dialog behalten, Haupt-React-Baum bleibt montiert. | WebView2-Mikrofon auf Windows pruefen. |
 | PWA-Identitaet | Manifest und vorhandener PWA-Test gemeinsam auf DebateAI abgeglichen. | Keine neue Ikonengrafik behaupten. |
 | Forschung/Matrix | RESEARCH_DE.md, diese Matrix und DEEP_RESEARCH_AUFTRAG_DE.md nun versioniert. | Ein Rechercheagent fertig, zwei Teilresultate am Limit. |
-| Codex-Auftrag | Aktueller CODEX_DEBATEAI_FINAL.md ersetzt veraltete ZIP-Overlay-/Feature-Branch-Pflicht. | Alle 15 Windows-Gates bleiben verbindlich. |
+| Codex-Auftrag | Aktueller DESKTOP_FINAL.md ersetzt veraltete ZIP-Overlay-/Feature-Branch-Pflicht. | Alle 15 Windows-Gates bleiben verbindlich. |
 | Datenidentitaet/Update | Neuere kompatible DebateAI-Datenpfade und eigener expliziter API-Updatekanal behalten. | EXE/Updater/Archiv-/Paketmigration noch nicht vollstaendig. |
 | Repository-Rename | Vorhandener gepruefter rename_debateai_repository.py bleibt. | Reale Adminaktion nicht durch Helferexistenz erledigt. |
 | NeMo/Overlay/Host-Guard aus abgebrochenen Logs | Keine unbelegten Fertigmeldungen uebernehmen; vorhandene Pfade gezielt testen. | Nicht als in diesem Durchlauf neu implementiert ausgeben. |

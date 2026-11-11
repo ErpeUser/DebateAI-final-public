@@ -73,11 +73,10 @@ environment variables remain compatibility aliases until the native migration
 and rollback gates are complete.
 
 - [Product vision](DEBATE_AI_VISION_FINAL.md)
-- [Native Windows completion prompt](CODEX_DEBATEAI_FINAL.md)
+- [Desktop completion and Windows runbook](DESKTOP_FINAL.md)
 - [Final status and open gates](FINAL_STATUS_AND_OPEN_ITEMS.md)
 - [Reconciliation matrix](RECONCILIATION_MATRIX_DE.md)
 - [Research decisions](RESEARCH_DE.md)
-- [Windows runbook](windows-final-runbook.md)
 - [Windows recovery](windows-final-recovery.md)
 
 Historical audit, provenance, release and Superpowers documents are retained

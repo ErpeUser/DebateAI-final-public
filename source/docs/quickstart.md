@@ -14,7 +14,7 @@ for the current asset inventory.
   package-manager installer): `tar -xzf` it and run `Backchannel/Backchannel`.
 
 The complete German Windows install, provider-login, Ollama, audio, build,
-update and signing procedure is in the [final Windows runbook](windows-final-runbook.md).
+update and signing procedure is in the [final Windows runbook](DESKTOP_FINAL.md).
 
 The app runs from your system tray / menu bar and stores data per-user --
 `%LOCALAPPDATA%\Backchannel` on Windows,

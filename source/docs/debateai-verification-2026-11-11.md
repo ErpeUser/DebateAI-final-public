@@ -88,4 +88,4 @@ Deployment-/Publikationspfade abtrennen; produktive Antwortpaar-Erzeugung an das
 Labor anbinden; vollstaendige Projektgates und native Windows-Build-/Update-/
 Rollback-Abnahme. Diese sind teilweise noch INTERNE Entwicklungsarbeiten, nicht
 nur externe Kontologin- oder Zertifikatsblocker. Exakte Schritte und alle 15
-Runtime-Gates stehen in `CODEX_DEBATEAI_FINAL.md`.
+Runtime-Gates stehen in `DESKTOP_FINAL.md`.

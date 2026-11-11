@@ -18,4 +18,4 @@ Neue Defaults, bisherige Baseline und aktive Benutzerkopie semantisch zusammenfu
 
 Laborassets und Navigation sind integriert. Der Produktions-Paarbenchmark benchmark_blind_pair.py ist implementiert, benoetigt aber die Source-Projektumgebung und ein bewusst beendetes Desktopprogramm. Er ist kein neuer Installer oder in die EXE eingebauter Generierungsbutton. Fehler, Timeouts und unbewertete Skalen bleiben ehrlich. Ein synthetischer Browsertest oder Headless-Replay ist keine deutsche Hardware-/Sprachabnahme.
 
-Exakte nativen Schritte stehen in windows-final-runbook.md und CODEX_DEBATEAI_FINAL.md. Signierter Release nur mit realem Zertifikat, unabhaengigem Kanal und erfolgreichem Protokoll; keine erfundene Freigabe.
+Exakte nativen Schritte stehen in DESKTOP_FINAL.md. Signierter Release nur mit realem Zertifikat, unabhaengigem Kanal und erfolgreichem Protokoll; keine erfundene Freigabe.

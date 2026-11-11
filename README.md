@@ -31,8 +31,7 @@ Target repository ErpeUser/DebateAI, stable ID1450951492, private. The authentic
 
 - [Reconciliation of both deliveries](source/docs/RECONCILIATION_MATRIX_DE.md)
 - [Fresh focused tests and limitations](source/docs/FINAL_VERIFICATION_2026-11-11.md)
-- [Safe Windows runbook](source/docs/windows-final-runbook.md)
-- [Exact Codex native completion](source/docs/CODEX_DEBATEAI_FINAL.md)
+- [Unified Desktop completion and Windows runbook](source/docs/DESKTOP_FINAL.md)
 - [Research-informed decisions](source/docs/RESEARCH_DE.md)
 - [Ready-to-use Deep Research brief](source/docs/DEEP_RESEARCH_AUFTRAG_DE.md)
 

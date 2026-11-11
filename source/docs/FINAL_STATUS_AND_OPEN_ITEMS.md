@@ -40,7 +40,7 @@ Die im Chat zuletzt angekündigten/teilweise vorbereiteten **Sprachlabor-, Antwo
 ### P2 – Realwelt-/Release-Abnahme auf Windows
 - Mikrofon + WASAPI/Systemaudio auf echter Hardware; lokale Qwen-/Ollama-Inferenz und verfügbare ASR-Modelle; Bedienung des eingebauten Labors und vollständiger Debattenfluss.
 - Bestehende ChatGPT-/Gemini-Browser-Loginwege nur über offizielle sichtbare Loginoberflächen testen; keine Cookie-/Token-Extraktion. Provider-Kosten/Verfügbarkeit nicht aus einem Mock als bestätigt melden.
-- Windows-Build gemäß `source/docs/windows-final-runbook.md`: portable Node24, Oracle, CLIProxyAPI/Gemini-Plugin, Gemini Web Bridge, ffmpeg, ONNX, PostgreSQL, Bundle-Smoke, ZIP-Prüfung, Start und sicheren Austausch der Programmdateien. AppData erhalten.
+- Windows-Build gemäß `source/docs/DESKTOP_FINAL.md`: portable Node24, Oracle, CLIProxyAPI/Gemini-Plugin, Gemini Web Bridge, ffmpeg, ONNX, PostgreSQL, Bundle-Smoke, ZIP-Prüfung, Start und sicheren Austausch der Programmdateien. AppData erhalten.
 - GitHub-Actions-Status neu prüfen. Frühere Jobs auf `master` hatten keine ausgeführten Schritte (`steps:null`), daher kein CI-Pass. Infrastrukturfehler von reproduzierbaren Codefehlern trennen.
 - Authenticode-Signierung/öffentliche Releasefreigabe bleiben extern blockiert, solange echtes Distributorzertifikat/Freigabe fehlt.
 

@@ -3,7 +3,7 @@
 
 ## Phase 0: Autoritative Quellen und Standort
 Prüfe zuerst den neuesten Remote-Branch `origin/master`; niemals auf einen hier hartcodierten SHA zurückspringen. Lies vollständig in dieser Reihenfolge:
-`AGENTS.md` (Repository-Wurzel), `source/AGENTS.md`, `source/docs/DEBATE_AI_VISION_FINAL.md`, `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`, `source/docs/windows-final-runbook.md`, `source/docs/releasing.md`. Die beiden AGENTS-Dateien und das Windows-Runbook sind **gemeinsam** verbindlich. Bei älteren Konflikten gelten die expliziten synchronisierenden Nutzerregeln: neuer geprüfter Remote-Code ist Basis; nur tatsächlich einzigartige lokale Verbesserungen werden integriert.
+`AGENTS.md` (Repository-Wurzel), `source/AGENTS.md`, `source/docs/DEBATE_AI_VISION_FINAL.md`, `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`, `source/docs/DESKTOP_FINAL.md`, `source/docs/releasing.md`. Die beiden AGENTS-Dateien und der gemeinsame Desktop-Leitfaden sind **gemeinsam** verbindlich. Bei älteren Konflikten gelten die expliziten synchronisierenden Nutzerregeln: neuer geprüfter Remote-Code ist Basis; nur tatsächlich einzigartige lokale Verbesserungen werden integriert.
 
 **Wichtiges Statuswissen:** Die Vision ist eine Zielvorgabe; das Evidenzregister listet nur Stand der GitHub-Sichtung. Insbesondere Sprachlabor/Antwortlabor sind **nicht** als auf `master` vollständig umgesetzt oder real auf Windows getestet zu betrachten.
 

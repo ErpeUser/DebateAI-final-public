@@ -40,4 +40,4 @@ Ein zweiter Abschnitt, **Antwortlabor**, lässt eine gegnerische These, eigene P
 Keine unkontrollierte Neuarchitektur; kein ungefragtes Löschen von Nutzerprofilen oder lokalen Verbesserungen; kein Auto-Apply des A/B-Siegers; kein erfundener Windows-Hardwaretest; keine automatische Veröffentlichung eines signierten Releases ohne Zertifikat/Freigabe.
 
 ## Vorrang und Bezug
-Zusammen lesen: `/AGENTS.md`, `/source/AGENTS.md`, `source/docs/windows-final-runbook.md`, `source/docs/releasing.md` und `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`. Dieses Dokument beschreibt **was** das Produkt leisten soll; die anderen Dateien regeln Arbeitsweise, Ausführung und aktuellen Nachweis.
+Zusammen lesen: `/AGENTS.md`, `/source/AGENTS.md`, `source/docs/DESKTOP_FINAL.md`, `source/docs/releasing.md` und `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`. Dieses Dokument beschreibt **was** das Produkt leisten soll; die anderen Dateien regeln Arbeitsweise, Ausführung und aktuellen Nachweis.

@@ -12,4 +12,4 @@ Final self-review: separate safety/lifecycle, measurement/frontend and release/d
 
 Rulings: old apply_package.py overlay is superseded by direct Git integration, not added as a second installer; existing deployment workflow was read and builds only, so it was not disabled on name alone; no speculative new dependency/framework; source merge is explicitly authorized but no branch-protection bypass; branch deletion only after verified ancestry; binary/archive identity migration and native hardware/release gates remain explicit, not disguised as only external blockers.
 
-Deferred minor: no statistically justified ranking from a tiny pilot. Deferred native work is exactly specified in CODEX_DEBATEAI_FINAL.md. Push/merge/branch-cleanup status must be verified from GitHub after the action, never inferred from a local ledger.
+Deferred minor: no statistically justified ranking from a tiny pilot. Deferred native work is exactly specified in DESKTOP_FINAL.md. Push/merge/branch-cleanup status must be verified from GitHub after the action, never inferred from a local ledger.
