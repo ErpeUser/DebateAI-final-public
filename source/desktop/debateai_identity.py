@@ -26,7 +26,8 @@ def resolve_data_root(*, base: Path, environment: Mapping[str, str], lowercase: 
         legacy_name = LEGACY_PRODUCT_NAME.lower() if lowercase else LEGACY_PRODUCT_NAME
         selected = base / name
         legacy = base / legacy_name
-        if not selected.exists() and legacy.is_dir():
+        empty_new = not selected.exists() or (selected.is_dir() and not any(selected.iterdir()))
+        if empty_new and legacy.is_dir() and any(legacy.iterdir()):
             selected = legacy
     if selected.exists() and not selected.is_dir():
         raise NotADirectoryError('The configured DebateAI data location is not a directory.')

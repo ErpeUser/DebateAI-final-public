@@ -41,6 +41,7 @@ class IdentityTests(unittest.TestCase):
             base = Path(tmp)
             (base / 'Backchannel').mkdir(); (base / 'DebateAI').mkdir()
             (base / 'Backchannel' / 'state').write_text('old')
+            (base / 'DebateAI' / 'current').write_text('current')
             self.assertEqual(m.resolve_data_root(base=base, environment={}), base / 'DebateAI')
             self.assertFalse((base / 'DebateAI' / 'state').exists())
 
@@ -60,8 +61,21 @@ class IdentityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             self.assertEqual(m.resolve_data_root(base=base, environment={}, lowercase=True), base/'debateai')
-            (base/'backchannel').mkdir()
+            (base/'backchannel').mkdir(); (base/'backchannel'/'state').write_text('saved')
             self.assertEqual(m.resolve_data_root(base=base, environment={}, lowercase=True), base/'backchannel')
+
+    def test_empty_new_directory_cannot_hide_existing_legacy_data(self):
+        m=self.load()
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp); (base/'Backchannel').mkdir(); (base/'DebateAI').mkdir()
+            (base/'Backchannel'/'state').write_text('saved')
+            self.assertEqual(m.resolve_data_root(base=base,environment={}),base/'Backchannel')
+
+    def test_empty_legacy_directory_does_not_keep_old_brand(self):
+        m=self.load()
+        with tempfile.TemporaryDirectory() as tmp:
+            base=Path(tmp); (base/'Backchannel').mkdir()
+            self.assertEqual(m.resolve_data_root(base=base,environment={}),base/'DebateAI')
 
     def test_file_collision_is_not_used_as_data_directory(self):
         m = self.load()
