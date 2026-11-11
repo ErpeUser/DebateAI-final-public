@@ -1,57 +1,39 @@
 # DebateAI
 
-DebateAI is a private, local-first live debate assistant. The canonical product
-name is **DebateAI**. This branch integrates its German calibration laboratory
-into the application and begins a migration-safe separation from the inherited
-product identity and hosted update infrastructure.
+Private, local-first German live debate assistant. Canonical product name: **DebateAI**. The integrated calibration laboratory, safety fixes and production comparison tools are versioned here, not only in a separate recovery ZIP.
 
-**Status:** integrated source and focused regression tests, not a newly built,
-signed or installed Windows release. The complete desktop binary/package rename,
-full-project release gates and native acceptance are still required. A repository
-rename alone does not complete that migration.
+**Status:** source integration and focused regression evidence. This is not a newly built/signed/installed Windows release. Full-project CI, the coupled native binary/archive identity migration and real Windows acceptance remain required. A source merge is not a production release.
 
-## Use the integrated test laboratory
+## Integrated laboratory
 
-Open the application and select **Testlabor**. The same-origin dialog keeps the
-live application mounted. It compares the same short recording across cached
-German local ASR models, displays recognition errors and latency separately, and
-supports blinded answer-pair/suite import, human ratings and JSON export.
+Open **Testlabor** inside the app. Its same-origin dialog leaves the main application mounted. Compare the same short German recording across cached local ASR adapters; inspect WER/CER, critical words and runtime separately. Explicit recording, no silent model download or active-setting changes. Heavy diagnostics retain worker ownership until real completion, even after browser cancellation.
 
-Opening the laboratory does not request microphone access. Recording is explicit.
-Heavy diagnostic work is blocked while tracked live work is running. Closing the
-laboratory stops its recording, preserves its displayed results, and does not
-pretend that a still-running native inference worker has stopped.
+Blind pair/suite imports support A/B, ties and both-unsuitable feedback; identities appear after voting. Generated experiments retain failed pairs in their denominators and verify declared context hashes. Optional ratings are not prefilled. Usefulness is not factual truth. Persistence/export is explicit and excludes audio and credentials.
 
-The entry page is `source/frontend/public/calibration.html`; the production API
-is `source/backend/app/routers/calibration.py`. Test sources live inside this
-repository under `source/backend/tests/`, `source/frontend/calibration-tests/`,
-`source/desktop/tests/` and `source/scripts/tests/`. No separate recovery ZIP or
-manual source overlay is needed.
+## Actual production-path pairs
 
-## Independent identity and safe migration
+Stop the desktop first. In the complete backend source environment select two already installed genuinely local Ollama models:
 
-Fresh desktop installs select a DebateAI data directory. Existing nonempty legacy
-data remains readable through narrowly scoped compatibility aliases; credentials,
-model caches, profiles and databases are never silently discarded or moved while
-running. Automatic updates are disabled unless independently configured HTTPS
-endpoints and an explicit public trust-key file are supplied. Existing signature,
-archive-validation and rollback requirements remain in force.
+```sh
+cd source/backend
+python scripts/benchmark_blind_pair.py --model-a qwen3:4b --model-b SECOND_INSTALLED_LOCAL_MODEL --output comparison.json
+```
 
-The intended repository name is `ErpeUser/DebateAI`. The checked-in
-`source/scripts/rename_debateai_repository.py` verifies the immutable repository
-ID and private visibility, previews by default, and changes the remote and local
-origin only with `--apply` using an existing authenticated GitHub CLI. Its presence
-does **not** mean that the GitHub repository has already been renamed.
+Replace the second-model placeholder. The existing production replay runs in separate sequential child processes for both modes; causal output pairs and failure counts are exported for laboratory import. Missing models/remote aliases/timeouts/empty answers are not fabricated successes. No second prompt engine, synchronous judge or automatic winner settings. This is a source CLI, not a one-click frozen-EXE feature.
 
-## Finalization and verification
+## Identity and data preservation
 
-Read [the exact Codex handoff](source/docs/CODEX_DEBATEAI_FINAL.md),
-[verification evidence and limits](source/docs/debateai-verification-2026-11-11.md),
-`AGENTS.md`, `source/AGENTS.md`, `source/docs/windows-final-runbook.md`, and
-`source/docs/releasing.md` together. The latest user-authorized standalone identity
-supersedes older branding instructions, not data protection or signing checks.
+Fresh installs select DebateAI data paths; existing nonempty legacy data remains accessible. Never blindly remove keys, profiles, databases, transcripts, models or customized strategies. Independent API update channel requires explicit HTTPS endpoints and public trust keys; archive/signature/rollback checks stay mandatory.
 
-Historical release manifests, privacy audit, source provenance and required
-copyright/license notices are retained. Historical checksums describe their
-original artifacts; they are not evidence of a new DebateAI Windows build. Do not
-install an old archive and call it the current source revision.
+Target repository ErpeUser/DebateAI, stable ID1450951492, private. The authenticated rename helper previews before --apply; its existence does not prove an actual rename. Legacy binary/archive names remain until their coupled contracts are tested together. License/provenance notices and historical manifests remain; old checksums are not new release evidence.
+
+## Evidence and native completion
+
+- [Reconciliation of both deliveries](source/docs/RECONCILIATION_MATRIX_DE.md)
+- [Fresh focused tests and limitations](source/docs/FINAL_VERIFICATION_2026-11-11.md)
+- [Safe Windows runbook](source/docs/windows-final-runbook.md)
+- [Exact Codex native completion](source/docs/CODEX_DEBATEAI_FINAL.md)
+- [Research-informed decisions](source/docs/RESEARCH_DE.md)
+- [Ready-to-use Deep Research brief](source/docs/DEEP_RESEARCH_AUFTRAG_DE.md)
+
+Read root/source AGENTS and current handoff together. After verified consolidation use newest master; do not require an obsolete feature branch or overlay the old ZIP onto newer source. Never install an old executable and present it as the current revision.

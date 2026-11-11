@@ -1,0 +1,82 @@
+[
+  {
+    "speaker": "Gegenseite",
+    "text": "Der neue Ablauf ist besser, weil er neuer ist."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Welche konkrete Verbesserung wurde bisher gemessen?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Drei Kollegen sind zufrieden, deshalb sind alle zufrieden."
+  },
+  {
+    "speaker": "Nutzer",
+    "text": "Die drei Rueckmeldungen sind positiv, aber nicht repraesentativ."
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Es gab keinen Widerspruch, also gab es auch keine Probleme."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Kann fehlender Widerspruch auch andere Gruende haben?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Die Fehlerquote sank von vier auf zwei Prozent, also um zwei Prozent."
+  },
+  {
+    "speaker": "Nutzer",
+    "text": "Wir muessen Prozentpunkte und relative Veraenderung unterscheiden."
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Die Kosten betragen 350 Euro, nein, ich korrigiere mich: 3.500 Euro."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Welche Zahl gilt nach dieser Korrektur fuer unseren Vergleich?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Der zweite Vorschlag ist immer teurer, selbst wenn die Gesamtkosten gleich sind."
+  },
+  {
+    "speaker": "Nutzer",
+    "text": "Sind Anschaffungskosten oder laufende Gesamtkosten gemeint?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Nach der Einfuehrung ging die Wartezeit zurueck, also war nur die Einfuehrung die Ursache."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Welche anderen Aenderungen gab es im selben Zeitraum?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Eine Fachperson hat zugestimmt. Weitere Belege brauchen wir nicht."
+  },
+  {
+    "speaker": "Nutzer",
+    "text": "Fachkenntnis ist hilfreich, ersetzt aber keine Begruendung fuer diesen konkreten Fall."
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Ich bestreite nicht den Nutzen, sondern die Behauptung, es gebe keine Nachteile."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Welche genaue Behauptung ist damit noch strittig?"
+  },
+  {
+    "speaker": "Gegenseite",
+    "text": "Im begrenzten Pilotversuch hat es funktioniert. Fuer alle Teams wissen wir es noch nicht."
+  },
+  {
+    "speaker": "Moderatorin",
+    "text": "Formuliere eine kurze faire Schlussfolgerung, ohne aus Unsicherheit Gewissheit zu machen."
+  }
+]

@@ -1,7 +1,7 @@
 {
-  "name": "Backchannel",
-  "short_name": "Backchannel",
-  "description": "Backchannel is a self-hosted, open-source (MIT) AI meeting assistant that runs on your own hardware -- no bot joins your call, and your audio never leaves your infrastructure except for the model API calls you configure.",
+  "name": "DebateAI",
+  "short_name": "DebateAI",
+  "description": "DebateAI: lokaler Live-Debattenassistent mit Transkription, Argumentgedaechtnis und Kalibrierungslabor.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

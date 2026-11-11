@@ -1,4 +1,4 @@
-import { Recorder, createBlindTrial, recordVote, validateBlindSuite, formatPercent } from './core.mjs';
+import { Recorder, createBlindTrial, recordVote, validateBlindSuite, validateBlindImport, comparisonSummary, formatPercent } from './core.mjs';
 
 const $ = id => document.getElementById(id);
 const KEY = 'debate-ai.calibration.v1';
@@ -19,10 +19,10 @@ const PRESETS = [
   ['custom','Eigener Testsatz','','Eigene Referenz exakt eintragen. Keine sensiblen Daten f\u00fcr einen allgemeinen Test verwenden.'],
 ];
 const NAMES = {'local-whisper-base':'Whisper Base', 'local-parakeet-tdt-0.6b-v3':'Parakeet TDT v3', 'local-whisper-large-v3-turbo':'Whisper Large v3 Turbo'};
-let blindCases = [], blindIndex = 0, blindGeneration = 0;
+let blindCases = [], blindIndex = 0, blindGeneration = 0, importedEvidence = [], activeImport = null;
 let clip = null, clipUrl = null, result = null, votes = [], trial = null, generation = 0, request = null, busy = false;
 const report = () => ({schema_version:1, created_at:new Date().toISOString(), kind:'local_calibration', source_commit:null,
-  audio_included:false, settings_changed:false, asr:result, votes,
+  audio_included:false, settings_changed:false, asr:result, votes, imported_suites:importedEvidence,
   limitations:['No Windows hardware or streaming proof is implied.', 'Human usefulness ratings are not factual truth labels.',
   'Imported candidate provenance must be checked independently.']});
 function status(message, error=false) { $('status').textContent=message; $('status').classList.toggle('error',error); }
@@ -138,6 +138,7 @@ $('cancel').addEventListener('click',()=>{
 });
 
 function loadBlind(value,isDemo=false){
+  $('speakability').value='';$('relevance').value='';
   trial=createBlindTrial(value);$('blind-context').textContent=trial.context||'Kein Kontext mitgeliefert; Relevanz nur eingeschraenkt beurteilbar.'; $('next-case').disabled=true; $('identity').hidden=true;$('identity').textContent='';
   $('blind-cards').replaceChildren();
   for(const c of trial.cards){const article=element('article');article.append(element('b',`ANTWORT ${c.label}`),element('p',c.text));$('blind-cards').append(article);}
@@ -145,20 +146,40 @@ function loadBlind(value,isDemo=false){
   document.querySelectorAll('[data-vote]').forEach(b=>b.disabled=false);
   $('blind-notice').textContent=isDemo?'DEMO: von Hand geschriebene Beispielantworten, keine Modellausgaben und kein Leistungsnachweis.':`Fall ${trial.caseId} | ${trial.mode==='hart'?'Hart':'\u00dcberzeugen'}. Identit\u00e4ten erst nach der Bewertung. Herkunft und gleichen Kontext separat pr\u00fcfen.`;
 }
-$('load-demo').addEventListener('click',()=>{++blindGeneration;blindCases=[];blindIndex=0;$('case-progress').textContent='';loadBlind({case_id:'demo-causality',mode:'ueberzeugen',candidates:[
+$('load-demo').addEventListener('click',()=>{$('comparison-summary').textContent='';++blindGeneration;activeImport=null;blindCases=[];blindIndex=0;$('case-progress').textContent='';loadBlind({case_id:'demo-causality',mode:'ueberzeugen',candidates:[
   {id:'demo-rueckfrage',text:'Die Beobachtung ist interessant. Woran erkennen wir, dass wirklich die Ursache und nicht nur ein Zusammenhang dahintersteckt?'},
   {id:'demo-einwand',text:'Gleichzeitigkeit allein belegt noch keine Ursache. Daf\u00fcr brauchen wir einen Vergleich, der andere Erkl\u00e4rungen ausschlie\u00dft.'},
 ]},true);});
 $('blind-file').addEventListener('change',async()=>{
   const file=$('blind-file').files?.[0];if(!file)return;const current=++blindGeneration;
-  try{if(file.size>524288)throw new Error('Vergleichsdatei darf hoechstens 512 KiB haben.');const value=JSON.parse(await file.text());if(current!==blindGeneration)return;const cases=validateBlindSuite(value);blindCases=cases;blindIndex=0;loadBlind(cases[0]);$('case-progress').textContent=`1 / ${cases.length}`;}
+  try{
+    if(file.size>524288)throw new Error('Vergleichsdatei darf hoechstens 512 KiB haben.');
+    const text=await file.text();const value=JSON.parse(text);
+    const cases=await validateBlindImport(value);
+    if(current!==blindGeneration)return;
+    const summary=comparisonSummary(value);
+    const digest=crypto.subtle ? Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(text))),b=>b.toString(16).padStart(2,'0')).join('') : null;
+    if(current!==blindGeneration)return;
+    activeImport=digest;
+    const raw=value.provenance||{};
+    const provenance={source_commit:typeof raw.source_commit==='string'&&/^[a-f0-9]{40}$/.test(raw.source_commit)?raw.source_commit:null,
+      tracked_source_dirty:typeof raw.tracked_source_dirty==='boolean'?raw.tracked_source_dirty:null,
+      measurement_path:value.kind==='production_replay_blind_suite'?'headless production replay':'user-supplied'};
+    importedEvidence.push({import_sha256:digest,summary,provenance});importedEvidence=importedEvidence.slice(-100);
+    blindCases=cases;blindIndex=0;
+    if(cases.length){loadBlind(cases[0]);$('case-progress').textContent=`1 / ${cases.length}`;}
+    else{trial=null;$('blind-cards').hidden=true;$('rating-panel').hidden=true;$('identity').hidden=true;$('next-case').disabled=true;$('case-progress').textContent='0 / 0';$('blind-context').textContent='';}
+    $('comparison-summary').textContent=`${summary.attempted_pairs} Paare versucht; ${summary.votable_pairs} bewertbar; ${summary.failed_pairs} fehlgeschlagen. Fehler bleiben im Nenner.`;
+    status(cases.length?'Produktionsvergleich geladen. Quelle, Last und Modellversionen separat pruefen.':'Kein bewertbares Antwortpaar. Fehlgeschlagene Versuche sind im Bericht enthalten.',!cases.length);persist();
+  }
   catch(error){if(current===blindGeneration)status(error.message,true);}
 });
 for(const button of document.querySelectorAll('[data-vote]'))button.addEventListener('click',()=>{
   try{
     if(!trial)throw new Error('Zuerst einen Vergleich laden.');
-    const vote=recordVote(trial,button.dataset.vote,{speakability:Number($('speakability').value),relevance:Number($('relevance').value)});
-    votes.push(vote);$('next-case').disabled=blindIndex+1>=blindCases.length;$('vote-count').textContent=`${votes.length} Bewertungen`;
+    const ratings={};for(const key of ['speakability','relevance'])if($(key).value!=='')ratings[key]=Number($(key).value);
+    const vote=recordVote(trial,button.dataset.vote,ratings);
+    vote.import_sha256=activeImport;votes.push(vote);$('next-case').disabled=blindIndex+1>=blindCases.length;$('vote-count').textContent=`${votes.length} Bewertungen`;
     $('identity').textContent=`A: ${trial.identities[0].id} | B: ${trial.identities[1].id}. Entscheidung: ${vote.choice}. N\u00fctzlichkeitsfeedback, kein Faktenlabel.`;
     $('identity').hidden=false;document.querySelectorAll('[data-vote]').forEach(b=>b.disabled=true);persist();
     status('Bewertung erfasst. Kein Modell, Prompt oder Debattenprofil wurde umgestellt.');
@@ -173,7 +194,7 @@ $('export').addEventListener('click',()=>{
   const a=document.createElement('a');a.href=url;a.download=`DebateAI-Kalibrierung-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 $('clear').addEventListener('click',()=>{
-  recorder.cancel();invalidate();clip=null;votes=[];trial=null;++blindGeneration;blindCases=[];blindIndex=0;$('next-case').disabled=true;$('case-progress').textContent='';$('blind-context').textContent='';$('persist').checked=false;
+  recorder.cancel();invalidate();clip=null;votes=[];trial=null;importedEvidence=[];activeImport=null;$('comparison-summary').textContent='';++blindGeneration;blindCases=[];blindIndex=0;$('next-case').disabled=true;$('case-progress').textContent='';$('blind-context').textContent='';$('persist').checked=false;
   try{localStorage.removeItem(KEY);}catch{}
   if(clipUrl)URL.revokeObjectURL(clipUrl);clipUrl=null;$('playback').removeAttribute('src');$('playback').load();
   $('clip-name').textContent='Noch keine Aufnahme';$('vote-count').textContent='0 Bewertungen';
@@ -183,7 +204,7 @@ $('clear').addEventListener('click',()=>{
 try{
   const saved=JSON.parse(localStorage.getItem(KEY)||'null');
   if(saved?.schema_version===1&&Array.isArray(saved.votes)){
-    votes=saved.votes.slice(-1000);result=saved.asr||null;$('persist').checked=true;$('vote-count').textContent=`${votes.length} Bewertungen`;
+    importedEvidence=Array.isArray(saved.imported_suites)?saved.imported_suites.slice(-100):[];votes=saved.votes.slice(-1000);result=saved.asr||null;$('persist').checked=true;$('vote-count').textContent=`${votes.length} Bewertungen`;
     if(result?.models)renderResult(result);
   }
 }catch{status('Gespeicherte Labordaten sind nicht lesbar. Ohne Wiederherstellung fortgesetzt.',true);}

@@ -122,13 +122,59 @@ export class Recorder {
 export function validateBlindSuite(value) {
   const cases = Array.isArray(value?.cases) ? value.cases : [value];
   if (value?.cases !== undefined && value.schema_version !== 1) throw new Error('Unbekannte Vergleichsversion.');
-  if (cases.length < 1 || cases.length > 100) throw new Error('Ein Vergleichspaket braucht 1 bis 100 Faelle.');
+  const generated = value?.kind === 'production_replay_blind_suite';
+  if ((!generated && cases.length < 1) || cases.length > 100) throw new Error('Ein Vergleichspaket braucht 1 bis 100 Faelle.');
   const seen = new Set();
   for (const item of cases) {
     validateBlindCase(item);
     const key = JSON.stringify([item.case_id, item.mode]);
     if (seen.has(key)) throw new Error('Doppelter Fall im selben Modus.');
     seen.add(key);
+  }
+  if (generated) {
+    const summary = value.summary;
+    const fields = ['attempted_pairs','votable_pairs','failed_pairs','attempted_candidates','failed_candidates'];
+    if (!summary || fields.some(k => !Number.isInteger(summary[k]) || summary[k] < 0) ||
+        summary.attempted_pairs < 1 || summary.attempted_pairs > 100 ||
+        summary.votable_pairs !== cases.length ||
+        summary.attempted_pairs !== summary.votable_pairs + summary.failed_pairs ||
+        summary.attempted_candidates !== 2 * summary.attempted_pairs ||
+        !Array.isArray(value.failures) || value.failures.length !== summary.failed_pairs) {
+      throw new Error('Unvollstaendige oder widerspruechliche Versuchszahlen.');
+    }
+    let failedCandidates = 0;
+    for (const failure of value.failures) {
+      const key = JSON.stringify([failure?.case_id, failure?.mode]);
+      if (typeof failure?.case_id !== 'string' || !failure.case_id.trim() || failure.case_id.length > 200 ||
+          !['hart','ueberzeugen'].includes(failure.mode) || seen.has(key) ||
+          !Array.isArray(failure.errors) || failure.errors.length < 1 || failure.errors.length > 2 ||
+          failure.errors.some(e => e?.status !== 'failed' || typeof e.candidate_id !== 'string' || !e.candidate_id.trim()) ||
+          new Set(failure.errors.map(e => e.candidate_id)).size !== failure.errors.length) {
+        throw new Error('Ungueltiger oder doppelter fehlgeschlagener Versuch.');
+      }
+      seen.add(key); failedCandidates += failure.errors.length;
+    }
+    if (failedCandidates !== summary.failed_candidates) throw new Error('Fehler fehlen im Nenner.');
+  }
+  return cases;
+}
+
+export function comparisonSummary(value) {
+  const cases = validateBlindSuite(value);
+  return value?.kind === 'production_replay_blind_suite' ? {...value.summary} : {
+    attempted_pairs: cases.length, votable_pairs: cases.length, failed_pairs: 0,
+    attempted_candidates: cases.length * 2, failed_candidates: 0,
+  };
+}
+
+export async function validateBlindImport(value, subtle = globalThis.crypto?.subtle) {
+  const cases = validateBlindSuite(value);
+  for (const item of cases) {
+    if (!item.context_sha256) continue;
+    if (!subtle || typeof item.context !== 'string') throw new Error('Kontext-Pruefsumme kann hier nicht geprueft werden.');
+    const bytes = await subtle.digest('SHA-256', new TextEncoder().encode(item.context));
+    const actual = Array.from(new Uint8Array(bytes), b => b.toString(16).padStart(2, '0')).join('');
+    if (actual !== item.context_sha256) throw new Error('Kontext-Pruefsumme stimmt nicht mit dem Text ueberein.');
   }
   return cases;
 }
