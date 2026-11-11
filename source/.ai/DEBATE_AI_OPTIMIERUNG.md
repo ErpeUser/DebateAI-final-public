@@ -2780,3 +2780,24 @@ Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
   der Frontend-/Desktop-Gesamtlauf und anschliessend ein neuer Build aus exakt
   diesem Source-Stand; keine Human-/Hardware-/Provider- oder
   Authenticode-Abnahme darf automatisiert als bestanden ausgegeben werden.
+
+### Finaler Windows-Kandidat aus Commit 97e4b3e (2026-11-11)
+
+- Frontend: `npm test` **323/323**; Desktop: **207/207**, ein dokumentierter
+  Symlink-/Windows-Rechte-Skip; Backend: **1.854/1.854**, vier dokumentierte
+  Skips; `compileall` und `git diff --check` gruen.
+- Der vorgeschriebene `build_debate_assistant.ps1 -IncludeOracle`-Lauf hat
+  Frontend, Bridge, Oracle/Node24, PyInstaller, PostgreSQL, ffmpeg, Ollama-
+  Ressourcen und Bundle erfolgreich gebaut. Nur der Windows-
+  `Compress-Archive`-Schritt ueberschritt das Ausfuehrungszeitlimit; das
+  vollstaendige Staging wurde mit dem validierten nativen TAR-ZIP-Pfad
+  archiviert.
+- Finaler Pfad: `source/dist/DebateAI-windows-x64.zip`, **432.425.608 Bytes**,
+  SHA-256 **`7D1470219C06B6A7E81DAE5C2E07AB1E34794E1C569414B2A16C2E7BA5AF0D27`**.
+  `source/dist/DebateAI/DebateAI.exe` und `DebateAIUpdater.exe` stammen aus
+  demselben Staging. Bundle-Smoke meldet `healthy`, lokales ASR und sauberen
+  Shutdown; der native Update-/erzwungene-Rollback-Smoke ist bestanden.
+- Der Quellstand ist nach Push verifiziert: `HEAD == origin/master ==
+  97e4b3e3446de9cd69a4c6d84cff737d6a4b42d7`. Die verbleibenden 15
+  Human-/Hardware-/Provider-/Authenticode-Gates sind vorbereitet, aber nicht
+  als automatisiert bestanden ausgegeben.
