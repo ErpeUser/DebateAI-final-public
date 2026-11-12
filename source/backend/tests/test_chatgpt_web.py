@@ -15,11 +15,11 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         cli.write_text("// oracle", encoding="utf-8")
         marker.write_text("{}", encoding="utf-8")
         return {
-            "BACKCHANNEL_CHATGPT_WEB_NODE": str(node),
-            "BACKCHANNEL_CHATGPT_WEB_ORACLE": str(cli),
-            "BACKCHANNEL_CHATGPT_WEB_HOME": str(root / "home"),
-            "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(root / "profile"),
-            "BACKCHANNEL_CHATGPT_WEB_MARKER": str(marker),
+            "DEBATEAI_CHATGPT_WEB_NODE": str(node),
+            "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
+            "DEBATEAI_CHATGPT_WEB_HOME": str(root / "home"),
+            "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
+            "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
         }
 
     def test_command_is_consumer_browser_gpt6_and_strict_pro(self):

@@ -21,11 +21,11 @@ _login_lock = threading.Lock()
 
 
 def _setting(name: str) -> str:
-    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}", f"BACKCHANNEL_CHATGPT_WEB_{name}").strip()
+    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}").strip()
 
 
 def _archive_dedicated_account(*, include_profile: bool) -> Path:
-    """Recoverably detach only Backchannel's dedicated ChatGPT account state."""
+    """Recoverably detach only DebateAI's dedicated ChatGPT account state."""
     home = Path(_setting("HOME"))
     profile = Path(_setting("PROFILE"))
     marker = Path(_setting("MARKER"))

@@ -248,7 +248,7 @@ recordings can be fetched from
 `.ogg`, and `.flac`, decodes with `soundfile` first and falls back to
 `ffmpeg` for compressed formats, then runs the file through the same
 diarization and transcription pipeline as a live call. The ffmpeg fallback
-resolves the executable from `BACKCHANNEL_FFMPEG` first (the desktop
+resolves the executable from `DEBATEAI_FFMPEG` first (the desktop
 launcher points it at the copy bundled with Windows and Linux desktop
 builds), then from `PATH`, and reports a clear "FFmpeg is required" error
 when neither is available.

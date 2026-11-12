@@ -156,7 +156,7 @@ export function useWebSocket() {
     const wsUrl = `${protocol}//${window.location.host}/ws/${sessionId}${suffix}`;
     // Keep the instance token out of URLs, browser history, and proxy logs.
     const ws = instanceToken
-      ? new WebSocket(wsUrl, [`backchannel.instance.${instanceToken}`])
+      ? new WebSocket(wsUrl, [`debateai.instance.${instanceToken}`])
       : new WebSocket(wsUrl);
     ws.binaryType = "arraybuffer";
     wsRef.current = ws;

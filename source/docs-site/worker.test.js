@@ -7,18 +7,25 @@ import worker, { handleInterest } from './worker.js';
 import * as workerModule from './worker.js';
 import { createSessionToken } from './release-access.js';
 
+const HOST_ENV = {
+  DEBATEAI_PUBLIC_HOST: 'debateai.test',
+  DEBATEAI_WWW_HOST: 'www.debateai.test',
+  DEBATEAI_ADMIN_HOST: 'admin.debateai.test',
+  DEBATEAI_DOWNLOAD_HOST: 'downloads.debateai.test',
+};
+
 const validVerification = {
   success: true,
-  hostname: 'backchannel.page',
+  hostname: 'debateai.test',
   action: 'interest',
 };
 
 function request(body = { email: 'Person@Example.com', token: 'token' }, init = {}) {
-  return new Request('https://backchannel.page/api/interest', {
+  return new Request('https://debateai.test/api/interest', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
-      origin: 'https://backchannel.page',
+      origin: 'https://debateai.test',
       ...init.headers,
     },
     body: JSON.stringify(body),
@@ -30,8 +37,12 @@ function bindings({ run = async () => ({ success: true }) } = {}) {
   const calls = [];
   return {
     calls,
-    env: {
+    env: { ...HOST_ENV,
       TURNSTILE_SECRET_KEY: 'worker-secret',
+      DEBATEAI_PUBLIC_HOST: 'debateai.test',
+      DEBATEAI_WWW_HOST: 'www.debateai.test',
+      DEBATEAI_ADMIN_HOST: 'admin.debateai.test',
+      DEBATEAI_DOWNLOAD_HOST: 'downloads.debateai.test',
       INTEREST_DB: {
         prepare(sql) {
           return {
@@ -117,9 +128,9 @@ function sqliteReleaseBindings() {
   const { database, binding } = sqliteD1();
   return {
     db: database,
-    env: {
+    env: { ...HOST_ENV,
       ADMIN_EMAIL: 'owner@example.com',
-      ACCESS_TEAM_DOMAIN: 'backchannel.cloudflareaccess.com',
+      ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
       ACCESS_AUD: 'admin-audience',
       INTEREST_DB: binding,
       RELEASES: adminCatalogBucket(),
@@ -166,8 +177,8 @@ function adminReleaseManifest(version) {
     published_at: '2026-07-12T12:00:00Z',
     commit: 'a'.repeat(40),
     assets: [{
-      id: 'windows-x64', platform: 'Windows x64', filename: 'Backchannel-windows-x64.zip',
-      key: `releases/${version}/Backchannel-windows-x64.zip`, size: 1,
+      id: 'windows-x64', platform: 'Windows x64', filename: 'DebateAI-windows-x64.zip',
+      key: `releases/${version}/DebateAI-windows-x64.zip`, size: 1,
       sha256: 'b'.repeat(64), content_type: 'application/zip',
     }],
   };
@@ -191,7 +202,7 @@ function adminCatalogBucket(
 }
 
 function adminRequest(path = '/api/admin/interests', init = {}) {
-  return new Request(`https://admin.backchannel.page${path}`, {
+  return new Request(`https://admin.debateai.test${path}`, {
     method: 'GET',
     headers: { 'cf-access-jwt-assertion': 'access-token', ...init.headers },
     ...init,
@@ -213,9 +224,9 @@ function adminBindings({
   return {
     calls,
     assetRequests,
-    env: {
+    env: { ...HOST_ENV,
       ADMIN_EMAIL: 'owner@example.com',
-      ACCESS_TEAM_DOMAIN: 'backchannel.cloudflareaccess.com',
+      ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
       ACCESS_AUD: 'admin-audience',
       INTEREST_DB: {
         prepare(sql) {
@@ -261,8 +272,8 @@ test('keeps the Worker execution context out of verifier injection', () => {
 test('rejects methods other than POST', async () => {
   const { env, calls } = bindings();
   const response = await handleInterest(new Request(
-    'https://backchannel.page/api/interest',
-    { method: 'GET', headers: { origin: 'https://backchannel.page' } },
+    'https://debateai.test/api/interest',
+    { method: 'GET', headers: { origin: 'https://debateai.test' } },
   ), env, verifier());
   assert.equal(response.status, 405);
   assert.equal(response.headers.get('allow'), 'POST');
@@ -295,14 +306,14 @@ test('rejects malformed and oversized bodies before Turnstile or D1', async () =
   const { env, calls } = bindings();
   let verifies = 0;
   const fetcher = async () => { verifies += 1; return verifier()(); };
-  const headers = { 'content-type': 'application/json', origin: 'https://backchannel.page' };
+  const headers = { 'content-type': 'application/json', origin: 'https://debateai.test' };
 
   const malformed = await handleInterest(new Request(
-    'https://backchannel.page/api/interest',
+    'https://debateai.test/api/interest',
     { method: 'POST', headers, body: '{' },
   ), env, fetcher);
   const oversized = await handleInterest(new Request(
-    'https://backchannel.page/api/interest',
+    'https://debateai.test/api/interest',
     { method: 'POST', headers, body: 'x'.repeat(4097) },
   ), env, fetcher);
 
@@ -361,7 +372,7 @@ test('returns retryable service errors without leaking details', async () => {
 
 test('routes unknown API paths to JSON 404 instead of static assets', async () => {
   const response = await worker.fetch(
-    new Request('https://backchannel.page/api/unknown'),
+    new Request('https://debateai.test/api/unknown'),
     bindings().env,
   );
   assert.equal(response.status, 404);
@@ -374,7 +385,7 @@ test('validates Access JWTs against the configured Cloudflare issuer and audienc
   const payload = await workerModule.verifyAccessToken(
     'signed-token',
     {
-      ACCESS_TEAM_DOMAIN: 'Backchannel.CloudflareAccess.com ',
+      ACCESS_TEAM_DOMAIN: 'DebateAI.CloudflareAccess.com ',
       ACCESS_AUD: 'admin-audience',
     },
     {
@@ -392,13 +403,13 @@ test('validates Access JWTs against the configured Cloudflare issuer and audienc
   assert.deepEqual(payload, { email: 'owner@example.com' });
   assert.equal(
     calls.jwks,
-    'https://backchannel.cloudflareaccess.com/cdn-cgi/access/certs',
+    'https://debateai.cloudflareaccess.com/cdn-cgi/access/certs',
   );
   assert.deepEqual(calls.verify, {
     token: 'signed-token',
     keys: 'remote-keys',
     options: {
-      issuer: 'https://backchannel.cloudflareaccess.com',
+      issuer: 'https://debateai.cloudflareaccess.com',
       audience: 'admin-audience',
     },
   });
@@ -562,7 +573,7 @@ test('worker has no active release_accounts Latest references', () => {
 
 test('admin read endpoints authorize before D1 reads', async () => {
   let d1Calls = 0;
-  const env = {
+  const env = { ...HOST_ENV,
     ...adminBindings().env,
     INTEREST_DB: {
       prepare() {
@@ -585,7 +596,7 @@ function adminJson(path, body, init = {}) {
     method: init.method || 'POST',
     headers: {
       'cf-access-jwt-assertion': 'access-token',
-      origin: 'https://admin.backchannel.page',
+      origin: 'https://admin.debateai.test',
       'content-type': 'application/json; charset=utf-8',
       ...init.headers,
     },
@@ -1005,9 +1016,9 @@ test('same-timestamp rejection retry cannot emit a second event in real SQLite',
     INSERT INTO interest_subscribers (email, consent_version)
     VALUES (?, '2026-07-12')
   `).run('person@example.com');
-  const env = {
+  const env = { ...HOST_ENV,
     ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'backchannel.cloudflareaccess.com',
+    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
     ACCESS_AUD: 'admin-audience',
     INTEREST_DB: binding,
   };
@@ -1039,9 +1050,9 @@ test('approved account and session survive a rejected-state race in real SQLite'
     INSERT INTO interest_subscribers (email, consent_version)
     VALUES (?, '2026-07-12')
   `).run('person@example.com');
-  const env = {
+  const env = { ...HOST_ENV,
     ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'backchannel.cloudflareaccess.com',
+    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
     ACCESS_AUD: 'admin-audience',
     INTEREST_DB: binding,
     RELEASES: adminCatalogBucket(['v1.2.3']),
@@ -1067,7 +1078,7 @@ test('approved account and session survive a rejected-state race in real SQLite'
   `).get('person@example.com').release_decision, 'approved');
 
   const sessionRequest = () => downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-backchannel_release=${token.token}` },
+    headers: { cookie: `__Host-debateai_release=${token.token}` },
   });
   const coherent = await workerModule.route(
     sessionRequest(), env, undefined, downloadDependencies(),
@@ -1497,7 +1508,7 @@ test('public host never serves private admin assets', async () => {
     '/early-access.js', '/users.js', '/authorization.js', '/admin.css',
   ]) {
     const response = await workerModule.route(
-      new Request(`https://backchannel.page${path}`),
+      new Request(`https://debateai.test${path}`),
       env,
       allowOwner,
     );
@@ -1507,7 +1518,7 @@ test('public host never serves private admin assets', async () => {
   assert.equal(assetRequests.length, 0);
 });
 
-const DOWNLOAD_ORIGIN = 'https://downloads.backchannel.page';
+const DOWNLOAD_ORIGIN = 'https://downloads.debateai.test';
 const downloadNow = new Date('2026-07-12T12:00:00.000Z');
 
 function downloadRequest(path, body, init = {}) {
@@ -1531,7 +1542,7 @@ function downloadBindings({ first = async () => undefined, run, batch } = {}) {
   return {
     calls,
     batchCalls,
-    env: {
+    env: { ...HOST_ENV,
       TURNSTILE_SECRET: 'download-secret',
       INTEREST_DB: {
         prepare(sql) {
@@ -1573,7 +1584,7 @@ function downloadDependencies(overrides = {}) {
     now: () => downloadNow,
     fetch: async () => new Response(JSON.stringify({
       success: true,
-      hostname: 'downloads.backchannel.page',
+      hostname: 'downloads.debateai.test',
       action: 'download_login',
     })),
     ...overrides,
@@ -1694,8 +1705,8 @@ test('recipient host keeps unknown paths private and mutations enforce request b
 test('recipient login requires exact Turnstile hostname and action', async () => {
   const bodies = [];
   for (const verification of [
-    { success: true, hostname: 'backchannel.page', action: 'download_login' },
-    { success: true, hostname: 'downloads.backchannel.page', action: 'interest' },
+    { success: true, hostname: 'debateai.test', action: 'download_login' },
+    { success: true, hostname: 'downloads.debateai.test', action: 'interest' },
   ]) {
     const bindingsValue = downloadBindings();
     const response = await workerModule.route(downloadRequest('/api/download/login', {
@@ -1776,7 +1787,7 @@ test('temporary login stores only a token hash and caps the change session expir
     }));
     assert.equal(response.status, 200);
     assert.equal(response.headers.get('set-cookie'),
-      `__Host-backchannel_release=raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`);
+      `__Host-debateai_release=raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`);
     assert.equal(bindingsValue.batchCalls.length, 1);
     const serialized = JSON.stringify(bindingsValue.calls);
     assert.match(bindingsValue.calls[1].sql,
@@ -1847,7 +1858,7 @@ test('session status hashes only the named cookie and rechecks session and accou
     }),
   });
   const response = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `other=ignored; __Host-backchannel_release=${token.token}` },
+    headers: { cookie: `other=ignored; __Host-debateai_release=${token.token}` },
   }), bindingsValue.env, undefined, downloadDependencies());
   assert.deepEqual(await response.json(), {
     authenticated: true,
@@ -1863,18 +1874,18 @@ test('session status hashes only the named cookie and rechecks session and accou
 
   const invalid = downloadBindings();
   const invalidResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-backchannel_release=${token.token}` },
+    headers: { cookie: `__Host-debateai_release=${token.token}` },
   }), invalid.env, undefined, downloadDependencies());
   assert.deepEqual(await invalidResponse.json(), { authenticated: false });
   assert.equal(invalidResponse.headers.get('set-cookie'),
-    '__Host-backchannel_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
+    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
 
   const malformed = downloadBindings({ first: async () => ({
     email: 'person@example.com', state: 'active', password_change_only: 0,
     expires_at: 'not-a-time',
   }) });
   const malformedResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-backchannel_release=${token.token}` },
+    headers: { cookie: `__Host-debateai_release=${token.token}` },
   }), malformed.env, undefined, downloadDependencies());
   assert.deepEqual(await malformedResponse.json(), { authenticated: false });
 
@@ -1883,7 +1894,7 @@ test('session status hashes only the named cookie and rechecks session and accou
     password_change_only: 0, expires_at: '2026-07-19T12:00:00.000Z',
   }) });
   const inconsistentResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-backchannel_release=${token.token}` },
+    headers: { cookie: `__Host-debateai_release=${token.token}` },
   }), inconsistent.env, undefined, downloadDependencies());
   assert.deepEqual(await inconsistentResponse.json(), { authenticated: false });
 });
@@ -1896,7 +1907,7 @@ test('password change requires a change-only session and rotates it atomically',
   }) });
   const denied = await workerModule.route(downloadRequest('/api/download/password', {
     password: 'long enough password',
-  }, { headers: { cookie: `__Host-backchannel_release=${token.token}` } }),
+  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
   normal.env, undefined, downloadDependencies());
   assert.equal(denied.status, 401);
   assert.equal(normal.batchCalls.length, 0);
@@ -1914,7 +1925,7 @@ test('password change requires a change-only session and rotates it atomically',
   }) });
   const response = await workerModule.route(downloadRequest('/api/download/password', {
     password: 'a new permanent password',
-  }, { headers: { cookie: `__Host-backchannel_release=${token.token}` } }),
+  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
   bindingsValue.env, undefined, downloadDependencies({
     verifyPassword: async () => false,
     hashPassword: async () => ({ hash: 'new-hash', salt: 'new-salt', iterations: 600000 }),
@@ -1928,7 +1939,7 @@ test('password change requires a change-only session and rotates it atomically',
   assert.match(bindingsValue.calls[4].sql, /password_change/i);
   assert.equal(JSON.stringify(bindingsValue.calls).includes('new-raw-token'), false);
   assert.equal(response.headers.get('set-cookie'),
-    '__Host-backchannel_release=new-raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800');
+    '__Host-debateai_release=new-raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800');
 });
 
 test('password change rejects reuse of the temporary credential without rotation', async () => {
@@ -1949,7 +1960,7 @@ test('password change rejects reuse of the temporary credential without rotation
   });
   const response = await workerModule.route(
     downloadRequest('/api/download/password', { password: 'Temporary-Password1!' }, {
-      headers: { cookie: `__Host-backchannel_release=${token.token}` },
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
     }),
     bindings.env,
     undefined,
@@ -1978,7 +1989,7 @@ test('password change makes every write conditional on the exact presented sessi
   });
   const response = await workerModule.route(downloadRequest('/api/download/password', {
     password: 'a new permanent password',
-  }, { headers: { cookie: `__Host-backchannel_release=${token.token}` } }),
+  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
   bindingsValue.env, undefined, downloadDependencies({
     verifyPassword: async () => false,
     hashPassword: async () => ({ hash: 'new-hash', salt: 'new-salt', iterations: 600000 }),
@@ -2007,7 +2018,7 @@ test('logout clears the cookie after presented session deletion or an invalid to
     expires_at: '2026-07-19T12:00:00.000Z',
   }) });
   const response = await workerModule.route(downloadRequest('/api/download/logout', {}, {
-    headers: { cookie: `__Host-backchannel_release=${token.token}` },
+    headers: { cookie: `__Host-debateai_release=${token.token}` },
   }), bindingsValue.env, undefined, downloadDependencies());
   assert.deepEqual(await response.json(), { ok: true });
   assert.equal(bindingsValue.batchCalls.length, 1);
@@ -2015,15 +2026,15 @@ test('logout clears the cookie after presented session deletion or an invalid to
   assert.deepEqual(bindingsValue.calls[1].values, [token.tokenHash]);
   assert.match(bindingsValue.calls[2].sql, /logout[\s\S]+changes\(\) = 1/i);
   assert.equal(response.headers.get('set-cookie'),
-    '__Host-backchannel_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
+    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
 
   const invalid = downloadBindings();
   const invalidResponse = await workerModule.route(downloadRequest('/api/download/logout', {}, {
-    headers: { cookie: '__Host-backchannel_release=invalid' },
+    headers: { cookie: '__Host-debateai_release=invalid' },
   }), invalid.env, undefined, downloadDependencies());
   assert.deepEqual(await invalidResponse.json(), { ok: true });
   assert.equal(invalidResponse.headers.get('set-cookie'),
-    '__Host-backchannel_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
+    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
 });
 
 test('logout D1 failure returns retryable error and preserves the cookie', async () => {
@@ -2037,7 +2048,7 @@ test('logout D1 failure returns retryable error and preserves the cookie', async
   });
   const response = await workerModule.route(
     downloadRequest('/api/download/logout', {}, {
-      headers: { cookie: `__Host-backchannel_release=${token.token}` },
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
     }),
     bindings.env,
     undefined,
@@ -2060,7 +2071,7 @@ const releaseSession = {
 const defaultReleaseAsset = {
   id: 'windows-x64',
   platform: 'Windows x64',
-  filename: 'Backchannel-windows-x64.zip',
+  filename: 'DebateAI-windows-x64.zip',
   content_type: 'application/zip',
 };
 
@@ -2196,7 +2207,7 @@ test('recipient host exposes only a strict signed Latest update descriptor', asy
     asset: {
       id: 'windows-x64',
       platform: 'Windows x64',
-      filename: 'Backchannel-windows-x64.zip',
+      filename: 'DebateAI-windows-x64.zip',
       size: 100,
       sha256: 'b'.repeat(64),
     },
@@ -2214,7 +2225,7 @@ test('recipient host exposes only a strict signed Latest update descriptor', asy
     [downloadRequest('/api/update/latest/windows-x64', undefined, { method: 'GET' }), malformed.env, undefined, 404],
     [downloadRequest('/api/update/latest/unknown', undefined, { method: 'GET' }), signed.env, undefined, 404],
     [downloadRequest('/api/update/latest/windows-x64', {}, { method: 'POST' }), signed.env, undefined, 405],
-    [new Request('https://backchannel.page/api/update/latest/windows-x64'), signed.env, undefined, 404],
+    [new Request('https://debateai.test/api/update/latest/windows-x64'), signed.env, undefined, 404],
     [adminRequest('/api/update/latest/windows-x64'), admin.env, allowOwner, 404],
   ];
   for (const [requestValue, env, verify, status] of cases) {
@@ -2264,7 +2275,7 @@ function updateGrantRequest(body, init = {}) {
   return downloadRequest('/api/download/update-grants', body, {
     ...init,
     headers: {
-      cookie: `__Host-backchannel_release=${releaseToken.token}`,
+      cookie: `__Host-debateai_release=${releaseToken.token}`,
       ...init.headers,
     },
   });
@@ -2422,7 +2433,7 @@ function releaseGet(path, headers = {}) {
   return downloadRequest(path, undefined, {
     method: 'GET',
     headers: {
-      cookie: `__Host-backchannel_release=${releaseToken.token}`,
+      cookie: `__Host-debateai_release=${releaseToken.token}`,
       ...headers,
     },
   });
@@ -2510,7 +2521,7 @@ test('release APIs ignore recipient sessions and reject invalid paths before cat
     '/api/download/releases/1.0.0/windows-x64',
     '/api/download/releases/v01.0.0/windows-x64',
     '/api/download/releases/v1.0.0/Windows-x64',
-    '/api/download/releases/v1.0.0/Backchannel-windows-x64.zip',
+    '/api/download/releases/v1.0.0/DebateAI-windows-x64.zip',
     '/api/download/releases/v1.0.0/windows-x64/extra',
     '/api/download/releases/v1.0.0%2Fwindows-x64',
     '/api/download/releases/v1.0.0/windows%2Fx64',
@@ -2565,7 +2576,7 @@ test('public downloads stream full and ranged R2 bodies with exact headers and n
     assert.equal(response.headers.get('content-range'), contentRange);
     assert.equal(response.headers.get('content-type'), 'application/zip');
     assert.equal(response.headers.get('content-disposition'),
-      'attachment; filename="Backchannel-windows-x64-v1.0.0.zip"');
+      'attachment; filename="DebateAI-windows-x64-v1.0.0.zip"');
     assert.equal(response.headers.get('etag'), '"object-etag"');
     assert.equal(response.headers.get('accept-ranges'), 'bytes');
     assert.equal(response.headers.get('cache-control'), 'private, no-store');
@@ -2581,16 +2592,16 @@ test('download filenames append version before archive extensions', async () => 
   const cases = [
     [{
       id: 'windows-x64', platform: 'Windows x64',
-      filename: 'Backchannel-windows-x64.zip', content_type: 'application/zip',
-    }, 'Backchannel-windows-x64-v1.0.0.zip'],
+      filename: 'DebateAI-windows-x64.zip', content_type: 'application/zip',
+    }, 'DebateAI-windows-x64-v1.0.0.zip'],
     [{
       id: 'macos-arm64', platform: 'macOS arm64',
-      filename: 'Backchannel-macos-arm64.zip', content_type: 'application/zip',
-    }, 'Backchannel-macos-arm64-v1.0.0.zip'],
+      filename: 'DebateAI-macos-arm64.zip', content_type: 'application/zip',
+    }, 'DebateAI-macos-arm64-v1.0.0.zip'],
     [{
       id: 'linux-x64', platform: 'Linux x64',
-      filename: 'Backchannel-linux-x64.tar.gz', content_type: 'application/gzip',
-    }, 'Backchannel-linux-x64-v1.0.0.tar.gz'],
+      filename: 'DebateAI-linux-x64.tar.gz', content_type: 'application/gzip',
+    }, 'DebateAI-linux-x64-v1.0.0.tar.gz'],
   ];
 
   for (const [asset, expected] of cases) {
@@ -2808,12 +2819,27 @@ test('missing bindings and missing authorized objects fail generically without d
   assert.equal(absent.calls.some(({ sql }) => /download_start/.test(sql)), false);
 });
 
+test('normalizes operator-provided Worker host variables before dispatch', async () => {
+  const { env } = bindings();
+  Object.assign(env, {
+    DEBATEAI_PUBLIC_HOST: ' DebateAI.TEST ',
+    DEBATEAI_WWW_HOST: ' WWW.DEBATEAI.TEST ',
+    DEBATEAI_ADMIN_HOST: ' ADMIN.DEBATEAI.TEST ',
+    DEBATEAI_DOWNLOAD_HOST: ' DOWNLOADS.DEBATEAI.TEST ',
+  });
+  const response = await workerModule.route(
+    new Request('https://debateai.test/index.html'),
+    env,
+  );
+  assert.equal(response.status, 200);
+});
+
 test('router isolates every hostname before API and static dispatch', async () => {
   const assets = [];
-  const env = {
+  const env = { ...HOST_ENV,
     ...downloadBindings().env,
     ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'backchannel.cloudflareaccess.com',
+    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
     ACCESS_AUD: 'admin-audience',
     ASSETS: { async fetch(requestValue) {
       assets.push(requestValue.url);
@@ -2822,14 +2848,14 @@ test('router isolates every hostname before API and static dispatch', async () =
   };
 
   const redirect = await workerModule.route(
-    new Request('https://www.backchannel.page/docs/?q=1'), env, allowOwner,
+    new Request('https://www.debateai.test/docs/?q=1'), env, allowOwner,
   );
   assert.equal(redirect.status, 301);
-  assert.equal(redirect.headers.get('location'), 'https://backchannel.page/docs/?q=1');
+  assert.equal(redirect.headers.get('location'), 'https://debateai.test/docs/?q=1');
 
   for (const host of [
-    'www.attacker.example', 'backchannel-site.workers.dev',
-    'preview.backchannel-site.workers.dev', 'unknown.backchannel.page',
+    'www.attacker.example', 'debateai-site.workers.dev',
+    'preview.debateai-site.workers.dev', 'unknown.debateai.test',
   ]) {
     const response = await workerModule.route(new Request(`https://${host}/api/interest`), env,
       async () => { throw new Error('unknown hosts must not authorize'); });
@@ -2838,10 +2864,10 @@ test('router isolates every hostname before API and static dispatch', async () =
   }
 
   const isolated = [
-    new Request('https://backchannel.page/%61dmin/admin.js'),
-    new Request('https://backchannel.page/downloads/downloads.js'),
-    new Request('https://downloads.backchannel.page/admin.js'),
-    new Request('https://downloads.backchannel.page/api%2Fdownload%2Freleases'),
+    new Request('https://debateai.test/%61dmin/admin.js'),
+    new Request('https://debateai.test/downloads/downloads.js'),
+    new Request('https://downloads.debateai.test/admin.js'),
+    new Request('https://downloads.debateai.test/api%2Fdownload%2Freleases'),
     adminRequest('/downloads.js'),
   ];
   for (const requestValue of isolated) {

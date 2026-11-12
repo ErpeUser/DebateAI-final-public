@@ -25,7 +25,7 @@ from app.services.ai_config import research_settings
 WIKIPEDIA_API = "https://de.wikipedia.org/w/api.php"
 DUCKDUCKGO_API = "https://api.duckduckgo.com/"
 DUCKDUCKGO_HTML = "https://html.duckduckgo.com/html/"
-_USER_AGENT = "Backchannel/0.6.6 (https://github.com/talberthoule/backchannel)"
+_USER_AGENT = "DebateAI/0.6.6 (https://github.com/ErpeUser/DebateAI)"
 _HEADERS = {"User-Agent": _USER_AGENT, "Api-User-Agent": _USER_AGENT}
 # Any tokenized placeholder is treated as sensitive at the public-search boundary.
 # Keeping this generic prevents newly added recognizers (ORG, LOCATION, SSN,

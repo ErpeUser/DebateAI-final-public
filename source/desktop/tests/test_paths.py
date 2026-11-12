@@ -4,18 +4,18 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from bcdesktop.paths import app_data_dir, free_port, resource
+from debateai_desktop.paths import app_data_dir, free_port, resource
 
 
 class PathsTests(unittest.TestCase):
     def test_app_data_dir_env_override_wins(self):
-        with mock.patch.dict(os.environ, {"BACKCHANNEL_DATA_DIR": "/somewhere/else"}):
+        with mock.patch.dict(os.environ, {"DEBATEAI_DATA_DIR": "/somewhere/else"}):
             self.assertEqual(app_data_dir(), Path("/somewhere/else"))
 
     def test_app_data_dir_is_platform_specific(self):
         with mock.patch.dict(os.environ):
-            os.environ.pop("BACKCHANNEL_DATA_DIR", None)
-            self.assertIn("backchannel", str(app_data_dir()).lower())
+            os.environ.pop("DEBATEAI_DATA_DIR", None)
+            self.assertIn("debateai", str(app_data_dir()).lower())
 
     def test_free_port_is_bindable(self):
         port = free_port()

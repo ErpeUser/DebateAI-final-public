@@ -33,9 +33,9 @@ $Commit = "a" * 40
 $PublishedAt = "2026-07-15T18:00:00Z"
 $validSignature = "A" * 86
 $invalidSignature = "B" * 86
-$expectedSigningRequest = '{"asset":{"filename":"Backchannel-windows-x64.zip","id":"windows-x64","platform":"Windows x64","sha256":"1e6ed65d77d6364eeaed5a745ba5c4985ae2b700dd85d7cf7f027bdf294a33fc","size":6},"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","key_id":"ed25519-2026-07b","published_at":"2026-07-15T18:00:00Z","release_notes":"test notes","schema":1,"version":"v1.2.3"}'
+$expectedSigningRequest = '{"asset":{"filename":"DebateAI-windows-x64.zip","id":"windows-x64","platform":"Windows x64","sha256":"1e6ed65d77d6364eeaed5a745ba5c4985ae2b700dd85d7cf7f027bdf294a33fc","size":6},"commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","key_id":"ed25519-2026-07b","published_at":"2026-07-15T18:00:00Z","release_notes":"test notes","schema":1,"version":"v1.2.3"}'
 
-$temporary = Join-Path ([IO.Path]::GetTempPath()) "backchannel-platform-publish-test-$([guid]::NewGuid())"
+$temporary = Join-Path ([IO.Path]::GetTempPath()) "debateai-platform-publish-test-$([guid]::NewGuid())"
 New-Item -ItemType Directory -Path $temporary | Out-Null
 $store = Join-Path $temporary "store"
 $assets = Join-Path $temporary "assets"
@@ -50,8 +50,9 @@ $oldFakeRaceDir = $env:R2_FAKE_RACE_DIR
 $oldFakeHeadSize = $env:R2_FAKE_HEAD_SIZE
 $oldFakeSigningRequestFailure = $env:R2_FAKE_SIGNING_REQUEST_FAILURE
 $oldFakePowerShell = $env:R2_FAKE_POWERSHELL
-$oldSigningSecret = $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY
-$oldSigningUrl = $env:BACKCHANNEL_RELEASE_SIGNING_URL
+$oldSigningSecret = $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY
+$oldSigningUrl = $env:DEBATEAI_RELEASE_SIGNING_URL
+$oldProductionSigningUrl = $env:DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL
 $oldAccessClientId = $env:CLOUDFLARE_ACCESS_CLIENT_ID
 $oldAccessClientSecret = $env:CLOUDFLARE_ACCESS_CLIENT_SECRET
 $oldLocalAppData = $env:LOCALAPPDATA
@@ -103,9 +104,9 @@ function Latest-Json {
 function Asset-Info {
     param([string]$PlatformId)
     switch ($PlatformId) {
-        "windows-x64" { @("Windows x64", "Backchannel-windows-x64.zip", "application/zip") }
-        "macos-arm64" { @("macOS arm64", "Backchannel-macos-arm64.zip", "application/zip") }
-        "linux-x64" { @("Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip") }
+        "windows-x64" { @("Windows x64", "DebateAI-windows-x64.zip", "application/zip") }
+        "macos-arm64" { @("macOS arm64", "DebateAI-macos-arm64.zip", "application/zip") }
+        "linux-x64" { @("Linux x64", "DebateAI-linux-x64.tar.gz", "application/gzip") }
         default { throw "unknown platform: $PlatformId" }
     }
 }
@@ -121,7 +122,7 @@ function New-Asset {
 function Platform-Json {
     param(
         [string]$PlatformId = "windows-x64",
-        [string]$AssetPath = (Join-Path $assets "Backchannel-windows-x64.zip"),
+        [string]$AssetPath = (Join-Path $assets "DebateAI-windows-x64.zip"),
         [string]$VersionValue = $Version,
         [string]$CommitValue = $Commit
     )
@@ -334,7 +335,7 @@ function Invoke-RemotePublisher {
         -StatusCode $StatusCode `
         -ResponseBody $ResponseBody `
         -DelayMilliseconds $DelayMilliseconds
-    $env:BACKCHANNEL_RELEASE_SIGNING_URL = $signer.Url
+    $env:DEBATEAI_RELEASE_SIGNING_URL = $signer.Url
     try {
         $result = Invoke-Publisher `
             -AssetPath (New-Asset) `
@@ -379,10 +380,10 @@ try {
     $fakePythonScript = Join-Path $temporary "fake-python.ps1"
     $releaseNotes = Join-Path $temporary "release-notes.md"
     $env:LOCALAPPDATA = Join-Path $temporary "local-appdata"
-    $privateKey = Join-Path $env:LOCALAPPDATA "Backchannel/release-signing/ed25519-2026-07b.private"
+    $privateKey = Join-Path $env:LOCALAPPDATA "DebateAI/release-signing/ed25519-2026-07b.private"
     Write-Utf8 $releaseNotes "test notes"
     Write-Utf8 $privateKey "fixture-private-value"
-    $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = $null
+    $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = $null
 
     Write-Utf8 $fakeNode "@echo off`r`n`"%R2_FAKE_POWERSHELL%`" -NoProfile -ExecutionPolicy Bypass -File `"%R2_FAKE_SCRIPT%`" %*`r`nexit /b %ERRORLEVEL%`r`n"
     Write-Utf8 $fakeNodeScript @'
@@ -464,9 +465,9 @@ for ($index = 1; $index -lt $RawArgs.Count; $index += 2) {
 }
 function Info([string]$PlatformId) {
     switch ($PlatformId) {
-        "windows-x64" { @("Windows x64", "Backchannel-windows-x64.zip", "application/zip") }
-        "macos-arm64" { @("macOS arm64", "Backchannel-macos-arm64.zip", "application/zip") }
-        "linux-x64" { @("Linux x64", "Backchannel-linux-x64.tar.gz", "application/gzip") }
+        "windows-x64" { @("Windows x64", "DebateAI-windows-x64.zip", "application/zip") }
+        "macos-arm64" { @("macOS arm64", "DebateAI-macos-arm64.zip", "application/zip") }
+        "linux-x64" { @("Linux x64", "DebateAI-linux-x64.tar.gz", "application/gzip") }
         default { throw "unknown platform: $PlatformId" }
     }
 }
@@ -509,7 +510,7 @@ if ($options.ContainsKey("detached-key-id")) {
     }
     $signature = $options["detached-signature"]
 } else {
-    if ($env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY -cne "fixture-private-value") {
+    if ($env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY -cne "fixture-private-value") {
         [Console]::Error.WriteLine("local signing input rejected")
         exit 2
     }
@@ -526,7 +527,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
     $env:R2_FAKE_SIGNING_REQUEST_FAILURE = $null
     $env:PATH = "$temporary;$oldPath"
 
-    $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = "fixture-private-value"
+    $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = "fixture-private-value"
     $env:CLOUDFLARE_ACCESS_CLIENT_ID = "fixture-client-id"
     $env:CLOUDFLARE_ACCESS_CLIENT_SECRET = "fixture-client-secret"
     $validResponse = '{{"key_id":"ed25519-2026-07b","signature":"{0}"}}' -f $validSignature
@@ -619,7 +620,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
         -StatusCode 302 `
         -ResponseBody $responseSecret `
         -Location $redirectTarget.Url
-    $env:BACKCHANNEL_RELEASE_SIGNING_URL = $redirectSource.Url
+    $env:DEBATEAI_RELEASE_SIGNING_URL = $redirectSource.Url
     try {
         $result = Invoke-Publisher `
             -SigningMode Remote `
@@ -639,7 +640,8 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
     $env:R2_FAKE_SIGNING_REQUEST_FAILURE = "1"
     try {
         Reset-FakeR2
-        $env:BACKCHANNEL_RELEASE_SIGNING_URL = "https://signing.backchannel.page/v1/sign"
+        $env:DEBATEAI_RELEASE_SIGNING_URL = "https://signing.example/v1/sign"
+        $env:DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL = "https://signing.example/v1/sign"
         $result = Invoke-Publisher -SigningMode Remote -AssetPath (New-Asset)
         Assert-True $result.Failed "Production signer validation did not reach the safe fixture stop"
         Assert-True (
@@ -650,19 +652,31 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
         ) "Metadata helper diagnostic was hidden"
         Assert-True (@(Read-Log).Count -eq 0) "Signer validation reached R2"
 
+        Reset-FakeR2
+        $env:DEBATEAI_RELEASE_SIGNING_URL = "http://signing.example/v1/sign"
+        $env:DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL = "http://signing.example/v1/sign"
+        $result = Invoke-Publisher -SigningMode Remote -AssetPath (New-Asset)
+        Assert-True $result.Failed "HTTP production signer authority was accepted"
+        Assert-True (
+            $result.Output.Contains("Remote release signing configuration is invalid")
+        ) "HTTP production signer authority did not fail closed"
+        Assert-True (@(Read-Log).Count -eq 0) "HTTP production signer authority reached R2"
+
+        $env:DEBATEAI_RELEASE_SIGNING_URL = "https://signing.example/v1/sign"
+        $env:DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL = "https://signing.example/v1/sign"
         $invalidSigningUrls = @(
             @{ Label = "non-HTTPS URL"; Url = "http://example.com/v1/sign" },
             @{ Label = "implicit loopback"; Url = "http://127.0.0.1:12345/v1/sign" },
             @{ Label = "wrong host"; Url = "https://example.com/v1/sign" },
-            @{ Label = "wrong port"; Url = "https://signing.backchannel.page:444/v1/sign" },
-            @{ Label = "wrong path"; Url = "https://signing.backchannel.page/v1/other" },
-            @{ Label = "query"; Url = "https://signing.backchannel.page/v1/sign?next=other" },
-            @{ Label = "userinfo"; Url = "https://fixture-user@signing.backchannel.page/v1/sign" },
-            @{ Label = "fragment"; Url = "https://signing.backchannel.page/v1/sign#other" }
+            @{ Label = "wrong port"; Url = "https://signing.example:444/v1/sign" },
+            @{ Label = "wrong path"; Url = "https://signing.example/v1/other" },
+            @{ Label = "query"; Url = "https://signing.example/v1/sign?next=other" },
+            @{ Label = "userinfo"; Url = "https://fixture-user@signing.example/v1/sign" },
+            @{ Label = "fragment"; Url = "https://signing.example/v1/sign#other" }
         )
         foreach ($case in $invalidSigningUrls) {
             Reset-FakeR2
-            $env:BACKCHANNEL_RELEASE_SIGNING_URL = $case.Url
+            $env:DEBATEAI_RELEASE_SIGNING_URL = $case.Url
             $result = Invoke-Publisher -SigningMode Remote -AssetPath (New-Asset)
             Assert-True $result.Failed "$($case.Label) signer URL was accepted"
             Assert-True (
@@ -672,7 +686,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
         }
 
         Reset-FakeR2
-        $env:BACKCHANNEL_RELEASE_SIGNING_URL = "http://example.com/v1/sign"
+        $env:DEBATEAI_RELEASE_SIGNING_URL = "http://example.com/v1/sign"
         $result = Invoke-Publisher `
             -SigningMode Remote `
             -AssetPath (New-Asset) `
@@ -686,7 +700,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
         $env:R2_FAKE_SIGNING_REQUEST_FAILURE = $null
     }
 
-    $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = $null
+    $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = $null
     Remove-Item -LiteralPath $privateKey -Force
     Reset-FakeR2
     $result = Invoke-Publisher
@@ -704,8 +718,8 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
         "put releases/v1.2.3/release.json",
         "get releases/v1.2.3/release.json",
         "get releases/v1.2.3/platforms/windows-x64.json",
-        "put releases/v1.2.3/Backchannel-windows-x64.zip",
-        "head releases/v1.2.3/Backchannel-windows-x64.zip",
+        "put releases/v1.2.3/DebateAI-windows-x64.zip",
+        "head releases/v1.2.3/DebateAI-windows-x64.zip",
         "put releases/v1.2.3/platforms/windows-x64.json",
         "get releases/v1.2.3/platforms/windows-x64.json",
         "get releases/latest.json",
@@ -714,18 +728,18 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
 
     Reset-FakeR2
     $asset = New-Asset
-    Put-Object "releases/v1.2.3/Backchannel-windows-x64.zip" "bundle"
+    Put-Object "releases/v1.2.3/DebateAI-windows-x64.zip" "bundle"
     $result = Invoke-Publisher -AssetPath $asset
     Assert-True (-not $result.Failed) "Matching orphan asset was not reusable: $($result.Output)"
-    Assert-True ((Read-Log) -contains "get releases/v1.2.3/Backchannel-windows-x64.zip") `
+    Assert-True ((Read-Log) -contains "get releases/v1.2.3/DebateAI-windows-x64.zip") `
         "Existing orphan asset was not read back"
 
     Reset-FakeR2
-    Put-Object "releases/v1.2.3/Backchannel-windows-x64.zip" "different"
+    Put-Object "releases/v1.2.3/DebateAI-windows-x64.zip" "different"
     $result = Invoke-Publisher -AssetPath (New-Asset)
     Assert-True $result.Failed "Conflicting orphan asset was overwritten"
     $joinedLog = (Read-Log) -join "`n"
-    Assert-True (-not $joinedLog.Contains("head releases/v1.2.3/Backchannel-windows-x64.zip")) `
+    Assert-True (-not $joinedLog.Contains("head releases/v1.2.3/DebateAI-windows-x64.zip")) `
         "Conflicting orphan asset reached remote-size verification"
     Assert-True (-not $joinedLog.Contains("put releases/v1.2.3/platforms/windows-x64.json")) `
         "Conflicting orphan asset created immutable metadata"
@@ -743,7 +757,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
     $result = Invoke-Publisher -AssetPath $asset
     Assert-True (-not $result.Failed) "Identical platform failed: $($result.Output)"
     $joinedLog = (Read-Log) -join "`n"
-    Assert-True (-not $joinedLog.Contains("put releases/v1.2.3/Backchannel-windows-x64.zip")) "Existing platform re-uploaded the asset"
+    Assert-True (-not $joinedLog.Contains("put releases/v1.2.3/DebateAI-windows-x64.zip")) "Existing platform re-uploaded the asset"
     Assert-True (-not $joinedLog.Contains("put releases/v1.2.3/platforms/windows-x64.json")) "Existing platform rewrote immutable metadata"
 
     Reset-FakeR2
@@ -752,7 +766,7 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
     Put-Object "releases/v1.2.3/platforms/windows-x64.json" ((Platform-Json -AssetPath $asset -CommitValue ("b" * 40)) + "`n")
     $result = Invoke-Publisher -AssetPath $asset
     Assert-True $result.Failed "Mismatched existing platform was accepted"
-    Assert-True (-not ((Read-Log) -join "`n").Contains("put releases/v1.2.3/Backchannel-windows-x64.zip")) "Mismatched platform uploaded the asset"
+    Assert-True (-not ((Read-Log) -join "`n").Contains("put releases/v1.2.3/DebateAI-windows-x64.zip")) "Mismatched platform uploaded the asset"
 
     Reset-FakeR2
     $env:R2_FAKE_HEAD_SIZE = "1"
@@ -799,8 +813,9 @@ WriteUtf8 $options["platform-out"] ('{{"asset":{{"content_type":"{0}","filename"
     $env:R2_FAKE_HEAD_SIZE = $oldFakeHeadSize
     $env:R2_FAKE_SIGNING_REQUEST_FAILURE = $oldFakeSigningRequestFailure
     $env:R2_FAKE_POWERSHELL = $oldFakePowerShell
-    $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = $oldSigningSecret
-    $env:BACKCHANNEL_RELEASE_SIGNING_URL = $oldSigningUrl
+    $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = $oldSigningSecret
+    $env:DEBATEAI_RELEASE_SIGNING_URL = $oldSigningUrl
+    $env:DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL = $oldProductionSigningUrl
     $env:CLOUDFLARE_ACCESS_CLIENT_ID = $oldAccessClientId
     $env:CLOUDFLARE_ACCESS_CLIENT_SECRET = $oldAccessClientSecret
     $env:LOCALAPPDATA = $oldLocalAppData

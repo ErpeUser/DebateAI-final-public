@@ -172,10 +172,10 @@ const commandCopy = {
 function showResetCredential(dialogs, value, returnFocus) {
   dialogs.showCredential({
     text: [
-      'Backchannel desktop access',
+      'DebateAI desktop access',
       `Account: ${value.credential.email}`,
       `Temporary password: ${value.credential.password}`,
-      'Sign in: https://downloads.backchannel.page/',
+      'Sign in: /downloads/',
       `Password expires: ${value.credential.password_expires_at}`,
     ].join('\n'),
     email: value.credential.email,

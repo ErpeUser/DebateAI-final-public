@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 from typing import Callable
 
-from bcdesktop.windows_console import hidden_startupinfo
+from debateai_desktop.windows_console import hidden_startupinfo
 
 _AUTO = object()
 

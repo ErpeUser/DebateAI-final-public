@@ -26,7 +26,7 @@ function Get-DesktopBuildContract {
         PostgresDownloader = Join-Path $RepositoryRoot "desktop\scripts\download_pg.py"
         FfmpegDownloader = Join-Path $RepositoryRoot "desktop\scripts\download_ffmpeg.py"
         CLIProxyDownloader = Join-Path $RepositoryRoot "desktop\scripts\download_cliproxyapi.py"
-        Spec = Join-Path $RepositoryRoot "desktop\backchannel.spec"
+        Spec = Join-Path $RepositoryRoot "desktop\debateai.spec"
         SmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_test.py"
         ArchiveSmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_update_archive.py"
         Bundle = Join-Path $RepositoryRoot "dist\DebateAI"

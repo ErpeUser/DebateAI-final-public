@@ -2,7 +2,6 @@ import type { AgentConfig, AIConfiguration, AIPromptConfig, AppMeta, ArgumentGra
 
 const BASE = "/api";
 const INSTANCE_HEADER = "X-DebateAI-Instance";
-const LEGACY_INSTANCE_HEADER = "X-Backchannel-Instance";
 let desktopInstanceToken = "";
 
 export const getDesktopInstanceToken = () => desktopInstanceToken;
@@ -15,8 +14,7 @@ function desktopHeaders(headers?: HeadersInit): Headers {
 
 async function desktopFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const response = await fetch(input, { ...init, headers: desktopHeaders(init?.headers) });
-  const received = response.headers?.get?.(INSTANCE_HEADER)
-    ?? response.headers?.get?.(LEGACY_INSTANCE_HEADER);
+  const received = response.headers?.get?.(INSTANCE_HEADER);
   if (received) desktopInstanceToken = received;
   return response;
 }
@@ -168,8 +166,7 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
     ...options,
     headers,
   });
-  const receivedInstanceToken = res.headers?.get?.(INSTANCE_HEADER)
-    ?? res.headers?.get?.(LEGACY_INSTANCE_HEADER);
+  const receivedInstanceToken = res.headers?.get?.(INSTANCE_HEADER);
   if (receivedInstanceToken) desktopInstanceToken = receivedInstanceToken;
   if (!res.ok) {
     const text = await res.text();

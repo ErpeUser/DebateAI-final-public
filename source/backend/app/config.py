@@ -133,7 +133,7 @@ class Settings(BaseSettings):
     # measured dual-track calls about 45 percent of entries were the same
     # speech saved twice under two speaker identities. The window covers the
     # observed p90 gap between a pair (3.8s) with headroom; the min-word floor
-    # keeps short backchannels, which legitimately repeat, out of scope.
+    # keeps short acknowledgements, which legitimately repeat, out of scope.
     # Headroom multiplier for the retry after a structured JSON call truncated
     # (ALP-295). Only the retry widens; the first attempt keeps the cap.
     LLM_JSON_RETRY_HEADROOM: float = 2.0

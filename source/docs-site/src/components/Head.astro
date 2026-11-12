@@ -6,22 +6,24 @@ import Default from '@astrojs/starlight/components/Head.astro';
 
 const { entry, id } = Astro.locals.starlightRoute;
 const isIndex = !id || id === 'index';
-const pageUrl = `https://backchannel.page/docs/${isIndex ? '' : `${id.replace(/\/$/, '')}/`}`;
+const siteUrl = Astro.site?.toString().replace(/\/$/, '') ?? '';
+const absoluteUrl = (path) => (siteUrl ? `${siteUrl}${path}` : path);
+const pageUrl = absoluteUrl(`/docs/${isIndex ? '' : `${id.replace(/\/$/, '')}/`}`);
 const page = {
   '@type': isIndex ? 'WebPage' : 'TechArticle',
   headline: entry.data.title,
   description: entry.data.description,
   url: pageUrl,
   inLanguage: 'en',
-  isPartOf: { '@id': 'https://backchannel.page/#website' },
-  publisher: { '@id': 'https://backchannel.page/#organization' },
-  author: { '@id': 'https://backchannel.page/#organization' },
+  isPartOf: { '@id': absoluteUrl('/') + '#website' },
+  publisher: { '@id': absoluteUrl('/') + '#organization' },
+  author: { '@id': absoluteUrl('/') + '#organization' },
 };
 const crumbs = [
-  { '@type': 'ListItem', position: 1, name: 'Debate AI', item: 'https://backchannel.page/' },
+  { '@type': 'ListItem', position: 1, name: 'Debate AI', item: absoluteUrl('/') },
   isIndex
     ? { '@type': 'ListItem', position: 2, name: 'Docs' }
-    : { '@type': 'ListItem', position: 2, name: 'Docs', item: 'https://backchannel.page/docs/' },
+    : { '@type': 'ListItem', position: 2, name: 'Docs', item: absoluteUrl('/docs/') },
 ];
 if (!isIndex) crumbs.push({ '@type': 'ListItem', position: 3, name: entry.data.title });
 const graph = {

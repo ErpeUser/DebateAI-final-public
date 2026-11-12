@@ -23,7 +23,7 @@ _LOGIN_RESERVED = False
 
 
 def _setting(name: str) -> str:
-    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}", f"BACKCHANNEL_CHATGPT_WEB_{name}").strip()
+    return env_value(f"DEBATEAI_CHATGPT_WEB_{name}").strip()
 
 
 def reserve_login() -> bool:
@@ -46,7 +46,7 @@ def browser_busy() -> bool:
 
 def _path(name: str) -> Path:
     suffix = name.rsplit("_", 1)[-1]
-    value = _setting(suffix) if name.startswith("BACKCHANNEL_CHATGPT_WEB_") else os.environ.get(name, "").strip()
+    value = _setting(suffix) if name.startswith("DEBATEAI_CHATGPT_WEB_") else os.environ.get(name, "").strip()
     return Path(value) if value else Path()
 
 
@@ -54,8 +54,8 @@ def runtime_available() -> bool:
     return bool(
         _setting("NODE")
         and _setting("ORACLE")
-        and _path("BACKCHANNEL_CHATGPT_WEB_NODE").is_file()
-        and _path("BACKCHANNEL_CHATGPT_WEB_ORACLE").is_file()
+        and _path("DEBATEAI_CHATGPT_WEB_NODE").is_file()
+        and _path("DEBATEAI_CHATGPT_WEB_ORACLE").is_file()
     )
 
 
@@ -124,11 +124,11 @@ def oracle_command(
     research: str | None = None,
 ) -> list[str]:
     command = [
-        str(_path("BACKCHANNEL_CHATGPT_WEB_NODE")),
-        str(_path("BACKCHANNEL_CHATGPT_WEB_ORACLE")),
+        str(_path("DEBATEAI_CHATGPT_WEB_NODE")),
+        str(_path("DEBATEAI_CHATGPT_WEB_ORACLE")),
         "--engine", "browser",
         "--browser-manual-login",
-        "--browser-manual-login-profile-dir", str(_path("BACKCHANNEL_CHATGPT_WEB_PROFILE")),
+        "--browser-manual-login-profile-dir", str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
         "--model", "gpt-6",
         "--browser-model-strategy", "current",
         "--browser-thinking-time", _thinking_time(reasoning_effort),
@@ -174,7 +174,7 @@ async def generate(
     async with _ORACLE_LOCK:
         if _LOGIN_RESERVED:
             raise RuntimeError("Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen.")
-        home = _path("BACKCHANNEL_CHATGPT_WEB_HOME")
+        home = _path("DEBATEAI_CHATGPT_WEB_HOME")
         home.mkdir(parents=True, exist_ok=True)
         jobs = home / "jobs"
         jobs.mkdir(parents=True, exist_ok=True)
@@ -188,7 +188,7 @@ async def generate(
         env = os.environ.copy()
         env.update({
             "ORACLE_HOME_DIR": str(home),
-            "ORACLE_BROWSER_PROFILE_DIR": str(_path("BACKCHANNEL_CHATGPT_WEB_PROFILE")),
+            "ORACLE_BROWSER_PROFILE_DIR": str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
             "NO_COLOR": "1",
         })
         flags = 0x08000000 if os.name == "nt" else 0

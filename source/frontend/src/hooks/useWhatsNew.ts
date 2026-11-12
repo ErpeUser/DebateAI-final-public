@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import * as api from "../services/api";
 
-const LAST_SEEN_VERSION_KEY = "backchannel.last_seen_version";
+const LAST_SEEN_VERSION_KEY = "debateai.last_seen_version";
 
 // localStorage can be unavailable (blocked storage, some embedded contexts);
 // the what's-new banner is cosmetic, so fail silent in both directions.

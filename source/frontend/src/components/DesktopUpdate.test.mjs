@@ -90,7 +90,7 @@ test("available update shows signed notes, size, and download action", () => {
     state: "available",
     available_version: "v2.0.0",
     available_notes: "## Safer updates\\n\\nAutomatic rollback.",
-    filename: "Backchannel-windows-x64.zip",
+    filename: "DebateAI-windows-x64.zip",
     size: 10 * 1024 * 1024,
   });
   assert.match(markup, /v2\.0\.0/);
@@ -223,7 +223,7 @@ test("updating never routes the user through a sign-in", () => {
       size: 1000,
       downloaded: 400,
     });
-    assert.doesNotMatch(markup, /downloads\.backchannel\.page/);
+    assert.doesNotMatch(markup, /downloads\.debateai\.page/);
     assert.doesNotMatch(markup, /sign in|sign-in|log in|account/i);
     assert.doesNotMatch(markup, /authoriz/i, `authorization language survived in "${state}"`);
     assert.doesNotMatch(markup, /<a/, `the card opened a link in "${state}"`);

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/wordmark.svg" alt="DebateAI (legacy Backchannel)" width="440" />
+  <img src="docs/assets/wordmark.svg" alt="DebateAI" width="440" />
 </p>
 
 <p align="center">
@@ -11,12 +11,12 @@
   <a href="#features">Features</a> -
   <a href="#what-it-looks-like">Screenshots</a> -
   <a href="#architecture">Architecture</a> -
-  <a href="https://backchannel.page/docs/">Documentation</a>
+  <a href="docs/README.md">Documentation</a>
 </p>
 
 ---
 
-DebateAI (historically Backchannel) is a self-hosted, open-source (MIT) AI meeting assistant that
+DebateAI is a self-hosted, open-source (MIT) AI meeting assistant that
 runs on your own hardware -- no bot joins your call, and your audio never
 leaves your infrastructure except for the model API calls you configure.
 
@@ -30,7 +30,7 @@ action items you would otherwise reconstruct from memory afterwards.
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/live-call-dark.webp" />
-    <img src="site/assets/shots/live-call.webp" alt="Backchannel during a live call: strategic signals across the top, 125 insights in the feed with a mid-call question already answered, a speaker-attributed transcript beside it, and the ask bar along the bottom." width="900" />
+    <img src="site/assets/shots/live-call.webp" alt="DebateAI during a live call: strategic signals across the top, 125 insights in the feed with a mid-call question already answered, a speaker-attributed transcript beside it, and the ask bar along the bottom." width="900" />
   </picture>
 </p>
 
@@ -153,24 +153,25 @@ trigger -- and a Privacy First switch that judges the destination.
 </tr>
 </table>
 
-## How Backchannel compares
+## How DebateAI compares
 
 Live in-call assistance is no longer rare -- Otter, Zoom, and the revenue
 intelligence vendors all ship some form of it. What differs is the mechanism
-and the deployment: Backchannel runs a configurable crew of agents you can
+and the deployment: DebateAI runs a configurable crew of agents you can
 re-prompt and re-model yourself, on hardware you own, with no bot in the
 meeting and no per-seat license.
 
 Sourced, dated comparisons against the tools people evaluate alongside it
-live at
-[backchannel.page/open-source-meeting-assistants](https://backchannel.page/open-source-meeting-assistants/),
+live at the external historical comparison hub below. These links are
+informational and are not runtime, update or download dependencies:
+[comparison hub](https://github.com/ErpeUser/DebateAI/blob/master/source/site/open-source-meeting-assistants/index.html),
 which indexes the full set. The most common starting points:
 
-- [Backchannel vs Meetily](https://backchannel.page/vs-meetily/) -- the
+- [DebateAI vs Meetily](https://github.com/ErpeUser/DebateAI/blob/master/source/site/vs-meetily/index.html) -- the
   closest open-source, local-first alternative
-- [Otter alternative](https://backchannel.page/otter-alternative/) -- including
+- [Otter alternative](https://github.com/ErpeUser/DebateAI/blob/master/source/site/otter-alternative/index.html) -- including
   how Otter's Live Assist compares
-- [Granola alternative](https://backchannel.page/granola-alternative/) --
+- [Granola alternative](https://github.com/ErpeUser/DebateAI/blob/master/source/site/granola-alternative/index.html) --
   bot-free capture without the hosted backend
 
 ## Architecture
@@ -190,25 +191,24 @@ Read more in [docs/architecture.md](docs/architecture.md).
 
 ### Option 1: Desktop app (easiest)
 
-Download the latest desktop release for your platform from the
-[Backchannel download portal](https://downloads.backchannel.page/).
+Download the latest desktop release for your platform from a
+deployment-specific HTTPS update endpoint configured by the operator.
 Downloads are open to everyone; no account, GitHub identity, or repository
-membership is needed. Public release notes for the current version are linked
-from the [backchannel.page](https://backchannel.page/) landing page and shown
+membership is needed. Release notes for the configured deployment are shown
 in-app under Admin -> About.
 
-- `Backchannel-windows-x64.zip` - unzip, run `Backchannel.exe`.
+- `DebateAI-windows-x64.zip` - unzip, run `DebateAI.exe`.
   Windows releases must be Authenticode-signed before production distribution; do not bypass SmartScreen for an unverified bundle.
-- `Backchannel-macos-arm64.zip` (Apple Silicon) - unzip, right-click
-  `Backchannel.app` and choose "Open" the first time (unsigned build).
-- `Backchannel-linux-x64.tar.gz` (x64) - a portable bundle, not a
-  package-manager installer: `tar -xzf Backchannel-linux-x64.tar.gz`,
-  then run `Backchannel/Backchannel`.
+- `DebateAI-macos-arm64.zip` (Apple Silicon) - unzip, right-click
+  `DebateAI.app` and choose "Open" the first time (unsigned build).
+- `DebateAI-linux-x64.tar.gz` (x64) - a portable bundle, not a
+  package-manager installer: `tar -xzf DebateAI-linux-x64.tar.gz`,
+  then run `DebateAI/DebateAI`.
 
-The app lives in your system tray / menu bar and opens Backchannel in your
-default browser. Data is stored per-user (`%LOCALAPPDATA%\Backchannel` on
-Windows, `~/Library/Application Support/Backchannel` on macOS,
-`~/.local/share/backchannel` on Linux).
+The app lives in your system tray / menu bar and opens DebateAI in your
+default browser. Data is stored per-user (`%LOCALAPPDATA%\DebateAI` on
+Windows, `~/Library/Application Support/DebateAI` on macOS,
+`~/.local/share/debateai` on Linux).
 
 Notes:
 - The Windows and Linux bundles ship their own ffmpeg, so compressed audio
@@ -248,8 +248,8 @@ transcription with a self-hosted endpoint for the agents
 (see [Configuration](docs/configuration.md#self-hosted-endpoints)).
 
 ```bash
-git clone https://github.com/ErpeUser/backchannel-v6-private.git
-cd backchannel-v6-private/source
+git clone https://github.com/ErpeUser/DebateAI.git
+cd DebateAI/source
 cp .env.example .env   # set GEMINI_API_KEY (or add keys later in Admin -> Connections)
 docker compose up --build
 ```

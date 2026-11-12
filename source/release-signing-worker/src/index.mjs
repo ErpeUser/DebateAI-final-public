@@ -27,15 +27,15 @@ const ASSET_FIELDS = new Set([
 const TRUSTED_ASSETS = new Map([
   [
     "windows-x64",
-    ["Windows x64", "Backchannel-windows-x64.zip"],
+    ["Windows x64", "DebateAI-windows-x64.zip"],
   ],
   [
     "macos-arm64",
-    ["macOS arm64", "Backchannel-macos-arm64.zip"],
+    ["macOS arm64", "DebateAI-macos-arm64.zip"],
   ],
   [
     "linux-x64",
-    ["Linux x64", "Backchannel-linux-x64.tar.gz"],
+    ["Linux x64", "DebateAI-linux-x64.tar.gz"],
   ],
 ]);
 const MAX_BODY_BYTES = 16 * 1024;

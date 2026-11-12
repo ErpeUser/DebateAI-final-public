@@ -41,7 +41,7 @@ async function start() {
     const route = await import(modulePath);
     title.textContent = route.meta.title;
     description.textContent = route.meta.description;
-    document.title = `${route.meta.title} | Backchannel admin`;
+    document.title = `${route.meta.title} | DebateAI admin`;
     const mounted = route.mount({ document, fetcher: fetch, shell, dialogs });
     refreshButton.addEventListener('click', async () => {
       refreshButton.disabled = true;

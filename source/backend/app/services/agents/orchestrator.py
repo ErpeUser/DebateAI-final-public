@@ -1526,15 +1526,15 @@ class AgentOrchestrator:
             served_subscription_models = {
                 str(value).strip()
                 for value in json.loads(
-                    env_value("DEBATEAI_SUBSCRIPTION_MODELS", "BACKCHANNEL_SUBSCRIPTION_MODELS", "[]")
+                    env_value("DEBATEAI_SUBSCRIPTION_MODELS", "[]")
                 )
                 if str(value).strip()
             }
         except (TypeError, ValueError):
             served_subscription_models = set()
         bridge_configured = bool(
-            env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
-            and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
+            env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL").strip()
+            and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY").strip()
         )
         from app.services.subscription_bridge import (
             gemini_web_cookie_configured,

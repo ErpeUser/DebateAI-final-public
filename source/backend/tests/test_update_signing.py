@@ -29,8 +29,8 @@ MANIFEST = {
     "asset": {
         "id": "windows-x64",
         "platform": "Windows x64",
-        "filename": "Backchannel-windows-x64.zip",
-        "key": "releases/v1.2.3/Backchannel-windows-x64.zip",
+        "filename": "DebateAI-windows-x64.zip",
+        "key": "releases/v1.2.3/DebateAI-windows-x64.zip",
         "size": 7,
         "sha256": "a" * 64,
         "content_type": "application/zip",
@@ -67,7 +67,7 @@ class UpdateSigningTests(unittest.TestCase):
     def test_canonical_bytes_are_exact(self):
         self.assertEqual(
             canonical_update_bytes(UNSIGNED_DESCRIPTOR),
-            b'{"asset":{"filename":"Backchannel-windows-x64.zip",'
+            b'{"asset":{"filename":"DebateAI-windows-x64.zip",'
             b'"id":"windows-x64","platform":"Windows x64",'
             b'"sha256":"' + b"a" * 64 + b'","size":7},'
             b'"commit":"' + b"b" * 40 + b'","key_id":"test-key",'

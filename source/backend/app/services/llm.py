@@ -214,8 +214,8 @@ async def _prepare_call(model_id: str, feature: str, source: str = "") -> _CallT
     if (
         provider == "openai"
         and not key
-        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
-        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
+        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL").strip()
+        and env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY").strip()
     ):
         try:
             _bridge_id, endpoint, key = await _subscription_budget_target(model_id)

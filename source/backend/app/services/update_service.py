@@ -45,25 +45,10 @@ LAUNCHERS = {
     "linux-x64": "DebateAI",
     "macos-arm64": "Contents/MacOS/DebateAI",
 }
-LEGACY_ROOT_NAMES = {
-    "windows-x64": "Backchannel",
-    "linux-x64": "Backchannel",
-    "macos-arm64": "Backchannel.app",
-}
-LEGACY_LAUNCHERS = {
-    "windows-x64": "Backchannel.exe",
-    "linux-x64": "Backchannel",
-    "macos-arm64": "Contents/MacOS/Backchannel",
-}
 
 
-def _env(name: str, *legacy: str, default: str = "") -> str:
-    """Read the canonical DebateAI variable, then legacy aliases."""
-    for key in (name, *legacy):
-        value = os.environ.get(key)
-        if value is not None and value != "":
-            return value
-    return default
+def _env(name: str, default: str = "") -> str:
+    return os.environ.get(name) or default
 STATE_FIELDS = {
     "enabled",
     "state",
@@ -139,7 +124,8 @@ def _update_origin(value: str) -> tuple[str, str, int | None]:
         raise ValueError("invalid update source")
     if parsed.scheme != "https" and host not in {"127.0.0.1", "::1", "localhost"}:
         raise ValueError("update source must use TLS")
-    return parsed.scheme, host, parsed.port
+    default_port = 443 if parsed.scheme == "https" else 80
+    return parsed.scheme, host, parsed.port or default_port
 
 
 class UpdateService:
@@ -152,14 +138,14 @@ class UpdateService:
         keys_path: Path | str | None = None,
         current_version: str = APP_VERSION,
         platform_id: str | None = None,
-        descriptor_url: str = "https://downloads.backchannel.page/api/update/latest/{platform_id}",
-        asset_url: str = "https://downloads.backchannel.page/api/update/assets/{version}/{platform_id}",
+        descriptor_url: str | None = None,
+        asset_url: str | None = None,
         timeout: float = 10,
         apply_disabled: bool | None = None,
         helper_path: Path | str | None = None,
     ):
         self.enabled = (
-            _env("DEBATEAI_DESKTOP", "BACKCHANNEL_DESKTOP") == "1"
+            _env("DEBATEAI_DESKTOP") == "1"
             if enabled is None
             else enabled
         )
@@ -182,12 +168,14 @@ class UpdateService:
         self.data_root = runtime_data.resolve()
         self.update_root = self.data_root / "updates"
         self.state_path = self.update_root / "state.json"
-        raw_install = install_root or _env("DEBATEAI_INSTALL_DIR", "BACKCHANNEL_INSTALL_DIR")
-        raw_keys = keys_path or _env("DEBATEAI_UPDATE_KEYS", "BACKCHANNEL_UPDATE_KEYS")
+        raw_install = install_root or _env("DEBATEAI_INSTALL_DIR")
+        raw_keys = keys_path or _env("DEBATEAI_UPDATE_KEYS")
         if not raw_install or not raw_keys:
             raise ValueError("desktop update paths are not configured")
         self.install_root = Path(raw_install).resolve()
         self.keys_path = Path(raw_keys).resolve()
+        if not descriptor_url or not asset_url:
+            raise ValueError("explicit DebateAI update endpoints are required")
         self.descriptor_url = descriptor_url
         self.asset_url = asset_url
         self._source_origin = _update_origin(
@@ -199,11 +187,11 @@ class UpdateService:
             raise ValueError("update sources must share one origin")
         self.timeout = timeout
         self.apply_disabled = (
-            _env("DEBATEAI_UPDATE_APPLY_DISABLED", "BACKCHANNEL_UPDATE_APPLY_DISABLED") == "1"
+            _env("DEBATEAI_UPDATE_APPLY_DISABLED") == "1"
             if apply_disabled is None
             else apply_disabled
         )
-        raw_helper = helper_path or _env("DEBATEAI_UPDATE_HELPER", "BACKCHANNEL_UPDATE_HELPER")
+        raw_helper = helper_path or _env("DEBATEAI_UPDATE_HELPER")
         self.helper_path = Path(raw_helper).resolve() if raw_helper else None
         _, self.public_keys = parse_release_signing_keys(
             json.loads(self.keys_path.read_text(encoding="utf-8"))
@@ -297,7 +285,7 @@ class UpdateService:
             self.descriptor_url.format(platform_id=self.platform_id),
             headers={
                 "Accept": "application/json",
-            "User-Agent": f"Backchannel/{self.current_version}",
+            "User-Agent": f"DebateAI/{self.current_version}",
             },
         )
         context = ssl.create_default_context(cafile=certifi.where())
@@ -424,13 +412,7 @@ class UpdateService:
 
     @property
     def staged_root(self) -> Path:
-        canonical = self.stage_dir / ROOT_NAMES[self.platform_id]
-        legacy = self.stage_dir / LEGACY_ROOT_NAMES[self.platform_id]
-        return canonical if canonical.exists() else legacy
-
-    @property
-    def legacy_staged_root(self) -> Path:
-        return self.stage_dir / LEGACY_ROOT_NAMES[self.platform_id]
+        return self.stage_dir / ROOT_NAMES[self.platform_id]
 
     @property
     def active_staged_root(self) -> Path:
@@ -479,7 +461,7 @@ class UpdateService:
     def _asset_request(self, grant: str, start: int | None):
         headers = {
             "Accept": "application/octet-stream",
-            "User-Agent": f"Backchannel/{self.current_version}",
+            "User-Agent": f"DebateAI/{self.current_version}",
         }
         # Sent only when one was handed to us. The route ignores it either way;
         # omitting it keeps an anonymous download anonymous.
@@ -506,8 +488,10 @@ class UpdateService:
                 raise InvalidUpdate("asset source changed")
             return response
         except urllib.error.HTTPError as error:
-            if error.code in {401, 403, 404}:
+            if error.code in {401, 403}:
                 raise NeedsAuthorization from error
+            if error.code == 404:
+                raise InvalidUpdate("update asset not found") from error
             raise
 
     def _progress(self, downloaded: int) -> None:
@@ -671,7 +655,6 @@ class UpdateService:
             not path.parts
             or path.parts[0] not in {
                 ROOT_NAMES[self.platform_id],
-                LEGACY_ROOT_NAMES[self.platform_id],
             }
             or any(part in {"", ".", ".."} for part in path.parts)
             or (self.platform_id == "windows-x64" and any(":" in part for part in path.parts))
@@ -687,10 +670,7 @@ class UpdateService:
             raise InvalidUpdate("unsafe archive link")
         base = PurePosixPath() if hard else member.parent
         normalized = PurePosixPath(posixpath.normpath(str(base / link)))
-        if not normalized.parts or normalized.parts[0] not in {
-            ROOT_NAMES[self.platform_id],
-            LEGACY_ROOT_NAMES[self.platform_id],
-        }:
+        if not normalized.parts or normalized.parts[0] != ROOT_NAMES[self.platform_id]:
             raise InvalidUpdate("unsafe archive link")
         if ".." in normalized.parts:
             raise InvalidUpdate("unsafe archive link")
@@ -784,7 +764,6 @@ class UpdateService:
             children = list(self.stage_dir.iterdir())
             if len(children) != 1 or children[0].name not in {
                 ROOT_NAMES[self.platform_id],
-                LEGACY_ROOT_NAMES[self.platform_id],
             } or not self.active_staged_root.is_dir():
                 raise InvalidUpdate("archive root mismatch")
         except InvalidUpdate:
@@ -826,8 +805,6 @@ class UpdateService:
         if backup.exists() or failed.exists() or backup.is_symlink() or failed.is_symlink():
             raise RuntimeError("A previous update needs recovery.")
         launcher = LAUNCHERS[self.platform_id]
-        if not (install / Path(launcher)).is_file():
-            launcher = LEGACY_LAUNCHERS[self.platform_id]
         if not (install / Path(launcher)).is_file():
             raise RuntimeError("The current launcher is unavailable.")
         return {

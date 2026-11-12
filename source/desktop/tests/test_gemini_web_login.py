@@ -3,7 +3,7 @@ import unittest
 from http.cookies import SimpleCookie
 from pathlib import Path
 
-from bcdesktop.gemini_web_login import (
+from debateai_desktop.gemini_web_login import (
     REQUIRED_GEMINI_COOKIES,
     cookie_header_from_webview,
     wait_for_authenticated_cookie_header,

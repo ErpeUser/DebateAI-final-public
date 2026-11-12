@@ -158,7 +158,7 @@ function showReleases() {
 
 function showUpdateRequest() {
   if (!updateRequest || !globalThis.opener || !updatePanel) return showReleases();
-  updateSummary.textContent = `Allow Backchannel ${updateRequest.version} for ${updatePlatforms.get(updateRequest.assetId)}.`;
+  updateSummary.textContent = `Allow DebateAI ${updateRequest.version} for ${updatePlatforms.get(updateRequest.assetId)}.`;
   updateStatus.textContent = '';
   setAlert('#update-alert', '');
   show(updatePanel, updateHeading);
@@ -253,9 +253,9 @@ updateConfirm?.addEventListener('click', async () => {
       || result.version !== updateRequest.version
       || result.asset_id !== updateRequest.assetId
       || !/^[A-Za-z0-9_-]{43}$/.test(result.grant || '')) throw new Error();
-    updateStatus.textContent = 'Authorization sent. Returning to Backchannel...';
+    updateStatus.textContent = 'Authorization sent. Returning to DebateAI...';
     globalThis.opener.postMessage({
-      type: 'backchannel-update-grant',
+      type: 'debateai-update-grant',
       nonce: updateRequest.nonce,
       version: result.version,
       asset_id: result.asset_id,

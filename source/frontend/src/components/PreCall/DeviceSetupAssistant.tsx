@@ -7,7 +7,7 @@ export default function DeviceSetupAssistant() {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [readiness, setReadiness] = useState<api.TranscriptionReadiness | null>(null);
   const stored = (() => {
-    try { return JSON.parse(window.localStorage.getItem("backchannel:audio-devices") || "{}"); }
+    try { return JSON.parse(window.localStorage.getItem("debateai:audio-devices") || "{}"); }
     catch { return {}; }
   })();
   const [microphone, setMicrophone] = useState<string>(stored.microphone_id || "");
@@ -28,7 +28,7 @@ export default function DeviceSetupAssistant() {
   const localCoachReady = models.some((model) => model.runs_locally && model.supports_text && model.key_available);
 
   const persist = (nextMicrophone = microphone, nextLoopback = loopback) => {
-    window.localStorage.setItem("backchannel:audio-devices", JSON.stringify({
+    window.localStorage.setItem("debateai:audio-devices", JSON.stringify({
       microphone_mode: nextMicrophone ? "fixed" : "follow_default",
       loopback_mode: nextLoopback ? "fixed" : "follow_default",
       ...(nextMicrophone ? { microphone_id: nextMicrophone } : {}),

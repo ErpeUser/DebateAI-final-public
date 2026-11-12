@@ -8,11 +8,11 @@ Dieser Ordner ist die zentrale, direkt editierbare KI-Konfiguration.
 - `playbooks.json`: kurze Sprachbefehle und RhetoricIQ-Steuerungen
 
 Im Windows-Paket werden diese Dateien beim ersten Start nach
-`%LOCALAPPDATA%\Backchannel\ai` kopiert. Dort koennen sie ohne neuen EXE-Build
+`%LOCALAPPDATA%\DebateAI\ai` kopiert. Dort koennen sie ohne neuen EXE-Build
 bearbeitet werden. Vorhandene Dateien werden bei Updates nicht ueberschrieben.
 
 Fuer eine portable, beschreibbare Kopie kann vor dem Start
-`BACKCHANNEL_PORTABLE=1` gesetzt werden. Dann wird der Ordner `ai` neben der
+`DEBATEAI_PORTABLE=1` gesetzt werden. Dann wird der Ordner `ai` neben der
 tatsaechlich gestarteten EXE (ermittelt ueber `sys.executable`) verwendet; die
 gebuendelten `_internal`-/`_MEIPASS`-Dateien bleiben unveraenderliche Defaults.
 Die aktive Quelle ist immer die externe Datei. Ein Neustart oder der vorhandene

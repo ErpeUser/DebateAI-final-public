@@ -508,7 +508,7 @@ app = FastAPI(title="DebateAI", version=APP_VERSION, lifespan=lifespan)
 
 # The API has no login, so the browser's same-origin policy is the only thing
 # between a hostile web page and the user's transcripts and provider budget.
-# CORS therefore admits local origins only (plus BACKCHANNEL_ALLOWED_ORIGINS);
+# CORS therefore admits local origins only (plus DEBATEAI_ALLOWED_ORIGINS);
 # the frontend is always served same-origin (nginx proxy, Vite proxy, or the
 # backend itself on desktop), so nothing legitimate needs a wildcard.
 app.add_middleware(

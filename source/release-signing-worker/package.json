@@ -1,5 +1,5 @@
 {
-  "name": "backchannel-release-signing-worker",
+  "name": "debateai-release-signing-worker",
   "private": true,
   "type": "module",
   "scripts": {

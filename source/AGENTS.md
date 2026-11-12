@@ -15,7 +15,7 @@ This file provides guidance to Codex (Codex.ai/code) when working with this repo
 
 ## Current Codebase Snapshot
 
-Backchannel (formerly Call Helper) is a real-time meeting analysis app. A React frontend captures microphone audio as PCM16 16 kHz mono and streams it over WebSocket. The FastAPI backend writes speaker-attributed transcript entries, runs Gemini-based analysis agents over recent transcript text, and stores insights in PostgreSQL.
+DebateAI (formerly Call Helper) is a real-time meeting analysis app. A React frontend captures microphone audio as PCM16 16 kHz mono and streams it over WebSocket. The FastAPI backend writes speaker-attributed transcript entries, runs Gemini-based analysis agents over recent transcript text, and stores insights in PostgreSQL.
 
 Backend tests live in `backend/tests/` as stdlib `unittest` files; run them from `backend/` with `python -m unittest discover -s tests`. Desktop tests use the same runner from `desktop/`, and frontend behavior checks use `npm run build` for typechecking and bundling.
 
@@ -75,15 +75,17 @@ protected publication.
 
 ### Docs site and private admin
 
-`docs-site/` builds the public `backchannel.page` site, the private
-`admin.backchannel.page` operator console, and the public
-`downloads.backchannel.page` download portal. Release listing and asset
+`docs-site/` builds the public `<documentation-domain>` site, the private
+`<operator-console-domain>` operator console, and the public
+`<download-domain>` download portal. Release listing and asset
 downloads are anonymous; recipient accounts and grants remain only for the
 deployed desktop updater's authorization flow. Early access owns request and
 consent review plus approve/reject only. Users owns recipient identity state,
 password reset, session sign-out, and revoke. Authorization owns Latest and
 explicit-version grants only, stored in `release_access_policies` and
 `release_account_versions`; the old `/api/admin/access/*` routes are removed.
+
+The checked-in `docs-site/wrangler.jsonc` deliberately contains no product DNS or storage bindings. Production uses an operator-owned overlay with `DEBATEAI_PUBLIC_HOST`, `DEBATEAI_WWW_HOST`, `DEBATEAI_ADMIN_HOST`, `DEBATEAI_DOWNLOAD_HOST`, `RELEASES`, and `INTEREST_DB`; follow `docs/deployment.md` for the exact gate.
 
 Every request to the private admin host is Cloudflare Access protected and
 then checked again by the Worker for a valid issuer, audience, and exact

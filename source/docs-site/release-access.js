@@ -5,7 +5,7 @@ export const PASSWORD_ITERATIONS = 600_000;
 export const TEMPORARY_PASSWORD_TTL_SECONDS = 259_200;
 export const CHANGE_SESSION_TTL_SECONDS = 1_800;
 export const SESSION_TTL_SECONDS = 604_800;
-export const SESSION_COOKIE = '__Host-backchannel_release';
+export const SESSION_COOKIE = '__Host-debateai_release';
 
 const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
 const LOWER = 'abcdefghijkmnopqrstuvwxyz';
@@ -17,9 +17,9 @@ const MANIFEST_KEY_PATTERN = /^releases\/((?=.{2,32}\/manifest\.json$)v(?:0|[1-9
 const RELEASE_KEY_PATTERN = /^releases\/((?=.{2,32}\/release\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/release\.json$/;
 const PLATFORM_KEY_PATTERN = /^releases\/((?=.{2,32}\/platforms\/)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/platforms\/(windows-x64|macos-arm64|linux-x64)\.json$/;
 const ASSET_TUPLES = new Map([
-  ['windows-x64', ['Windows x64', 'Backchannel-windows-x64.zip', 'application/zip']],
-  ['macos-arm64', ['macOS arm64', 'Backchannel-macos-arm64.zip', 'application/zip']],
-  ['linux-x64', ['Linux x64', 'Backchannel-linux-x64.tar.gz', 'application/gzip']],
+  ['windows-x64', ['Windows x64', 'DebateAI-windows-x64.zip', 'application/zip']],
+  ['macos-arm64', ['macOS arm64', 'DebateAI-macos-arm64.zip', 'application/zip']],
+  ['linux-x64', ['Linux x64', 'DebateAI-linux-x64.tar.gz', 'application/gzip']],
 ]);
 const DUMMY_SALT = new Uint8Array(16);
 

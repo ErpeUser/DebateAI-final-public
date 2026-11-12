@@ -20,8 +20,8 @@ $expectedRoot = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot "..\.."))
 Assert-True ($resolvedRoot -eq $expectedRoot) "Repository root resolution drifted"
 
 $contract = Get-DesktopBuildContract -RepositoryRoot $expectedRoot
-Assert-True ($contract.Spec -eq (Join-Path $expectedRoot "desktop\backchannel.spec")) `
-    "Build does not use desktop/backchannel.spec"
+Assert-True ($contract.Spec -eq (Join-Path $expectedRoot "desktop\debateai.spec")) `
+    "Build does not use desktop/debateai.spec"
 Assert-True ($contract.PythonConstraints -eq (Join-Path $expectedRoot "desktop\constraints-windows-py312.txt")) `
     "Windows release dependencies are not constrained"
 Assert-True (Test-Path -LiteralPath $contract.PythonConstraints -PathType Leaf) `
@@ -59,10 +59,10 @@ Assert-CommandSucceeded -ExitCode 0 -Label "fixture"
 $fixtureRoot = Join-Path $expectedRoot ("build\test-publish-contract-" + [Guid]::NewGuid().ToString("N"))
 try {
     $fixture = [pscustomobject]@{
-        Bundle = Join-Path $fixtureRoot "dist\Backchannel"
-        Artifact = Join-Path $fixtureRoot "dist\Backchannel.zip"
-        StagedBundle = Join-Path $fixtureRoot "stage\Backchannel"
-        StagedArtifact = Join-Path $fixtureRoot "stage\Backchannel.zip"
+        Bundle = Join-Path $fixtureRoot "dist\DebateAI"
+        Artifact = Join-Path $fixtureRoot "dist\DebateAI.zip"
+        StagedBundle = Join-Path $fixtureRoot "stage\DebateAI"
+        StagedArtifact = Join-Path $fixtureRoot "stage\DebateAI.zip"
     }
     New-Item -ItemType Directory -Path $fixture.Bundle -Force | Out-Null
     New-Item -ItemType Directory -Path $fixture.StagedBundle -Force | Out-Null
@@ -79,9 +79,9 @@ try {
         "Verified staged archive was not published"
 
     $rollback = [pscustomobject]@{
-        Bundle = Join-Path $fixtureRoot "rollback-dist\Backchannel"
-        Artifact = Join-Path $fixtureRoot "rollback-dist\Backchannel.zip"
-        StagedBundle = Join-Path $fixtureRoot "rollback-stage\Backchannel"
+        Bundle = Join-Path $fixtureRoot "rollback-dist\DebateAI"
+        Artifact = Join-Path $fixtureRoot "rollback-dist\DebateAI.zip"
+        StagedBundle = Join-Path $fixtureRoot "rollback-stage\DebateAI"
         StagedArtifact = Join-Path $fixtureRoot "rollback-stage\missing.zip"
     }
     New-Item -ItemType Directory -Path $rollback.Bundle -Force | Out-Null
@@ -103,10 +103,10 @@ try {
 
     foreach ($failureMove in @(1, 2)) {
         $earlyFailure = [pscustomobject]@{
-            Bundle = Join-Path $fixtureRoot "early-$failureMove-dist\Backchannel"
-            Artifact = Join-Path $fixtureRoot "early-$failureMove-dist\Backchannel.zip"
-            StagedBundle = Join-Path $fixtureRoot "early-$failureMove-stage\Backchannel"
-            StagedArtifact = Join-Path $fixtureRoot "early-$failureMove-stage\Backchannel.zip"
+            Bundle = Join-Path $fixtureRoot "early-$failureMove-dist\DebateAI"
+            Artifact = Join-Path $fixtureRoot "early-$failureMove-dist\DebateAI.zip"
+            StagedBundle = Join-Path $fixtureRoot "early-$failureMove-stage\DebateAI"
+            StagedArtifact = Join-Path $fixtureRoot "early-$failureMove-stage\DebateAI.zip"
         }
         New-Item -ItemType Directory -Path $earlyFailure.Bundle -Force | Out-Null
         New-Item -ItemType Directory -Path $earlyFailure.StagedBundle -Force | Out-Null

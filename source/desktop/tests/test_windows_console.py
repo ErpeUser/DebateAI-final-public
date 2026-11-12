@@ -4,9 +4,9 @@ import time
 import unittest
 from unittest.mock import patch
 
-import bcdesktop.windows_console as windows_console
+import debateai_desktop.windows_console as windows_console
 
-from bcdesktop.windows_console import (
+from debateai_desktop.windows_console import (
     _windows_process_tree,
     ConsoleWindowSuppressor,
     expand_managed_pids,
@@ -35,10 +35,10 @@ class WindowsConsoleSuppressorTests(unittest.TestCase):
 
     def test_visible_gui_child_bypasses_the_hidden_process_policy(self):
         with patch.object(windows_console, "_ORIGINAL_POPEN", return_value="child") as popen:
-            child = windows_console.visible_popen(["Backchannel.exe", "--embedded-webview"])
+            child = windows_console.visible_popen(["DebateAI.exe", "--embedded-webview"])
 
         self.assertEqual("child", child)
-        popen.assert_called_once_with(["Backchannel.exe", "--embedded-webview"])
+        popen.assert_called_once_with(["DebateAI.exe", "--embedded-webview"])
 
     def test_tracks_new_descendants_and_keeps_live_orphans(self):
         processes = {

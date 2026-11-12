@@ -15,6 +15,7 @@ import { useModelDownloads } from "./hooks/useModelDownloads";
 import { useConfirm } from "./components/ConfirmProvider";
 import * as api from "./services/api";
 import { parseSavedDrainSummary } from "./lib/postProcessingSummary";
+import { migrateLegacyStorage } from "./lib/storageMigration";
 import { resolveStoredAskModel } from "./lib/askModelSelection";
 import { updateInterimText } from "./lib/interimTranscript";
 import { shouldResetMessageCursor } from "./lib/wsEventStream";
@@ -299,6 +300,10 @@ function MainApp() {
   liveSessionIdRef.current = liveSessionId;
 
   useEffect(() => {
+    migrateLegacyStorage(window.localStorage);
+  }, []);
+
+  useEffect(() => {
     api.listSessions().then(setSessions).catch(console.error);
     api.listGroups().then(setGroups).catch(console.error);
     api.getDebateSettings().then(setDebateSettings).catch(console.error);
@@ -312,7 +317,7 @@ function MainApp() {
         result.status === "fulfilled" ? [result.value] : []
       ));
       if (!webProviderStartupNeedsAttention(providers)) return;
-      // Open only Backchannel's in-app connection page. External login pages
+      // Open only DebateAI's in-app connection page. External login pages
       // remain behind the explicit provider buttons.
       setAdminTab("keys");
       setAdminOnboarding(false);
@@ -567,7 +572,7 @@ function MainApp() {
   // but never borrow an agent row or silently pick the first text model.
   useEffect(() => {
     if (!session) return;
-    const storageKey = `backchannel:ask-model:${session.id}`;
+    const storageKey = `debateai:ask-model:${session.id}`;
     api.listModels()
       .then((allModels) => {
         const textModels = allModels.filter((m) => m.supports_text);
@@ -820,9 +825,9 @@ function MainApp() {
           try {
             let storedDevices = {};
             try {
-              storedDevices = JSON.parse(window.localStorage.getItem("backchannel:audio-devices") || "{}");
+              storedDevices = JSON.parse(window.localStorage.getItem("debateai:audio-devices") || "{}");
             } catch {
-              window.localStorage.removeItem("backchannel:audio-devices");
+              window.localStorage.removeItem("debateai:audio-devices");
             }
             nativeStatus = await api.startNativeAudio(sessionId, captureSystemAudio, storedDevices);
             break;
@@ -1209,7 +1214,7 @@ function MainApp() {
 
   const handleAskModelChange = useCallback((id: string) => {
     setAskModelId(id);
-    if (session) window.localStorage.setItem(`backchannel:ask-model:${session.id}`, id);
+    if (session) window.localStorage.setItem(`debateai:ask-model:${session.id}`, id);
   }, [session]);
 
   const handleMakeDirective = useCallback(

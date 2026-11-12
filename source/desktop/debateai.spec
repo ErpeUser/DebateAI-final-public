@@ -1,4 +1,4 @@
-# PyInstaller spec for the Backchannel desktop bundle (one-dir).
+# PyInstaller spec for the DebateAI desktop bundle (one-dir).
 import os
 import sys
 from pathlib import Path
@@ -8,10 +8,7 @@ from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy
 repo = Path(SPECPATH).parent
 include_oracle = (
     sys.platform == "win32"
-    and (
-        os.environ.get("DEBATEAI_INCLUDE_ORACLE")
-        or os.environ.get("BACKCHANNEL_INCLUDE_ORACLE", "")
-    ).lower() in {"1", "true", "yes"}
+    and os.environ.get("DEBATEAI_INCLUDE_ORACLE", "").lower() in {"1", "true", "yes"}
 )
 
 # Make the backend package importable for collect_submodules on clean machines.

@@ -39,7 +39,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw "Archive extraction failed." }
 
     $source = Join-Path $sourceRoot "gemini-web-to-api-1.3.4"
-    & git -C $source apply (Join-Path $PSScriptRoot "backchannel-loopback.patch")
+    & git -C $source apply (Join-Path $PSScriptRoot "debateai-loopback.patch")
     if ($LASTEXITCODE -ne 0) { throw "The loopback patch no longer applies." }
 
     $go = Join-Path $goRoot "go\bin\go.exe"

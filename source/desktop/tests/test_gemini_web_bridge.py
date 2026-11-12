@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import Mock, patch
 
-from bcdesktop.gemini_web_bridge import GeminiWebBridge
+from debateai_desktop.gemini_web_bridge import GeminiWebBridge
 
 
 class GeminiWebBridgeTests(unittest.TestCase):
@@ -14,9 +14,9 @@ class GeminiWebBridgeTests(unittest.TestCase):
         bundled.mkdir()
         (bundled / "gemini-web-to-api.exe").write_bytes(b"binary")
         resource_patch = patch(
-            "bcdesktop.gemini_web_bridge.resource", return_value=bundled
+            "debateai_desktop.gemini_web_bridge.resource", return_value=bundled
         )
-        port_patch = patch("bcdesktop.gemini_web_bridge.free_port", return_value=49819)
+        port_patch = patch("debateai_desktop.gemini_web_bridge.free_port", return_value=49819)
         self.addCleanup(resource_patch.stop)
         self.addCleanup(port_patch.stop)
         resource_patch.start()
@@ -33,7 +33,7 @@ class GeminiWebBridgeTests(unittest.TestCase):
         self.assertEqual(environment["HOST"], "127.0.0.1")
         self.assertEqual(environment["PORT"], "49819")
         self.assertEqual(environment["GEMINI_COOKIES"], "private-cookie")
-        self.assertEqual(environment["BACKCHANNEL_API_KEY"], client_key)
+        self.assertEqual(environment["DEBATEAI_API_KEY"], client_key)
 
     def test_provider_reports_live_models_after_start(self):
         process = Mock()
@@ -42,7 +42,7 @@ class GeminiWebBridgeTests(unittest.TestCase):
             bridge = self._bridge(tmp)
             bridge._ensure_key()
             with (
-                patch("bcdesktop.gemini_web_bridge.subprocess.Popen", return_value=process) as popen,
+                patch("debateai_desktop.gemini_web_bridge.subprocess.Popen", return_value=process) as popen,
                 patch.object(bridge, "_request_json", return_value={"status": "ok"}),
                 patch.object(
                     bridge,
@@ -55,7 +55,7 @@ class GeminiWebBridgeTests(unittest.TestCase):
         child_environment = popen.call_args.kwargs["env"]
         self.assertEqual(child_environment["GEMINI_COOKIES"], "private-cookie")
         self.assertEqual(
-            os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"],
+            os.environ["DEBATEAI_GEMINI_WEB_MODELS"],
             '["gemini-auto","gemini-3.1-pro"]',
         )
 
@@ -66,20 +66,20 @@ class GeminiWebBridgeTests(unittest.TestCase):
             bridge = self._bridge(tmp)
             bridge._ensure_key()
             with (
-                patch("bcdesktop.gemini_web_bridge.subprocess.Popen", return_value=process),
+                patch("debateai_desktop.gemini_web_bridge.subprocess.Popen", return_value=process),
                 patch.object(bridge, "_request_json", return_value={"status": "ok"}),
                 patch.object(
                     bridge,
                     "_probe_models",
                     side_effect=[[], [], ["gemini-3.1-pro"]],
                 ) as probe,
-                patch("bcdesktop.gemini_web_bridge.time.sleep"),
+                patch("debateai_desktop.gemini_web_bridge.time.sleep"),
             ):
                 self.assertTrue(bridge._start_process("private-cookie"))
 
         self.assertEqual(probe.call_count, 3)
         self.assertEqual(
-            os.environ["BACKCHANNEL_GEMINI_WEB_MODELS"],
+            os.environ["DEBATEAI_GEMINI_WEB_MODELS"],
             '["gemini-3.1-pro"]',
         )
 

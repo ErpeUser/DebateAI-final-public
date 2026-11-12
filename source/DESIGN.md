@@ -1,6 +1,6 @@
 ---
 version: alpha
-name: "Backchannel"
+name: "DebateAI"
 description: "A compact local-first meeting control desk that turns live speech into calm, actionable guidance."
 colors:
   primary: "#0D9488"
@@ -42,13 +42,13 @@ components:
     width: "2px"
 ---
 
-# Backchannel Design System
+# DebateAI Design System
 
 ## Overview
 
 ### Creative North Star
 
-Backchannel should feel like a well-run broadcast control desk reduced to the essentials: live signals are visible at a glance, evidence is traceable, and the operator can keep listening instead of managing the interface.
+DebateAI should feel like a well-run broadcast control desk reduced to the essentials: live signals are visible at a glance, evidence is traceable, and the operator can keep listening instead of managing the interface.
 
 ### Product context and register
 
@@ -58,7 +58,7 @@ Backchannel should feel like a well-run broadcast control desk reduced to the es
 - **Usage scene:** Laptop or desktop during a live call, under time pressure, with high information density and frequent updates.
 - **Register:** Product. Clarity, stable geometry, and low interruption outrank decorative expression.
 - **Memorable signature:** A live “speaking track” groups direct answer, counterargument, and counter-question as three parallel moves linked to one target claim.
-- **Restraint:** Transcript, recording controls, errors, privacy state, and ordinary insights retain familiar Backchannel patterns and must not be visually displaced by the speaking track.
+- **Restraint:** Transcript, recording controls, errors, privacy state, and ordinary insights retain familiar DebateAI patterns and must not be visually displaced by the speaking track.
 - **Anti-references:** Not a sales dashboard full of KPI gradients; not a chatbot transcript; not a newsroom-style decorative layout. Those registers compete with the real conversation.
 - **Token ownership/runtime mapping:** The mature runtime token spine in `frontend/src/index.css` is canonical. `frontend/tailwind.config.js` adapts semantic CSS variables for components; this file mirrors accepted values and rationale rather than generating code.
 
@@ -86,7 +86,7 @@ Controls and nested cards use 0.375rem to 0.5rem radii. Major live panels may us
 
 ### Foundational visual states
 
-Interactive controls provide visible hover, focus-visible, active, disabled, and busy states. Focus uses the global two-pixel semantic ring. Background work preserves readable content and labels uncertainty; errors remain inline with a recovery path. Loading uses the app-owned indeterminate spinner in a stable region. Skeletons are not a default Backchannel pattern.
+Interactive controls provide visible hover, focus-visible, active, disabled, and busy states. Focus uses the global two-pixel semantic ring. Background work preserves readable content and labels uncertainty; errors remain inline with a recovery path. Loading uses the app-owned indeterminate spinner in a stable region. Skeletons are not a default DebateAI pattern.
 
 ### Buttons and actions
 

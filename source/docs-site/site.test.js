@@ -48,7 +48,7 @@ const customerFiles = [
 ];
 const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
 const customerContent = customerFiles.map((path) => [path, read(path)]);
-const portal = 'https://downloads.backchannel.page/';
+const portal = '/downloads/';
 
 const html = readFileSync(new URL('../site/index.html', import.meta.url), 'utf8');
 const seededAgents = read('../backend/app/services/seed_agents.py')
@@ -142,7 +142,7 @@ test('customer guidance never uses GitHub as the executable access boundary', ()
   }
 });
 
-test('customer download entry points use the authenticated Backchannel portal', () => {
+test('customer download entry points use the authenticated DebateAI portal', () => {
   for (const path of [
     '../README.md',
     '../docs/quickstart.md',
@@ -173,23 +173,21 @@ test('historical release pages deep-link only their own entitled version', () =>
     const content = read(path);
     assert.match(content, new RegExp(`${portal.replaceAll('.', '\\.')}\\?version=${version}`, 'i'), path);
     for (const other of ['v0.1.0', 'v0.1.1', 'v0.2.0', 'v0.2.1', 'v0.2.2', 'v0.2.3', 'v0.2.4', 'v0.2.5']) {
-      if (other !== version) assert.doesNotMatch(content, new RegExp(`downloads\\.backchannel\\.page/\\?version=${other}`, 'i'), path);
+      if (other !== version) assert.doesNotMatch(content, new RegExp(`/downloads/\\?version=${other}`, 'i'), path);
     }
   }
   for (const [path, content] of customerContent) {
-    if (!releasePaths.has(path)) assert.doesNotMatch(content, /downloads\.backchannel\.page\/\?version=/i, path);
+    if (!releasePaths.has(path)) assert.doesNotMatch(content, /\/downloads\/\?version=/i, path);
   }
 });
 
-test('public GitHub source, issue, license, star, and release-note links remain', () => {
+test('public GitHub source, issue, license, and star links remain canonical', () => {
   const content = customerContent.map(([, value]) => value).join('\n');
-  assert.match(content, /https:\/\/github\.com\/talberthoule\/backchannel(?:\.git)?["')\s]/i);
-  assert.match(content, /https:\/\/github\.com\/talberthoule\/backchannel\/issues/i);
-  assert.match(content, /https:\/\/github\.com\/talberthoule\/backchannel\/blob\/master\/LICENSE/i);
-  assert.match(read('../site/index.html'), /href="https:\/\/github\.com\/talberthoule\/backchannel"[^>]*>Star on GitHub/i);
-  for (const version of ['v0.1.0', 'v0.1.1', 'v0.2.0', 'v0.2.1', 'v0.2.2', 'v0.2.3', 'v0.2.4', 'v0.2.5']) {
-    assert.match(content, new RegExp(`https://github\\.com/talberthoule/backchannel/releases/tag/${version}`));
-  }
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI(?:\.git)?["')\s]/i);
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI\/issues/i);
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI\/blob\/master\/LICENSE/i);
+  assert.match(read('../site/index.html'), /href="https:\/\/github\.com\/ErpeUser\/DebateAI"[^>]*>Star on GitHub/i);
+  assert.doesNotMatch(content, /talberthoule\/backchannel/i);
 });
 
 // Adding a page to this site is never one file: it also has to reach the
@@ -224,16 +222,16 @@ test('the privacy deep-dive is reachable from every page that carries the footer
 });
 
 test('the privacy deep-dive is indexed for crawlers and for agents', () => {
-  assert.match(read('../site/sitemap.xml'), /<loc>https:\/\/backchannel\.page\/private-meeting-ai\/<\/loc>/);
-  assert.match(read('../site/llms.txt'), /https:\/\/backchannel\.page\/private-meeting-ai\//);
-  assert.match(read('../site/private-meeting-ai/index.html'), /rel="canonical" href="https:\/\/backchannel\.page\/private-meeting-ai\/"/);
+  assert.match(read('../site/sitemap.xml'), /<loc>\/private-meeting-ai\/<\/loc>/);
+  assert.match(read('../site/llms.txt'), /\/private-meeting-ai\//);
+  assert.match(read('../site/private-meeting-ai/index.html'), /rel="canonical" href="\/private-meeting-ai\/"/);
 });
 
 test('the analyst lenses walkthrough is linked, indexed, and ships both themes of every shot', () => {
   const page = read('../site/analyst-lenses/index.html');
-  assert.match(read('../site/sitemap.xml'), /<loc>https:\/\/backchannel\.page\/analyst-lenses\/<\/loc>/);
-  assert.match(read('../site/llms.txt'), /https:\/\/backchannel\.page\/analyst-lenses\//);
-  assert.match(page, /rel="canonical" href="https:\/\/backchannel\.page\/analyst-lenses\/"/);
+  assert.match(read('../site/sitemap.xml'), /<loc>\/analyst-lenses\/<\/loc>/);
+  assert.match(read('../site/llms.txt'), /\/analyst-lenses\//);
+  assert.match(page, /rel="canonical" href="\/analyst-lenses\/"/);
   const agents = html.split('<section id="agents"')[1].split('</section>')[0];
   assert.match(agents, /href="\/analyst-lenses\/"/);
   assert.match(page, /<script src="\/analyst-lenses\/walkthrough\.js" defer><\/script>/);
@@ -256,16 +254,16 @@ test('the analyst lenses walkthrough is linked, indexed, and ships both themes o
   // The lenses are prompt sections of one call with a fixed reply shape; the
   // page must not describe them otherwise.
   assert.doesNotMatch(page, /dynamic schema|agent-like/i);
-  assert.match(page, /Step 1 sketches the design Backchannel avoids, so its three findings are examples/);
+  assert.match(page, /Step 1 sketches the design DebateAI avoids, so its three findings are examples/);
 });
 
 test('the sitemap remains a same-host index while public pages link to the portal', () => {
   const sitemap = read('../site/sitemap.xml');
   const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
   assert.ok(locations.length > 0);
-  assert.ok(locations.every((location) => location.startsWith('https://backchannel.page/')));
-  assert.doesNotMatch(sitemap, /downloads\.backchannel\.page/i);
-  assert.match(read('../site/index.html'), /https:\/\/downloads\.backchannel\.page\//i);
+  assert.ok(locations.every((location) => location.startsWith('/')));
+  assert.doesNotMatch(sitemap, /\/downloads/i);
+  assert.match(read('../site/index.html'), /\/downloads\//i);
 });
 
 test('historical migration normalizes peeled commit timestamps to strict UTC', () => {
@@ -320,10 +318,10 @@ test('staged link cutover names the exact mechanically revertible hold', () => {
 
 test('D1 exports require operator-supplied absolute paths outside the repository', () => {
   const deployment = read('../docs/deployment.md');
-  assert.match(deployment, /BACKCHANNEL_D1_BACKUP_PATH/);
+  assert.match(deployment, /DEBATEAI_D1_BACKUP_PATH/);
   assert.match(deployment, /\[IO\.Path\]::IsPathRooted\(/);
   assert.match(deployment, /--output="\$backupPath"/);
-  assert.doesNotMatch(deployment, /--output=(?:backchannel-interest-backup|interest-subscribers)\.sql/);
+  assert.doesNotMatch(deployment, /--output=(?:debateai-interest-backup|interest-subscribers)\.sql/);
 });
 
 test('progressive release recovery names the platform boundary precisely', () => {

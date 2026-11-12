@@ -141,7 +141,7 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
         wb, _ = await _workbook(db)
         cells = _cells(wb["Summary"])
 
-        self.assertIn("BACKCHANNEL BRIEFING", cells)
+        self.assertIn("DEBATEAI BRIEFING", cells)
         self.assertIn("Client Review", cells)
         self.assertIn("Action Item", cells)
         self.assertIn("Objection", cells)

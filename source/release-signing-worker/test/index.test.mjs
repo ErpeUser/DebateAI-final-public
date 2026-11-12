@@ -16,7 +16,7 @@ const SECRET_FIXTURE = "fixture-secret-that-must-never-leak";
 function descriptor() {
   return {
     asset: {
-      filename: "Backchannel-windows-x64.zip",
+      filename: "DebateAI-windows-x64.zip",
       id: "windows-x64",
       platform: "Windows x64",
       sha256: "a".repeat(64),
@@ -477,9 +477,9 @@ test("descriptor validation exactly matches the public update contract", async (
 
 test("all three trusted public asset tuples are accepted", async () => {
   const assets = [
-    ["windows-x64", "Windows x64", "Backchannel-windows-x64.zip"],
-    ["macos-arm64", "macOS arm64", "Backchannel-macos-arm64.zip"],
-    ["linux-x64", "Linux x64", "Backchannel-linux-x64.tar.gz"],
+    ["windows-x64", "Windows x64", "DebateAI-windows-x64.zip"],
+    ["macos-arm64", "macOS arm64", "DebateAI-macos-arm64.zip"],
+    ["linux-x64", "Linux x64", "DebateAI-linux-x64.tar.gz"],
   ];
 
   for (const [id, platform, filename] of assets) {

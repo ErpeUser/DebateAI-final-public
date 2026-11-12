@@ -11,7 +11,7 @@ audio and the display scaling that must be accepted:
 
 ```powershell
 git rev-parse HEAD
-Get-FileHash .\dist\Backchannel\Backchannel.exe -Algorithm SHA256
+Get-FileHash .\dist\DebateAI\DebateAI.exe -Algorithm SHA256
 Get-ComputerInfo | Select-Object WindowsProductName,WindowsVersion,OsBuildNumber,OsArchitecture
 Get-CimInstance Win32_Processor | Select-Object Name,NumberOfLogicalProcessors
 Get-CimInstance Win32_VideoController | Select-Object Name,DriverVersion

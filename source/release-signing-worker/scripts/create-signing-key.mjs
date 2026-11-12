@@ -214,7 +214,7 @@ if (
 ) {
   runCeremony({
     accountId: process.env.CLOUDFLARE_ACCOUNT_ID,
-    storeId: process.env.BACKCHANNEL_RELEASE_SIGNING_STORE_ID,
+    storeId: process.env.DEBATEAI_RELEASE_SIGNING_STORE_ID,
   }).catch(() => {
     process.stderr.write("Signing key ceremony failed\n");
     process.exitCode = 1;

@@ -330,7 +330,7 @@ are kept.
   copied data folder cannot be read elsewhere; an administrator-forced
   password reset means re-entering provider keys once. If you run the Docker
   stack and reach it by a DNS hostname rather than an IP address or
-  localhost, list that name in BACKCHANNEL_ALLOWED_HOSTS; the database and API
+  localhost, list that name in DEBATEAI_ALLOWED_HOSTS; the database and API
   ports are also bound to the local machine only.
 - Smaller things: the post-call Export menu and tab strip work by keyboard,
   the completion banners and the logo read correctly in dark mode, and small

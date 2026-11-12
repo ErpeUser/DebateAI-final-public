@@ -5,7 +5,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from bcdesktop import chatgpt_web_login
+from debateai_desktop import chatgpt_web_login
 
 
 class ChatGPTWebLoginTests(unittest.TestCase):
@@ -42,11 +42,11 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 return mock.Mock(returncode=0)
 
             env = {
-                "BACKCHANNEL_CHATGPT_WEB_NODE": str(node),
-                "BACKCHANNEL_CHATGPT_WEB_ORACLE": str(cli),
-                "BACKCHANNEL_CHATGPT_WEB_HOME": str(root / "home"),
-                "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(root / "profile"),
-                "BACKCHANNEL_CHATGPT_WEB_MARKER": str(marker),
+                "DEBATEAI_CHATGPT_WEB_NODE": str(node),
+                "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
+                "DEBATEAI_CHATGPT_WEB_HOME": str(root / "home"),
+                "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
+                "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
             }
             with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
                 chatgpt_web_login.subprocess, "run", side_effect=completed
@@ -69,11 +69,11 @@ class ChatGPTWebLoginTests(unittest.TestCase):
             cli.write_text("// oracle", encoding="utf-8")
             marker = root / "verified.json"
             env = {
-                "BACKCHANNEL_CHATGPT_WEB_NODE": str(node),
-                "BACKCHANNEL_CHATGPT_WEB_ORACLE": str(cli),
-                "BACKCHANNEL_CHATGPT_WEB_HOME": str(root / "home"),
-                "BACKCHANNEL_CHATGPT_WEB_PROFILE": str(root / "profile"),
-                "BACKCHANNEL_CHATGPT_WEB_MARKER": str(marker),
+                "DEBATEAI_CHATGPT_WEB_NODE": str(node),
+                "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
+                "DEBATEAI_CHATGPT_WEB_HOME": str(root / "home"),
+                "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
+                "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
             }
             with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
                 chatgpt_web_login.subprocess, "run", return_value=mock.Mock(returncode=1)

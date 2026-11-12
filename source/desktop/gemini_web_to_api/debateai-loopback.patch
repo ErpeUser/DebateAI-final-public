@@ -14,7 +14,7 @@ diff --git a/internal/commons/configs/configs.go b/internal/commons/configs/conf
  	// Server
 +	cfg.Server.Host = getEnv("HOST", "127.0.0.1")
  	cfg.Server.Port = getEnv("PORT", defaultServerPort)
-+	cfg.Server.APIKey = strings.TrimSpace(os.Getenv("BACKCHANNEL_API_KEY"))
++	cfg.Server.APIKey = strings.TrimSpace(os.Getenv("DEBATEAI_API_KEY"))
  
 diff --git a/internal/server/server.go b/internal/server/server.go
 --- a/internal/server/server.go

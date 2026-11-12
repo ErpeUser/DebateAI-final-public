@@ -321,9 +321,9 @@ cleared) rather than removed
 ### Desktop updates (`routers/updates.py`)
 
 Desktop auto-update routes. Every route except the status read requires the
-`X-Backchannel-Instance` header to match the launcher-issued instance token
+`X-DebateAI-Instance` header to match the launcher-issued instance token
 (403 otherwise), so they are effectively available only under the desktop
-launcher (`BACKCHANNEL_DESKTOP=1`).
+launcher (`DEBATEAI_DESKTOP=1`).
 
 | Method | Path | Purpose |
 | --- | --- | --- |

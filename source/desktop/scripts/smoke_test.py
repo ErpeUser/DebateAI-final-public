@@ -14,9 +14,6 @@ from pathlib import Path
 PROVIDER_ENVIRONMENT = {
     "ANTHROPIC_API_KEY",
     "DEBATEAI_API_KEY",
-    "BACKCHANNEL_API_KEY",
-    "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE",
-    "BACKCHANNEL_SUBSCRIPTION_BRIDGE_OAUTH",
     "GEMINI_API_KEY",
     "GEMINI_COOKIES",
     "GOOGLE_API_KEY",
@@ -32,14 +29,12 @@ def isolated_environment(data_dir: str) -> dict[str, str]:
     env.update(
         DEBATEAI_HEADLESS="1",
         DEBATEAI_DATA_DIR=data_dir,
-        BACKCHANNEL_HEADLESS="1",
-        BACKCHANNEL_DATA_DIR=data_dir,
     )
     return env
 
 
 def dump_logs(data_dir: Path) -> None:
-    for name in ("backchannel.log", "postgres.log"):
+    for name in ("debateai.log", "postgres.log"):
         log = data_dir / name
         if log.exists():
             print(f"----- tail of {name} -----", file=sys.stderr)
@@ -53,15 +48,9 @@ def dump_logs(data_dir: Path) -> None:
 
 def bundle_exe(bundle: Path | None = None) -> Path:
     bundle = bundle or (Path("dist") / "DebateAI")
-    legacy_bundle = bundle.name in {"Backchannel", "Backchannel.app"}
-    exe = bundle / ("Backchannel" if legacy_bundle else "DebateAI")
+    exe = bundle / "DebateAI"
     if sys.platform == "win32":
         exe = exe.with_suffix(".exe")
-    if not exe.exists() and not legacy_bundle:
-        legacy = bundle.parent / "Backchannel"
-        legacy_exe = legacy / ("Backchannel.exe" if sys.platform == "win32" else "Backchannel")
-        if legacy_exe.exists():
-            exe = legacy_exe
     if not exe.exists():
         raise SystemExit(f"bundle not found: {exe}")
     return exe
@@ -85,7 +74,6 @@ def wait_for_health(
                     and "ok" in body
                     and (
                         resp.headers.get("X-DebateAI-Instance") == token
-                        or resp.headers.get("X-Backchannel-Instance") == token
                     )
                 ):
                     return port
@@ -121,7 +109,7 @@ def check_local_asr(port: int, token: str) -> str:
     url = f"http://127.0.0.1:{port}/api/diagnostics/local-asr"
     request = urllib.request.Request(
         url,
-        headers={"X-DebateAI-Instance": token, "X-Backchannel-Instance": token},
+        headers={"X-DebateAI-Instance": token},
     )
     with urllib.request.urlopen(request, timeout=30) as resp:
         payload = json.loads(resp.read().decode())

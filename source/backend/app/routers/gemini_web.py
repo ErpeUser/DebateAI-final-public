@@ -33,7 +33,7 @@ _login_lock = threading.Lock()
 
 
 def _setting(name: str) -> str:
-    return env_value(f"DEBATEAI_GEMINI_WEB_{name}", f"BACKCHANNEL_GEMINI_WEB_{name}").strip()
+    return env_value(f"DEBATEAI_GEMINI_WEB_{name}").strip()
 
 
 async def _status(

@@ -19,25 +19,25 @@ class VersionResourceTests(unittest.TestCase):
     def test_resource_text_parses_as_a_python_literal(self):
         # PyInstaller eval()s this file, so a syntax error would only surface
         # during a real Windows build.
-        ast.parse(resource_text("0.4.0", "Backchannel.exe", "Debate AI"))
+        ast.parse(resource_text("0.4.0", "DebateAI.exe", "Debate AI"))
 
     def test_resource_text_carries_product_name_and_version(self):
-        text = resource_text("0.4.0", "Backchannel.exe", "Debate AI")
+        text = resource_text("0.4.0", "DebateAI.exe", "Debate AI")
         self.assertIn("StringStruct('CompanyName', 'Debate AI')", text)
         self.assertIn("StringStruct('ProductName', 'Debate AI')", text)
         self.assertIn("StringStruct('ProductVersion', '0.4.0.0')", text)
-        self.assertIn("StringStruct('OriginalFilename', 'Backchannel.exe')", text)
+        self.assertIn("StringStruct('OriginalFilename', 'DebateAI.exe')", text)
         self.assertIn("filevers=(0, 4, 0, 0)", text)
 
     def test_resource_text_is_ascii(self):
-        resource_text("0.4.0", "Backchannel.exe", "Debate AI").encode("ascii")
+        resource_text("0.4.0", "DebateAI.exe", "Debate AI").encode("ascii")
 
     def test_write_resource_names_the_file_after_the_executable(self):
         with tempfile.TemporaryDirectory() as directory:
             written = write_resource(
-                directory, "0.4.0", "BackchannelUpdater.exe", "Debate AI Updater"
+                directory, "0.4.0", "DebateAIUpdater.exe", "Debate AI Updater"
             )
-            self.assertEqual(written.name, "BackchannelUpdater_version.txt")
+            self.assertEqual(written.name, "DebateAIUpdater_version.txt")
             self.assertIn("Debate AI Updater", written.read_text(encoding="ascii"))
 
     def test_write_resource_matches_the_app_version(self):
@@ -50,7 +50,7 @@ class VersionResourceTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as directory:
             written = write_resource(
-                directory, APP_VERSION, "Backchannel.exe", "Debate AI"
+                directory, APP_VERSION, "DebateAI.exe", "Debate AI"
             )
             self.assertIn(
                 f"StringStruct('ProductVersion', '{APP_VERSION}.0')",

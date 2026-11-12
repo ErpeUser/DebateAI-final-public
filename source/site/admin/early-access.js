@@ -41,10 +41,10 @@ function validCredential(credential, email) {
 
 function credentialText(credential) {
   return [
-    'Backchannel desktop access',
+    'DebateAI desktop access',
     `Account: ${credential.email}`,
     `Temporary password: ${credential.password}`,
-    'Sign in: https://downloads.backchannel.page/',
+    'Sign in: /downloads/',
     `Password expires: ${credential.password_expires_at}`,
   ].join('\n');
 }

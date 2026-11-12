@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, ".", "");
-  const apiTarget = env.DEBATEAI_API_TARGET || env.BACKCHANNEL_API_TARGET || "http://localhost:8000";
+  const apiTarget = env.DEBATEAI_API_TARGET || "http://localhost:8000";
   const websocketTarget = apiTarget.replace(/^http/, "ws");
 
   return {

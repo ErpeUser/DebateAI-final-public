@@ -27,12 +27,12 @@ class UpdaterTests(unittest.TestCase):
 
     @unittest.skipUnless(os.name == "nt", "requires Windows extended paths")
     def test_recursive_cleanup_uses_extended_windows_path(self):
-        path = Path("C:/Backchannel") / "Backchannel.backup-v999.0.0"
+        path = Path("C:/DebateAI") / "DebateAI.backup-v999.0.0"
 
         extended = _recursive_path(path)
 
         self.assertTrue(extended.startswith("\\\\?\\"))
-        self.assertTrue(extended.endswith("Backchannel\\Backchannel.backup-v999.0.0"))
+        self.assertTrue(extended.endswith("DebateAI\\DebateAI.backup-v999.0.0"))
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -46,7 +46,7 @@ class UpdaterTests(unittest.TestCase):
         old_launcher = self.install / Path(self.launcher)
         old_launcher.parent.mkdir(parents=True, exist_ok=True)
         old_launcher.write_text("old")
-        self.stage_parent = self.root / ".backchannel-stage-v0.4.0"
+        self.stage_parent = self.root / ".debateai-stage-v0.4.0"
         self.stage = self.stage_parent / expected_root()
         self.stage.mkdir(parents=True)
         new_launcher = self.stage / Path(self.launcher)
@@ -93,7 +93,7 @@ class UpdaterTests(unittest.TestCase):
             {**self.plan, "version": "v04.0.0"},
             {**self.plan, "install_dir": "relative"},
             {**self.plan, "backup_dir": str(self.root / "elsewhere" / "backup")},
-            {**self.plan, "launcher": "../Backchannel.exe"},
+            {**self.plan, "launcher": "../DebateAI.exe"},
         ]
         for invalid in cases:
             with self.subTest(invalid=invalid):

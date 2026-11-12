@@ -7,7 +7,7 @@ import { join } from 'node:path';
 
 const SRC = join(import.meta.dirname, '..', 'docs');
 const OUT = join(import.meta.dirname, 'src', 'content', 'docs');
-const REPO_URL = 'https://github.com/talberthoule/backchannel';
+const REPO_URL = 'https://github.com/ErpeUser/DebateAI';
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });

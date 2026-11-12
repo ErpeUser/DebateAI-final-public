@@ -11,7 +11,7 @@ export default {
         // between light and dark; primitives never change.
         surface: channel("--surface"),
         canvas: channel("--canvas"),
-        // Backchannel brand palette. Names kept for back-compat; values now
+        // DebateAI brand palette. Names kept for back-compat; values now
         // resolve through the semantic token layer so a theme swap re-skins
         // the whole app without touching components.
         brand: {

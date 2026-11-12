@@ -5,7 +5,7 @@ import { DE } from "../../i18n/de";
 
 type Mode = "chat" | "directive";
 
-const MODE_STORAGE_KEY = "backchannel:call-bar-mode";
+const MODE_STORAGE_KEY = "debateai:call-bar-mode";
 
 interface DirectiveBarProps {
   onAddDirective: (text: string) => void;

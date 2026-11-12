@@ -1,6 +1,6 @@
 # Debate AI V6 Windows-Paket
 
-Start: `Backchannel.exe`.
+Start: `DebateAI.exe`.
 
 Die editierbaren AI-Dateien liegen im Ordner `ai` direkt neben der EXE. Die
 Dateien dort sind die wirksame externe Quelle; sie koennen ohne EXE-Neubau
@@ -12,7 +12,7 @@ DLLs meldet die Anwendung den Fehler und wechselt nicht still auf eine
 Cloudroute.
 
 Fuer eine installierte Kopie ohne Schreibrechte im Programmordner kann der
-Benutzerpfad `%LOCALAPPDATA%\Backchannel\ai` verwendet werden. Die Diagnose-
+Benutzerpfad `%LOCALAPPDATA%\DebateAI\ai` verwendet werden. Die Diagnose-
 Anzeige `/api/ai-config` weist den tatsaechlich aktiven Ordner,
 Konfigurationsgeneration, Promptversion und Prompt-Hash aus.
 

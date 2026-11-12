@@ -54,7 +54,7 @@
       "rollback": "source and previous release archives under dist/"
     },
     {
-      "path": "dist/Backchannel-DebateAI-windows-x64.zip",
+      "path": "dist/DebateAI-windows-x64.zip",
       "status": "rollback-candidate",
       "owner": "release-staging",
       "reason": "current Windows archive used by release/archive smoke tests",
@@ -63,7 +63,7 @@
       "rollback": "immutable archive hash and desktop smoke/update tests"
     },
     {
-      "path": "dist/BackchannelUpdater.exe",
+      "path": "dist/DebateAIUpdater.exe",
       "status": "needed",
       "owner": "release-staging",
       "reason": "desktop updater executable required by update flow",
@@ -72,7 +72,7 @@
       "rollback": "desktop updater tests and archive smoke"
     },
     {
-      "path": "dist/.Backchannel*.previous*",
+      "path": "dist/.DebateAI*.previous*",
       "status": "rollback-candidate",
       "owner": "release-staging",
       "reason": "previous-version recovery assets; exact lifecycle requires release-owner confirmation",

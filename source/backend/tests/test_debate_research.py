@@ -222,7 +222,7 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             async def get(self, url, **kwargs):
                 if "wikipedia.org" in url:
                     user_agent = kwargs.get("headers", {}).get("User-Agent", "")
-                    if "github.com/talberthoule/backchannel" not in user_agent:
+                    if "github.com/ErpeUser/DebateAI" not in user_agent:
                         return _Response({}, status_code=403)
                 return await super().get(url, **kwargs)
 

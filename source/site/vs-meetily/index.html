@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Backchannel vs Meetily: Open-Source Meeting Assistants Compared</title>
-  <meta name="description" content="Backchannel vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; Backchannel ships it and live agents free. An honest comparison." />
-  <link rel="canonical" href="https://backchannel.page/vs-meetily/" />
-  <meta property="og:title" content="Backchannel vs Meetily: Open-Source Meeting Assistants Compared" />
-  <meta property="og:description" content="Backchannel vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; Backchannel ships it and live agents free. An honest comparison." />
+  <title>DebateAI vs Meetily: Open-Source Meeting Assistants Compared</title>
+  <meta name="description" content="DebateAI vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; DebateAI ships it and live agents free. An honest comparison." />
+  <link rel="canonical" href="/vs-meetily/" />
+  <meta property="og:title" content="DebateAI vs Meetily: Open-Source Meeting Assistants Compared" />
+  <meta property="og:description" content="DebateAI vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; DebateAI ships it and live agents free. An honest comparison." />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Backchannel" />
-  <meta property="og:url" content="https://backchannel.page/vs-meetily/" />
-  <meta property="og:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta property="og:site_name" content="DebateAI" />
+  <meta property="og:url" content="/vs-meetily/" />
+  <meta property="og:image" content="/assets/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Backchannel: live meeting transcription and real-time insight agents, self-hosted." />
+  <meta property="og:image:alt" content="DebateAI: live meeting transcription and real-time insight agents, self-hosted." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta name="twitter:image" content="/assets/og-image.png" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="stylesheet" href="../style.css" />
   <script type="application/ld+json">
@@ -25,15 +25,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "url": "https://backchannel.page/vs-meetily/",
-        "name": "Backchannel vs Meetily: Open-Source Meeting Assistants Compared",
-        "description": "Backchannel vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; Backchannel ships it and live agents free. An honest comparison.",
+        "url": "/vs-meetily/",
+        "name": "DebateAI vs Meetily: Open-Source Meeting Assistants Compared",
+        "description": "DebateAI vs Meetily: both MIT and bot-free. Meetily gates diarization behind Pro; DebateAI ships it and live agents free. An honest comparison.",
         "dateModified": "2026-07-29",
         "isPartOf": {
-          "@id": "https://backchannel.page/#website"
+          "@id": "/#website"
         },
         "about": {
-          "@id": "https://backchannel.page/#software"
+          "@id": "/#software"
         }
       },
       {
@@ -42,13 +42,13 @@
           {
             "@type": "ListItem",
             "position": 1,
-            "name": "Backchannel",
-            "item": "https://backchannel.page/"
+            "name": "DebateAI",
+            "item": "/"
           },
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Backchannel vs Meetily"
+            "name": "DebateAI vs Meetily"
           }
         ]
       },
@@ -57,10 +57,10 @@
         "mainEntity": [
           {
             "@type": "Question",
-            "name": "What is the difference between Backchannel and Meetily?",
+            "name": "What is the difference between DebateAI and Meetily?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Both are open-source, bot-free, privacy-first meeting assistants. Meetily is a desktop app focused on local transcription and post-meeting summaries; its speaker diarization shipped in Pro 1.8.2 but is not in the MIT Community Edition. Backchannel is a self-hosted server app that ships live speaker diarization free and runs real-time insight agents during the call."
+              "text": "Both are open-source, bot-free, privacy-first meeting assistants. Meetily is a desktop app focused on local transcription and post-meeting summaries; its speaker diarization shipped in Pro 1.8.2 but is not in the MIT Community Edition. DebateAI is a self-hosted server app that ships live speaker diarization free and runs real-time insight agents during the call."
             }
           },
           {
@@ -68,23 +68,23 @@
             "name": "Does Meetily have speaker diarization?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Yes, in Pro: diarization shipped in Meetily Pro 1.8.2, live as you record and on imported audio, but it is not in the MIT Community Edition. Pro is $10/user/month billed annually ($120/year). Backchannel ships local speaker diarization (Silero VAD plus WeSpeaker embeddings) free under MIT, attributing every transcript line to a speaker live."
+              "text": "Yes, in Pro: diarization shipped in Meetily Pro 1.8.2, live as you record and on imported audio, but it is not in the MIT Community Edition. Pro is $10/user/month billed annually ($120/year). DebateAI ships local speaker diarization (Silero VAD plus WeSpeaker embeddings) free under MIT, attributing every transcript line to a speaker live."
             }
           },
           {
             "@type": "Question",
-            "name": "What does Meetily do better than Backchannel?",
+            "name": "What does Meetily do better than DebateAI?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Community size (26.4k GitHub stars and 369.8K claimed downloads as of 2026-07-24), polished native installers for macOS and Windows, ungated downloads, and the simpler out-of-the-box offline story: Ollama-first summarization means nothing has to call a cloud LLM by default. Backchannel's insight agents run on Gemini, OpenAI, or any self-hosted OpenAI-compatible server."
+              "text": "Community size (26.4k GitHub stars and 369.8K claimed downloads as of 2026-07-24), polished native installers for macOS and Windows, ungated downloads, and the simpler out-of-the-box offline story: Ollama-first summarization means nothing has to call a cloud LLM by default. DebateAI's insight agents run on Gemini, OpenAI, or any self-hosted OpenAI-compatible server."
             }
           },
           {
             "@type": "Question",
-            "name": "Are Backchannel and Meetily both free?",
+            "name": "Are DebateAI and Meetily both free?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Both cores are MIT. Meetily is open-core: a Pro tier at $10/user/mo (as of mid-2026) adds enhanced accuracy, templates, exports, and team deployment. Backchannel has no paid tier -- diarization, agents, exports, and multi-user deployment are all in the MIT codebase."
+              "text": "Both cores are MIT. Meetily is open-core: a Pro tier at $10/user/mo (as of mid-2026) adds enhanced accuracy, templates, exports, and team deployment. DebateAI has no paid tier -- diarization, agents, exports, and multi-user deployment are all in the MIT codebase."
             }
           }
         ]
@@ -99,13 +99,13 @@
   <div class="wrap">
     <a class="brand" href="/">
       <img src="/assets/favicon.svg" alt="" />
-      backchannel
+      DebateAI
     </a>
     <nav class="site-nav">
       <a href="/#features">Features</a>
       <a href="/blog/">Writing</a>
       <a href="/docs/">Docs</a>
-      <a class="btn primary nav-cta" href="https://github.com/talberthoule/backchannel">Star on GitHub</a>
+      <a class="btn primary nav-cta" href="https://github.com/ErpeUser/DebateAI">Star on GitHub</a>
     </nav>
   </div>
 </header>
@@ -114,34 +114,34 @@
 
   <section class="hero">
     <div class="wrap">
-      <h1>Backchannel <span class="accent">vs Meetily</span></h1>
+      <h1>DebateAI <span class="accent">vs Meetily</span></h1>
       <p class="lede">
         Both open source. Both bot-free. Both keep audio off other people's
         servers. The short version: Meetily is a polished desktop note-taker
-        with a big community and the best fully-offline story; Backchannel is
+        with a big community and the best fully-offline story; DebateAI is
         a self-hosted server app that tells you who said what -- and what to
         say next -- while the meeting is still happening. Meetily's diarization
-        now ships, but only in its $120/year Pro tier; in Backchannel it is
+        now ships, but only in its $120/year Pro tier; in DebateAI it is
         free, alongside real-time insight agents Meetily does not offer.
       </p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/#quickstart">Self-host in minutes</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
-      <p class="quickstart-note">Both MIT at the core &middot; free desktop downloads - no account or sign-in needed &middot; Backchannel has no paid tier</p>
+      <p class="quickstart-note">Both MIT at the core &middot; free desktop downloads - no account or sign-in needed &middot; DebateAI has no paid tier</p>
     </div>
   </section>
 
   <section class="alt">
     <div class="wrap">
       <span class="kicker">At a glance</span>
-      <h2>Backchannel vs Meetily, side by side</h2>
+      <h2>DebateAI vs Meetily, side by side</h2>
       <p class="sub">Details verified 2026-07-24 and may change; check Meetily's site and repo for current status. Note that Meetily's MIT Community Edition (v0.4.0) and its commercial Pro line (1.8.2) version separately, so CE release numbers are not the product's.</p>
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>Dimension</th><th>Meetily</th><th>Backchannel</th></tr>
+            <tr><th>Dimension</th><th>Meetily</th><th>DebateAI</th></tr>
           </thead>
           <tbody>
             <tr>
@@ -211,7 +211,7 @@
           shipped diarization in Pro 1.8.2, live as you record and on imported
           audio -- but it stays out of the MIT Community Edition, so the free
           version still produces unattributed transcripts and speaker labels
-          cost $120 a year. Backchannel ships diarization free, in the MIT
+          cost $120 a year. DebateAI ships diarization free, in the MIT
           codebase --
           <a href="/docs/audio-pipeline/">Silero VAD segments speech and
           WeSpeaker embeddings assign each segment to a voice</a>, live,
@@ -222,7 +222,7 @@
         <h3>Notes after vs insights during</h3>
         <p>
           Meetily's output is the record: transcripts and LLM summaries after
-          the meeting. Backchannel also keeps the record, but its center of
+          the meeting. DebateAI also keeps the record, but its center of
           gravity is the call itself: five live
           <a href="/docs/agents/">insight agents</a> -- consolidated analyst,
           objection handler, synthesizer, opportunity specialist, and strategic
@@ -236,7 +236,7 @@
         <h3>Desktop app vs server</h3>
         <p>
           Meetily is a native desktop app -- great installers, GPU-accelerated
-          local ASR, everything on one machine. Backchannel is a server: a
+          local ASR, everything on one machine. DebateAI is a server: a
           FastAPI backend and PostgreSQL behind a browser UI, so one
           deployment can serve a team, keep a shared archive, and be reached
           from any machine with a browser. One is an appliance, the other is
@@ -246,13 +246,13 @@
         <p>
           Both clear the air-gap bar now. Meetily's Ollama-first design means
           transcription and summarization can run with zero external calls,
-          out of the box. Backchannel gets to the same place with one more
+          out of the box. DebateAI gets to the same place with one more
           moving part: diarization is always local, transcription runs
           offline with local ONNX models, the insight agents can point at any
           OpenAI-compatible server you host (Ollama, LM Studio, vLLM,
           LiteLLM), and interim captions can run on-device -- so an
-          air-gapped Backchannel runs end to end with Privacy First on.
-          Meetily's setup is simpler; Backchannel asks you to run a model
+          air-gapped DebateAI runs end to end with Privacy First on.
+          Meetily's setup is simpler; DebateAI asks you to run a model
           server but keeps the live agents in the deal.
         </p>
         <h3>Free vs open-core</h3>
@@ -260,7 +260,7 @@
           Both cores are MIT. Meetily has routed its best features --
           diarization, chat with meetings, self-hosted deployment, enhanced
           accuracy, templates, advanced exports -- into a $10/user/mo Pro tier.
-          Backchannel has no Pro tier to route anything to: diarization,
+          DebateAI has no Pro tier to route anything to: diarization,
           agents, exports, and multi-user deployment are all in the public
           repo.
         </p>
@@ -271,7 +271,7 @@
           One neutral observation for anyone betting on the open core:
           development of the MIT Community Edition has been quiet since v0.4.0
           on 2026-06-05, while the commercial Pro line has continued shipping.
-          Backchannel is younger and smaller; what it offers is capability
+          DebateAI is younger and smaller; what it offers is capability
           that is not in Meetily's free edition at all. Weigh community
           support against shipped features according to your own risk
           tolerance.
@@ -284,7 +284,7 @@
           <picture>
             <source srcset="/assets/shots/live-call-dark.webp" media="(prefers-color-scheme: dark)" />
             <img src="/assets/shots/live-call.webp" width="1440" height="900" loading="lazy"
-                 alt="Backchannel during a live call: a strategic-signal strip across the top, 125 insights in the feed with a mid-call question already answered, a speaker-attributed transcript beside it, and the ask bar along the bottom." />
+                 alt="DebateAI during a live call: a strategic-signal strip across the top, 125 insights in the feed with a mid-call question already answered, a speaker-attributed transcript beside it, and the ask bar along the bottom." />
           </picture>
         </div>
         <figcaption class="fig-caption"><span>Where the two projects differ most: a live insight surface with agents working the call, not only a transcript and a summary afterwards.</span></figcaption>
@@ -305,7 +305,7 @@
           <p>Want a native desktop app with a one-click ungated installer, need fully-offline summarization via Ollama, value a large community and polished releases, and mostly need good notes after the meeting -- and either do not need speaker labels or are happy to pay $120/year for them.</p>
         </div>
         <div class="card">
-          <h3>Choose Backchannel if you...</h3>
+          <h3>Choose DebateAI if you...</h3>
           <p>Need speaker-attributed transcripts today without a Pro tier, want real-time questions, objection handling, and opportunity flags during the call, or want one server deployment your whole team can use from the browser.</p>
         </div>
       </div>
@@ -318,7 +318,7 @@
       <div class="prose">
         <p>
           Meetily: download an installer, pick a Whisper model, optionally
-          point it at Ollama. Backchannel: git clone,
+          point it at Ollama. DebateAI: git clone,
           <code>docker compose up --build</code>, add a Gemini API key (or a
           local ONNX transcription model and a self-hosted endpoint for the
           agents), open localhost in a browser -- or
@@ -326,7 +326,7 @@
           Meetily's installers, an ungated direct download.
           The <a href="/docs/quickstart/">quickstart</a> is honest
           that the first start builds images and downloads models -- Meetily's
-          install experience is smoother on both counts; Backchannel's payoff
+          install experience is smoother on both counts; DebateAI's payoff
           is a shared, multi-user server once it is up.
         </p>
       </div>
@@ -338,20 +338,20 @@
       <h2>Common questions</h2>
       <div class="grid">
         <div class="card">
-          <h3>What is the difference between Backchannel and Meetily?</h3>
-          <p>Both are open-source, bot-free, privacy-first meeting assistants. Meetily is a desktop app focused on local transcription and post-meeting summaries; its speaker diarization shipped in Pro 1.8.2 but is not in the MIT Community Edition. Backchannel is a self-hosted server app that ships live speaker diarization free and runs real-time insight agents during the call.</p>
+          <h3>What is the difference between DebateAI and Meetily?</h3>
+          <p>Both are open-source, bot-free, privacy-first meeting assistants. Meetily is a desktop app focused on local transcription and post-meeting summaries; its speaker diarization shipped in Pro 1.8.2 but is not in the MIT Community Edition. DebateAI is a self-hosted server app that ships live speaker diarization free and runs real-time insight agents during the call.</p>
         </div>
         <div class="card">
           <h3>Does Meetily have speaker diarization?</h3>
-          <p>Yes, in Pro: diarization shipped in Meetily Pro 1.8.2, live as you record and on imported audio, but it is not in the MIT Community Edition. Pro is $10/user/month billed annually ($120/year). Backchannel ships local speaker diarization (Silero VAD plus WeSpeaker embeddings) free under MIT, attributing every transcript line to a speaker live.</p>
+          <p>Yes, in Pro: diarization shipped in Meetily Pro 1.8.2, live as you record and on imported audio, but it is not in the MIT Community Edition. Pro is $10/user/month billed annually ($120/year). DebateAI ships local speaker diarization (Silero VAD plus WeSpeaker embeddings) free under MIT, attributing every transcript line to a speaker live.</p>
         </div>
         <div class="card">
-          <h3>What does Meetily do better than Backchannel?</h3>
-          <p>Community size (26.4k GitHub stars and 369.8K claimed downloads as of 2026-07-24), polished native installers for macOS and Windows, ungated downloads, and the simpler out-of-the-box offline story: Ollama-first summarization means nothing has to call a cloud LLM by default. Backchannel's insight agents run on Gemini, OpenAI, or any self-hosted OpenAI-compatible server.</p>
+          <h3>What does Meetily do better than DebateAI?</h3>
+          <p>Community size (26.4k GitHub stars and 369.8K claimed downloads as of 2026-07-24), polished native installers for macOS and Windows, ungated downloads, and the simpler out-of-the-box offline story: Ollama-first summarization means nothing has to call a cloud LLM by default. DebateAI's insight agents run on Gemini, OpenAI, or any self-hosted OpenAI-compatible server.</p>
         </div>
         <div class="card">
-          <h3>Are Backchannel and Meetily both free?</h3>
-          <p>Both cores are MIT. Meetily is open-core: a Pro tier at $10/user/mo (as of mid-2026) adds enhanced accuracy, templates, exports, and team deployment. Backchannel has no paid tier -- diarization, agents, exports, and multi-user deployment are all in the MIT codebase.</p>
+          <h3>Are DebateAI and Meetily both free?</h3>
+          <p>Both cores are MIT. Meetily is open-core: a Pro tier at $10/user/mo (as of mid-2026) adds enhanced accuracy, templates, exports, and team deployment. DebateAI has no paid tier -- diarization, agents, exports, and multi-user deployment are all in the MIT codebase.</p>
         </div>
       </div>
     </div>
@@ -362,9 +362,9 @@
       <h2>Both open source. Only one tells you who said what -- and what to say next -- for free.</h2>
       <p class="sub">Self-hosted, MIT licensed, diarization and live agents included with no Pro tier. If it is useful, a GitHub star helps others find it.</p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/#quickstart">Self-host in minutes</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -374,7 +374,7 @@
       <h2>Other comparisons</h2>
             <div class="doc-list">
         <a class="doc" href="/vs-anarlog/">
-          <strong>Backchannel vs Anarlog (formerly Hyprnote)</strong>
+          <strong>DebateAI vs Anarlog (formerly Hyprnote)</strong>
           <span>A local-first Mac notetaker vs a live agent server</span>
         </a>
         <a class="doc" href="/open-source-meeting-assistants/">
@@ -399,7 +399,7 @@
     <a href="/fireflies-alternative/">Fireflies.ai alternative without the bot</a>
     <a href="/granola-alternative/">Open-source Granola alternative</a>
     <a href="/fathom-alternative/">Fathom alternative</a>
-    <a href="/gong-and-backchannel/">Gong and Backchannel</a>
+    <a href="/gong-and-backchannel/">Gong and DebateAI</a>
     <a href="/teams-premium-alternative/">Teams Premium alternative</a>
   </div>
   <div class="wrap footer-compare">
@@ -408,8 +408,8 @@
     <a href="/blog/three-degrees-of-local/">Three degrees of local</a>
   </div>
   <div class="wrap">
-    <span>Backchannel -- an open-source, self-hosted AI meeting assistant.</span>
-    <span>Released under the <a href="https://github.com/talberthoule/backchannel/blob/master/LICENSE">MIT License</a>.</span>
+    <span>DebateAI -- an open-source, self-hosted AI meeting assistant.</span>
+    <span>Released under the <a href="https://github.com/ErpeUser/DebateAI/blob/master/LICENSE">MIT License</a>.</span>
     <span><a href="/releases/">All releases</a></span>
   </div>
 </footer>

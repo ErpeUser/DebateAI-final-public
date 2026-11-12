@@ -227,7 +227,7 @@ if (-not (Test-Path -LiteralPath $script:R2Client -PathType Leaf)) {
 }
 
 $metadataHelper = Join-Path $repoRoot "desktop/scripts/build_platform_manifest.py"
-$temporary = Join-Path ([IO.Path]::GetTempPath()) "backchannel-platform-r2-$([guid]::NewGuid())"
+$temporary = Join-Path ([IO.Path]::GetTempPath()) "debateai-platform-r2-$([guid]::NewGuid())"
 $releasePath = Join-Path $temporary "release.json"
 $platformPath = Join-Path $temporary "$PlatformId.json"
 $latestPath = Join-Path $temporary "latest.json"
@@ -249,13 +249,13 @@ try {
         "--release-notes-file", $ReleaseNotesPath
     )
     if ($SigningMode -eq "Local") {
-        $signingPrivateKey = $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY
+        $signingPrivateKey = $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY
         if ([string]::IsNullOrWhiteSpace($signingPrivateKey)) {
             if (-not $SigningPrivateKeyPath) {
                 if ([string]::IsNullOrWhiteSpace($env:LOCALAPPDATA)) {
                     throw "Missing required release signing private key"
                 }
-                $SigningPrivateKeyPath = Join-Path $env:LOCALAPPDATA "Backchannel/release-signing/ed25519-2026-07b.private"
+                $SigningPrivateKeyPath = Join-Path $env:LOCALAPPDATA "DebateAI/release-signing/ed25519-2026-07b.private"
             }
             if (-not (Test-Path -LiteralPath $SigningPrivateKeyPath -PathType Leaf)) {
                 throw "Missing required release signing private key"
@@ -269,9 +269,9 @@ try {
         if ([string]::IsNullOrWhiteSpace($signingPrivateKey)) {
             throw "Missing required release signing private key"
         }
-        $oldSigningPrivateKey = $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY
+        $oldSigningPrivateKey = $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY
         try {
-            $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = $signingPrivateKey
+            $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = $signingPrivateKey
             Invoke-MetadataHelper -Helper $metadataHelper -Arguments (
                 $metadataArguments + @(
                     "--release-out", $releasePath,
@@ -279,11 +279,11 @@ try {
                 )
             )
         } finally {
-            $env:BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY = $oldSigningPrivateKey
+            $env:DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY = $oldSigningPrivateKey
         }
     } else {
         foreach ($name in @(
-            "BACKCHANNEL_RELEASE_SIGNING_URL",
+            "DEBATEAI_RELEASE_SIGNING_URL",
             "CLOUDFLARE_ACCESS_CLIENT_ID",
             "CLOUDFLARE_ACCESS_CLIENT_SECRET"
         )) {
@@ -293,15 +293,41 @@ try {
         }
         $signingUri = $null
         if (-not [Uri]::TryCreate(
-            $env:BACKCHANNEL_RELEASE_SIGNING_URL,
+            $env:DEBATEAI_RELEASE_SIGNING_URL,
             [UriKind]::Absolute,
             [ref]$signingUri
         )) {
             throw "Remote release signing configuration is invalid"
         }
-        $productionSigningUri = (
-            $signingUri.AbsoluteUri -ceq "https://signing.backchannel.page/v1/sign"
+        # The deployment supplies its own trusted signing authority. No
+        # product domain is embedded in the publisher; the trust key and this
+        # explicit URL are deployment configuration.
+        $productionSigningUrl = [Environment]::GetEnvironmentVariable(
+            "DEBATEAI_RELEASE_SIGNING_PRODUCTION_URL"
         )
+        $productionSigningUri = $false
+        if (-not [string]::IsNullOrWhiteSpace($productionSigningUrl)) {
+            $expectedSigningUri = $null
+            if ([Uri]::TryCreate(
+                $productionSigningUrl,
+                [UriKind]::Absolute,
+                [ref]$expectedSigningUri
+            ) -and
+                $expectedSigningUri.Scheme -ceq [Uri]::UriSchemeHttps -and
+                $signingUri.Scheme -ceq [Uri]::UriSchemeHttps -and
+                -not $expectedSigningUri.IsLoopback -and
+                [string]::IsNullOrEmpty($expectedSigningUri.UserInfo) -and
+                [string]::IsNullOrEmpty($expectedSigningUri.Query) -and
+                [string]::IsNullOrEmpty($expectedSigningUri.Fragment) -and
+                [string]::IsNullOrEmpty($signingUri.UserInfo) -and
+                [string]::IsNullOrEmpty($signingUri.Query) -and
+                [string]::IsNullOrEmpty($signingUri.Fragment)
+            ) {
+                $productionSigningUri = (
+                    $signingUri.AbsoluteUri -ceq $expectedSigningUri.AbsoluteUri
+                )
+            }
+        }
         $testLoopbackSigningUri = (
             $AllowTestLoopbackSigningUrl -and
             $signingUri.Scheme -ceq [Uri]::UriSchemeHttp -and

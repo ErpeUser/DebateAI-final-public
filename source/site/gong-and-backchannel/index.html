@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Where Backchannel Fits Alongside Gong | Backchannel</title>
-  <meta name="description" content="Gong is the post-call revenue record for your team. Backchannel is the live seller-side layer on your own machine. How the two fit together, honestly." />
-  <link rel="canonical" href="https://backchannel.page/gong-and-backchannel/" />
-  <meta property="og:title" content="Where Backchannel Fits Alongside Gong | Backchannel" />
-  <meta property="og:description" content="Gong is the post-call revenue record for your team. Backchannel is the live seller-side layer on your own machine. How the two fit together, honestly." />
+  <title>Where DebateAI Fits Alongside Gong | DebateAI</title>
+  <meta name="description" content="Gong is the post-call revenue record for your team. DebateAI is the live seller-side layer on your own machine. How the two fit together, honestly." />
+  <link rel="canonical" href="/gong-and-backchannel/" />
+  <meta property="og:title" content="Where DebateAI Fits Alongside Gong | DebateAI" />
+  <meta property="og:description" content="Gong is the post-call revenue record for your team. DebateAI is the live seller-side layer on your own machine. How the two fit together, honestly." />
   <meta property="og:type" content="website" />
-  <meta property="og:site_name" content="Backchannel" />
-  <meta property="og:url" content="https://backchannel.page/gong-and-backchannel/" />
-  <meta property="og:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta property="og:site_name" content="DebateAI" />
+  <meta property="og:url" content="/gong-and-backchannel/" />
+  <meta property="og:image" content="/assets/og-image.png" />
   <meta property="og:image:width" content="1200" />
   <meta property="og:image:height" content="630" />
-  <meta property="og:image:alt" content="Backchannel: live meeting transcription and real-time insight agents, self-hosted." />
+  <meta property="og:image:alt" content="DebateAI: live meeting transcription and real-time insight agents, self-hosted." />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="https://backchannel.page/assets/og-image.png" />
+  <meta name="twitter:image" content="/assets/og-image.png" />
   <link rel="icon" type="image/svg+xml" href="/assets/favicon.svg" />
   <link rel="stylesheet" href="../style.css" />
   <script type="application/ld+json">
@@ -25,15 +25,15 @@
     "@graph": [
       {
         "@type": "WebPage",
-        "url": "https://backchannel.page/gong-and-backchannel/",
-        "name": "Where Backchannel Fits Alongside Gong | Backchannel",
-        "description": "Gong is the post-call revenue record for your team. Backchannel is the live seller-side layer on your own machine. How the two fit together, honestly.",
+        "url": "/gong-and-backchannel/",
+        "name": "Where DebateAI Fits Alongside Gong | DebateAI",
+        "description": "Gong is the post-call revenue record for your team. DebateAI is the live seller-side layer on your own machine. How the two fit together, honestly.",
         "dateModified": "2026-07-29",
         "isPartOf": {
-          "@id": "https://backchannel.page/#website"
+          "@id": "/#website"
         },
         "about": {
-          "@id": "https://backchannel.page/#software"
+          "@id": "/#software"
         }
       },
       {
@@ -42,13 +42,13 @@
           {
             "@type": "ListItem",
             "position": 1,
-            "name": "Backchannel",
-            "item": "https://backchannel.page/"
+            "name": "DebateAI",
+            "item": "/"
           },
           {
             "@type": "ListItem",
             "position": 2,
-            "name": "Backchannel and Gong"
+            "name": "DebateAI and Gong"
           }
         ]
       },
@@ -60,31 +60,31 @@
             "name": "Does Gong give real-time coaching during a call?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Gong's own coaching documentation describes reviewing recorded calls: feedback requests, comments and tagging, call sharing, call scoring, and AI Call Reviewer. The only live-call feature Gong documents is a manager listening in on or joining a call marked ON AIR, capped at two listeners. Gong tells you about the objection after the call. Backchannel's objection handler runs every 10 seconds over the last 90 seconds of transcript and writes a response you could say in the next ten seconds."
+              "text": "Gong's own coaching documentation describes reviewing recorded calls: feedback requests, comments and tagging, call sharing, call scoring, and AI Call Reviewer. The only live-call feature Gong documents is a manager listening in on or joining a call marked ON AIR, capped at two listeners. Gong tells you about the objection after the call. DebateAI's objection handler runs every 10 seconds over the last 90 seconds of transcript and writes a response you could say in the next ten seconds."
             }
           },
           {
             "@type": "Question",
-            "name": "Is Backchannel a replacement for Gong?",
+            "name": "Is DebateAI a replacement for Gong?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "No, and we will not pretend otherwise. Backchannel has no CRM sync, no pipeline or forecast, no scorecards, no call library, no team analytics, and no user accounts or authentication of any kind. If your revenue team runs on Gong, keep running on Gong. Backchannel is the live layer on one seller's machine underneath it."
+              "text": "No, and we will not pretend otherwise. DebateAI has no CRM sync, no pipeline or forecast, no scorecards, no call library, no team analytics, and no user accounts or authentication of any kind. If your revenue team runs on Gong, keep running on Gong. DebateAI is the live layer on one seller's machine underneath it."
             }
           },
           {
             "@type": "Question",
-            "name": "Can Backchannel recordings end up in Gong?",
+            "name": "Can DebateAI recordings end up in Gong?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Architecturally yes, but nothing ships today. Backchannel writes each call segment to a WAV file on your own disk and serves it over its REST API, and Gong's public API has an add-new-call endpoint that accepts WAV, MP3, MP4, MKV, and FLAC files up to 1.5GB. Connecting the two is custom work you would build yourself. There is no Gong integration in Backchannel."
+              "text": "Architecturally yes, but nothing ships today. DebateAI writes each call segment to a WAV file on your own disk and serves it over its REST API, and Gong's public API has an add-new-call endpoint that accepts WAV, MP3, MP4, MKV, and FLAC files up to 1.5GB. Connecting the two is custom work you would build yourself. There is no Gong integration in DebateAI."
             }
           },
           {
             "@type": "Question",
-            "name": "What does Backchannel cost next to Gong?",
+            "name": "What does DebateAI cost next to Gong?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Gong does not publish prices; its pricing page says licenses are priced per user with a platform fee based on the number of users supported. Procurement data from Vendr puts the median Gong contract at $54,900 a year across 1,126 purchases, as of July 2026. Backchannel is MIT-licensed software that costs nothing: you pay for your own hardware and any cloud API usage you choose, which can be zero."
+              "text": "Gong does not publish prices; its pricing page says licenses are priced per user with a platform fee based on the number of users supported. Procurement data from Vendr puts the median Gong contract at $54,900 a year across 1,126 purchases, as of July 2026. DebateAI is MIT-licensed software that costs nothing: you pay for your own hardware and any cloud API usage you choose, which can be zero."
             }
           }
         ]
@@ -99,13 +99,13 @@
   <div class="wrap">
     <a class="brand" href="/">
       <img src="/assets/favicon.svg" alt="" />
-      backchannel
+      DebateAI
     </a>
     <nav class="site-nav">
       <a href="/#features">Features</a>
       <a href="/blog/">Writing</a>
       <a href="/docs/">Docs</a>
-      <a class="btn primary nav-cta" href="https://github.com/talberthoule/backchannel">Star on GitHub</a>
+      <a class="btn primary nav-cta" href="https://github.com/ErpeUser/DebateAI">Star on GitHub</a>
     </nav>
   </div>
 </header>
@@ -114,19 +114,19 @@
 
   <section class="hero">
     <div class="wrap">
-      <h1>Where Backchannel fits <span class="accent">alongside Gong</span></h1>
+      <h1>Where DebateAI fits <span class="accent">alongside Gong</span></h1>
       <p class="lede">
         This is not a "Gong alternative" page. Gong is the revenue record your
-        team runs on after the call, and it is very good at that. Backchannel
+        team runs on after the call, and it is very good at that. DebateAI
         is a different layer: the live, seller-side assistant that runs on your
         own machine while the call is still happening, with nothing joining the
         meeting. If you already have Gong, this page is about what sits
         underneath it.
       </p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/#quickstart">Self-host in minutes</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
       <p class="quickstart-note">Not a Gong replacement &middot; no bot joins the call &middot; runs on hardware you control &middot; MIT licensed</p>
     </div>
@@ -135,7 +135,7 @@
   <section class="alt">
     <div class="wrap">
       <span class="kicker">Two different jobs</span>
-      <h2>Gong is built for after the call. Backchannel is built for during it.</h2>
+      <h2>Gong is built for after the call. DebateAI is built for during it.</h2>
       <p class="sub">This is a difference in design intent, not a defect in either product.</p>
       <div class="grid">
         <div class="card">
@@ -147,12 +147,12 @@
           <p>The one live-call feature Gong documents is a manager listening in on or joining a call marked ON AIR, capped at two listeners. That is monitoring for a manager, not guidance for the person talking.</p>
         </div>
         <div class="card">
-          <h3>Backchannel owns the next sentence</h3>
+          <h3>DebateAI owns the next sentence</h3>
           <p>An objection handler cycles every 10 seconds over the last 90 seconds of transcript and returns a response you could say in the next ten seconds, plus the underlying concern and the strategic angle behind it.</p>
         </div>
         <div class="card">
           <h3>They do not compete for the same budget</h3>
-          <p>Gong is an annual per-user contract with a platform fee, deployed org-wide by an admin. Backchannel is MIT-licensed software one person can run on a laptop. Adopting one does not displace the other.</p>
+          <p>Gong is an annual per-user contract with a platform fee, deployed org-wide by an admin. DebateAI is MIT-licensed software one person can run on a laptop. Adopting one does not displace the other.</p>
         </div>
       </div>
     </div>
@@ -161,11 +161,11 @@
   <section>
     <div class="wrap">
       <span class="kicker">The honest version</span>
-      <h2>What Backchannel is not</h2>
+      <h2>What DebateAI is not</h2>
       <div class="prose">
         <p>
           Lead with the concession, because it is the whole reason this is an
-          ecosystem page. <strong>Backchannel is not a revenue intelligence
+          ecosystem page. <strong>DebateAI is not a revenue intelligence
           platform and cannot replace one.</strong> There is no CRM sync, no
           deal or pipeline object, no forecasting, no scorecards, no call
           library, and no team analytics. There are no user accounts,
@@ -175,7 +175,7 @@
           remains the answer and nothing here changes that.
         </p>
         <p>
-          Privacy is the other place to be precise. Backchannel ships a
+          Privacy is the other place to be precise. DebateAI ships a
           Privacy First mode, and it now judges the destination rather than the
           vendor: point the analysis agents at a self-hosted endpoint on your
           own machine or LAN -- loopback, a private address, a .local host --
@@ -224,12 +224,12 @@
   <section class="alt">
     <div class="wrap">
       <span class="kicker">Side by side</span>
-      <h2>Gong and Backchannel</h2>
+      <h2>Gong and DebateAI</h2>
       <p class="sub">Pricing and plan details are as of July 2026 and may change; Gong does not publish prices, so check with Gong for current numbers.</p>
       <div class="table-scroll">
         <table>
           <thead>
-            <tr><th>Dimension</th><th>Gong</th><th>Backchannel</th></tr>
+            <tr><th>Dimension</th><th>Gong</th><th>DebateAI</th></tr>
           </thead>
           <tbody>
             <tr>
@@ -294,7 +294,7 @@
       <div class="prose">
         <h3>Nine agents, five of them live</h3>
         <p>
-          Backchannel seeds nine agents. An audio gateway streams interim
+          DebateAI seeds nine agents. An audio gateway streams interim
           transcription. Five live insight agents read the transcript as it
           grows: a consolidated analyst on a 40-second cycle, the objection
           handler every 10 seconds over the last 90 seconds, a synthesizer with
@@ -319,7 +319,7 @@
           product and we are not going to claim we invented the category. The
           difference is how the help is produced: Zoom's documentation has an
           admin configure the talking points for each topic ahead of time.
-          Backchannel writes the response to the objection that was actually
+          DebateAI writes the response to the objection that was actually
           raised, from the last 90 seconds of what was actually said, and
           returns both an immediate reply and the underlying concern behind it.
           The honest trade is that pre-written guidance is deterministic and
@@ -329,20 +329,20 @@
         <p>
           Gong's bot recording adds a virtual participant to the meeting, and
           with a waiting room enabled the host has to admit it. Bot-free capture
-          exists, but only through native Zoom recording. Backchannel captures
+          exists, but only through native Zoom recording. DebateAI captures
           from a browser tab on your side of the call, so there is nothing in
           the participant list on Zoom, Meet, or Teams, nothing to admit, and
           nothing to remove if a prospect changes their mind mid-call.
         </p>
         <h3>Your recordings do not have to be a dead end</h3>
         <p>
-          Backchannel appends each call segment to a WAV file on your own disk
+          DebateAI appends each call segment to a WAV file on your own disk
           and serves it back over its REST API. Gong's public API has an
           add-new-call endpoint that accepts WAV, MP3, MP4, MKV, and FLAC files
           up to 1.5GB, intended for recordings from systems Gong has no
           pre-built integration with. So a pipeline from one to the other is
           architecturally straightforward. <strong>To be completely clear: no
-          such integration ships in Backchannel today.</strong> Building it is
+          such integration ships in DebateAI today.</strong> Building it is
           your work, not a feature you can turn on.
         </p>
       </div>
@@ -358,7 +358,7 @@
           <p>Run a revenue team and need CRM hygiene, pipeline and forecast, scorecards, a searchable call library, talk-time and team analytics, coaching workflow, 70+ languages, and compliance attestations procurement recognizes. Nothing on this page is an argument against any of that.</p>
         </div>
         <div class="card">
-          <h3>Add Backchannel underneath when you...</h3>
+          <h3>Add DebateAI underneath when you...</h3>
           <p>Want help while you are still talking rather than a review afterwards, take calls where a recording bot is a liability, want the audio to stay on hardware you control, or are one person who cannot buy an org-wide platform contract to get a little help on a hard call.</p>
         </div>
       </div>
@@ -370,9 +370,9 @@
       <h2>What running both looks like</h2>
       <div class="prose">
         <p>
-          Nothing about Backchannel touches your Gong deployment. Gong keeps
+          Nothing about DebateAI touches your Gong deployment. Gong keeps
           recording the way it already does, through its bot or native Zoom
-          recording, and your team's record stays intact. Backchannel runs on
+          recording, and your team's record stays intact. DebateAI runs on
           your own machine and captures from your browser, so the two do not
           contend for the meeting or for the audio device. Setup is a git clone
           and <code>docker compose up --build</code> plus a Gemini API key, or a
@@ -398,19 +398,19 @@
       <div class="grid">
         <div class="card">
           <h3>Does Gong give real-time coaching during a call?</h3>
-          <p>Gong's own coaching documentation describes reviewing recorded calls: feedback requests, comments and tagging, call sharing, call scoring, and AI Call Reviewer. The only live-call feature Gong documents is a manager listening in on or joining a call marked ON AIR, capped at two listeners. Gong tells you about the objection after the call. Backchannel's objection handler runs every 10 seconds over the last 90 seconds of transcript and writes a response you could say in the next ten seconds.</p>
+          <p>Gong's own coaching documentation describes reviewing recorded calls: feedback requests, comments and tagging, call sharing, call scoring, and AI Call Reviewer. The only live-call feature Gong documents is a manager listening in on or joining a call marked ON AIR, capped at two listeners. Gong tells you about the objection after the call. DebateAI's objection handler runs every 10 seconds over the last 90 seconds of transcript and writes a response you could say in the next ten seconds.</p>
         </div>
         <div class="card">
-          <h3>Is Backchannel a replacement for Gong?</h3>
-          <p>No, and we will not pretend otherwise. Backchannel has no CRM sync, no pipeline or forecast, no scorecards, no call library, no team analytics, and no user accounts or authentication of any kind. If your revenue team runs on Gong, keep running on Gong. Backchannel is the live layer on one seller's machine underneath it.</p>
+          <h3>Is DebateAI a replacement for Gong?</h3>
+          <p>No, and we will not pretend otherwise. DebateAI has no CRM sync, no pipeline or forecast, no scorecards, no call library, no team analytics, and no user accounts or authentication of any kind. If your revenue team runs on Gong, keep running on Gong. DebateAI is the live layer on one seller's machine underneath it.</p>
         </div>
         <div class="card">
-          <h3>Can Backchannel recordings end up in Gong?</h3>
-          <p>Architecturally yes, but nothing ships today. Backchannel writes each call segment to a WAV file on your own disk and serves it over its REST API, and Gong's public API has an add-new-call endpoint that accepts WAV, MP3, MP4, MKV, and FLAC files up to 1.5GB. Connecting the two is custom work you would build yourself. There is no Gong integration in Backchannel.</p>
+          <h3>Can DebateAI recordings end up in Gong?</h3>
+          <p>Architecturally yes, but nothing ships today. DebateAI writes each call segment to a WAV file on your own disk and serves it over its REST API, and Gong's public API has an add-new-call endpoint that accepts WAV, MP3, MP4, MKV, and FLAC files up to 1.5GB. Connecting the two is custom work you would build yourself. There is no Gong integration in DebateAI.</p>
         </div>
         <div class="card">
-          <h3>What does Backchannel cost next to Gong?</h3>
-          <p>Gong does not publish prices; its pricing page says licenses are priced per user with a platform fee based on the number of users supported. Procurement data from Vendr puts the median Gong contract at $54,900 a year across 1,126 purchases, as of July 2026. Backchannel is MIT-licensed software that costs nothing: you pay for your own hardware and any cloud API usage you choose, which can be zero.</p>
+          <h3>What does DebateAI cost next to Gong?</h3>
+          <p>Gong does not publish prices; its pricing page says licenses are priced per user with a platform fee based on the number of users supported. Procurement data from Vendr puts the median Gong contract at $54,900 a year across 1,126 purchases, as of July 2026. DebateAI is MIT-licensed software that costs nothing: you pay for your own hardware and any cloud API usage you choose, which can be zero.</p>
         </div>
       </div>
     </div>
@@ -421,9 +421,9 @@
       <h2>The live layer, on your own hardware</h2>
       <p class="sub">Keep your revenue platform. Add the assistant that helps while you are still talking.</p>
       <div class="cta-row">
-        <a class="btn primary" href="https://downloads.backchannel.page/">Download for desktop</a>
+        <a class="btn primary" href="/downloads/">Download for desktop</a>
         <a class="btn ghost" href="/#quickstart">Self-host in minutes</a>
-        <a class="btn ghost" href="https://github.com/talberthoule/backchannel">View on GitHub</a>
+        <a class="btn ghost" href="https://github.com/ErpeUser/DebateAI">View on GitHub</a>
       </div>
     </div>
   </section>
@@ -433,7 +433,7 @@
       <h2>Other comparisons</h2>
             <div class="doc-list">
         <a class="doc" href="/vs-clari-copilot/">
-          <strong>Backchannel vs Clari Copilot</strong>
+          <strong>DebateAI vs Clari Copilot</strong>
           <span>Generated responses vs pre-written battlecards</span>
         </a>
         <a class="doc" href="/teams-premium-alternative/">
@@ -458,7 +458,7 @@
     <a href="/fireflies-alternative/">Fireflies.ai alternative without the bot</a>
     <a href="/granola-alternative/">Open-source Granola alternative</a>
     <a href="/fathom-alternative/">Fathom alternative</a>
-    <a href="/gong-and-backchannel/">Gong and Backchannel</a>
+    <a href="/gong-and-backchannel/">Gong and DebateAI</a>
     <a href="/teams-premium-alternative/">Teams Premium alternative</a>
   </div>
   <div class="wrap footer-compare">
@@ -467,8 +467,8 @@
     <a href="/blog/three-degrees-of-local/">Three degrees of local</a>
   </div>
   <div class="wrap">
-    <span>Backchannel -- an open-source, self-hosted AI meeting assistant.</span>
-    <span>Released under the <a href="https://github.com/talberthoule/backchannel/blob/master/LICENSE">MIT License</a>.</span>
+    <span>DebateAI -- an open-source, self-hosted AI meeting assistant.</span>
+    <span>Released under the <a href="https://github.com/ErpeUser/DebateAI/blob/master/LICENSE">MIT License</a>.</span>
     <span><a href="/releases/">All releases</a></span>
   </div>
 </footer>

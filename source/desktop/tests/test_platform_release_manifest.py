@@ -112,7 +112,7 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         )
         environment = {
             **os.environ,
-            "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY": (
+            "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY": (
                 base64.urlsafe_b64encode(PRIVATE).rstrip(b"=").decode()
             ),
         }
@@ -143,8 +143,8 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         ).encode() + b"\n"
         self.assertEqual(release_out.read_bytes(), expected_release)
         self.assertEqual(platform_out.read_bytes(), expected_platform)
-        self.assertNotIn(environment["BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY"], result.stdout)
-        self.assertNotIn(environment["BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY"], result.stderr)
+        self.assertNotIn(environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stdout)
+        self.assertNotIn(environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stderr)
 
     def test_cli_requires_signing_secret_before_writing(self):
         asset = self.asset("windows-x64")
@@ -162,7 +162,7 @@ class PlatformReleaseManifestTests(unittest.TestCase):
             env={
                 key: value
                 for key, value in os.environ.items()
-                if key != "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY"
+                if key != "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"
             },
             capture_output=True,
             text=True,
@@ -188,7 +188,7 @@ class PlatformReleaseManifestTests(unittest.TestCase):
             cwd=ROOT,
             env={
                 key: value for key, value in os.environ.items()
-                if key != "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY"
+                if key != "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"
             },
             capture_output=True,
             text=True,
@@ -240,7 +240,7 @@ class PlatformReleaseManifestTests(unittest.TestCase):
             cwd=ROOT,
             env={
                 **os.environ,
-                "BACKCHANNEL_RELEASE_SIGNING_PRIVATE_KEY": (
+                "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY": (
                     base64.urlsafe_b64encode(PRIVATE).rstrip(b"=").decode()
                 ),
             },

@@ -24,8 +24,6 @@ def _validate_template(value: str, required: set[str]) -> tuple[str, str, int]:
     if (parsed.scheme != 'https' or not host or parsed.username is not None
             or parsed.password is not None or parsed.query or parsed.fragment):
         raise ValueError('An independent HTTPS update URL without credentials is required.')
-    if host == 'backchannel.page' or host.endswith('.backchannel.page'):
-        raise ValueError('The legacy vendor update channel is not a DebateAI channel.')
     if host.endswith('.invalid') or host == 'invalid':
         raise ValueError('A placeholder hostname is not an update channel.')
     return parsed.scheme, host, parsed.port or 443
@@ -60,7 +58,7 @@ def get_update_service():
             except ValueError:
                 logging.getLogger(__name__).warning('DebateAI updates disabled: invalid independent channel configuration.')
                 config = None
-            desktop = (os.environ.get('DEBATEAI_DESKTOP') or os.environ.get('BACKCHANNEL_DESKTOP')) == '1'
+            desktop = os.environ.get('DEBATEAI_DESKTOP') == '1'
             try:
                 _service = UpdateService(enabled=bool(desktop and config), **(config or {}))
             except (OSError, ValueError, TypeError):

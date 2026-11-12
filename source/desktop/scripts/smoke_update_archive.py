@@ -165,7 +165,7 @@ def temporary_directory():
     # where the runner TMPDIR sits under the /var -> /private/var symlink.
     smoke_parent = ROOT / "build" / "native-smoke"
     smoke_parent.mkdir(parents=True, exist_ok=True)
-    created = smoke_parent / f"Backchannel Pruefung \u00e4 {uuid.uuid4().hex}"
+    created = smoke_parent / f"DebateAI Pruefung \u00e4 {uuid.uuid4().hex}"
     created.mkdir()
     root = created.absolute() if sys.platform == "win32" else created.resolve(strict=True)
     try:
@@ -351,6 +351,8 @@ def run(archive: Path, platform_id: str) -> None:
             keys_path=keys_path,
             current_version="1.0.0",
             platform_id=platform_id,
+            descriptor_url="https://updates.example/latest/{platform_id}",
+            asset_url="https://updates.example/assets/{version}/{platform_id}",
             helper_path=helper,
         )
         service._state["available_version"] = VERSION

@@ -17,7 +17,7 @@ from app.services.custom_endpoints import (
     update_endpoint,
 )
 from app.services.secrets import get_secret, set_secret
-from app.services.identity import env_value, set_compat_env
+from app.services.identity import env_value, set_env
 
 BRIDGE_ENDPOINT_ID = "subscription-ai"
 BRIDGE_NAME = "Subscription AI"
@@ -28,7 +28,7 @@ GEMINI_WEB_COOKIE_SECRET = "credentials.gemini_web.cookie"
 
 
 def _gemini_web_cookie_path() -> Path | None:
-    value = env_value("DEBATEAI_GEMINI_WEB_COOKIE_FILE", "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE").strip()
+    value = env_value("DEBATEAI_GEMINI_WEB_COOKIE_FILE").strip()
     return Path(value) if value else None
 
 
@@ -80,9 +80,9 @@ async def stored_gemini_web_cookie_configured(db: AsyncSession) -> bool:
 
 
 def gemini_web_cookie_configured() -> bool:
-    if env_value("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "BACKCHANNEL_GEMINI_WEB_SESSION_ACTIVE") == "1":
+    if env_value("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE") == "1":
         return True
-    path = env_value("DEBATEAI_GEMINI_WEB_COOKIE_FILE", "BACKCHANNEL_GEMINI_WEB_COOKIE_FILE").strip()
+    path = env_value("DEBATEAI_GEMINI_WEB_COOKIE_FILE").strip()
     try:
         return bool(path and Path(path).is_file() and Path(path).stat().st_size > 32)
     except OSError:
@@ -91,15 +91,15 @@ def gemini_web_cookie_configured() -> bool:
 
 def gemini_web_models() -> list[str]:
     try:
-        values = json.loads(env_value("DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS", "[]"))
+        values = json.loads(env_value("DEBATEAI_GEMINI_WEB_MODELS", "[]"))
     except (TypeError, ValueError):
         return []
     return [str(value).strip() for value in values if str(value).strip()]
 
 
 async def sync_gemini_web_bridge(db: AsyncSession):
-    url = env_value("DEBATEAI_GEMINI_WEB_URL", "BACKCHANNEL_GEMINI_WEB_URL").strip()
-    key = env_value("DEBATEAI_GEMINI_WEB_KEY", "BACKCHANNEL_GEMINI_WEB_KEY").strip()
+    url = env_value("DEBATEAI_GEMINI_WEB_URL").strip()
+    key = env_value("DEBATEAI_GEMINI_WEB_KEY").strip()
     if not url or not key:
         return None
     configured = gemini_web_cookie_configured()
@@ -119,8 +119,8 @@ async def sync_gemini_web_bridge(db: AsyncSession):
             await asyncio.sleep(0.25)
         if not ok:
             served = []
-    set_compat_env(
-        "DEBATEAI_GEMINI_WEB_MODELS", "BACKCHANNEL_GEMINI_WEB_MODELS",
+    set_env(
+        "DEBATEAI_GEMINI_WEB_MODELS",
         json.dumps(served, separators=(",", ":")),
     )
     models = [{"id": model, "label": model} for model in served]
@@ -154,8 +154,8 @@ async def sync_gemini_web_bridge(db: AsyncSession):
 async def sync_subscription_bridge(db: AsyncSession):
     if _gemini_web_cookie_path() is not None:
         await restore_gemini_web_cookie(db)
-    url = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_URL").strip()
-    key = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", "BACKCHANNEL_SUBSCRIPTION_BRIDGE_KEY").strip()
+    url = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_URL").strip()
+    key = env_value("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY").strip()
     if not url or not key:
         return await sync_gemini_web_bridge(db)
 
@@ -164,8 +164,8 @@ async def sync_subscription_bridge(db: AsyncSession):
     served: list[str] = []
     ok, _message, served = await probe(url, key, timeout=3.0)
     if ok:
-        set_compat_env(
-            "DEBATEAI_SUBSCRIPTION_MODELS", "BACKCHANNEL_SUBSCRIPTION_MODELS",
+        set_env(
+            "DEBATEAI_SUBSCRIPTION_MODELS",
             json.dumps(served, separators=(",", ":")),
         )
     models = [{"id": model} for model in served] if ok else None

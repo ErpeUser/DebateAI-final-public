@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "backchannel-site",
+  "name": "debateai-site",
   "compatibility_date": "2026-07-01",
   "main": "worker.js",
   "workers_dev": false,
@@ -9,22 +9,9 @@
     "enabled": true,
     "head_sampling_rate": 1
   },
-  "routes": [
-    { "pattern": "backchannel.page", "custom_domain": true },
-    { "pattern": "www.backchannel.page", "custom_domain": true },
-    { "pattern": "admin.backchannel.page", "custom_domain": true },
-    { "pattern": "downloads.backchannel.page", "custom_domain": true }
-  ],
-  "r2_buckets": [
-    { "binding": "RELEASES", "bucket_name": "backchannel-desktop-releases" }
-  ],
-  "d1_databases": [
-    {
-      "binding": "INTEREST_DB",
-      "database_name": "backchannel-interest",
-      "database_id": "05a99bac-102f-4a43-ac87-ae06251efdff"
-    }
-  ],
+  "routes": [],
+  "r2_buckets": [],
+  "d1_databases": [],
   "assets": {
     "directory": "./dist-site",
     "binding": "ASSETS",

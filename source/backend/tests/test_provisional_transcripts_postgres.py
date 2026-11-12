@@ -11,10 +11,10 @@ from app.models import Base, ProvisionalTranscriptRevision, Session
 from app.services.provisional_transcripts import persist_provisional_revision
 
 
-POSTGRES_URL = os.environ.get("BACKCHANNEL_TEST_POSTGRES_URL", "")
+POSTGRES_URL = os.environ.get("DEBATEAI_TEST_POSTGRES_URL", "")
 
 
-@unittest.skipUnless(POSTGRES_URL, "BACKCHANNEL_TEST_POSTGRES_URL is not configured")
+@unittest.skipUnless(POSTGRES_URL, "DEBATEAI_TEST_POSTGRES_URL is not configured")
 class ProvisionalTranscriptPostgresConcurrencyTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.engine = create_async_engine(POSTGRES_URL)
