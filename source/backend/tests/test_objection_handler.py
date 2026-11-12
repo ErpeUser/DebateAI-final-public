@@ -377,6 +377,26 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(mock_generate.await_count, 1)
         self.assertEqual("skipped_unchanged", agent.last_outcome["kind"])
 
+    async def test_provider_failure_does_not_poison_window_skip(self):
+        output = ObjectionHandlerOutput(
+            recommendation=_model_recommendation(), items=[]
+        )
+        generate = AsyncMock(side_effect=[RuntimeError("temporary"), output])
+        agent = ObjectionHandlerAgent()
+
+        with patch(
+            "app.services.agents.objection_handler.generate_json",
+            new=generate,
+        ):
+            first = await agent.run_cycle("Speaker 1: same text", [], SPEAKERS)
+            second = await agent.run_cycle("Speaker 1: same text", [], SPEAKERS)
+
+        self.assertEqual([], first)
+        self.assertEqual([], second)
+        self.assertEqual(2, generate.await_count)
+        self.assertEqual(output.recommendation, agent.latest_recommendation)
+
+
     async def test_surfaced_objections_fed_back_into_prompt(self):
         agent = ObjectionHandlerAgent()
         mock_generate = AsyncMock(
