@@ -79,6 +79,13 @@ Diese Vorkommen dürfen nicht pauschal gelöscht werden, weil sie Datenmigration
 Provenienz und Integritätsnachweise schützen. Ein neuer Build muss die aktiven
 Paket-/EXE-/AppData-Verträge separat mit einem Windows-Smoketest bestätigen.
 
+## Zusätzliche Fixes aus der letzten Gegenprüfung
+
+- Persistente Frontend-Präferenzen verwenden nun ausschließlich debateai:*. Die bisherigen bc-sidebar-* und bc-theme-Werte werden einmalig canonical-wins migriert und anschließend entfernt; Storage-Ausnahmen dürfen den App-Start nicht blockieren.
+- Der OpenAI-kompatible JSON-Transport wiederholt nach einer abgelehnten optionalen Generation-/Budget-Option nicht mehr dasselbe Budgetfeld.
+- Insight-Dedup-Fingerprints werden erst nach erfolgreichem DB-Commit reserviert; ein transienter Insert-Fehler bleibt retrybar.
+- Die Audio-Gateway-Task wird am Beginn des finalen Drains beendet. Der WebSocket-Handler ruft close_all() auch dann auf, wenn Drain oder Progress-Versand fehlschlagen.
+
 ## Verifikation
 
 Im aktuellen Linux-Arbeitsraum kann kein vollständiger Checkout und kein
