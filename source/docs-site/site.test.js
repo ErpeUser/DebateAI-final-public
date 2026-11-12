@@ -36,6 +36,8 @@ const customerFiles = [
   '../site/releases/v0.2.3/index.html',
   '../site/releases/v0.2.4/index.html',
   '../site/releases/v0.2.5/index.html',
+  '../site/releases/index.html',
+  '../site/releases/v0.6.6/index.html',
   '../site/llms.txt',
   '../site/sitemap.xml',
   '../.github/release-notes/v0.1.1.md',
@@ -163,6 +165,14 @@ test('customer download entry points use the authenticated DebateAI portal', () 
     '../site/plaud-alternative/index.html',
     '../site/llms.txt',
   ]) assert.match(read(path), new RegExp(portal.replaceAll('.', '\\.'), 'i'), path);
+});
+
+test('release archive metadata is unique and historical status is explicit', () => {
+  const index = read('../site/releases/index.html');
+  const positions = [...index.matchAll(/"position":\s*(\d+)/g)].map((match) => match[1]);
+  assert.equal(new Set(positions).size, positions.length);
+  assert.match(index, /Historical snapshot: v0\.6\.6/);
+  assert.match(read('../site/releases/v0.6.6/index.html'), /historical release record/i);
 });
 
 test('historical release pages deep-link only their own entitled version', () => {
