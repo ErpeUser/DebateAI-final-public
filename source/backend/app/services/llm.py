@@ -807,7 +807,7 @@ async def _openai_json(
         accepts_optional = _json_generation_limits_by_base_url.get(endpoint.base_url, True)
         if accepts_optional:
             payload.update(_openai_generation_limits(model_id, effective_reasoning_effort))
-        if source == "debate_copilot" and _is_self_hosted(model_id):
+        if accepts_optional and source == "debate_copilot" and _is_self_hosted(model_id):
             payload["temperature"] = 0.2
         response_format = _response_format(mode, response_schema)
         if response_format is not None:
