@@ -149,6 +149,16 @@ Ein möglicher Codex-Fortsetzungsauftrag lautet:
 > Hardware und Datenschutz. Führe nie heimliche Downloads/Logins aus und
 > übernimm keinen A/B-Sieger automatisch.
 
+## Docs-Site- und Release-Publikation
+
+`.github/workflows/deploy-site.yml` führt aktuell nur `npm ci`, Tests und
+`npm run build` aus. Es veröffentlicht keinen Cloudflare-Worker und beweist
+keine öffentliche URL. Ebenso ist `desktop-release.yml` ein manuell gestarteter
+Workflow; ein normaler Push erstellt kein neues Windows-Artefakt. Die aktuelle
+v0.6.6-Seite und `llms.txt` dürfen daher nur als historische Veröffentlichung
+bezeichnet werden, bis ein neuer annotierter Tag, ein exakter Build-Commit,
+Manifest/Signatur und ein erfolgreicher Publikationslauf vorliegen.
+
 ## Merge-/Release-Gate
 
 Vor dem Merge sind Branch-HEAD, Teststatus und Änderungsliste erneut gegen den
