@@ -5,9 +5,7 @@
 - Canonical repository: `https://github.com/ErpeUser/DebateAI`
 - Repository ID: `1450951492` (private)
 - Canonical product/runtime identity: `DebateAI`
-- Identity-decoupling work is prepared on
-  `codex/debateai-identity-decoupling`; the integrated commit is recorded by
-  GitHub when the branch is merged.
+- Identity decoupling merged into `master` at `fcdfc798f97f62f44768b242a9a039c8787bf6ea`; post-merge contract hardening merged at `d8cbb535881d9ef80bc35e6f5498d97dab174a2e`.
 
 The active source tree, desktop package, update contract, environment names,
 request headers and WebSocket token protocol use DebateAI. Existing user data is
