@@ -2,6 +2,9 @@ const STATIC_KEYS: Array<[string, string]> = [
   ["backchannel:audio-devices", "debateai:audio-devices"],
   ["backchannel:call-bar-mode", "debateai:call-bar-mode"],
   ["backchannel.last_seen_version", "debateai.last_seen_version"],
+  ["bc-sidebar-collapsed", "debateai:sidebar-collapsed"],
+  ["bc-sidebar-collapsed-groups", "debateai:sidebar-collapsed-groups"],
+  ["bc-theme", "debateai:theme"],
 ];
 
 const PREFIXES: Array<[string, string]> = [
