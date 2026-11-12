@@ -291,14 +291,13 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
         logger.error(f"[synthesizer] API call failed: {e}")
         return []
 
-    # Only remember the input once the call actually succeeded, so a transient
-    # API failure does not suppress the retry.
-    _last_fingerprints[session_id] = fingerprint
-
     # Structured output (generate_json + SynthesizerOutput) replaced the hand
     # rolled fence-strip and bracket-scan recovery this commit originally
     # carried; llm.parse_json_response now tolerates fences centrally.
     ops = [item.model_dump(exclude_unset=True) for item in output.items]
 
+    # Do not mark this corpus as processed until the database operations commit.
+    # A transient commit failure must leave the fingerprint retryable.
     applied = await _apply_operations(session_id, ops, questions, agent_source="synthesizer")
+    _last_fingerprints[session_id] = fingerprint
     return applied
