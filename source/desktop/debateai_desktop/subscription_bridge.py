@@ -252,7 +252,7 @@ class SubscriptionBridge:
         set_env("DEBATEAI_SUBSCRIPTION_BRIDGE_URL", url)
         set_env("DEBATEAI_SUBSCRIPTION_BRIDGE_KEY", self.client_key)
         set_env(
-            "DEBATEAI_SUBSCRIPTION_MODELS", "DEBATEAI_SUBSCRIPTION_MODELS",
+            "DEBATEAI_SUBSCRIPTION_MODELS",
             json.dumps(self.served_models, separators=(",", ":")),
         )
         os.environ.setdefault("SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK", "true")

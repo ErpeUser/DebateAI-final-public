@@ -19,9 +19,8 @@ def _apply_runtime_database_url() -> None:
     so a direct Alembic invocation cannot accidentally target the legacy
     callhelper database or a stale password.
     """
-    setter = getattr(config, "set_main_option", None)
-    if callable(setter):
-        setter("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+    if hasattr(config, "set_main_option"):
+        config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
 
 
 _apply_runtime_database_url()

@@ -2800,3 +2800,26 @@ Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
 - Der Runtime-Quellstand des Kandidaten ist `97e4b3e3446de9cd69a4c6d84cff737d6a4b42d7`; die nachgelagerte Evidenz-Dokumentation ist in `d1e68455161535e58110104a22147275df4b3d64` gepusht und aktuell gilt `HEAD == origin/master == d1e68455161535e58110104a22147275df4b3d64`. Die verbleibenden 15
   Human-/Hardware-/Provider-/Authenticode-Gates sind vorbereitet, aber nicht
   als automatisiert bestanden ausgegeben.
+
+### Codex-Abnahme-Fortsetzung (2026-11-12)
+
+- Der echte Windows-Checkout `C:/Users/User/Datein/Coding/DebateAI` wurde mit
+  dem aktuellen `origin/master` synchronisiert: `HEAD == origin/master ==
+  e632d852b6a0dc4c6c7a8e65372c7f9b087fd4a5`. Untracked Build-, Modell- und
+  Runtime-Dateien blieben erhalten; zwei alte Stashes wurden geprueft und
+  nicht erneut angewendet, weil ihre Source-Aenderungen bereits integriert sind.
+- Drei isolierte Vertragsfehler wurden behoben: der Alembic-Runtime-Override
+  bleibt mit Test-Doubles kompatibel und ist als direkter `set_main_option`-
+  Aufruf sichtbar; ein 404 beim Update-Asset bewahrt eine resumierbare Partial-
+  Datei; der Subscription-Bridge-Export uebergibt den korrekten Wert an
+  `set_env`.
+- Nachweise: Backend **1.865/1.865** (4 Skips), `compileall` gruen; Frontend-
+  Build, **325/325** Node-Tests und **5/5** PWA-Tests gruen; Desktop
+  **206/206** (1 Symlink-Rechte-Skip) mit `PYTHONPATH=desktop;backend`.
+- Offen bleiben der exakte native Windows-EXE/ZIP-Build samt Hash/Smoke, echte
+  Mikrofon-/WASAPI-/WebView2-/Hardware-/Provider-/Login-/Authenticode-Gates,
+  reale Debattenvideos sowie ein verifizierter GitHub-Runnerlauf.
+
+Naechste konkrete Aktion: den synchronisierten, getesteten Source-Stand mit
+  `build_debate_assistant.ps1 -IncludeOracle` bauen und nur die dabei belegten
+  Windows-/Archiv-/Rollback-Ergebnisse dokumentieren.

@@ -72,6 +72,10 @@ class InvalidUpdate(ValueError):
     pass
 
 
+class AssetNotFound(InvalidUpdate):
+    """The published asset is temporarily unavailable; keep a resumable partial."""
+
+
 def _zip_extraction_root(path: Path) -> str:
     """Return a Windows extended path for deeply nested bundled runtimes."""
     resolved = str(path.resolve())
@@ -491,7 +495,7 @@ class UpdateService:
             if error.code in {401, 403}:
                 raise NeedsAuthorization from error
             if error.code == 404:
-                raise InvalidUpdate("update asset not found") from error
+                raise AssetNotFound("update asset not found") from error
             raise
 
     def _progress(self, downloaded: int) -> None:
@@ -626,8 +630,9 @@ class UpdateService:
                 self._state["error"] = ""
                 self._state["downloaded"] = partial.stat().st_size if partial.exists() else 0
                 self._save_locked()
-        except InvalidUpdate:
-            partial.unlink(missing_ok=True)
+        except InvalidUpdate as error:
+            if not isinstance(error, AssetNotFound):
+                partial.unlink(missing_ok=True)
             self._remove_stage()
             self._download_error("The update failed verification.")
         except Exception:
