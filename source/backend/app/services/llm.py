@@ -832,7 +832,11 @@ async def _openai_json(
             if ollama_controls:
                 payload.pop("reasoning_effort", None)
                 payload.update(ollama_controls)
-        _apply_output_budget(payload, model_id, output_budget)
+        # A server that rejected optional generation parameters must not
+        # receive the same completion-budget field again. The rejection path
+        # deliberately falls back to a bare contract request.
+        if accepts_optional:
+            _apply_output_budget(payload, model_id, output_budget)
         if on_partial_json is None:
             async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
                 resp = await client.post(
