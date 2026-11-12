@@ -2180,6 +2180,15 @@ class AgentOrchestrator:
             self._opp_specialist_subscriber.stop()
         self._event_bus.clear()
 
+        # No live audio responses may outlive the drain boundary. The gateway
+        # is a consumer task, so stop it before final transcript/agent passes.
+        if self._gateway_task and not self._gateway_task.done():
+            self._gateway_task.cancel()
+            try:
+                await self._gateway_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
         if self._consolidated_task and not self._consolidated_task.done():
             self._consolidated_task.cancel()
             try:
