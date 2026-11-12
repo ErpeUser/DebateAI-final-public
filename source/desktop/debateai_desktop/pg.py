@@ -1,6 +1,7 @@
 """Lifecycle management for the bundled zonky.io PostgreSQL binaries."""
 
 import os
+import asyncio
 import secrets
 import shutil
 import socket
@@ -200,7 +201,8 @@ class EmbeddedPostgres:
         if not psql.is_file():
             if self.initialized_here:
                 return
-            raise FileNotFoundError(f"PostgreSQL client is missing: {psql}")
+            self._migrate_legacy_role_with_asyncpg(port)
+            return
         env = os.environ.copy()
         env["PGPASSWORD"] = self.password()
         base = [str(psql), "-h", "127.0.0.1", "-p", str(port), "-d", "postgres"]
@@ -211,6 +213,56 @@ class EmbeddedPostgres:
         if migrate.returncode != 0:
             detail = (migrate.stderr or migrate.stdout or probe.stderr).strip()
             raise RuntimeError(f"postgres role migration failed: {detail}")
+        self._mark_role_ready()
+
+    def _mark_role_ready(self) -> None:
+        if self.pgdata.is_dir():
+            self.role_marker.write_text("debateai\n", encoding="ascii")
+
+    def _migrate_legacy_role_with_asyncpg(self, port: int) -> None:
+        """Migrate old clusters when the embedded package has no psql client."""
+        try:
+            import asyncpg
+        except ImportError as error:
+            raise FileNotFoundError(
+                f"PostgreSQL client is missing and asyncpg is unavailable: {self.bin}"
+            ) from error
+
+        password = self.password()
+
+        async def migrate() -> None:
+            connection = None
+            try:
+                try:
+                    connection = await asyncpg.connect(
+                        user=DB_ROLE,
+                        password=password,
+                        database="postgres",
+                        host="127.0.0.1",
+                        port=port,
+                    )
+                    return
+                except Exception:
+                    connection = await asyncpg.connect(
+                        user=_LEGACY_DB_ROLE,
+                        password=password,
+                        database="postgres",
+                        host="127.0.0.1",
+                        port=port,
+                    )
+                    await connection.execute(
+                        f'ALTER ROLE "{_LEGACY_DB_ROLE}" RENAME TO "{DB_ROLE}"'
+                    )
+            except Exception as error:
+                raise RuntimeError(
+                    "postgres role migration failed without psql client"
+                ) from error
+            finally:
+                if connection is not None:
+                    await connection.close()
+
+        asyncio.run(migrate())
+        self._mark_role_ready()
 
     def recover_stale(self) -> None:
         # A postmaster.pid left by a crash blocks the next start. pg_ctl

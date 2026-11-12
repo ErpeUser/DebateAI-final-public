@@ -1,4 +1,6 @@
 import tempfile
+import sys
+import types
 import unittest
 from pathlib import Path
 from unittest import mock
@@ -102,6 +104,32 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self.pg.ensure_role(54321)
         self.assertTrue(self.pg.initialized_here)
         run.assert_not_called()
+
+    def test_legacy_cluster_migrates_without_psql_client(self):
+        self.pg.pgdata.mkdir(parents=True)
+        (self.pg.pgdata / "PG_VERSION").write_text("16")
+
+        class Connection:
+            def __init__(self):
+                self.executed = []
+
+            async def execute(self, query):
+                self.executed.append(query)
+
+            async def close(self):
+                return None
+
+        connection = Connection()
+        connect = mock.AsyncMock(side_effect=[RuntimeError("missing role"), connection])
+        fake_asyncpg = types.SimpleNamespace(connect=connect)
+        with mock.patch.dict(sys.modules, {"asyncpg": fake_asyncpg}):
+            self.pg.ensure_role(54321)
+
+        self.assertEqual(
+            ['ALTER ROLE "backchannel" RENAME TO "debateai"'],
+            connection.executed,
+        )
+        self.assertTrue(self.pg.role_marker.is_file())
 
     def test_initdb_wipes_wedged_pgdata_without_pg_version(self):
         pgdata = self.data_dir / "pgdata"
