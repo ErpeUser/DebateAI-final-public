@@ -1,5 +1,12 @@
 # Debate AI V6 release notes
 
+> **Historischer Snapshot (v0.6.6, 2026-11-09):** Die folgenden Test- und
+> Bundle-Zahlen dokumentieren den damaligen Releasekandidaten. Sie sind kein
+> Nachweis für den aktuellen `master`-Stand und keine aktuelle DebateAI-
+> Windows-/Signaturfreigabe. Für den aktuellen Stand siehe
+> `source/docs/CODEX_ACCEPTANCE_2026-11-12.md`.
+
+
 ## Included
 
 - Windows x64 PyInstaller onedir package with bundled PostgreSQL, local ASR,

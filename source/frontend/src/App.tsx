@@ -15,7 +15,6 @@ import { useModelDownloads } from "./hooks/useModelDownloads";
 import { useConfirm } from "./components/ConfirmProvider";
 import * as api from "./services/api";
 import { parseSavedDrainSummary } from "./lib/postProcessingSummary";
-import { migrateLegacyStorage } from "./lib/storageMigration";
 import { resolveStoredAskModel } from "./lib/askModelSelection";
 import { updateInterimText } from "./lib/interimTranscript";
 import { shouldResetMessageCursor } from "./lib/wsEventStream";
@@ -298,10 +297,6 @@ function MainApp() {
   const beginCallGenerationRef = useRef(0);
   runtimeSessionIdRef.current = runtimeSessionId;
   liveSessionIdRef.current = liveSessionId;
-
-  useEffect(() => {
-    migrateLegacyStorage(window.localStorage);
-  }, []);
 
   useEffect(() => {
     api.listSessions().then(setSessions).catch(console.error);

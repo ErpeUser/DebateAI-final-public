@@ -117,6 +117,60 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, orchestrator.consolidated_agent.run_cycle.await_count)
 
 
+    async def test_analyst_does_not_wait_an_interval_before_first_snapshot(self):
+        """Existing transcript context must be analyzed immediately on start."""
+        import asyncio
+
+        orchestrator = make_orchestrator()
+        orchestrator._get_interval = MagicMock(return_value=60.0)
+        first_cycle = asyncio.Event()
+
+        async def run_cycle(**_kwargs):
+            first_cycle.set()
+            return []
+
+        orchestrator.consolidated_agent.run_cycle = AsyncMock(side_effect=run_cycle)
+        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="[S1]: opening words")
+
+        task = asyncio.create_task(orchestrator._consolidated_agent_loop())
+        try:
+            await asyncio.wait_for(first_cycle.wait(), timeout=0.5)
+        finally:
+            orchestrator._stopped = True
+            task.cancel()
+            try:
+                await task
+            except asyncio.CancelledError:
+                pass
+
+        orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
+
+
+    async def test_failed_cycle_retries_the_unchanged_window(self):
+        """A transient provider failure must not suppress the same transcript."""
+        orchestrator = make_orchestrator()
+        orchestrator._get_interval = MagicMock(return_value=0.01)
+        orchestrator.consolidated_agent = MagicMock(
+            run_cycle=AsyncMock(side_effect=[RuntimeError("transient"), []]),
+            last_outcome={},
+        )
+        orchestrator.activity.cycle_error = AsyncMock()
+        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="[S1]: same words")
+
+        import asyncio
+
+        task = asyncio.create_task(orchestrator._consolidated_agent_loop())
+        await asyncio.sleep(0.08)
+        orchestrator._stopped = True
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            pass
+
+        self.assertEqual(2, orchestrator.consolidated_agent.run_cycle.await_count)
+
+
 class BoardStubTests(unittest.TestCase):
     """Non-question insights feed the analyst's already-on-the-board context.
 

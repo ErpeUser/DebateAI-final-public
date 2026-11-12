@@ -357,6 +357,7 @@ class TruncatedJsonCallTests(unittest.IsolatedAsyncioTestCase):
         )
         for cache in (
             llm._json_mode_by_base_url,
+            llm._json_budget_by_base_url,
             llm._json_generation_limits_by_base_url,
         ):
             cache.clear()
@@ -472,6 +473,28 @@ class TruncatedJsonCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("ok", parsed.notes)
         self.assertEqual("none", fake.posts[0]["json"]["reasoning_effort"])
         self.assertNotIn("reasoning_effort", fake.posts[1]["json"])
+
+
+    async def test_rejected_budget_is_not_replayed_after_optional_limits_fallback(self):
+        request = httpx.Request("POST", "http://localhost:1234/v1/chat/completions")
+        refusal = httpx.Response(
+            400,
+            request=request,
+            json={
+                "error": (
+                    "Unsupported parameter: 'max_tokens' is not supported "
+                    "with this model"
+                )
+            },
+        )
+        fake = FakeHTTPX([refusal, _chat_response('{"notes": "ok"}')])
+        self.enterContext(mock.patch.object(llm.httpx, "AsyncClient", fake))
+
+        parsed = await llm.generate_json(SELF_HOSTED, "Prompt", BriefLensOutput)
+
+        self.assertEqual("ok", parsed.notes)
+        self.assertIn("max_tokens", fake.posts[0]["json"])
+        self.assertNotIn("max_tokens", fake.posts[1]["json"])
 
 
 class OutputBudgetNegotiationTests(unittest.IsolatedAsyncioTestCase):

@@ -2180,6 +2180,15 @@ class AgentOrchestrator:
             self._opp_specialist_subscriber.stop()
         self._event_bus.clear()
 
+        # No live audio responses may outlive the drain boundary. The gateway
+        # is a consumer task, so stop it before final transcript/agent passes.
+        if self._gateway_task and not self._gateway_task.done():
+            self._gateway_task.cancel()
+            try:
+                await self._gateway_task
+            except (asyncio.CancelledError, Exception):
+                pass
+
         if self._consolidated_task and not self._consolidated_task.done():
             self._consolidated_task.cancel()
             try:
@@ -2612,8 +2621,8 @@ class AgentOrchestrator:
             if _texts_similar(text, existing_text):
                 logger.info(f"[{agent_source}] Skipping near-duplicate: {text[:60]}")
                 return False
-        self._recent_insights[text] = now
-
+        # Do not reserve the fingerprint until the database transaction
+        # has committed. A transient DB failure must remain retryable.
         # Use agent_source from the insight dict if provided (consolidated analyst sets per-type)
         effective_source = q_json.get("agent_source", agent_source)
         speaker_id = self._validated_speaker_id(q_json.get("speaker_id"))
@@ -2644,6 +2653,7 @@ class AgentOrchestrator:
             db.add(question)
             await db.commit()
             await db.refresh(question)
+            self._recent_insights[text] = now
 
             if question.item_type == "question":
                 self._remember_active_question(str(question.id), question.question, question.item_type)
@@ -2747,7 +2757,8 @@ class AgentOrchestrator:
     async def _consolidated_agent_loop(self):
         """Run consolidated analyst on interval."""
         interval = self._get_interval("consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS)
-        await asyncio.sleep(interval)
+        # Run immediately when a session already has transcript context; the
+        # interval is the delay between subsequent cycles, not startup latency.
 
         last_window = ""
         while not self._stopped:
@@ -2775,8 +2786,6 @@ class AgentOrchestrator:
                     logger.debug("[consolidated_analyst] Window unchanged, skipping cycle")
                     await asyncio.sleep(interval)
                     continue
-                last_window = transcript_window
-
                 logger.info(f"[consolidated_analyst] Running cycle with {len(transcript_window)} chars of transcript")
                 insights = await self.consolidated_agent.run_cycle(
                     transcript_window=transcript_window,
@@ -2819,6 +2828,10 @@ class AgentOrchestrator:
                             saved=saved_count,
                         ),
                     )
+                    # Advance only after the complete cycle succeeded. A
+                    # transient model or persistence failure must be retried
+                    # against the same transcript window.
+                    last_window = transcript_window
 
             except asyncio.CancelledError:
                 break
@@ -4008,7 +4021,7 @@ class AgentOrchestrator:
 
     async def _strategic_signals_loop(self):
         interval = self._get_interval(STRATEGIC_SIGNALS_SLUG, 45)
-        await asyncio.sleep(interval)
+        # Do not add a full interval before the first signal snapshot.
         last_window = ""
         while not self._stopped:
             await self.activity.cycle_started(STRATEGIC_SIGNALS_SLUG)
@@ -4019,7 +4032,6 @@ class AgentOrchestrator:
                 if transcript_window == last_window:
                     logger.debug("[strategic_signals] Window unchanged, skipping cycle")
                 elif transcript_window != "(No recent transcript)":
-                    last_window = transcript_window
                     cycle = await run_strategic_signals_cycle(
                         self.session_id,
                         agent_configs=self._agent_configs,
@@ -4047,6 +4059,9 @@ class AgentOrchestrator:
                             "items": 1 if synthesis else 0,
                         },
                     )
+                    # Do not mark the window processed until the cycle has
+                    # completed, so transient provider errors are retried.
+                    last_window = transcript_window
                 else:
                     await self.activity.cycle_finished(
                         STRATEGIC_SIGNALS_SLUG,

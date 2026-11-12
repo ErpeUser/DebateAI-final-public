@@ -380,11 +380,15 @@ async def _finalize_call(
         # from an empty result so transcription stats still reach the client.
         drain_result = {}
     else:
-        drain_result = await orchestrator.graceful_drain(
-            progress_callback=_forward_drain_progress,
-            mode=drain_mode,
-        )
-        await orchestrator.close_all()
+        try:
+            drain_result = await orchestrator.graceful_drain(
+                progress_callback=_forward_drain_progress,
+                mode=drain_mode,
+            )
+        finally:
+            # A closed websocket can make the progress callback fail. Always
+            # tear down the gateway and agent tasks even when draining aborts.
+            await orchestrator.close_all()
 
     tq_stats = transcription_queue.stats
     drain_result["transcription"] = tq_stats

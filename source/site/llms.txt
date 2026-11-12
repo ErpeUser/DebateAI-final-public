@@ -24,7 +24,7 @@ except for the model API calls you configure.
 Key facts:
 - License: MIT, source at https://github.com/ErpeUser/DebateAI
 - Category: real-time meeting analysis / AI meeting assistant / meeting copilot
-- Desktop release: v0.6.6 for Windows x64, macOS Apple Silicon, and Linux x64, downloaded freely at /downloads/; no account, GitHub identity, or repository membership is required. From v0.4.0 the desktop app updates itself in place with a verified signature
+- Historical desktop snapshot: v0.6.6 for Windows x64, macOS Apple Silicon, and Linux x64, documented at /releases/v0.6.6/; the current master acceptance state is tracked in source/docs/CODEX_ACCEPTANCE_2026-11-12.md. From v0.4.0 the desktop app updates itself in place with a verified signature
 - Self-hosted alternative to cloud meeting assistants such as Otter.ai,
   Fireflies.ai, and Granola
 - Stack: React 18 + TypeScript frontend, FastAPI backend, PostgreSQL 16

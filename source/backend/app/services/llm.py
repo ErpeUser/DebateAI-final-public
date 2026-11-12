@@ -807,7 +807,7 @@ async def _openai_json(
         accepts_optional = _json_generation_limits_by_base_url.get(endpoint.base_url, True)
         if accepts_optional:
             payload.update(_openai_generation_limits(model_id, effective_reasoning_effort))
-        if source == "debate_copilot" and _is_self_hosted(model_id):
+        if accepts_optional and source == "debate_copilot" and _is_self_hosted(model_id):
             payload["temperature"] = 0.2
         response_format = _response_format(mode, response_schema)
         if response_format is not None:
@@ -832,7 +832,11 @@ async def _openai_json(
             if ollama_controls:
                 payload.pop("reasoning_effort", None)
                 payload.update(ollama_controls)
-        _apply_output_budget(payload, model_id, output_budget)
+        # A server that rejected optional generation parameters must not
+        # receive the same completion-budget field again. The rejection path
+        # deliberately falls back to a bare contract request.
+        if accepts_optional:
+            _apply_output_budget(payload, model_id, output_budget)
         if on_partial_json is None:
             async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
                 resp = await client.post(
