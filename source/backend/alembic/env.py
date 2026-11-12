@@ -44,6 +44,10 @@ def run_migrations_offline():
 def do_run_migrations(connection):
     if connection.dialect.name == "postgresql":
         connection.exec_driver_sql(
+            "CREATE TABLE IF NOT EXISTS alembic_version "
+            "(version_num VARCHAR(255) NOT NULL PRIMARY KEY)"
+        )
+        connection.exec_driver_sql(
             "ALTER TABLE IF EXISTS alembic_version "
             "ALTER COLUMN version_num TYPE VARCHAR(255)"
         )
