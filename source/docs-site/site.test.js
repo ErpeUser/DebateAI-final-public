@@ -169,8 +169,11 @@ test('customer download entry points use the authenticated DebateAI portal', () 
 
 test('release archive metadata is unique and historical status is explicit', () => {
   const index = read('../site/releases/index.html');
-  const positions = [...index.matchAll(/"position":\s*(\d+)/g)].map((match) => match[1]);
+  const itemList = index.slice(index.indexOf('"@type": "ItemList"'));
+  const positions = [...itemList.matchAll(/"position":\s*(\d+)/g)].map((match) => match[1]);
   assert.equal(new Set(positions).size, positions.length);
+  assert.equal(positions.length, 29);
+  assert.match(itemList, /"numberOfItems": 29/);
   assert.match(index, /Historical snapshot: v0\.6\.6/);
   assert.match(read('../site/releases/v0.6.6/index.html'), /historical release record/i);
 });
