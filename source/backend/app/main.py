@@ -441,8 +441,23 @@ async def _run_schema_migrations() -> None:
         await asyncio.to_thread(command.stamp, config, "028_debate_claim_records")
         await asyncio.to_thread(command.upgrade, config, "head")
     else:
-        # A fresh create_all database includes every model constraint.
-        await asyncio.to_thread(command.stamp, config, "head")
+        # A fresh create_all database includes every model constraint. Mark
+        # the current Alembic head directly so long revision ids do not pass
+        # through Alembic's legacy VARCHAR(32) bootstrap table.
+        from alembic.script import ScriptDirectory
+        from sqlalchemy import text
+
+        head = ScriptDirectory.from_config(config).get_current_head()
+        async with engine.begin() as conn:
+            await conn.exec_driver_sql(
+                "CREATE TABLE IF NOT EXISTS alembic_version "
+                "(version_num VARCHAR(255) NOT NULL PRIMARY KEY)"
+            )
+            await conn.execute(text("DELETE FROM alembic_version"))
+            await conn.execute(
+                text("INSERT INTO alembic_version (version_num) VALUES (:head)"),
+                {"head": head},
+            )
 
 
 @asynccontextmanager
