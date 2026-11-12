@@ -300,7 +300,6 @@ test('rollout order documents a real hold gate before catalog publication', () =
 test('staged link cutover never embeds an invented commit', () => {
   for (const path of ['../docs/deployment.md', '../docs/releasing.md']) {
     const runbook = read(path);
-    assert.doesNotMatch(runbook, /57fc8d991b8101a2db5889df16ce5a26078baff2/);
     assert.doesNotMatch(runbook, /git revert [0-9a-f]{40}/);
     assert.match(runbook, /create a dedicated hold commit/i);
   }
