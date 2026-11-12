@@ -829,9 +829,10 @@ class ObjectionHandlerAgent:
                 ),
                 "items": 0,
             }
-        # Mark the window only after model output and local parsing completed.
-        # Provider, validation, or persistence errors must remain retryable.
-        self._last_window = transcript_window
+        # Mark only a fully successful cycle. Provider/validation failures,
+        # including a failed corrective request, must remain retryable.
+        if guidance_error is None:
+            self._last_window = transcript_window
         return items
 
     async def refine_with_sources(
