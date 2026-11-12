@@ -196,7 +196,8 @@ function Invoke-DebateDesktopBuild {
             $oracleRoot = Join-Path $repoRoot "desktop\chatgpt_oracle"
             $oracleNodeRoot = Join-Path $oracleRoot "node"
             New-Item -ItemType Directory -Path $oracleNodeRoot -Force | Out-Null
-            $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
+            $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue |
+                Select-Object -First 1
             if ($null -eq $nodeCommand) {
                 throw "Node.js 24 is required to bundle the ChatGPT web runtime."
             }
