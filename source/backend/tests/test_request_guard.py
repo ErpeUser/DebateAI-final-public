@@ -18,6 +18,14 @@ def _build_app() -> FastAPI:
     async def ping():
         return {"ok": True}
 
+    @app.get("/")
+    async def frontend():
+        return {"frontend": True}
+
+    @app.get("/assets/app.js")
+    async def asset():
+        return {"asset": True}
+
     @app.post("/api/mutate")
     async def mutate():
         return {"changed": True}
@@ -131,6 +139,26 @@ class MiddlewareTests(unittest.TestCase):
             with self.subTest(host=host):
                 response = self.client.get("/api/ping", headers={"Host": host})
                 self.assertEqual(200, response.status_code)
+
+    def test_local_desktop_frontend_bootstrap_is_served_and_tokenized(self):
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
+        response = self.client.get("/?desktop=1", headers={"Host": "localhost:8474"})
+        self.assertEqual(200, response.status_code)
+        self.assertEqual("test-token", response.headers.get("X-DebateAI-Instance"))
+        asset = self.client.get("/assets/app.js", headers={"Host": "localhost:8474"})
+        self.assertEqual(200, asset.status_code)
+        self.assertEqual("test-token", asset.headers.get("X-DebateAI-Instance"))
+
+    def test_foreign_frontend_host_and_api_remain_protected(self):
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
+        self.assertEqual(
+            400,
+            self.client.get("/?desktop=1", headers={"Host": "attacker.example"}).status_code,
+        )
+        self.assertEqual(
+            403,
+            self.client.get("/api/ping", headers={"Host": "localhost:8474"}).status_code,
+        )
 
     def test_rebound_host_is_rejected_before_routing(self):
         response = self.client.get("/api/ping", headers={"Host": "attacker.example:8474"})

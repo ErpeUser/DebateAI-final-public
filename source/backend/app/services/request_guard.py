@@ -70,6 +70,13 @@ def _hostname_of(host_header: str) -> str:
         return ""
 
 
+def _desktop_frontend_path(path: str, method: str, host: str) -> bool:
+    """Allow the local WebView to load its non-sensitive frontend assets."""
+    if method not in {"GET", "HEAD"} or _hostname_of(host) not in LOOPBACK_NAMES:
+        return False
+    return path == "/" or path.startswith("/assets/") or path == "/favicon.ico"
+
+
 def _is_ip_literal(hostname: str) -> bool:
     try:
         ipaddress.ip_address(hostname)
@@ -191,7 +198,9 @@ class RequestGuardMiddleware:
         method = scope.get("method", "GET").upper()
         path = scope.get("path", "")
         health_path = path in {"/health", "/api/health", "/api/ready"}
-        bootstrap_path = path == "/api/meta" and _hostname_of(host) in LOOPBACK_NAMES
+        bootstrap_path = (
+            path == "/api/meta" and _hostname_of(host) in LOOPBACK_NAMES
+        ) or _desktop_frontend_path(path, method, host)
         origin_checked = scope["type"] == "websocket" or method not in _SAFE_METHODS
         if origin_checked:
             origin = headers.get("origin")
@@ -243,7 +252,6 @@ class RequestGuardMiddleware:
             async def send_bootstrap(message):
                 if message["type"] == "http.response.start" and expected:
                     headers_out = list(message.get("headers") or [])
-                    headers_out.append((b"x-debateai-instance", expected.encode("utf-8")))
                     headers_out.append((b"x-debateai-instance", expected.encode("utf-8")))
                     message = {**message, "headers": headers_out}
                 await send(message)
