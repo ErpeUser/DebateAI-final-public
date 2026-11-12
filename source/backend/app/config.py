@@ -86,7 +86,7 @@ class Settings(BaseSettings):
     # one setting. Without it, moving the analysis agents to OpenAI would
     # silently revert the budget to the provider default. Empty disables it.
     LLM_JSON_REASONING_EFFORT: str = "low"
-    DATABASE_URL: str = "postgresql+asyncpg://debateai:changeme@db:5432/debateai"
+    DATABASE_URL: str = "postgresql+asyncpg://debateai:replace-with-a-long-random-password@db:5432/debateai"
     FRONTEND_DIST: str = ""  # path to built frontend; empty = nginx serves it (Docker)
     GEMINI_MODEL: str = "gemini-3.1-flash-live-preview"
     BATCH_TRANSCRIBER_MODEL: str = "local-whisper-base"
