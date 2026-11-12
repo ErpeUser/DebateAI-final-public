@@ -25,8 +25,8 @@ The app runs from your system tray / menu bar and stores data per-user --
 
 From v0.4.0 the desktop app updates itself in place. "Check for updates" in
 the tray menu (or Admin -> About) checks for a newer version; when one is
-available, download it from the update card, completing the authorization
-step in the secure downloads window if prompted. Every update is verified
+available, download it from the update card. The app verifies the signed descriptor and
+asset before installation. Every update is verified
 against the Ed25519 signing keys shipped with the app before it is applied,
 and installation is blocked until any active call, recording, or
 post-processing has finished. The app then restarts into the new version,

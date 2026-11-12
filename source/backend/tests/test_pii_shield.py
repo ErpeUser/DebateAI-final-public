@@ -2,6 +2,9 @@
 the two egress wrappers (REST middleware, WebSocket proxy)."""
 
 import asyncio
+import base64
+import hashlib
+import hmac
 import json
 import os
 import tempfile
@@ -142,6 +145,65 @@ class VaultTests(unittest.IsolatedAsyncioTestCase):
         db = _fake_db([row])
         self.assertEqual(await vault.token_for(db, sid, PERSON, "Sarah Connor"), "[PERSON_4]")
         self.assertEqual(await vault.token_for(db, sid, PERSON, "New Person"), "[PERSON_5]")
+
+    async def test_legacy_rows_are_rewritten_to_canonical_keys_once(self):
+        sid = uuid.uuid4()
+        value = "Sarah Connor"
+        legacy_fernet = Fernet(
+            base64.urlsafe_b64encode(vault.derive_subkey(b"backchannel.pii.vault.v1"))
+        )
+        legacy_lookup = vault.derive_subkey(b"backchannel.pii.lookup.v1")
+        legacy_digest = hmac.new(
+            legacy_lookup,
+            f"{PERSON}\x00{normalize_value(value, PERSON)}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        row = SimpleNamespace(
+            id=uuid.uuid4(),
+            session_id=sid,
+            category=PERSON,
+            ordinal=1,
+            token="[PERSON_1]",
+            value_hmac=legacy_digest,
+            value_encrypted=legacy_fernet.encrypt(value.encode()).decode("ascii"),
+        )
+        db = _fake_db([row])
+
+        self.assertEqual(await vault.migrate_legacy_entries(db), 1)
+        self.assertEqual(row.value_hmac, vault.value_hmac(PERSON, value))
+        self.assertEqual(vault.decrypt(row.value_encrypted), value)
+        db.flush.assert_awaited_once()
+
+        db.flush.reset_mock()
+        self.assertEqual(await vault.migrate_legacy_entries(db), 0)
+        db.flush.assert_not_awaited()
+
+    async def test_legacy_migration_rejects_canonical_digest_collisions(self):
+        sid = uuid.uuid4()
+        value = "Sarah Connor"
+        legacy_fernet = Fernet(
+            base64.urlsafe_b64encode(vault.derive_subkey(b"backchannel.pii.vault.v1"))
+        )
+        cipher = legacy_fernet.encrypt(value.encode()).decode("ascii")
+        legacy_lookup = vault.derive_subkey(b"backchannel.pii.lookup.v1")
+        legacy_digest = hmac.new(
+            legacy_lookup,
+            f"{PERSON}\x00{normalize_value(value, PERSON)}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        rows = [
+            SimpleNamespace(
+                id=uuid.uuid4(), session_id=sid, category=PERSON, ordinal=index,
+                token=f"[PERSON_{index}]", value_hmac=legacy_digest,
+                value_encrypted=cipher,
+            )
+            for index in (1, 2)
+        ]
+        db = _fake_db(rows)
+
+        with self.assertRaisesRegex(RuntimeError, "duplicate values"):
+            await vault.migrate_legacy_entries(db)
+        db.flush.assert_not_awaited()
 
     def test_token_pattern_accepts_bracketed_and_bare_forms_only(self):
         self.assertTrue(vault.has_tokens("[PERSON_1] met PHONE_2"))

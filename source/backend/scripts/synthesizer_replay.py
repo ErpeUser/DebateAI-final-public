@@ -16,7 +16,7 @@ Modes:
   scale    how both of the above vary with call length
 
 Usage, from backend/ :
-    export BACKCHANNEL_REPLAY_DATA=/path/to/captured/session
+    export DEBATEAI_REPLAY_DATA=/path/to/captured/session
     python scripts/synthesizer_replay.py payload
     python scripts/synthesizer_replay.py prefix
     python scripts/synthesizer_replay.py scale --baseline origin/master
@@ -69,16 +69,16 @@ def repo_root() -> str:
 
 
 def data_dir() -> str:
-    path = os.environ.get("BACKCHANNEL_REPLAY_DATA")
+    path = os.environ.get("DEBATEAI_REPLAY_DATA")
     if not path:
         sys.exit(
-            "Set BACKCHANNEL_REPLAY_DATA to a directory holding q.json, t.json and\n"
+            "Set DEBATEAI_REPLAY_DATA to a directory holding q.json, t.json and\n"
             "speakers.json. See scripts/README-synthesizer-replay.md for how to\n"
             "capture them. The corpus is real meeting content and is deliberately\n"
             "not committed to this public repository."
         )
     if not os.path.isdir(path):
-        sys.exit(f"BACKCHANNEL_REPLAY_DATA is not a directory: {path}")
+        sys.exit(f"DEBATEAI_REPLAY_DATA is not a directory: {path}")
     return path
 
 

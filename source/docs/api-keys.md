@@ -1,8 +1,8 @@
 # Getting API Keys
 
-Backchannel's transcription and analysis agents run on cloud models from
+DebateAI's transcription and analysis agents run on cloud models from
 Google (Gemini) and OpenAI. This page walks through creating a key for each
-provider with as few clicks as possible, then connecting it to Backchannel.
+provider with as few clicks as possible, then connecting it to DebateAI.
 
 You only need one key to start:
 
@@ -15,7 +15,7 @@ Prefer not to use a cloud provider at all? You do not have to. Under
 Admin -> Connections -> **Self-Hosted Models**, add any OpenAI-compatible server
 you run -- LM Studio, Ollama, vLLM, or LiteLLM, on your workstation, home lab,
 or a GPU box on the corporate network. Click **Connect & list models** and
-Backchannel reads the model list straight off the server; each model you keep
+DebateAI reads the model list straight off the server; each model you keep
 then appears by name in every model picker. Paired with a local ONNX
 transcription model, that combination runs end to end on your own hardware and
 needs no key from anyone. See
@@ -43,7 +43,7 @@ default to a cloud streaming gateway, but the experimental on-device
 4. Copy the key (it starts with `AIza`).
 
 That is the whole process. The free tier needs no credit card and is enough
-to evaluate Backchannel. You can return to the same page any time to re-copy
+to evaluate DebateAI. You can return to the same page any time to re-copy
 or revoke the key.
 
 One caveat: managed Google Workspace accounts sometimes have AI Studio
@@ -55,14 +55,14 @@ missing, use a personal Google account or ask your admin to enable it.
 1. Open <https://platform.openai.com/api-keys> and sign in, or create an
    account -- this is the OpenAI developer platform, which is separate from
    ChatGPT.
-2. Click **Create new secret key**, give it a name such as `backchannel`,
+2. Click **Create new secret key**, give it a name such as `debateai`,
    and copy it immediately -- OpenAI shows the full key only once. It starts
    with `sk-`.
 3. API usage is prepaid and separate from any ChatGPT subscription. If
    requests fail with a quota error, add credit (minimum $5) under
    <https://platform.openai.com/settings/organization/billing>.
 
-## Connect the key to Backchannel
+## Connect the key to DebateAI
 
 Keys are managed in Admin -> Connections. Each provider shows whether a key is
 stored, whether an environment fallback is in play, and a test button that
@@ -73,7 +73,7 @@ verifies the key against the provider before you rely on it.
   <img src="/assets/shots/admin-api-keys.webp" width="1185" height="900" alt="Admin Connections tab: per-provider credential entry with stored-key status and a connection test." />
 </picture>
 
-1. In Backchannel, open **Admin -> Connections**. The first-run checklist's
+1. In DebateAI, open **Admin -> Connections**. The first-run checklist's
    **Add API key** button lands in the same place, and each provider row has
    a **Get a key** link back to the pages above.
 2. Paste the key into the provider's **Paste API key...** field and click
@@ -103,7 +103,7 @@ screenshots that include it. If a key leaks, revoke it on the provider page
 (both consoles support deleting a key) and save a replacement in
 Admin -> Connections.
 
-On its side, Backchannel stores keys encrypted, shows only the last four
+On its side, DebateAI stores keys encrypted, shows only the last four
 characters after saving, never returns a key from its API, sends keys to
 providers in request headers rather than URLs, scrubs key values out of its
 logs and error messages, and refuses requests from web pages on other
@@ -123,6 +123,6 @@ folder cannot be read by another user or machine. Details in
 - **OpenAI: 429 or "insufficient_quota"** -- the account has no API credit.
   Add prepaid credit under Billing and retry; a ChatGPT subscription does
   not include API credit.
-- **Provider models greyed out in Backchannel** -- an unverified failing key
+- **Provider models greyed out in DebateAI** -- an unverified failing key
   disables that provider's models. Fix or replace the key and click **Test**
   until the badge shows **Connected**.

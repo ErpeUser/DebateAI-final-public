@@ -12,7 +12,7 @@ entries are saved.
 Every agent below is configurable from Admin -> Agents: its model, its system
 prompt, its trigger, and whether it runs at all.
 
-On a fresh install every agent model starts as **Not selected**. Backchannel
+On a fresh install every agent model starts as **Not selected**. DebateAI
 does not silently assign a cloud provider or rewrite selections when a key or
 self-hosted endpoint is added. The initial batch transcription model is the
 built-in `local-whisper-base`, which needs no API key. Choose explicit models

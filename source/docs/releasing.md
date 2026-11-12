@@ -49,34 +49,22 @@ an explicit policy-to-legacy synchronization.
 
 Follow [Deployment](deployment.md) as the ordered gate for this rollout, using
 its [admin migration cutover](deployment.md#admin-identity-and-authorization-migration-cutover).
-Merge
-the control-plane branch to `master` with a merge commit that preserves hold
-commit `57fc8d991b8101a2db5889df16ce5a26078baff2`. Do not squash or rebase this
-rollout. Wait for the Site workflow to finish successfully, then verify the
-deployed branch before any live R2 catalog write:
+
+No executable hold commit is currently recorded in this repository. The previous
+placeholder SHA was removed because it does not exist in Git history. Before any
+live R2 catalog write or customer-link cutover, create a dedicated hold commit
+on `master`, record its real SHA in both runbooks, and verify:
 
 ```powershell
-git fetch origin master
-git merge-base --is-ancestor 57fc8d991b8101a2db5889df16ce5a26078baff2 origin/master
-if ($LASTEXITCODE -ne 0) { throw 'The download-link hold is not an ancestor of origin/master.' }
+git cat-file -e <hold-sha>^{commit}
+git merge-base --is-ancestor <hold-sha> origin/master
+if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/master.' }
 ```
 
-Stop unless the command exits 0. Then migrate `v0.1.0` once as the catalog
-seed, verify it, and continue with the remaining historical versions; do not
-migrate the seed a second time. Complete PBKDF2 and account/download acceptance
-in the order specified by Deployment.
-
-Only after live Task 7 acceptance, create the sole link-cutover revision:
-
-```powershell
-git revert 57fc8d991b8101a2db5889df16ce5a26078baff2
-git push origin master
-```
-
-That revert restores the exact portal links and site-test expectations. Do not
-hand-edit those links, squash unrelated changes into the revert, or use any
-other revision for link cutover. Wait for the resulting `master` auto-deploy to
-finish before announcing portal availability.
+Stop until the Site workflow is green and the real hold is an ancestor. Do not
+invent a SHA or replace the hold with an unrelated commit. Migrate `v0.1.0`
+once as the catalog seed only after this gate passes, then continue with the
+remaining historical versions in order.
 
 ## R2 publication contract
 
@@ -245,8 +233,13 @@ established trust root and do not repeat it:
 3. Replace `desktop/release_signing_keys.json` with
    `ed25519-2026-07b` as its only key and active entry, using the exact public
    key emitted by the ceremony. Do not use a placeholder.
-4. Add the real Access audience, Secrets Store binding, and custom domain to
-   the signing Worker's stage-three configuration, then deploy and verify it.
+4. The checked-in `release-signing-worker/wrangler.jsonc` intentionally
+   contains no deployment values. Supply an operator-owned overlay with
+   `SIGNING_KEY_ID`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`,
+   `ACCESS_COMMON_NAME`, and the `RELEASE_SIGNING_PRIVATE_KEY` Secrets
+   Store binding (`store_id` plus `secret_name`). Deploy and verify the
+   overlay. Never commit a production Access domain, audience, common name,
+   Secrets Store ID, secret name, or private key to this repository.
 5. Rerun the signing and release gates, commit the exact public-only trust-file
    change, complete stage-three review, and only then create the `v0.4.0` tag.
 
@@ -286,18 +279,16 @@ is the only release object transport. `AWS4-HMAC-SHA256` and `x-amz-*` are the
 protocol field names Cloudflare requires for its S3-compatible API; they are
 not AWS credentials or services.
 
-## Update authorization and desktop trust
+## Public update assets and desktop trust
 
-Deploy `docs-site/migrations/0004_release_update_grants.sql` before enabling
-desktop update authorization. The update-authorization flow on the download
-portal requires a signed-in recipient account (release listing and downloads
-themselves are public) and calls
-`POST /api/download/update-grants`; the Worker stores only the grant hash with
-its exact account, version, asset, and 15-minute expiry. The desktop then
-streams `GET /api/update/assets/{version}/{asset_id}` with the raw grant once.
-Every request rechecks expiry, account state, revocation, and Latest or
-explicit-version entitlement. Raw grants must not enter D1, browser storage,
-URLs, logs, or desktop state.
+The desktop update endpoint serves signed descriptors and assets anonymously.
+No recipient account, grant, or D1 entitlement is required for
+`GET /api/update/assets/{version}/{asset_id}`; any legacy Bearer header is
+ignored. The desktop downloads into its application-data update directory,
+verifies the Ed25519 signature against the bundled key set, checks the
+descriptor and archive digest, and only then stages the bundle for an atomic
+swap. Keep the endpoint on the deployment-specific HTTPS host and publish
+only immutable, independently verified release objects.
 
 Frozen desktop TLS uses the direct `certifi` CA bundle. Downloads stay under
 the application-data update directory, while staging is an exact sibling of

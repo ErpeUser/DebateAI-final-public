@@ -60,7 +60,7 @@ Assert-True (Test-ExactSet $legacyAssets $legacyAssets) "Exact legacy assets did
 Assert-True (-not (Test-ExactSet $normalAssets $legacyAssets)) "Missing asset was accepted"
 Assert-True (-not (Test-ExactSet $normalAssets $wrongAssets)) "Unexpected asset was accepted"
 
-$temporary = Join-Path ([IO.Path]::GetTempPath()) "backchannel-r2-test-$([guid]::NewGuid())"
+$temporary = Join-Path ([IO.Path]::GetTempPath()) "debateai-r2-test-$([guid]::NewGuid())"
 New-Item -ItemType Directory -Path $temporary | Out-Null
 $oldPath = $env:PATH
 $oldFakeResult = $env:R2_FAKE_RESULT

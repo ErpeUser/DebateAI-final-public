@@ -1053,7 +1053,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--app-model-id",
         help=(
-            "Configured Backchannel endpoint model id; defaults to the id "
+            "Configured DebateAI endpoint model id; defaults to the id "
             "created by setup_debate_assistant.ps1"
         ),
     )

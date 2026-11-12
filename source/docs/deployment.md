@@ -1,4 +1,6 @@
-The deployment and release domains below are placeholders. Set them from the actual deployment configuration; this repository does not embed a product DNS dependency.\n\n# Deployment
+The deployment and release domains below are placeholders. Set them from the actual deployment configuration; this repository does not embed a product DNS dependency.
+
+# Deployment
 
 The DebateAI app deploys as a self-hosted Docker Compose stack:
 nginx-served frontend, FastAPI backend, and PostgreSQL. Anything that runs
@@ -10,7 +12,7 @@ desktop releases.
 
 | Service | Image/build | Ports | Notes |
 | --- | --- | --- | --- |
-| `db` | `postgres:16-alpine` | `127.0.0.1:5432:5432` | Credentials from `POSTGRES_*` (defaults `callhelper`/`changeme`/`callhelper`); healthcheck gates backend start; published on loopback only because the default password is public |
+| `db` | `postgres:16-alpine` | `127.0.0.1:5432:5432` | Credentials from `POSTGRES_*` (`debateai` / required / `debateai`); `POSTGRES_PASSWORD` must be set before `docker compose up`; healthcheck gates backend start; published on loopback only |
 | `backend` | `./backend` Dockerfile | `127.0.0.1:8001:8000` | Reads `.env`; `DATABASE_URL` is composed from the `POSTGRES_*` values; runs `python scripts/start_backend.py`; published on loopback only because the API has no login |
 | `frontend` | `./frontend` Dockerfile (Vite build + nginx) | `3000:80` | Proxies `/api` and `/ws` to the backend |
 
@@ -180,9 +182,10 @@ matching the launcher's `DEBATEAI_INSTANCE_TOKEN`
 
 The site Worker owns three separate boundaries: public interest capture,
 Cloudflare Access-protected administration, and public desktop delivery.
-Release listing and asset downloads are anonymous; recipient accounts remain
-only to authorize the deployed desktop updater's grant flow. Run this
-production gate in order and stop on any failed check.
+Release listing and asset downloads are anonymous. Recipient accounts cover
+the protected portal and operator workflows only; `/api/update/assets/*` is
+public and the desktop verifies the signed descriptor and asset locally. Run
+this production gate in order and stop on any failed check.
 
 ### Admin identity and authorization migration cutover
 
@@ -294,6 +297,7 @@ bind the D1 database as `INTEREST_DB`, and define the four host variables that
 `worker.js` requires:
 
 - `DEBATEAI_PUBLIC_HOST=<documentation-domain>`
+- `DEBATEAI_SITE_URL=https://<documentation-domain>` (absolute canonical/JSON-LD base URL for the docs build)
 - `DEBATEAI_WWW_HOST=<www-documentation-domain>`
 - `DEBATEAI_ADMIN_HOST=<operator-console-domain>`
 - `DEBATEAI_DOWNLOAD_HOST=<download-domain>`
@@ -365,20 +369,22 @@ recover with a forward fix or an explicit policy-to-legacy synchronization
 before restoring the previous Worker. Keep the previous Worker available only
 for rollback before the first new policy mutation.
 
-Merge this rollout to `master` with a merge commit that preserves hold commit
-`57fc8d991b8101a2db5889df16ce5a26078baff2`. Do not squash or rebase this
-rollout. Push `master`, wait for the Site workflow to finish successfully, then
-fetch the deployed branch and prove the hold is present:
+## Staged customer-link cutover
+
+No executable hold commit is currently recorded in this repository. The previous
+placeholder SHA was removed because it does not exist in Git history. Before any
+live R2 catalog write or customer-link cutover, create a dedicated hold commit
+on `master`, record its real SHA in both runbooks, and verify:
 
 ```powershell
-git fetch origin master
-git merge-base --is-ancestor 57fc8d991b8101a2db5889df16ce5a26078baff2 origin/master
-if ($LASTEXITCODE -ne 0) { throw 'The download-link hold is not an ancestor of origin/master.' }
+git cat-file -e <hold-sha>^{commit}
+git merge-base --is-ancestor <hold-sha> origin/master
+if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/master.' }
 ```
 
-Stop unless the Site workflow is green and `git merge-base --is-ancestor`
-exits 0. Do not create or migrate any live R2 catalog object, benchmark PBKDF2,
-or approve a recipient before both checks pass.
+Stop until the Site workflow is green and the real hold is an ancestor. Do not
+invent a SHA or replace the hold with an unrelated commit. Do not create or
+migrate any live R2 catalog object before this gate passes.
 
 ### 7. Configure an independent R2 writer
 
@@ -414,26 +420,20 @@ unknown-account dummy derivation. If the ceiling is insufficient, upgrade the
 Worker plan before enabling recipient accounts. Never lower the 600,000
 iterations.
 
-### 10. Accept accounts and downloads, then cut over customer links
+### 10. Accept the public catalog and customer links
 
-Test approved, expired, revoked, Latest-only, and explicitly granted operator
-accounts against the completed catalog. Confirm portal downloads match manifest
-size and SHA-256 without GitHub cookies. After live Task 7 acceptance, make the
-only link-cutover revision by reverting the exact hold commit:
+Verify release listing and asset downloads anonymously against the immutable
+manifest size and SHA-256, without GitHub cookies. Separately verify that
+Cloudflare Access protects the admin portal and admin APIs. The desktop update
+route remains public; it accepts no authorization grant and relies on the
+signed descriptor and client-side signature verification.
 
-```powershell
-git revert 57fc8d991b8101a2db5889df16ce5a26078baff2
-git push origin master
-```
-
-Do not hand-edit customer links or combine unrelated changes with the resulting
-revert commit. The push automatically builds and deploys the restored portal
-links and their exact site-test expectations; wait for the Site workflow before
-declaring cutover complete.
-
-Keep old private GitHub executable files for one full release cycle. Remove
-those executable files only after R2 and portal acceptance for the following
-release; keep all GitHub source tags and release notes.
+Before changing customer links, create and record the real hold commit described
+in the staged cutover gate above. After the Site workflow is green and the hold
+is proven as an ancestor, make one focused link-cutover revision and wait for
+the resulting deployment before declaring cutover complete. Do not use an
+invented SHA, hand-edit unrelated links, or combine unrelated changes with the
+cutover.
 
 ## Interest-list operations
 

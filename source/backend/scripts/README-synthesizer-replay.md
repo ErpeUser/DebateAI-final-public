@@ -23,7 +23,7 @@ verbatim transcript text and `q.json` holds insight rationale and
 Point the harness at a directory outside the repository:
 
 ```
-export BACKCHANNEL_REPLAY_DATA=/path/to/captured/session
+export DEBATEAI_REPLAY_DATA=/path/to/captured/session
 ```
 
 ## Capturing a corpus

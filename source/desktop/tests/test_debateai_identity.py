@@ -100,6 +100,29 @@ class IdentityTests(unittest.TestCase):
             with self.assertRaises(NotADirectoryError):
                 module.resolve_data_root(base=Path(tmp), environment={})
 
+    def test_interrupted_migration_leaves_no_partial_destination(self):
+        module = self.load()
+        with tempfile.TemporaryDirectory() as tmp:
+            base = Path(tmp)
+            legacy = base / "Backchannel"
+            legacy.mkdir()
+            (legacy / "state").write_text("saved")
+
+            def interrupted(_source, staging, **_kwargs):
+                (Path(staging) / "partial").write_text("incomplete")
+                raise OSError("disk full")
+
+            with patch.object(module.shutil, "copytree", side_effect=interrupted):
+                self.assertEqual(
+                    module.resolve_data_root(base=base, environment={}),
+                    legacy,
+                )
+            self.assertFalse((base / "DebateAI").exists())
+            self.assertEqual(
+                list(base.glob(".DebateAI.migration-*")),
+                [],
+            )
+
     def test_read_only_destination_falls_back_to_legacy_source(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:

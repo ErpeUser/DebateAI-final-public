@@ -12,6 +12,7 @@
     "test:migration": "node --test migration.test.js",
     "test:worker": "node --test worker.test.js",
     "test:site": "node --test site.test.js",
+    "test": "npm run test:admin && npm run test:download && npm run test:release-access && npm run test:migration && npm run test:worker && npm run test:site",
     "preview": "astro preview",
     "preview:admin": "node admin-preview.mjs",
     "deploy": "npm run build && wrangler deploy"

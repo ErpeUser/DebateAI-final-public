@@ -1,9 +1,0 @@
-// Cloudflare Workers config for deploying the static landing site.
-// Deploy with: npx wrangler deploy   (requires wrangler login or CLOUDFLARE_API_TOKEN)
-{
-  "name": "debateai-site",
-  "compatibility_date": "2026-07-04",
-  "assets": {
-    "directory": "./site"
-  }
-}

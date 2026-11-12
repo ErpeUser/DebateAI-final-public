@@ -44,12 +44,13 @@ if (-not $Run) {
     exit 0
 }
 
+$pgUser = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "debateai" }
+$pgPass = if ($env:POSTGRES_PASSWORD) { $env:POSTGRES_PASSWORD } else {
+    throw "POSTGRES_PASSWORD must be set before starting the database."
+}
+$pgDb = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "debateai" }
 docker compose -f (Join-Path $repoRoot "docker-compose.yml") up -d db
-
-$pgUser = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "callhelper" }
-$pgPass = if ($env:POSTGRES_PASSWORD) { $env:POSTGRES_PASSWORD } else { "changeme" }
-$pgDb = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "callhelper" }
-$env:DATABASE_URL = "postgresql+asyncpg://${pgUser}:${pgPass}@localhost:5432/${pgDb}"
+$env:DATABASE_URL = "postgresql+asyncpg://" + $pgUser + ":" + $pgPass + "@localhost:5432/" + $pgDb
 
 Write-Host "Backend starting on http://localhost:8000 - start the frontend with: cd frontend; npm run dev"
 Set-Location $backendDir

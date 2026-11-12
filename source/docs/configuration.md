@@ -20,15 +20,33 @@ Configuration comes from three layers, lowest precedence first:
 | `LLM_TIMEOUT_SECONDS` | 120 | Ceiling for a hosted chat-completions reply |
 | `LLM_SELF_HOSTED_TIMEOUT_SECONDS` | 900 | Ceiling for a self-hosted reply, which can take minutes on CPU |
 | `LLM_SELF_HOSTED_MAX_TOKENS` | 8192 | Completion budget sent to self-hosted servers, so long replies are not truncated at the server's own default |
-| `DATABASE_URL` | `postgresql+asyncpg://callhelper:changeme@db:5432/callhelper` | Async SQLAlchemy connection string; set by Docker Compose for the backend container |
+| `DATABASE_URL` | `postgresql+asyncpg://debateai:<POSTGRES_PASSWORD>@db:5432/debateai` | Async SQLAlchemy connection string; set by Docker Compose for the backend container |
 | `FRONTEND_DIST` | empty | Path to a built frontend for the backend to serve directly (the desktop launcher sets it); empty means nginx serves the frontend (Docker) |
 | `DATA_DIR` | `/app/data` | Root for recorded audio, downloaded ASR models, and the credentials master key; a named Docker volume (`backend_data`) in Compose |
 | `DEBATEAI_FFMPEG` | empty | Explicit path to the ffmpeg executable used for compressed-audio decoding; the desktop launcher sets it to the bundled copy on Windows and Linux, and `PATH` lookup is the fallback |
-| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `callhelper` / `changeme` / `callhelper` | Consumed by the db container and interpolated into `DATABASE_URL` in Compose |
+| `POSTGRES_USER` / `POSTGRES_PASSWORD` / `POSTGRES_DB` | `debateai` / required / `debateai` | Consumed by the db container and interpolated into `DATABASE_URL` in Compose; `POSTGRES_PASSWORD` has no default and must be set |
 | `CREDENTIALS_MASTER_KEY` | auto-generated | Overrides the Fernet master key used for encrypted credentials |
 | `CREDENTIALS_MASTER_KEY_PROTECTION` | empty (`dpapi` on the Windows desktop build) | `dpapi` wraps `DATA_DIR/master.key` with Windows DPAPI so only the same Windows user on the same machine can read it; a plaintext file is upgraded in place on first read |
 | `DEBATEAI_ALLOWED_HOSTS` | empty | Extra hostnames the API accepts in the `Host` header, comma-separated. Loopback names, any IP address, and the Compose service name are always accepted; a request for any other name is refused (DNS-rebinding defense). `*` disables the check |
 | `DEBATEAI_ALLOWED_ORIGINS` | empty | Extra browser origins (`https://tools.example`) allowed to call the API cross-origin, also granted by CORS. Local origins are always allowed; a state-changing request from any other origin is refused. `*` disables the origin check |
+
+### Desktop update channel
+
+The desktop updater remains disabled until an operator configures an independent
+HTTPS channel. Set all three variables together in the desktop process
+environment:
+
+- `DEBATEAI_UPDATE_DESCRIPTOR_URL`: descriptor template containing
+  `{platform_id}`
+- `DEBATEAI_UPDATE_ASSET_URL`: asset template containing `{version}` and
+  `{platform_id}`
+- `DEBATEAI_UPDATE_KEYS`: local path to the public Ed25519 trust-key JSON
+
+The descriptor and asset templates must resolve to the same HTTPS origin, with
+no credentials, query string, or fragment. The app verifies the signed
+descriptor and downloaded archive before applying an update. Do not point these
+variables at a vendor endpoint or commit deployment-specific URLs or trust
+material to the repository.
 
 `DATA_DIR`, `DEBATEAI_FFMPEG`, `CREDENTIALS_MASTER_KEY`,
 `CREDENTIALS_MASTER_KEY_PROTECTION`, `DEBATEAI_ALLOWED_HOSTS`, and
@@ -40,7 +58,7 @@ them exported.
 
 Copy `.env.example` to `.env` as a starting point; it contains only
 commented-out entries for `GEMINI_API_KEY`, the Sortformer
-`PYTORCH_INDEX_URL`, and the database settings. Other variables, including
+`PYTORCH_INDEX_URL`, and the database settings; set `POSTGRES_PASSWORD` before starting Compose. Other variables, including
 `OPENAI_API_KEY`, must be added by hand.
 
 ## API credentials

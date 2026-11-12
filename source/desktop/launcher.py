@@ -843,7 +843,7 @@ def _run_tray(
         f"{PRODUCT_DISPLAY_NAME} - {BROWSER_HOST}:{port}",
         menu=pystray.Menu(
             pystray.MenuItem(
-                "Debate AI �ffnen",
+                "Debate AI öffnen",
                 lambda _icon, _item: open_desktop_window(desktop_app_url(port)),
             ),
             pystray.MenuItem(
@@ -851,7 +851,7 @@ def _run_tray(
                 lambda _icon, _item: open_debate_overlay(port),
             ),
             pystray.MenuItem(
-                "Datenordner �ffnen",
+                "Datenordner öffnen",
                 lambda _icon, _item: _open_data_folder(data_dir),
             ),
             pystray.MenuItem(
@@ -1130,8 +1130,8 @@ def _run_owned(headless: bool = False) -> int:
             log.error("no other instance became healthy within timeout")
             if not headless:
                 retry = _startup_failure(
-                    "Debate AI wird m�glicherweise bereits in einem anderen Fenster gestartet. "
-                    f"Falls es nicht erscheint, pr�fe das Protokoll: {data_dir / 'debateai.log'}",
+                    "Debate AI wird möglicherweise bereits in einem anderen Fenster gestartet. "
+                    f"Falls es nicht erscheint, prüfe das Protokoll: {data_dir / 'debateai.log'}",
                     headless,
                 )
             console_suppressor.stop()
@@ -1252,12 +1252,12 @@ def _run_owned(headless: bool = False) -> int:
         if headless:
             _wait_for_stop_file(data_dir)
         else:
-            lifecycle.set_progress(96, "Oberfl�che wird ge�ffnet ...")
+            lifecycle.set_progress(96, "Oberfläche wird geöffnet ...")
             lifecycle.set_progress(
                 100 if readiness["qwen"] else 94,
                 "Debate AI ist startklar"
                 if readiness["qwen"]
-                else "Start eingeschr�nkt: Qwen ist noch nicht vorgeladen",
+                else "Start eingeschränkt: Qwen ist noch nicht vorgeladen",
             )
             # Destroy the topmost startup surface before WebView2 creates its
             # native form. If the splash remains the active owner while the

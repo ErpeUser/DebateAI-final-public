@@ -10,6 +10,10 @@ RUNTIME_ROOTS = (
     ROOT / "desktop" / "updater.py",
     ROOT / "frontend" / "src",
     ROOT / "scripts",
+    ROOT / "backend" / "scripts",
+    ROOT / "site" / "admin",
+    ROOT / "site" / "downloads",
+    ROOT / "desktop" / "Dockerfile.release-linux",
 )
 TEXT_SUFFIXES = {
     ".cjs",
@@ -34,6 +38,7 @@ FORBIDDEN = (
     re.compile(r"backchannel\.spec"),
     re.compile(r"Backchannel\.exe"),
     re.compile(r"(?:downloads|signing)\.backchannel\.page"),
+    re.compile(r"backchannel-access"),
 )
 
 
