@@ -38,6 +38,17 @@ jobs:
         run: python -m unittest discover -s ../desktop/tests -p test_debateai_identity.py -v
       - name: Desktop release contract
         run: python -m unittest discover -s ../desktop/tests -p test_release_contract.py -v
+      - name: Portable desktop unit contracts
+        run: |
+          for test_file in \
+            test_paths.py \
+            test_version_resource.py \
+            test_windows_console.py \
+            test_smoke_test.py \
+            test_updater.py \
+            test_platform_release_manifest.py; do
+            python -m unittest discover -s ../desktop/tests -p "$test_file" -v
+          done
 
   frontend:
     runs-on: ubuntu-latest
