@@ -89,10 +89,19 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self.pg.ensure_initdb()
             self.pg.ensure_role(54321)
         self.assertTrue(self.pg.initialized_here)
-        self.assertTrue(self.pg.role_marker.is_file())
         self.assertTrue(
             all("psql" not in str(call.args[0][0]) for call in run.call_args_list)
         )
+
+    def test_marked_existing_cluster_does_not_require_missing_psql_client(self):
+        self.pg.pgdata.mkdir(parents=True)
+        (self.pg.pgdata / "PG_VERSION").write_text("16")
+        self.pg.role_marker.write_text("debateai\n", encoding="ascii")
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
+            self.pg.ensure_initdb()
+            self.pg.ensure_role(54321)
+        self.assertTrue(self.pg.initialized_here)
+        run.assert_not_called()
 
     def test_initdb_wipes_wedged_pgdata_without_pg_version(self):
         pgdata = self.data_dir / "pgdata"

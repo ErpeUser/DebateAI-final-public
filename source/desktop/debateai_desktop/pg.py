@@ -190,8 +190,8 @@ class EmbeddedPostgres:
             "--no-locale",
             "-E", "UTF8",
         ])
-        self.pgdata.mkdir(parents=True, exist_ok=True)
-        self.role_marker.write_text("debateai\n", encoding="ascii")
+        if self.pgdata.is_dir():
+            self.role_marker.write_text("debateai\n", encoding="ascii")
         self.initialized_here = True
 
     def ensure_role(self, port: int) -> None:
