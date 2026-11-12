@@ -83,6 +83,16 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self.pg.ensure_initdb()
         run.assert_not_called()
 
+    def test_fresh_cluster_does_not_require_missing_psql_client(self):
+        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
+            run.return_value = mock.Mock(returncode=0)
+            self.pg.ensure_initdb()
+            self.pg.ensure_role(54321)
+        self.assertTrue(self.pg.initialized_here)
+        self.assertTrue(
+            all("psql" not in str(call.args[0][0]) for call in run.call_args_list)
+        )
+
     def test_initdb_wipes_wedged_pgdata_without_pg_version(self):
         pgdata = self.data_dir / "pgdata"
         pgdata.mkdir(parents=True)

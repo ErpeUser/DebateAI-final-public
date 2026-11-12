@@ -54,6 +54,7 @@ class EmbeddedPostgres:
         # other postmaster on the shared pgdata (e.g. one started by a
         # newer instance while this one lingered in the tray).
         self.started_pid = None
+        self.initialized_here = False
 
     def _wait_for_postgres(self, port: int, process, timeout: float = 30.0) -> bool:
         """Wait for a directly started postmaster without spawning a shell."""
@@ -187,10 +188,15 @@ class EmbeddedPostgres:
             "--no-locale",
             "-E", "UTF8",
         ])
+        self.initialized_here = True
 
     def ensure_role(self, port: int) -> None:
         """Rename a pre-DebateAI cluster role once, preserving its password."""
         psql = self.bin / ("psql.exe" if sys.platform == "win32" else "psql")
+        if not psql.is_file():
+            if self.initialized_here:
+                return
+            raise FileNotFoundError(f"PostgreSQL client is missing: {psql}")
         env = os.environ.copy()
         env["PGPASSWORD"] = self.password()
         base = [str(psql), "-h", "127.0.0.1", "-p", str(port), "-d", "postgres"]
