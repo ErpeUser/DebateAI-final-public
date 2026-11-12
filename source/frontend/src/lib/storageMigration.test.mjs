@@ -9,6 +9,12 @@ const mainSource = fs.readFileSync(new URL("../main.tsx", here), "utf8");
 test("legacy storage migration remains the single pre-render startup boundary", () => {
   assert.match(migrationSource, /backchannel:audio-devices/);
   assert.match(migrationSource, /backchannel\.last_seen_version/);
+  assert.match(migrationSource, /bc-sidebar-collapsed/);
+  assert.match(migrationSource, /bc-sidebar-collapsed-groups/);
+  assert.match(migrationSource, /bc-theme/);
+  assert.match(migrationSource, /debateai:sidebar-collapsed/);
+  assert.match(migrationSource, /debateai:sidebar-collapsed-groups/);
+  assert.match(migrationSource, /debateai:theme/);
   assert.match(migrationSource, /storage\.removeItem\(legacy\)/);
   assert.match(mainSource, /migrateLegacyStorage\(window\.localStorage\)/);
   assert.ok(
