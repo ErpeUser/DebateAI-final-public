@@ -364,8 +364,7 @@ test('private admin assets contain no identity or Access configuration', () => {
   assert.doesNotMatch(assets, /ADMIN_EMAIL|ACCESS_AUD|ACCESS_TEAM_DOMAIN|cloudflareaccess\.com/i);
 });
 
-test('Wrangler routes the complete private hostname', () => {
-  assert.ok(config.routes.some((route) => (
-    route.pattern === 'admin.backchannel.page' && route.custom_domain === true
-  )));
+test('Wrangler leaves deployment routes to the operator overlay', () => {
+  assert.deepEqual(config.routes, []);
+  assert.doesNotMatch(JSON.stringify(config), /backchannel\.page/i);
 });

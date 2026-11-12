@@ -193,7 +193,7 @@ try {
         if ($databaseStarted -in @("embedded", "existing")) {
             $env:DATABASE_URL = "postgresql+asyncpg://debateai:$($embeddedDatabase.Password)@127.0.0.1:$databasePort/postgres"
         } else {
-            $env:DATABASE_URL = "postgresql+asyncpg://callhelper:changeme@127.0.0.1:5432/callhelper"
+            $env:DATABASE_URL = "postgresql+asyncpg://debateai:changeme@127.0.0.1:5432/debateai"
         }
     }
     $env:DEBATEAI_PROMPT_DIR = $promptRoot

@@ -77,7 +77,7 @@ if ([int]$Matches.major -lt 24) {
 }
 
 $helper = Join-Path $repoRoot "desktop/scripts/build_release_manifest.py"
-$temporary = Join-Path ([IO.Path]::GetTempPath()) "backchannel-r2-$([guid]::NewGuid())"
+$temporary = Join-Path ([IO.Path]::GetTempPath()) "debateai-r2-$([guid]::NewGuid())"
 $manifestPath = Join-Path $temporary "manifest.json"
 $latestPath = Join-Path $temporary "latest.json"
 $currentLatestPath = Join-Path $temporary "current-latest.json"

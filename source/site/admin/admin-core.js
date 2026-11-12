@@ -141,7 +141,7 @@ export function createDialogController({
     const safeEmail = credentialDialog.dataset.email
       .replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase();
     anchor.href = url;
-    anchor.download = 'backchannel-access-' + safeEmail + '.txt';
+    anchor.download = 'debateai-access-' + safeEmail + '.txt';
     document.body.append(anchor);
     anchor.click();
     anchor.remove();

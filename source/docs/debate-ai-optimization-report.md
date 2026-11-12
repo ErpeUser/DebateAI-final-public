@@ -4,7 +4,7 @@ Stand: 4. November 2026
 
 ## Ergebnis
 
-Die bestehende Backchannel-Anwendung bleibt erhalten, ist im sichtbaren Kern aber auf einen deutschen Live-Debattenassistenten optimiert. Der erste Sprechzug entsteht lokal und deterministisch; Qwen-Analyse und Recherche laufen nur danach. Die zwei vorhandenen Modi `debate_forceful` und `debate_persuasive` bleiben erhalten.
+Die bestehende DebateAI-Anwendung bleibt erhalten, ist im sichtbaren Kern aber auf einen deutschen Live-Debattenassistenten optimiert. Der erste Sprechzug entsteht lokal und deterministisch; Qwen-Analyse und Recherche laufen nur danach. Die zwei vorhandenen Modi `debate_forceful` und `debate_persuasive` bleiben erhalten.
 
 ## Entscheidungsmatrix
 

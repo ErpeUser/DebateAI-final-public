@@ -36,6 +36,8 @@ jobs:
         run: python -m unittest discover -s ../scripts/tests -p 'test_*.py' -v
       - name: Independent data identity
         run: python -m unittest discover -s ../desktop/tests -p test_debateai_identity.py -v
+      - name: Desktop release contract
+        run: python -m unittest discover -s ../desktop/tests -p test_release_contract.py -v
 
   frontend:
     runs-on: ubuntu-latest

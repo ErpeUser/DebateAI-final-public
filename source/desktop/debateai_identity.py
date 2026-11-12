@@ -4,6 +4,7 @@ from __future__ import annotations
 import os
 import shutil
 import sys
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
 
@@ -91,14 +92,22 @@ def migrate_legacy_data_root(
     if destination.exists() and (not destination.is_dir() or any(destination.iterdir())):
         return DataMigration(destination, source, False, "destination-not-empty")
     destination.parent.mkdir(parents=True, exist_ok=True)
-    if not destination.exists():
-        shutil.copytree(source, destination)
+    staging = Path(tempfile.mkdtemp(
+        prefix=f".{destination.name}.migration-",
+        dir=str(destination.parent),
+    ))
+    try:
+        shutil.copytree(source, staging, dirs_exist_ok=True)
+        if destination.exists():
+            if not destination.is_dir() or any(destination.iterdir()):
+                return DataMigration(destination, source, False, "destination-not-empty")
+            destination.rmdir()
+        os.replace(staging, destination)
+        staging = None
         return DataMigration(destination, source, True, "copied")
-    # An installer or first launch may have created an empty destination.
-    # It is safe to populate that directory because the non-empty case was
-    # rejected above.
-    shutil.copytree(source, destination, dirs_exist_ok=True)
-    return DataMigration(destination, source, True, "copied")
+    finally:
+        if staging is not None and staging.exists():
+            shutil.rmtree(staging, ignore_errors=True)
 
 
 def resolve_data_root(*, base: Path, environment: Mapping[str, str], lowercase: bool = False) -> Path:

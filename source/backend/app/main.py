@@ -457,6 +457,7 @@ async def lifespan(app: FastAPI):
     # Seed agent configs and knowledge sources
     from app.database import async_session
     from app.services.llm_endpoint import migrate_legacy_endpoint
+    from app.services.pii.vault import migrate_legacy_entries
     from app.services.seed_agents import (
         configure_desktop_debate_runtime,
         seed_agent_configs,
@@ -470,6 +471,9 @@ async def lifespan(app: FastAPI):
         # One-time: promote a pre-existing single OpenAI-compatible endpoint
         # into a named endpoint so its model shows up in the model pickers.
         await migrate_legacy_endpoint(db)
+        migrated_pii_rows = await migrate_legacy_entries(db)
+        if migrated_pii_rows:
+            logging.getLogger(__name__).info("Migrated %s legacy PII vault rows", migrated_pii_rows)
         await sync_subscription_bridge(db)
         await db.commit()
     ai_config._ensure_static_prompts()

@@ -20,10 +20,10 @@ COPY --from=frontend /src/frontend/dist frontend/dist
 RUN python backend/scripts/download_models.py
 RUN rm -rf desktop/pgsql && python desktop/scripts/download_pg.py
 RUN rm -rf desktop/ffmpeg && python desktop/scripts/download_ffmpeg.py
-RUN python -m PyInstaller desktop/backchannel.spec --distpath dist --workpath build --noconfirm
-COPY --from=controller smoke_test.py /tmp/backchannel-smoke-test.py
+RUN python -m PyInstaller desktop/debateai.spec --distpath dist --workpath build --noconfirm
+COPY --from=controller smoke_test.py /tmp/debateai-smoke-test.py
 USER nobody
-RUN python /tmp/backchannel-smoke-test.py
+RUN python /tmp/debateai-smoke-test.py
 USER root
 RUN mkdir /out && tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI
 USER nobody

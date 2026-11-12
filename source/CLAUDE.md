@@ -4,13 +4,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with th
 
 ## Coordination Record
 
-The durable record for this repository is Linear: team `Alpha`, project `Backchannel`, issue IDs `ALP-NNN`. Findings, verdicts, decisions and their rationale, blockers, and declined alternatives go there; Herdr `agent send` carries only the issue ID and one line of what changed. Because the Linear MCP server writes with a single shared credential, every agent's issue and comment is authored by the human who owns the token, so record `Requested by` / `Performed by` / `Date` / `Scope` in the body. Branches are `agent/alp-NNN-slug`; design docs live in `docs/superpowers/specs/` and plans in `docs/superpowers/plans/`. See the Routing Substance and Pointers section of the `coordinating-herdr-agents` skill.
+The durable record for this repository is Linear: team `Alpha`, project `DebateAI`, issue IDs `ALP-NNN`. Findings, verdicts, decisions and their rationale, blockers, and declined alternatives go there; Herdr `agent send` carries only the issue ID and one line of what changed. Because the Linear MCP server writes with a single shared credential, every agent's issue and comment is authored by the human who owns the token, so record `Requested by` / `Performed by` / `Date` / `Scope` in the body. Branches are `agent/alp-NNN-slug`; design docs live in `docs/superpowers/specs/` and plans in `docs/superpowers/plans/`. See the Routing Substance and Pointers section of the `coordinating-herdr-agents` skill.
 
-Git worktrees live **outside** this checkout, at `C:/work/backchannel/<lane>`: `git worktree add C:/work/backchannel/<lane> -b agent/alp-NNN-slug master`. The main checkout is `C:/code/backchannel`, outside OneDrive. The earlier checkout sat in a OneDrive-synced folder, and sync repeatedly stripped the `.git` file out of worktrees created under `.worktrees/`, orphaning them from `git worktree list` while leaving the directories behind (ALP-139). Keep checkouts and worktrees out of synced folders, and do not recreate `.worktrees/`. Note also that the Docker Compose stack binds the main checkout, so a worktree suits docs, review, and analysis rather than work needing integration testing.
+Git worktrees live **outside** this checkout, at `C:/work/debateai/<lane>`: `git worktree add C:/work/debateai/<lane> -b agent/alp-NNN-slug master`. The main checkout is `C:/code/debateai`, outside OneDrive. The earlier checkout sat in a OneDrive-synced folder, and sync repeatedly stripped the `.git` file out of worktrees created under `.worktrees/`, orphaning them from `git worktree list` while leaving the directories behind (ALP-139). Keep checkouts and worktrees out of synced folders, and do not recreate `.worktrees/`. Note also that the Docker Compose stack binds the main checkout, so a worktree suits docs, review, and analysis rather than work needing integration testing.
 
 ## Current Codebase Snapshot
 
-Backchannel (formerly Call Helper) is a real-time meeting analysis app. A React frontend captures microphone audio (and optionally tab/system audio) as PCM16 16 kHz mono and streams it over WebSocket with a 1-byte track prefix. The FastAPI backend writes speaker-attributed transcript entries, records per-segment call audio to disk, runs provider-routed analysis agents (Gemini or OpenAI) over recent transcript text, and stores insights in PostgreSQL.
+DebateAI (formerly Call Helper) is a real-time meeting analysis app. A React frontend captures microphone audio (and optionally tab/system audio) as PCM16 16 kHz mono and streams it over WebSocket with a 1-byte track prefix. The FastAPI backend writes speaker-attributed transcript entries, records per-segment call audio to disk, runs provider-routed analysis agents (Gemini or OpenAI) over recent transcript text, and stores insights in PostgreSQL.
 
 Backend tests live in `backend/tests/` as stdlib `unittest` files; run them from `backend/` with `python -m unittest discover -s tests`. Frontend behavior checks are `npm run build` (typecheck).
 
@@ -75,7 +75,7 @@ embedded zonky.io PostgreSQL and serves the built frontend via
 `FRONTEND_DIST`. Desktop tests: run `python -m unittest discover -s tests`
 from `desktop/` with the repository root on `PYTHONPATH` - two modules import
 `desktop.*`, so without it discovery silently drops them and reports 94 tests
-instead of 111. Local build: `pyinstaller desktop/backchannel.spec`. The
+instead of 111. Local build: `pyinstaller desktop/debateai.spec`. The
 release coordinator creates the Windows x64 zip natively and the Linux x64
 tarball through Docker; `.github/workflows/desktop-release.yml` builds the
 macOS arm64 zip by default (unsigned; Sortformer and ffmpeg are not bundled)
@@ -85,12 +85,12 @@ zip and Linux x64 tarball.
 ### Docs Site
 
 `docs-site/` is an Astro Starlight project deployed as a Cloudflare Worker
-(`backchannel-site`, same pattern as the quartermaster repo) by
+(`debateai-site`, same pattern as the quartermaster repo) by
 `.github/workflows/deploy-site.yml`: the `site/` landing page at
-https://backchannel.page/ and the docs at `/docs/`.
+https://<documentation-domain>/ and the docs at `/docs/`.
 The same Worker serves the D1 operator console only on
-`https://admin.backchannel.page/` and the public download portal on
-`https://downloads.backchannel.page/`. Release listing and asset downloads
+`https://<admin-domain>/` and the public download portal on
+`https://<download-domain>/`. Release listing and asset downloads
 are anonymous, and so is the in-app updater: `/api/update/latest/*` and
 `/api/update/assets/*` both serve without an account, because the asset is
 the same file the portal already hands to anyone. Requiring a grant there
@@ -151,7 +151,7 @@ Local frontend development expects the Vite dev proxy in `frontend/vite.config.t
 
 AMD GPUs cannot be used from Docker on Windows. `backend/scripts/setup_windows_gpu.ps1` sets up a native Python 3.12 backend venv with AMD's ROCm torch wheels (auto-detected by `backend/scripts/install_sortformer.py`); `-Run` starts the compose db plus a native backend on :8000. See docs/deployment.md "AMD GPU on Windows".
 
-Audio file import uses `soundfile` first and falls back to `ffmpeg` for formats such as MP3, M4A, and WebM (which also covers browser-recorded voice-profile and mic-benchmark audio). The backend resolves ffmpeg via `BACKCHANNEL_FFMPEG` (set by the desktop launcher to the bundled copy) and then `PATH`; Windows and Linux desktop bundles ship an LGPL ffmpeg fetched by `desktop/scripts/download_ffmpeg.py`, while macOS bundles and local dev still need a system `ffmpeg` on `PATH`.
+Audio file import uses `soundfile` first and falls back to `ffmpeg` for formats such as MP3, M4A, and WebM (which also covers browser-recorded voice-profile and mic-benchmark audio). The backend resolves ffmpeg via `DEBATEAI_FFMPEG` (set by the desktop launcher to the bundled copy) and then `PATH`; Windows and Linux desktop bundles ship an LGPL ffmpeg fetched by `desktop/scripts/download_ffmpeg.py`, while macOS bundles and local dev still need a system `ffmpeg` on `PATH`.
 
 ### Database Migrations
 
@@ -279,7 +279,7 @@ Main state lives in `frontend/src/App.tsx`.
 - `PostCallView`: review tabs for insights, transcript, speakers, documents, directives, and token usage; supports resume, export, delete, and speaker rename
 - Admin surfaces: `AdminPanel` (tabs: Agents, Transcription & Audio, Connections, About with version + release notes) and `OfferingsManager` for catalog management. The Connections tab holds `ApiKeysCard` (cloud provider keys) and `EndpointsCard` (self-hosted servers: presets, connect-and-list-models, per-endpoint test/enable/remove). Every model `<select>` renders through `frontend/src/lib/modelOptions.ts`, which groups options by provider and owns the Privacy First lock rule
 - `WelcomeView`: shown when no session is selected; with zero sessions it becomes a first-run checklist (connect a provider or Privacy First, create a session, start/import a call) driven by live credential and privacy state
-- What's-new banner: `useWhatsNew` keeps `backchannel.last_seen_version` in localStorage; when the served version differs, App shows a dismissible toast linking to Admin -> About, where releases since that version are badged "New" (first launch baselines silently)
+- What's-new banner: `useWhatsNew` keeps `debateai.last_seen_version` in localStorage; when the served version differs, App shows a dismissible toast linking to Admin -> About, where releases since that version are badged "New" (first launch baselines silently)
 
 Hooks:
 

@@ -155,7 +155,7 @@ test('exports the fixed security constants', () => {
   assert.equal(TEMPORARY_PASSWORD_TTL_SECONDS, 259_200);
   assert.equal(CHANGE_SESSION_TTL_SECONDS, 1_800);
   assert.equal(SESSION_TTL_SECONDS, 604_800);
-  assert.equal(SESSION_COOKIE, '__Host-backchannel_release');
+  assert.equal(SESSION_COOKIE, '__Host-debateai_release');
 });
 
 test('temporary passwords meet the complete contract', () => {

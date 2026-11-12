@@ -40,9 +40,6 @@ logger = logging.getLogger(__name__)
 
 _VAULT_PURPOSE = b"debateai.pii.vault.v2"
 _LOOKUP_PURPOSE = b"debateai.pii.lookup.v2"
-# Read-only fallbacks for rows created before the identity migration. New writes use the canonical purposes.
-_LEGACY_VAULT_PURPOSE = b"backchannel.pii.vault.v1"
-_LEGACY_LOOKUP_PURPOSE = b"backchannel.pii.lookup.v1"
 
 _CATEGORY_ALTERNATION = "|".join(CATEGORIES)
 # The bracketed form is what the shield writes; the bare form is what a model
@@ -70,8 +67,6 @@ _vaults: dict[uuid.UUID, _SessionVault] = {}
 _lock = threading.Lock()
 _fernet: Fernet | None = None
 _lookup_key: bytes | None = None
-_legacy_fernet: Fernet | None = None
-_legacy_lookup_key: bytes | None = None
 
 
 def _get_fernet() -> Fernet:
@@ -88,28 +83,9 @@ def _get_lookup_key() -> bytes:
     return _lookup_key
 
 
-def _get_legacy_fernet() -> Fernet:
-    global _legacy_fernet
-    if _legacy_fernet is None:
-        _legacy_fernet = Fernet(base64.urlsafe_b64encode(derive_subkey(_LEGACY_VAULT_PURPOSE)))
-    return _legacy_fernet
-
-
-def _get_legacy_lookup_key() -> bytes:
-    global _legacy_lookup_key
-    if _legacy_lookup_key is None:
-        _legacy_lookup_key = derive_subkey(_LEGACY_LOOKUP_PURPOSE)
-    return _legacy_lookup_key
-
-
 def value_hmac(category: str, value: str) -> str:
     normalized = normalize_value(value, category)
     return hmac.new(_get_lookup_key(), f"{category}\x00{normalized}".encode("utf-8"), hashlib.sha256).hexdigest()
-
-
-def _legacy_value_hmac(category: str, value: str) -> str:
-    normalized = normalize_value(value, category)
-    return hmac.new(_get_legacy_lookup_key(), f"{category}\x00{normalized}".encode("utf-8"), hashlib.sha256).hexdigest()
 
 
 def encrypt(value: str) -> str:
@@ -145,14 +121,18 @@ def _category_of(token: str) -> str:
     return token[1:token.index("_")] if token.startswith("[") and "_" in token else ""
 
 
+def _decrypt_with(fernet: Fernet, ciphertext: str) -> str | None:
+    try:
+        return fernet.decrypt(ciphertext.encode("ascii")).decode("utf-8")
+    except (InvalidToken, ValueError):
+        return None
+
+
 def decrypt(ciphertext: str, category: str = "") -> str:
-    for fernet in (_get_fernet(), _get_legacy_fernet()):
-        try:
-            value = fernet.decrypt(ciphertext.encode("ascii")).decode("utf-8")
-            _remember_plaintext(value, category)
-            return value
-        except (InvalidToken, ValueError):
-            continue
+    value = _decrypt_with(_get_fernet(), ciphertext)
+    if value is not None:
+        _remember_plaintext(value, category)
+        return value
     logger.warning("A PII vault entry could not be decrypted; master key changed?")
     return ""
 
@@ -182,6 +162,58 @@ async def _ensure_loaded(db: AsyncSession, session_id: uuid.UUID) -> _SessionVau
     return vault
 
 
+async def migrate_legacy_entries(db: AsyncSession) -> int:
+    """Rewrite pre-DebateAI vault rows into the canonical keyspace once.
+
+    Legacy purposes are scoped to this migration only. Active reads and writes
+    use only the DebateAI purposes; an unreadable row fails startup instead of
+    silently dropping protected data.
+    """
+    legacy_fernet = Fernet(
+        base64.urlsafe_b64encode(derive_subkey(b"backchannel.pii.vault.v1"))
+    )
+    result = await db.execute(select(PiiVaultEntry))
+    rows = list(result.scalars().all())
+    rewrites: list[tuple[PiiVaultEntry, str, str, str]] = []
+    seen: dict[tuple[uuid.UUID, str], PiiVaultEntry] = {}
+
+    for row in rows:
+        plaintext = _decrypt_with(_get_fernet(), row.value_encrypted)
+        if plaintext is None:
+            plaintext = _decrypt_with(legacy_fernet, row.value_encrypted)
+            if plaintext is None:
+                raise RuntimeError(
+                    f"PII vault row {row.id} cannot be decrypted with canonical or migration keys"
+                )
+            canonical_ciphertext = encrypt(plaintext)
+        else:
+            canonical_ciphertext = row.value_encrypted
+        canonical_digest = hmac.new(
+            _get_lookup_key(),
+            f"{row.category}\x00{normalize_value(plaintext, row.category)}".encode("utf-8"),
+            hashlib.sha256,
+        ).hexdigest()
+        key = (row.session_id, canonical_digest)
+        if key in seen and seen[key] is not row:
+            raise RuntimeError(
+                f"PII vault migration would merge duplicate values for session {row.session_id}"
+            )
+        seen[key] = row
+        rewrites.append((row, canonical_digest, canonical_ciphertext, plaintext))
+
+    migrated = 0
+    for row, canonical_digest, canonical_ciphertext, plaintext in rewrites:
+        if row.value_hmac != canonical_digest or row.value_encrypted != canonical_ciphertext:
+            row.value_hmac = canonical_digest
+            row.value_encrypted = canonical_ciphertext
+            migrated += 1
+        _remember_plaintext(plaintext, row.category)
+    if migrated:
+        await db.flush()
+    forget()
+    return migrated
+
+
 async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, value: str) -> str:
     """The session's token for this value, minting one on first sight.
 
@@ -198,7 +230,7 @@ async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, valu
     last_error: IntegrityError | None = None
     for _attempt in range(4):
         vault = await _ensure_loaded(db, session_id)
-        existing = vault.by_hmac.get(digest) or vault.by_hmac.get(_legacy_value_hmac(category, value))
+        existing = vault.by_hmac.get(digest)
         if existing:
             return existing
 

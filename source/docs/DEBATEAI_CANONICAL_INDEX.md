@@ -18,10 +18,13 @@ requirement.
 ## Migration-only records
 
 Legacy directory names, archive names, environment variables and request
-identifiers occur only in explicit migration code and historical provenance or
-release evidence. They must not be reintroduced as runtime aliases. Migration
-copies data without deleting the source and refuses to overwrite a non-empty
-canonical destination.
+identifiers occur only in explicit migration code, negative regression tests,
+historical provenance or release evidence. The historical SEO route
+`/gong-and-backchannel/` is also retained as a redirect/content slug; it is
+not a runtime identifier. They must not be reintroduced as runtime aliases.
+Migration copies data without deleting the source and refuses to overwrite a
+non-empty canonical destination. Migration-only PII key purposes are used only
+by the startup rewrite and never by active reads or writes.
 
 `SOURCE_SNAPSHOT_MANIFEST.json`, `release-manifest.json`, dated release notes,
 the large technical disclosure and historical audit files are integrity or

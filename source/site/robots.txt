@@ -1,5 +1,5 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://backchannel.page/sitemap.xml
-Sitemap: https://backchannel.page/docs/sitemap-index.xml
+# Sitemap URLs are deployment-specific; the operator adds the canonical host in the site overlay.
+

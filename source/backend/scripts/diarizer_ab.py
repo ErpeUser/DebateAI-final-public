@@ -7,7 +7,7 @@ Three modes:
              similarity distributions. No ground truth.
 
   margin     Ground-truth separation analysis over dual-track recordings.
-             Backchannel stores `segment_N_mic.wav` (local user) and
+             DebateAI stores `segment_N_mic.wav` (local user) and
              `segment_N_sys.wav` (remote participants) alongside the mixed
              `segment_N.wav`. Those tracks are labels: within-mic pairs are
              same-speaker, mic-vs-sys pairs are different-speaker. Reports the
