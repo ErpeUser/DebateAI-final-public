@@ -89,6 +89,7 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self.pg.ensure_initdb()
             self.pg.ensure_role(54321)
         self.assertTrue(self.pg.initialized_here)
+        self.assertTrue(self.pg.role_marker.is_file())
         self.assertTrue(
             all("psql" not in str(call.args[0][0]) for call in run.call_args_list)
         )

@@ -47,6 +47,7 @@ class EmbeddedPostgres:
             pg_root = cached_pg
         self.bin = pg_root / "bin"
         self.pgdata = Path(data_dir) / "pgdata"
+        self.role_marker = self.pgdata / ".debateai-role-ready"
         self.pwfile = Path(data_dir) / "pgpassword"
         self.log = Path(data_dir) / "postgres.log"
         self.pg_ctl_log = Path(data_dir) / "pg_ctl.log"
@@ -171,6 +172,7 @@ class EmbeddedPostgres:
 
     def ensure_initdb(self) -> None:
         if (self.pgdata / "PG_VERSION").exists():
+            self.initialized_here = self.role_marker.is_file()
             return
         if self.pgdata.exists():
             # A pgdata dir without PG_VERSION was never a valid cluster
@@ -188,6 +190,8 @@ class EmbeddedPostgres:
             "--no-locale",
             "-E", "UTF8",
         ])
+        self.pgdata.mkdir(parents=True, exist_ok=True)
+        self.role_marker.write_text("debateai\n", encoding="ascii")
         self.initialized_here = True
 
     def ensure_role(self, port: int) -> None:
