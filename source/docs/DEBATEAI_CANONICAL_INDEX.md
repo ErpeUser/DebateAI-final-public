@@ -14,6 +14,7 @@ requirement.
 - [Identity decoupling design](identity-decoupling-design.md) — canonical runtime and safe legacy-data migration.
 - [Identity decoupling plan](superpowers/plans/2026-11-11-debateai-identity-decoupling.md) — implementation and verification gates.
 - [Final status and open gates](FINAL_STATUS_AND_OPEN_ITEMS.md) — evidence register with remaining external gates.
+- [Codex-Abnahme 2026-11-12](CODEX_ACCEPTANCE_2026-11-12.md) — current audit, fixes, test commands and explicit blockers.
 
 ## Migration-only records
 
