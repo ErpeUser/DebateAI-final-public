@@ -2747,7 +2747,8 @@ class AgentOrchestrator:
     async def _consolidated_agent_loop(self):
         """Run consolidated analyst on interval."""
         interval = self._get_interval("consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS)
-        await asyncio.sleep(interval)
+        # Run immediately when a session already has transcript context; the
+        # interval is the delay between subsequent cycles, not startup latency.
 
         last_window = ""
         while not self._stopped:
@@ -4008,7 +4009,7 @@ class AgentOrchestrator:
 
     async def _strategic_signals_loop(self):
         interval = self._get_interval(STRATEGIC_SIGNALS_SLUG, 45)
-        await asyncio.sleep(interval)
+        # Do not add a full interval before the first signal snapshot.
         last_window = ""
         while not self._stopped:
             await self.activity.cycle_started(STRATEGIC_SIGNALS_SLUG)
