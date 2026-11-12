@@ -55,7 +55,7 @@ areas. The protocol and API pages are references to consult as needed.
 Release-access documentation changes must pass:
 
 ```bash
-cd docs-site
+cd source/docs-site
 npm run test:release-access
 npm run test:migration
 npm run test:worker
