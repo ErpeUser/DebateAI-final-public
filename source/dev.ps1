@@ -193,7 +193,13 @@ try {
         if ($databaseStarted -in @("embedded", "existing")) {
             $env:DATABASE_URL = "postgresql+asyncpg://debateai:$($embeddedDatabase.Password)@127.0.0.1:$databasePort/postgres"
         } else {
-            $env:DATABASE_URL = "postgresql+asyncpg://debateai:changeme@127.0.0.1:5432/debateai"
+            $composeUser = if ($env:POSTGRES_USER) { $env:POSTGRES_USER } else { "debateai" }
+            $composePassword = $env:POSTGRES_PASSWORD
+            $composeDb = if ($env:POSTGRES_DB) { $env:POSTGRES_DB } else { "debateai" }
+            if ([string]::IsNullOrWhiteSpace($composePassword)) {
+                throw "POSTGRES_PASSWORD muss gesetzt sein, bevor die Docker-Datenbank verwendet wird."
+            }
+            $env:DATABASE_URL = "postgresql+asyncpg://" + $composeUser + ":" + $composePassword + "@127.0.0.1:5432/" + $composeDb
         }
     }
     $env:DEBATEAI_PROMPT_DIR = $promptRoot
