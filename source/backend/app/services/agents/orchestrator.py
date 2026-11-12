@@ -2776,8 +2776,6 @@ class AgentOrchestrator:
                     logger.debug("[consolidated_analyst] Window unchanged, skipping cycle")
                     await asyncio.sleep(interval)
                     continue
-                last_window = transcript_window
-
                 logger.info(f"[consolidated_analyst] Running cycle with {len(transcript_window)} chars of transcript")
                 insights = await self.consolidated_agent.run_cycle(
                     transcript_window=transcript_window,
@@ -2820,6 +2818,10 @@ class AgentOrchestrator:
                             saved=saved_count,
                         ),
                     )
+                    # Advance only after the complete cycle succeeded. A
+                    # transient model or persistence failure must be retried
+                    # against the same transcript window.
+                    last_window = transcript_window
 
             except asyncio.CancelledError:
                 break
@@ -4020,7 +4022,6 @@ class AgentOrchestrator:
                 if transcript_window == last_window:
                     logger.debug("[strategic_signals] Window unchanged, skipping cycle")
                 elif transcript_window != "(No recent transcript)":
-                    last_window = transcript_window
                     cycle = await run_strategic_signals_cycle(
                         self.session_id,
                         agent_configs=self._agent_configs,
@@ -4048,6 +4049,9 @@ class AgentOrchestrator:
                             "items": 1 if synthesis else 0,
                         },
                     )
+                    # Do not mark the window processed until the cycle has
+                    # completed, so transient provider errors are retried.
+                    last_window = transcript_window
                 else:
                     await self.activity.cycle_finished(
                         STRATEGIC_SIGNALS_SLUG,
