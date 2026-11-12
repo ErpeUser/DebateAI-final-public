@@ -5,9 +5,27 @@ from alembic import context
 from sqlalchemy import pool
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
+from app.config import settings
 from app.models import Base
 
 config = context.config
+
+
+def _apply_runtime_database_url() -> None:
+    """Use the active DebateAI database URL for CLI and embedded migrations.
+
+    The INI value is intentionally only a safe, canonical placeholder.  The
+    application settings (including .env/DATABASE_URL) are the source of truth,
+    so a direct Alembic invocation cannot accidentally target the legacy
+    callhelper database or a stale password.
+    """
+    setter = getattr(config, "set_main_option", None)
+    if callable(setter):
+        setter("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+
+
+_apply_runtime_database_url()
+
 if (
     config.config_file_name is not None
     and config.attributes.get("configure_logger", True)
