@@ -213,17 +213,16 @@ approve or reject requests, reset passwords, sign out sessions, revoke users,
 or replace grants until step 6 explicitly ends the freeze. Recipient reads and
 downloads may continue.
 
-From `docs-site/`, export the complete production database before applying any
-migration:
+From the repository root, enter `source/docs-site/` and export the complete production database before applying any migration:
 
 ```powershell
-cd docs-site
+cd source/docs-site
 $backupPath = $env:DEBATEAI_D1_BACKUP_PATH
 if ([string]::IsNullOrWhiteSpace($backupPath) -or -not [IO.Path]::IsPathRooted($backupPath)) {
     throw 'DEBATEAI_D1_BACKUP_PATH must be an absolute path in approved encrypted storage outside the repository.'
 }
 $backupPath = [IO.Path]::GetFullPath($backupPath)
-$repoRoot = (Resolve-Path ..).Path
+$repoRoot = (Resolve-Path ../..).Path
 if ($backupPath.StartsWith($repoRoot + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) {
     throw 'DEBATEAI_D1_BACKUP_PATH must be outside the repository.'
 }
