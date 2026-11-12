@@ -42,6 +42,11 @@ def run_migrations_offline():
 
 
 def do_run_migrations(connection):
+    if connection.dialect.name == "postgresql":
+        connection.exec_driver_sql(
+            "ALTER TABLE IF EXISTS alembic_version "
+            "ALTER COLUMN version_num TYPE VARCHAR(255)"
+        )
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
