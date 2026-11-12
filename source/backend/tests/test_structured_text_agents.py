@@ -239,6 +239,57 @@ class SynthesizerStructuredOutputTests(unittest.IsolatedAsyncioTestCase):
         )
 
 
+    async def test_failed_persistence_does_not_suppress_retry(self):
+        """A failed commit must leave the same corpus eligible for retry."""
+        session_id = uuid.uuid4()
+        question = SimpleNamespace(
+            id=uuid.uuid4(),
+            item_type="observation",
+            question="Existing insight",
+            rationale="",
+            source_context="",
+            speaker=None,
+            speaker_id=None,
+            answered=False,
+            answer_summary="",
+            starred=False,
+            enrichment_notes="",
+            agent_source="observer",
+            created_at=datetime.now(timezone.utc),
+            updated_at=None,
+        )
+        output = SynthesizerOutput(
+            items=[{"op": "create", "item_type": "observation", "question": "Retry me"}]
+        )
+        applied = [{"op": "create", "applied": True}]
+
+        with (
+            patch(
+                "app.services.agents.synthesizer.async_session",
+                side_effect=lambda: _Session(question),
+            ),
+            patch(
+                "app.services.agents.synthesizer.build_meeting_context_text",
+                return_value="",
+            ),
+            patch(
+                "app.services.agents.synthesizer.generate_json",
+                new=AsyncMock(return_value=output),
+            ) as generate,
+            patch(
+                "app.services.agents.synthesizer._apply_operations",
+                new=AsyncMock(side_effect=[RuntimeError("commit failed"), applied]),
+            ) as apply_operations,
+        ):
+            with self.assertRaisesRegex(RuntimeError, "commit failed"):
+                await run_synthesizer_cycle(session_id)
+            result = await run_synthesizer_cycle(session_id)
+
+        self.assertEqual(applied, result)
+        self.assertEqual(2, generate.await_count)
+        self.assertEqual(2, apply_operations.await_count)
+
+
 class SynthesizerExcludesAskedRowsTests(unittest.IsolatedAsyncioTestCase):
     async def test_query_excludes_the_operators_asked_rows(self):
         """ALP-178: the operator's own live-chat Q&A must never reach the
