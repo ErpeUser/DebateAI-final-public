@@ -606,8 +606,6 @@ class ObjectionHandlerAgent:
                 "items": 0,
             }
             return []
-        self._last_window = transcript_window
-
         live_directives = [" ".join(d.split())[:240] for d in directives[-4:]]
         directives_text = "\n".join(f"- {d}" for d in live_directives) if live_directives else "(No directives set)"
         aliases = build_speaker_aliases(speakers)
@@ -831,6 +829,9 @@ class ObjectionHandlerAgent:
                 ),
                 "items": 0,
             }
+        # Mark the window only after model output and local parsing completed.
+        # Provider, validation, or persistence errors must remain retryable.
+        self._last_window = transcript_window
         return items
 
     async def refine_with_sources(
