@@ -122,11 +122,13 @@ class EmbeddedPostgresTests(unittest.TestCase):
         connection = Connection()
         connect = mock.AsyncMock(side_effect=[RuntimeError("missing role"), connection])
         fake_asyncpg = types.SimpleNamespace(connect=connect)
-        with mock.patch.dict(sys.modules, {"asyncpg": fake_asyncpg}):
+        with mock.patch.dict(sys.modules, {"asyncpg": fake_asyncpg}), mock.patch.object(
+            self.pg, "password", return_value="0" * 32
+        ):
             self.pg.ensure_role(54321)
 
         self.assertEqual(
-            ['ALTER ROLE "backchannel" RENAME TO "debateai"'],
+            ['CREATE ROLE "debateai" LOGIN SUPERUSER PASSWORD \'00000000000000000000000000000000\''],
             connection.executed,
         )
         self.assertTrue(self.pg.role_marker.is_file())

@@ -250,8 +250,10 @@ class EmbeddedPostgres:
                         host="127.0.0.1",
                         port=port,
                     )
+                    escaped_password = password.replace("'", "''")
                     await connection.execute(
-                        f'ALTER ROLE "{_LEGACY_DB_ROLE}" RENAME TO "{DB_ROLE}"'
+                        f'CREATE ROLE "{DB_ROLE}" LOGIN SUPERUSER PASSWORD '
+                        f"'{escaped_password}'"
                     )
             except Exception as error:
                 raise RuntimeError(
