@@ -2612,8 +2612,8 @@ class AgentOrchestrator:
             if _texts_similar(text, existing_text):
                 logger.info(f"[{agent_source}] Skipping near-duplicate: {text[:60]}")
                 return False
-        self._recent_insights[text] = now
-
+        # Do not reserve the fingerprint until the database transaction
+        # has committed. A transient DB failure must remain retryable.
         # Use agent_source from the insight dict if provided (consolidated analyst sets per-type)
         effective_source = q_json.get("agent_source", agent_source)
         speaker_id = self._validated_speaker_id(q_json.get("speaker_id"))
@@ -2644,6 +2644,7 @@ class AgentOrchestrator:
             db.add(question)
             await db.commit()
             await db.refresh(question)
+            self._recent_insights[text] = now
 
             if question.item_type == "question":
                 self._remember_active_question(str(question.id), question.question, question.item_type)
