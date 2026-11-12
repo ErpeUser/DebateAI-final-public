@@ -2823,3 +2823,27 @@ Naechste konkrete Aktion: den fehlenden `source/.github`-Workflowvertrag gegen
 Naechste konkrete Aktion: den synchronisierten, getesteten Source-Stand mit
   `build_debate_assistant.ps1 -IncludeOracle` bauen und nur die dabei belegten
   Windows-/Archiv-/Rollback-Ergebnisse dokumentieren.
+
+### Windows-Kandidat nach PostgreSQL-Rollback-Fix (2026-11-12)
+
+- Der PostgreSQL-Client `psql` ist im eingebetteten Zonky-Runtime-Paket nicht
+  enthalten. Neue DebateAI-Cluster verwenden deshalb eine lokale
+  `.debateai-role-ready`-Markerdatei; unbekannte Alt-Cluster bleiben bei
+  fehlendem Client absichtlich fail-closed. Der Marker wird nicht in Git oder
+  in Benutzerdaten ausserhalb des aktiven Clusters veroeffentlicht.
+- Desktop-Suite: **208/208** Tests bestanden, 1 Symlink-Rechte-Skip.
+- Der native Kandidat wurde mit Python 3.12/Node 24 und `-IncludeOracle`
+  gebaut; Staged-Smoke meldete `healthy`, lokales ASR und sauberen Shutdown.
+  Der Archiv-Smoke meldete `OK: native windows-x64 update and forced rollback`.
+- Vorlaeufiger Kandidat aus Commit `ae0ab120f151b14303c9a676fc8bdde9995a93a3`:
+  `source/dist/DebateAI-windows-x64.zip`, 441.461.557 Bytes,
+  SHA-256 `FC473AEE25D87E6FC654BD071F4B128A1529A145982BB4892CACB7887DEB1956`.
+  Der nachfolgende Test-/Marker-Nachlauf ist in Commit
+  `c051995a06f308c6b59c20dc8cccc6a7c23bd125` enthalten; fuer den finalen
+  Release-Nachweis wird daraus ein neuer exakter Build erzeugt.
+
+Offen bleiben die nicht automatisierbaren Mikrofon-/WASAPI-/WebView2-/DPI-
+Hardware-Gates, echte Provider-/Login-Abnahmen, menschliche Rhetorikbewertung,
+Authenticode und externe Update-/DNS-/R2-Publikation. Ollama, ChatGPT-Oracle
+und Gemini-Web wurden im Bundle vorbereitet; keine interaktive Anmeldung oder
+Cloud-Modellabnahme wurde simuliert.
