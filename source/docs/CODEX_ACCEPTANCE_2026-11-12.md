@@ -20,6 +20,10 @@ werden können.
   am 2026-11-12 vor dem ersten Job-Schritt mit `steps: []`/keinen Logs. Das
   ist kein grüner Testnachweis und derzeit als GitHub-Runner-/Provisionierungs-
   blocker zu behandeln.
+- Final integriert: PR #8 (`635bd76b318be9fbd809c984586cdf9abafa865e`) enthält den
+  Hauptaudit; PR #9 (`bf8fb9d45165b7883f53f007819df5849de8d63f`) korrigiert die
+  Release-ItemList-Metadaten. Der aktuelle `master` ist damit der überprüfte
+  Merge-Stand.
 
 ## In diesem Audit umgesetzt
 
@@ -168,8 +172,9 @@ Manifest/Signatur und ein erfolgreicher Publikationslauf vorliegen.
 
 ## Merge-/Release-Gate
 
-Vor dem Merge sind Branch-HEAD, Teststatus und Änderungsliste erneut gegen den
-aktuellen `master` zu prüfen. Nach dem Push müssen `HEAD` und
-`origin/master` auf demselben Commit stehen. Ein historisches v0.6.6-
+Der Audit ist in `master` integriert. Für eine neue Veröffentlichung sind
+Branch-HEAD, Teststatus und Änderungsliste erneut gegen den dann aktuellen
+`master` zu prüfen. Nach jedem Push müssen `HEAD` und `origin/master` auf
+Dasselbe Commit zeigen. Ein historisches v0.6.6-
 Backchannel-Archiv oder ein alter Build darf nicht als aktuelle DebateAI-
 Windows-Abnahme ausgegeben werden.
