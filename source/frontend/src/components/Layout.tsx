@@ -65,7 +65,7 @@ export const SEARCH_THRESHOLD = 6;
 
 // Only explicit toggles are remembered. The live-call auto-collapse is a
 // per-call convenience and must not become next launch's default.
-const SIDEBAR_STORAGE_KEY = "bc-sidebar-collapsed";
+const SIDEBAR_STORAGE_KEY = "debateai:sidebar-collapsed";
 
 function readStoredCollapsed(): boolean {
   try {
@@ -89,7 +89,7 @@ function storeCollapsed(collapsed: boolean) {
 // the session -- render open without anyone writing a preference for it. The
 // old expanded-id set could not: at first paint `groups` is still empty, so
 // the set was empty, so every group came up collapsed (ALP-367).
-const COLLAPSED_GROUPS_STORAGE_KEY = "bc-sidebar-collapsed-groups";
+const COLLAPSED_GROUPS_STORAGE_KEY = "debateai:sidebar-collapsed-groups";
 
 export function readCollapsedGroups(): Set<string> {
   try {
@@ -121,7 +121,7 @@ export function pruneCollapsedGroups(collapsed: Set<string>, groups: { id: strin
   return kept.length === collapsed.size ? collapsed : new Set(kept);
 }
 
-const THEME_STORAGE_KEY = "bc-theme";
+const THEME_STORAGE_KEY = "debateai:theme";
 
 function readStoredTheme(): "light" | "dark" | null {
   try {
