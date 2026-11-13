@@ -26,8 +26,11 @@ from app.services.markdown_conversion import (
     convert_to_markdown,
     file_extension,
 )
+from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
+MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
+MAX_KNOWLEDGE_IMPORT_BYTES = 25 * 1024 * 1024
 
 
 async def _get_source_or_404(source_id: uuid.UUID, db: AsyncSession) -> KnowledgeSource:
@@ -196,7 +199,10 @@ async def import_records(
     source = await _get_source_or_404(source_id, db)
     _require_user_source(source)
 
-    content = await file.read()
+    try:
+        content = await read_bounded_upload(file, max_bytes=MAX_KNOWLEDGE_IMPORT_BYTES)
+    except UploadTooLarge as error:
+        raise HTTPException(413, "Knowledge import exceeds the 25 MiB upload limit") from error
     filename = (file.filename or "").lower()
 
     rows: list[dict] = []
@@ -256,7 +262,10 @@ async def upload_knowledge_file(
     source = await _get_source_or_404(source_id, db)
     _require_user_source(source)
 
-    content = await file.read()
+    try:
+        content = await read_bounded_upload(file, max_bytes=MAX_KNOWLEDGE_UPLOAD_BYTES)
+    except UploadTooLarge as error:
+        raise HTTPException(413, "Knowledge file exceeds the 25 MiB upload limit") from error
     filename = file.filename or "upload"
     ext = file_extension(filename)
 

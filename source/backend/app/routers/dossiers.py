@@ -16,9 +16,11 @@ from app.database import get_db
 from app.models import KnowledgeRecord, KnowledgeSource, Session
 from app.services.knowledge_context import prepare_knowledge_record_embeddings
 from app.services.markdown_conversion import MarkdownConversionError, convert_to_markdown, file_extension
+from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 
 router = APIRouter(prefix="/api/sessions/{session_id}/dossier", tags=["dossier"])
 logger = logging.getLogger(__name__)
+MAX_DOSSIER_UPLOAD_BYTES = 25 * 1024 * 1024
 
 
 class DossierEntry(BaseModel):
@@ -135,7 +137,10 @@ async def upload_dossier_file(
     page_reference: str = "",
     db: AsyncSession = Depends(get_db),
 ):
-    content = await file.read()
+    try:
+        content = await read_bounded_upload(file, max_bytes=MAX_DOSSIER_UPLOAD_BYTES)
+    except UploadTooLarge as error:
+        raise HTTPException(413, "Dossier file exceeds the 25 MiB upload limit") from error
     filename = file.filename or "Unterlage"
     try:
         markdown = convert_to_markdown(content, filename)

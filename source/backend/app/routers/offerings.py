@@ -12,8 +12,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.models import Offering
 from app.schemas import OfferingCreate, OfferingOut, OfferingUpdate
+from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 
 router = APIRouter(prefix="/api/offerings", tags=["offerings"])
+MAX_OFFERINGS_IMPORT_BYTES = 10 * 1024 * 1024
 
 
 @router.get("", response_model=list[OfferingOut])
@@ -108,7 +110,10 @@ async def import_offerings(file: UploadFile = File(...), db: AsyncSession = Depe
     Expected columns: vendor, product_name, category, subcategory, description, use_cases, note, tags.
     Legacy column names (discipline, delivery_model, practice) are accepted as aliases.
     """
-    content = await file.read()
+    try:
+        content = await read_bounded_upload(file, max_bytes=MAX_OFFERINGS_IMPORT_BYTES)
+    except UploadTooLarge as error:
+        raise HTTPException(413, "Offerings import exceeds the 10 MiB upload limit") from error
     filename = (file.filename or "").lower()
 
     rows: list[dict] = []
