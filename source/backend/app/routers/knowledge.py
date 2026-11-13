@@ -150,6 +150,10 @@ async def update_record(
     record = await db.get(KnowledgeRecord, record_id)
     if not record:
         raise HTTPException(404, "Knowledge record not found")
+    source = await db.get(KnowledgeSource, record.source_id)
+    if not source:
+        raise HTTPException(404, "Knowledge source not found")
+    _require_user_source(source)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(record, field, value)
     record.updated_at = datetime.now(timezone.utc)
@@ -163,6 +167,10 @@ async def delete_record(record_id: uuid.UUID, db: AsyncSession = Depends(get_db)
     record = await db.get(KnowledgeRecord, record_id)
     if not record:
         raise HTTPException(404, "Knowledge record not found")
+    source = await db.get(KnowledgeSource, record.source_id)
+    if not source:
+        raise HTTPException(404, "Knowledge source not found")
+    _require_user_source(source)
     await db.delete(record)
     await db.commit()
     return {"ok": True}
