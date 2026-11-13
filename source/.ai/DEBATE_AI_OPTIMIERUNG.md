@@ -2933,3 +2933,8 @@ Cloud-Modellabnahme wurde simuliert.
 - Fuenf bisher ungebundene Datei-Importpfade in Dossier, Knowledge und Offerings lesen ueber eine gemeinsame max+1-Hilfe und weisen Ueberschreitungen reproduzierbar mit HTTP 413 zurueck.
 - Regressionstests decken den Quelltyp-Guard, Sentinel-Lesen, exakte Grenze, Ueberschreitung und den Route-Vertrag ab. Die Multipart-Parser-Spooling-Grenze bleibt als separater Infrastrukturpunkt beobachtet.
 
+### Built-in-Source-Metadaten – 2026-11-13
+
+- Der generische PATCH-Endpunkt fuer Knowledge-Source-Metadaten verweigert jetzt Mutationen des integrierten offerings-Sources; nutzerverwaltete collection/files-Quellen bleiben aenderbar.
+- Regressionstests pruefen Ablehnung des Built-ins, erlaubte Nutzerquelle und 404 bei fehlender Quelle.
+
