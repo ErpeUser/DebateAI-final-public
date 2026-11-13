@@ -108,3 +108,11 @@ Diese Zahlen sind Testevidenz für die jeweiligen Schichten; sie ersetzen nicht 
 ## Offene bzw. manuelle Gates
 
 Echte Windows-WebView2-/DPI-/Tray-/Mikrofon-/Systemaudio-Abnahme, reale deutsche Sprachmessungen, Ollama-/ChatGPT-/Gemini-Verfügbarkeit, Authenticode-Signatur und Release-Publikation bleiben getrennte Betreiber- bzw. Hardware-Gates. Ein fehlender Provider-Schlüssel darf nicht als interner Codefehler und ein Mock-Ergebnis nicht als reale Modellmessung ausgegeben werden.
+
+## Aktueller Paket-Smoke-Blocker (13.11.2026)
+
+Der erneute Smoke gegen `source/dist/DebateAI` wurde in einem kontrollierten Workspace-Temp-Verzeichnis gestartet. Der Testcontainer-TEMP selbst scheiterte separat mit `WinError 5` beim Aufräumen; im Workspace-TEMP kam der Prozess bis zum eingebetteten PostgreSQL-Start. Das PostgreSQL-Log enthält:
+
+`listening on IPv4 address "127.0.0.1"` und `database system is ready to accept connections`
+
+Der Launcher meldete trotzdem nach dem Timeout `postgres start failed` und beendete die Instanz. Das ist ein noch offener Unterschied zwischen realer Windows-Prozess-/`postmaster.pid`-Semantik im Paket und dem isolierten Unit-Test des Ready-Waiters. Die nächste KI muss deshalb die tatsächliche PID-Zuordnung des direkt gestarteten `postgres.exe`, den Inhalt/Status von `postmaster.pid` und `process.poll()` im gebauten EXE instrumentiert prüfen. Bis dieser Paket-Smoke grün ist, darf der ZIP-Stand nicht als vollständig abgenommener Finalinstaller bezeichnet werden.
