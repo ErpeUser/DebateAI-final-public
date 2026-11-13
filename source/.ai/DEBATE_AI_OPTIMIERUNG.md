@@ -2999,3 +2999,13 @@ Cloud-Modellabnahme wurde simuliert.
 - Neue Tests `backend/tests/test_startup_optional_bridges.py`: wartende Discovery, Providerfehler, eigene Commit-/Sessiongrenzen und Abbruch bei Lifespan-Ausnahme. War vor der Korrektur rot, danach zusammen mit Schema-/Bridge-Regressionen 32 Tests OK. Backend-Gesamtsuite laeuft.
 - Naechste Aktion: korrigierte EXE bauen und auf dem echten Bestandsprofil Startdauer, neue instanzgebundene Ready-Antwort, sauberen Shutdown und Archiv-/Rollback-Smokes nachweisen. Der fuenfminuetige Referenztext ist noch nicht implementiert; Aufnahme am Stueck versus kurze Abschnitte bleibt Nutzerentscheidung.
 
+### Installierter Starttimeout-Fix 144302d5 – 2026-11-13
+
+- Quelle und Remote: `144302d59f9f737dc4b10214b7562efa676461e5`, `HEAD == origin/master`.
+- Ursache bestaetigt: `sync_subscription_bridge(db)` lief vor dem Lifespan-`yield` und wartete auf optionale Provider-/Gemini-Erkennung; die lokale API war danach gesund, aber der Launcher hatte seine 90-Sekunden-Bereitschaftsgrenze bereits verfehlt.
+- Fix gebaut und installiert: optionale Discovery hat eigene DB-Session, laeuft nach dem lokalen Kernstart als Task, Fehler werden nur gewarnt, Shutdown bricht den Task kontrolliert ab. Lokale Schema-/DB-Migration, Health-/Tokenpruefung und Datenpfad bleiben unveraendert.
+- Echte Bestandsprofil-Messung: neue EXE PID 32808, instanzgebundene `/api/ready`-Antwort nach **20,03 Sekunden**, `/api/sessions` HTTP 200 mit 6 Eintraegen, `/api/calibration/catalog` HTTP 200 mit 3 Modellen. Subscription-Bridge startete mit 22 Modellen; lokaler Qwen-Warmup war bereit. Ein separater `/api/updates`-Request meldete weiterhin 403 und bleibt ein unabhaengiger Updatekanal-Punkt.
+- Build/Smoke: Bundle-Smoke OK (Health/ASR/Labor/Shutdown), nativer Windows-Archiv-/Forced-Rollback-Smoke OK, ZIP-CRC OK, keine verschachtelte Bundlewurzel. Finales ZIP: `source/dist/DebateAI-windows-x64.zip`, 467187101 Bytes, SHA256 `2913B484A04799DA6060AAC2C3DB5E43B8485D184838EC67A952497A4D94F0F7`. Kaltbackup vor dem Tausch: 1270 Dateien hashvalidiert unter `%LOCALAPPDATA%\DebateAI-recovery\pre-144302d5-20261113-165339`; alter Programmrueckweg bleibt erhalten.
+- Tests: Backend **1885** OK (4 Skips), Desktop **213** OK (1 Skip), gezielte Startup-/Schema-/Bridge-Suite **32** OK. Frontend/PWA-Buildstand bleibt 329/329 und 5/5 aus dem vorigen Runtime-Kandidaten; der Startfix aendert keine Frontenddatei.
+- Offen: fuenfminuetiger Referenztext/Audioumfang noch nicht implementiert; echte Mikrofon-/Systemaudio-/Human-/Signaturabnahme und unabhaengige Updatekanal-Reparatur bleiben separate Gates.
+

@@ -128,3 +128,17 @@ Fuer Browserdiagnosen deshalb immer Fetch-Headersemantik pruefen und nicht nur e
 Aktuelle automatische Evidenz: Backend 1881 Tests (4 Skips), Desktop 213 (1 Skip), Frontend 329, PWA 5. Workspace-Scripts: 25 Tests mit zwei Windows-Umgebungsfehlern (ungueltiger Newline-Dateiname und fehlendes Symlinkrecht), nicht als vollstaendig bestanden melden. Reale Mikrofon-/Systemaudio-/Provider-/Human-/Signaturabnahme bleibt separat.
 
 Finaler lokaler Kandidat: Runtime `d8f6482baa5d3fa0ee000017c6c8830cd590532f`, installiert unter `C:\Users\User\Datein\Coding\DebateAI\source\dist\DebateAI\DebateAI.exe`. ZIP 434543711 Bytes, SHA256 `E88ADDC4DE38C649C9BFA8335EC3CD86E313B97770DE57777F8596FADA47D5F6`; erneuter Bundle- und nativer Archiv-/Rollback-Smoke gruen. Neuer echter Besitzer PID 38400; Health-Token, Catalog/Sessions/Privacy 200, sechs Sessions, 15 aktive Playbooks und ein Shell-Trayicon nachgewiesen. Vor dem Start kalter Datenbackup mit 1269 hashvalidierten Dateien ausserhalb Git, binaerer Rueckweg separat erhalten. Kein signierter Produktionsrelease (`NotSigned`). Die bestehende Gemini-Web-Sitzung ist nicht ready und verzoegert den Start um rund 85 Sekunden. Ein einzelner Tray-Update-Statusrequest liefert beim Start noch 403; nicht mit den nun erfolgreichen Hauptfenster-/Laborrequests verwechseln. Alle 15 Runtime-Gates samt Grenzen stehen im neuesten Abschnitt von `.ai/DEBATE_AI_OPTIMIERUNG.md`.
+
+## Neuer installierter Startfix `144302d5`
+
+Der vorherige Startfehler ist reproduziert und behoben: Optionale Provider-/Gemini-Katalogerkennung blockierte den Backend-Lifespan vor dem lokalen `yield`. Seit `144302d59f9f737dc4b10214b7562efa676461e5` laeuft sie getrennt im Hintergrund und blockiert weder lokale DB-Bereitschaft noch die Testlabor-APIs.
+
+- Neue EXE PID `32808` aus `source/dist/DebateAI/DebateAI.exe`.
+- Tokengebundene `/api/ready`-Antwort nach `20,03 s` gegen das vorhandene Nutzerprofil.
+- `/api/sessions` `200` mit 6 Sitzungen; `/api/calibration/catalog` `200` mit 3 Modellen.
+- Subscription-Bridge startete mit 22 Modellen; lokaler Qwen-Warmup bereit.
+- ZIP: 467187101 Bytes, SHA-256 `2913B484A04799DA6060AAC2C3DB5E43B8485D184838EC67A952497A4D94F0F7`.
+- Bundle-Smoke und nativer Update-/Forced-Rollback-Smoke bestanden; ZIP-CRC und Bundlewurzel geprueft.
+- Regressionen: Backend 1885 OK (4 Skips), Desktop 213 OK (1 Skip), Startup-/Schema-/Bridge-Fokus 32 OK.
+
+Der fuenfminuetige Referenztext ist noch kein Bestandteil des Produkts. Das Labor akzeptiert aktuell maximal 30 Sekunden pro Clip; Aufnahme am Stueck versus mehrere kurze Abschnitte muss vor einer Erweiterung entschieden werden. Ein separater `/api/updates`-403 bleibt offen und ist nicht mit dem nun funktionierenden Hauptfenster-/Labor-Sessionpfad gleichzusetzen.
