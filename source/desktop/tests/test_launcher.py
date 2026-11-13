@@ -31,6 +31,22 @@ class _HealthHandler(http.server.BaseHTTPRequestHandler):
 
 
 class LauncherHelperTests(unittest.TestCase):
+    def test_logging_falls_back_when_primary_data_dir_is_not_writable(self):
+        with tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp:
+            primary = Path(tmp) / "sandbox-temp" / "debateai.log"
+            fallback = Path(tmp) / "DebateAI" / "debateai.log"
+            with patch.dict(launcher.os.environ, {"LOCALAPPDATA": tmp}, clear=False), \
+                    patch.object(
+                        launcher.logging,
+                        "basicConfig",
+                        side_effect=[PermissionError(13, "denied"), None],
+                    ) as basic_config:
+                selected = launcher._configure_launcher_logging(primary)
+
+        self.assertEqual(fallback, selected)
+        self.assertEqual(2, basic_config.call_count)
+        self.assertEqual(str(fallback), basic_config.call_args.kwargs["filename"])
+
     def test_updater_path_prefers_canonical_and_falls_back_to_legacy(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

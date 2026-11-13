@@ -1043,6 +1043,38 @@ def _cleanup_owned_runtime_files(data_dir: Path) -> None:
                     pass
 
 
+def _configure_launcher_logging(log_path: Path) -> Path | None:
+    """Configure file logging without letting a restricted temp path abort startup."""
+    candidates = [Path(log_path)]
+    local_appdata = os.environ.get("LOCALAPPDATA")
+    if local_appdata:
+        candidates.append(Path(local_appdata) / "DebateAI" / "debateai.log")
+    seen: set[Path] = set()
+    for candidate in candidates:
+        candidate = candidate.resolve()
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        try:
+            candidate.parent.mkdir(parents=True, exist_ok=True)
+            candidate.touch(exist_ok=True)
+            candidate.chmod(0o600)
+            logging.basicConfig(
+                filename=str(candidate),
+                level=logging.INFO,
+                format="%(asctime)s %(name)s %(levelname)s %(message)s",
+            )
+            return candidate
+        except OSError:
+            continue
+    logging.basicConfig(
+        stream=sys.stderr,
+        level=logging.INFO,
+        format="%(asctime)s %(name)s %(levelname)s %(message)s",
+    )
+    return None
+
+
 def _run_owned(headless: bool = False) -> int:
     _hydrate_windows_provider_environment()
     data_dir = app_data_dir()
@@ -1061,17 +1093,7 @@ def _run_owned(headless: bool = False) -> int:
                 pass
     _configure_gemini_web_login(data_dir)
     _configure_chatgpt_web_login(data_dir)
-    log_path = data_dir / "debateai.log"
-    try:
-        log_path.touch(exist_ok=True)
-        log_path.chmod(0o600)
-    except OSError:
-        pass
-    logging.basicConfig(
-        filename=str(log_path),
-        level=logging.INFO,
-        format="%(asctime)s %(name)s %(levelname)s %(message)s",
-    )
+    _configure_launcher_logging(data_dir / "debateai.log")
     log = logging.getLogger("launcher")
 
     port = existing_instance_port(data_dir)

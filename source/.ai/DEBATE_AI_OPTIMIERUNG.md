@@ -2847,3 +2847,16 @@ Hardware-Gates, echte Provider-/Login-Abnahmen, menschliche Rhetorikbewertung,
 Authenticode und externe Update-/DNS-/R2-Publikation. Ollama, ChatGPT-Oracle
 und Gemini-Web wurden im Bundle vorbereitet; keine interaktive Anmeldung oder
 Cloud-Modellabnahme wurde simuliert.
+
+### Launcher-Sandbox-Logging-Fix (2026-11-13)
+
+- Die aktuelle Fehleraufnahme zeigte neben einem alten PostgreSQL-/Backchannel-
+  Pfadfehler einen ungefangenen `PermissionError` beim Oeffnen von
+  `debateai.log` unter `AppData\\Local\\Packages\\sandbox...\\Temp`.
+- Der Launcher versucht nun zuerst den aktiven Datenpfad, danach den
+  kanonischen `%LOCALAPPDATA%\\DebateAI`-Logpfad und faellt erst zuletzt auf
+  stderr zurueck. Ein gesperrter Sandbox-Temp-Pfad kann den App-Start nicht
+  mehr als unbehandelte Ausnahme abbrechen.
+- Regressionstest `test_logging_falls_back_when_primary_data_dir_is_not_writable`
+  ist gruen. Der neue Bundle-Build muss diesen Launcher-Fix enthalten; die
+  vorhandenen PostgreSQL-Marker-/Alembic-Fixes bleiben unveraendert.
