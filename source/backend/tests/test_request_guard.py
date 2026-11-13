@@ -161,6 +161,17 @@ class MiddlewareTests(unittest.TestCase):
             with self.subTest(path=path):
                 self.assertTrue(request_guard._desktop_frontend_path(path, "GET", "localhost:8474"))
 
+    def test_desktop_bootstrap_cookie_authorizes_same_origin_api_reads(self):
+        os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
+        bootstrap = self.client.get("/?desktop=1", headers={"Host": "localhost:8474"})
+        cookie = bootstrap.cookies.get(request_guard.INSTANCE_COOKIE)
+        self.assertEqual("test-token", cookie)
+        response = self.client.get(
+            "/api/ping",
+            headers={"Host": "localhost:8474", "Cookie": f"{request_guard.INSTANCE_COOKIE}={cookie}"},
+        )
+        self.assertEqual(200, response.status_code)
+
     def test_foreign_frontend_host_and_api_remain_protected(self):
         os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
         self.assertEqual(

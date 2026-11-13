@@ -33,6 +33,7 @@ import ipaddress
 import hmac
 import logging
 import os
+from http.cookies import SimpleCookie
 from urllib.parse import urlsplit
 
 from starlette.datastructures import Headers
@@ -53,6 +54,7 @@ LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "backend"})
 # could be served from: the app's own port, the Vite dev server, a preview.
 CORS_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|\[::1\]|[A-Za-z0-9.-]+\.localhost)(:\d+)?$"
 WS_TOKEN_PROTOCOL_PREFIX = "debateai.instance."
+INSTANCE_COOKIE = "debateai_instance"
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
 _DESKTOP_FRONTEND_FILES = frozenset({
@@ -165,6 +167,16 @@ def _websocket_instance_protocol(headers: Headers) -> tuple[str, str] | None:
     return None
 
 
+def _instance_cookie(headers: Headers) -> str:
+    cookie = SimpleCookie()
+    try:
+        cookie.load(headers.get("cookie", ""))
+    except (TypeError, ValueError):
+        return ""
+    morsel = cookie.get(INSTANCE_COOKIE)
+    return morsel.value if morsel is not None else ""
+
+
 class RequestGuardMiddleware:
     """Reject requests whose Host or Origin is not one of ours.
 
@@ -212,7 +224,7 @@ class RequestGuardMiddleware:
             origin = headers.get("origin")
             if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
                 expected = env_value("DEBATEAI_INSTANCE_TOKEN")
-                supplied = headers.get("x-debateai-instance", "")
+                supplied = headers.get("x-debateai-instance", "") or _instance_cookie(headers)
                 if expected and not hmac.compare_digest(supplied, expected):
                     await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
                     return
@@ -243,7 +255,7 @@ class RequestGuardMiddleware:
                 selected_ws_protocol = offered[0]
         elif method not in {"OPTIONS"} and not health_path:
             expected = env_value("DEBATEAI_INSTANCE_TOKEN")
-            supplied = headers.get("x-debateai-instance", "")
+            supplied = headers.get("x-debateai-instance", "") or _instance_cookie(headers)
             if expected and not hmac.compare_digest(supplied, expected) and not bootstrap_path:
                 await self._reject(
                     scope,
@@ -259,6 +271,12 @@ class RequestGuardMiddleware:
                 if message["type"] == "http.response.start" and expected:
                     headers_out = list(message.get("headers") or [])
                     headers_out.append((b"x-debateai-instance", expected.encode("utf-8")))
+                    headers_out.append(
+                        (
+                            b"set-cookie",
+                            f"{INSTANCE_COOKIE}={expected}; Path=/; HttpOnly; SameSite=Strict".encode("utf-8"),
+                        )
+                    )
                     message = {**message, "headers": headers_out}
                 await send(message)
             await self.app(scope, receive, send_bootstrap)

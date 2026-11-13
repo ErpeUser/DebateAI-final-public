@@ -2911,3 +2911,18 @@ Cloud-Modellabnahme wurde simuliert.
   eigenen Postmasters in `postmaster.pid`, bevor er den Port freigibt.
   Der neue Regressionstest war rot und ist nach der Korrektur gruen;
   Desktop-Gesamtsuite nun 211 Tests OK (1 Rechte-Skip).
+
+### Browser-KI-Handoff: Desktop-Session-Cookie (2026-11-13)
+
+- Das Labor selbst war sichtbar, aber der Modellkatalog meldete weiterhin
+  `Backend nicht verbunden`: `/api/meta` lieferte den Instanzheader, der
+  eingebettete Browser leitete ihn bei konkurrierenden Requests jedoch nicht
+  stabil weiter; die API antwortete mit 403.
+- Der Bootstrap setzt nun zusätzlich ein `HttpOnly; SameSite=Strict`-
+  Cookie für dieselbe Loopback-Origin. Der RequestGuard akzeptiert Cookie oder
+  Header, WebSockets behalten ihren Subprotocol-Token. Cross-Origin-/Host-
+  Schutz und Tokenbindung bleiben bestehen.
+- Regression: gleichzeitiger Labor-Bootstrap, fehlgeschlagener Bootstrap mit
+  Wiederholung und Cookie-authentifizierter API-Read sind abgedeckt. Die
+  Browser-KI soll beim nächsten Fehler zuerst `/api/meta`, Response-Header,
+  Cookie, Request-Header und 403-Status in genau dieser Kette prüfen.
