@@ -2926,3 +2926,10 @@ Cloud-Modellabnahme wurde simuliert.
   Wiederholung und Cookie-authentifizierter API-Read sind abgedeckt. Die
   Browser-KI soll beim nächsten Fehler zuerst `/api/meta`, Response-Header,
   Cookie, Request-Header und 403-Status in genau dieser Kette prüfen.
+
+### Guard- und Upload-Haertung – 2026-11-13
+
+- Die generischen Knowledge-Record-Mutationsrouten pruefen jetzt vor Update/Delete den Quelltyp und verweigern Aenderungen am eingebauten offerings-Katalog.
+- Fuenf bisher ungebundene Datei-Importpfade in Dossier, Knowledge und Offerings lesen ueber eine gemeinsame max+1-Hilfe und weisen Ueberschreitungen reproduzierbar mit HTTP 413 zurueck.
+- Regressionstests decken den Quelltyp-Guard, Sentinel-Lesen, exakte Grenze, Ueberschreitung und den Route-Vertrag ab. Die Multipart-Parser-Spooling-Grenze bleibt als separater Infrastrukturpunkt beobachtet.
+
