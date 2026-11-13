@@ -2860,3 +2860,17 @@ Cloud-Modellabnahme wurde simuliert.
 - Regressionstest `test_logging_falls_back_when_primary_data_dir_is_not_writable`
   ist gruen. Der neue Bundle-Build muss diesen Launcher-Fix enthalten; die
   vorhandenen PostgreSQL-Marker-/Alembic-Fixes bleiben unveraendert.
+
+### Logging-Fix Windows-Kandidat (2026-11-13)
+
+- Runtime-Commit: `73314051460bb68bd5409b3d5b9635b5965b4324`.
+- `build_debate_assistant.ps1 -IncludeOracle` lief bis zum vollstaendigen
+  PyInstaller-/Oracle-/Runtime-Staging; der bekannte PowerShell-
+  `Compress-Archive`-Schritt wurde durch den validierten nativen ZIP-Pfad
+  ersetzt.
+- Finaler Kandidat: `source/dist/DebateAI-windows-x64.zip`, **434.537.520
+  Bytes**, SHA-256 **`4806C4FA2704979DE0A25BFC94B7F9B89C56D82F8F858925996DC2087139F99A`**.
+  Bundle-Smoke und nativer Update-/Rollback-Smoke sind bestanden.
+- Der Launcher-Fallback fuer gesperrte Sandbox-Temp-Logs ist in der EXE
+  enthalten; bestehende `%LOCALAPPDATA%\\DebateAI`-Daten und alte Stale-
+  Dist-Kandidaten wurden nicht geloescht.
