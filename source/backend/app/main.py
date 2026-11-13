@@ -489,7 +489,6 @@ async def lifespan(app: FastAPI):
         migrated_pii_rows = await migrate_legacy_entries(db)
         if migrated_pii_rows:
             logging.getLogger(__name__).info("Migrated %s legacy PII vault rows", migrated_pii_rows)
-        await sync_subscription_bridge(db)
         await db.commit()
     ai_config._ensure_static_prompts()
 
@@ -510,7 +509,26 @@ async def lifespan(app: FastAPI):
 
     ner_task = asyncio.create_task(_warm_up_ner())
 
-    yield
+    async def _sync_optional_bridges():
+        # Account discovery may wait for expired/offline provider sessions.
+        # Keep its transaction separate and never gate local backend readiness.
+        try:
+            async with async_session() as db:
+                await sync_subscription_bridge(db)
+                await db.commit()
+        except Exception as exc:
+            logging.getLogger(__name__).warning(
+                "Optional provider discovery unavailable (%s); local backend remains ready",
+                type(exc).__name__,
+            )
+
+    bridge_task = asyncio.create_task(_sync_optional_bridges(), name="optional-provider-discovery")
+
+    try:
+        yield
+    finally:
+        bridge_task.cancel()
+        await asyncio.gather(bridge_task, return_exceptions=True)
     from app.services.windows_audio_capture import native_windows_audio
     await native_windows_audio.stop()
     from app.services.subscription_bridge import cleanup_gemini_web_cookie

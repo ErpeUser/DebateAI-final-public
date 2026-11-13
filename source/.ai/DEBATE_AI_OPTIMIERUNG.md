@@ -2991,3 +2991,11 @@ Cloud-Modellabnahme wurde simuliert.
 
 - Naechste konkrete Aktion: bei Bedarf die bestehende Gemini-Web-Sitzung ueber die sichtbare Verbindungsoberflaeche durch den Nutzer erneuern und die echte Audio-/Humanabnahme durchfuehren; keine erneute Grundsatzimplementierung oder unnoetiger Rebuild.
 
+### Starttimeout durch optionale Provider-Abfrage – 2026-11-13
+
+- Neuer Screenshot: Hauptfenster scheitert an der 90-Sekunden-Bereitschaftsgrenze, waehrend der Backend-/DB-Ready-Endpunkt spaeter bereits 200 liefert. Die kanonische Log-/launcher.json-Datei zeigte bei der Untersuchung noch den Morgenstand; sie wurde nicht mit dem neuen Prozess verwechselt oder ueberschrieben.
+- Verantwortlicher Ablauf in `backend/app/main.py`: `sync_subscription_bridge(db)` wartete synchron vor dem lifespan-yield. Darin kann die Gemini-Katalogabfrage bis zu 100 Probeversuche benoetigen; auch Providerfehler konnten den gesamten lokalen Start abbrechen.
+- Die optionale Synchronisierung laeuft nun als besessener Hintergrundtask mit eigener Datenbanksitzung. Sie bestaetigt bei Erfolg ihre eigene Transaktion, loggt bei Fehlern nur den Fehlertyp und blockiert nicht den lokalen Ready-Pfad. Bei normalem oder fehlerhaftem Lifespan-Ende wird sie abgebrochen und abgewartet, bevor Sitzungsdateien bereinigt werden. Keine Anmeldedaten geloescht, keine Startzeitgrenze oder Health-Token-Pruefung abgeschwaecht.
+- Neue Tests `backend/tests/test_startup_optional_bridges.py`: wartende Discovery, Providerfehler, eigene Commit-/Sessiongrenzen und Abbruch bei Lifespan-Ausnahme. War vor der Korrektur rot, danach zusammen mit Schema-/Bridge-Regressionen 32 Tests OK. Backend-Gesamtsuite laeuft.
+- Naechste Aktion: korrigierte EXE bauen und auf dem echten Bestandsprofil Startdauer, neue instanzgebundene Ready-Antwort, sauberen Shutdown und Archiv-/Rollback-Smokes nachweisen. Der fuenfminuetige Referenztext ist noch nicht implementiert; Aufnahme am Stueck versus kurze Abschnitte bleibt Nutzerentscheidung.
+
