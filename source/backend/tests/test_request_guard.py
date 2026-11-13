@@ -149,6 +149,18 @@ class MiddlewareTests(unittest.TestCase):
         self.assertEqual(200, asset.status_code)
         self.assertEqual("test-token", asset.headers.get("X-DebateAI-Instance"))
 
+    def test_local_desktop_calibration_assets_are_bootstrap_paths(self):
+        for path in (
+            "/calibration.html",
+            "/calibration/launcher.css",
+            "/calibration/launcher.mjs",
+            "/calibration/lab.mjs",
+            "/icons/icon-192.png",
+            "/manifest.webmanifest",
+        ):
+            with self.subTest(path=path):
+                self.assertTrue(request_guard._desktop_frontend_path(path, "GET", "localhost:8474"))
+
     def test_foreign_frontend_host_and_api_remain_protected(self):
         os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
         self.assertEqual(

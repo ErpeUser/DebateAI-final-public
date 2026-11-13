@@ -2874,3 +2874,15 @@ Cloud-Modellabnahme wurde simuliert.
 - Der Launcher-Fallback fuer gesperrte Sandbox-Temp-Logs ist in der EXE
   enthalten; bestehende `%LOCALAPPDATA%\\DebateAI`-Daten und alte Stale-
   Dist-Kandidaten wurden nicht geloescht.
+
+### Testlabor im Desktop sichtbar gemacht (2026-11-13)
+
+- Die Live-GUI zeigte keinen `Testlabor`-Button, weil der RequestGuard die
+  statischen Pfade `/calibration.html` und `/calibration/*` mit 403 blockierte.
+  Dadurch konnten Launcher-Styles und -Script nicht geladen werden.
+- Die lokale Bootstrap-Allowlist erlaubt jetzt die schreibgeschuetzten
+  Frontend-Dateien fuer Kalibrierung, Icons und Manifest unter Loopback. Die
+  API-/WebSocket-Schutzregeln bleiben unveraendert.
+- Regressionstest `test_local_desktop_calibration_assets_are_bootstrap_paths`
+  ist gruen. Nach dem neuen EXE-Build erscheint der Button unten links im
+  Hauptfenster und oeffnet das Labor als eingebetteten Dialog.

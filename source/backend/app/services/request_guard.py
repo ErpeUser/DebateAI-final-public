@@ -55,6 +55,10 @@ CORS_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|\[::1\]|[A-Za-z0-9.-]+\.
 WS_TOKEN_PROTOCOL_PREFIX = "debateai.instance."
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
+_DESKTOP_FRONTEND_FILES = frozenset({
+    "/", "/calibration.html", "/favicon.ico", "/manifest.webmanifest",
+})
+_DESKTOP_FRONTEND_PREFIXES = ("/assets/", "/calibration/", "/icons/")
 
 
 def _env_list(name: str) -> list[str]:
@@ -74,7 +78,9 @@ def _desktop_frontend_path(path: str, method: str, host: str) -> bool:
     """Allow the local WebView to load its non-sensitive frontend assets."""
     if method not in {"GET", "HEAD"} or _hostname_of(host) not in LOOPBACK_NAMES:
         return False
-    return path == "/" or path.startswith("/assets/") or path == "/favicon.ico"
+    return path in _DESKTOP_FRONTEND_FILES or any(
+        path.startswith(prefix) for prefix in _DESKTOP_FRONTEND_PREFIXES
+    )
 
 
 def _is_ip_literal(hostname: str) -> bool:
