@@ -23,6 +23,23 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertEqual(1, sleep.call_count)
         connect.assert_called_once()
 
+    def test_windows_accepts_postmaster_pid_different_from_launcher_pid(self):
+        self.pg.pgdata.mkdir()
+        pidfile = self.pg.pgdata / "postmaster.pid"
+        pidfile.write_text(
+            f"9876\n{self.pg.pgdata}\n1000\n54321\n\n\n0\nready \n"
+        )
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
+                mock.patch("debateai_desktop.pg.socket.create_connection"):
+            self.assertTrue(
+                self.pg._wait_for_postgres(
+                    54321, process, started_at=1000
+                )
+            )
+        self.assertEqual(9876, self.pg.started_pid)
+
     @unittest.skipUnless(__import__("sys").platform == "win32", "Windows path contract")
     def test_postgres_uses_ascii_short_path_for_non_ascii_data_root(self):
         unicode_root = self.data_dir / "Pruefung ä"

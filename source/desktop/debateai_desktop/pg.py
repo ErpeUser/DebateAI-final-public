@@ -58,8 +58,14 @@ class EmbeddedPostgres:
         self.started_pid = None
         self.initialized_here = False
 
-    def _wait_for_postgres(self, port: int, process, timeout: float = 30.0) -> bool:
-        """Wait for a directly started postmaster without spawning a shell."""
+    def _wait_for_postgres(
+        self,
+        port: int,
+        process,
+        timeout: float = 30.0,
+        started_at: int | None = None,
+    ) -> bool:
+        """Wait for the postmaster started by this launch without a shell."""
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if process.poll() is not None:
@@ -69,9 +75,25 @@ class EmbeddedPostgres:
                 # Like pg_ctl -w, require this postmaster's ready state before
                 # allowing the backend to open its first SQL connection.
                 lines = (self.pgdata / "postmaster.pid").read_text().splitlines()
-                if int(lines[0]) != process.pid or lines[7].strip() != "ready":
+                postmaster_pid = int(lines[0].strip())
+                postmaster_started_at = int(lines[2].strip())
+                status = lines[7].strip()
+                if sys.platform == "win32":
+                    # pg_ctl cannot compare the pidfile PID with its launcher
+                    # process on Windows. The start timestamp prevents adopting
+                    # a stale pidfile from an older instance.
+                    valid_pid = postmaster_pid > 0 and (
+                        started_at is None
+                        or postmaster_started_at >= started_at - 2
+                    )
+                else:
+                    valid_pid = postmaster_pid == process.pid
+                if not valid_pid or status not in {"ready", "standby"}:
                     time.sleep(0.05)
                     continue
+                # On Windows the pidfile contains the actual postmaster PID,
+                # which is the PID pg_ctl uses for clean shutdown.
+                self.started_pid = postmaster_pid
                 with socket.create_connection(("127.0.0.1", port), timeout=0.2):
                     return True
             except (OSError, ValueError, IndexError):
@@ -108,6 +130,7 @@ class EmbeddedPostgres:
 
     def _start_windows_direct(self, port: int) -> None:
         """Start postgres.exe itself so pg_ctl cannot leave a cmd wrapper."""
+        started_at = int(time.time())
         with open(self.log, "ab", buffering=0) as server_log:
             process = subprocess.Popen(
                 [
@@ -124,7 +147,7 @@ class EmbeddedPostgres:
                 shell=False,
             )
         self.started_pid = process.pid
-        if self._wait_for_postgres(port, process):
+        if self._wait_for_postgres(port, process, started_at=started_at):
             return
         tail = ""
         try:
