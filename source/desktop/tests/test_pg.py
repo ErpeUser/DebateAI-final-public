@@ -9,6 +9,20 @@ from debateai_desktop.pg import EmbeddedPostgres, _postgres_data_root, _windows_
 
 
 class EmbeddedPostgresTests(unittest.TestCase):
+    def test_windows_waits_for_cluster_ready_state_after_port_is_open(self):
+        self.pg.pgdata.mkdir()
+        pidfile = self.pg.pgdata / "postmaster.pid"
+        def state(value):
+            pidfile.write_text(f"1234\n{self.pg.pgdata}\n0\n54321\n\n\n0\n{value}\n")
+        state("starting")
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        with mock.patch("debateai_desktop.pg.socket.create_connection") as connect, \
+                mock.patch("debateai_desktop.pg.time.sleep", side_effect=lambda _: state("ready")) as sleep:
+            self.assertTrue(self.pg._wait_for_postgres(54321, process))
+        self.assertEqual(1, sleep.call_count)
+        connect.assert_called_once()
+
     @unittest.skipUnless(__import__("sys").platform == "win32", "Windows path contract")
     def test_postgres_uses_ascii_short_path_for_non_ascii_data_root(self):
         unicode_root = self.data_dir / "Pruefung ä"

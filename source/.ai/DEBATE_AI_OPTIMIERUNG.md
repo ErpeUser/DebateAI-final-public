@@ -2904,3 +2904,10 @@ Cloud-Modellabnahme wurde simuliert.
   Der Bundle-Smoke prueft jetzt auch die Laborassets ohne Zusatzheader und
   den Modellkatalog mit Instanzheader. Neuer Build und sichtbare Windows-
   Abnahme werden erst nach ihrer Ausfuehrung bestaetigt.
+- Der erste reale Start des Kandidaten `acd53c88` traf zusaetzlich eine
+  Recovery-Race: der TCP-Port war offen, aber PostgreSQL meldete noch
+  `CannotConnectNowError` (03:50:40); `ready` folgte 47 ms spaeter. Der
+  Windows-Start wartet jetzt wie `pg_ctl -w` auf den `ready`-Status des
+  eigenen Postmasters in `postmaster.pid`, bevor er den Port freigibt.
+  Der neue Regressionstest war rot und ist nach der Korrektur gruen;
+  Desktop-Gesamtsuite nun 211 Tests OK (1 Rechte-Skip).

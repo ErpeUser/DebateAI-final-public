@@ -65,9 +65,16 @@ class EmbeddedPostgres:
             if process.poll() is not None:
                 return False
             try:
+                # PostgreSQL listens while crash recovery is still running.
+                # Like pg_ctl -w, require this postmaster's ready state before
+                # allowing the backend to open its first SQL connection.
+                lines = (self.pgdata / "postmaster.pid").read_text().splitlines()
+                if int(lines[0]) != process.pid or lines[7].strip() != "ready":
+                    time.sleep(0.05)
+                    continue
                 with socket.create_connection(("127.0.0.1", port), timeout=0.2):
                     return True
-            except OSError:
+            except (OSError, ValueError, IndexError):
                 time.sleep(0.05)
         return False
 
