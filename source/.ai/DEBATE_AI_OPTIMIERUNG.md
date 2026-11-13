@@ -2960,3 +2960,34 @@ Cloud-Modellabnahme wurde simuliert.
 - Gegen die reale EXE mit Node-Fetch und genau diesem Client: Catalog, Sessions (6 vorhanden) und Privacy jeweils 200. Tray-Shell-Registrierung bestaetigt: genau ein Icon. Der lokale Diagnosehelfer musste uID=0 verwenden, weil die installierte pystray-Fassung beim Senden hID statt uID befuellt; dies ist keine Produktcodeaenderung.
 - Naechste Aktion: nur geaenderte generierte Frontend-Ressourcen in einen neuen Bundle-Kandidaten uebernehmen, Archiv/Smokes erneut pruefen, dann kontrolliert tauschen. Bereits gebaute Python-/Bridge-Binaerdateien sind unveraendert.
 
+### Installierter Windows-Kandidat d8f6482b – 2026-11-13
+
+- Runtime-Source: `d8f6482baa5d3fa0ee000017c6c8830cd590532f`. Python-/Bridge-Binaerdateien wurden mit Python 3.12.10 aus `31e42382` gebaut; seitdem unveraendert. Der einzige Runtime-Fix danach betrifft externe Frontend-Ressourcen: Produktionsbuild erneuert und vollstaendig im Staging ersetzt, keine manuell gepatchte kompilierte Pythondatei.
+- Installierte EXE: `C:\Users\User\Datein\Coding\DebateAI\source\dist\DebateAI\DebateAI.exe`, neuer Besitzer PID 38400, Start 08:50:55 CET. Alte eigene Instanz bei inaktiven Sessions ueber normalen Tray-Quit sauber beendet. Keine fremden Prozesse beendet.
+- Finales ZIP: `C:\Users\User\Datein\Coding\DebateAI\source\dist\DebateAI-windows-x64.zip`, 434543711 Bytes, SHA256 `E88ADDC4DE38C649C9BFA8335EC3CD86E313B97770DE57777F8596FADA47D5F6`.
+- Frische finale Gates: Bundle-Smoke (Health/ASR/Labor/Shutdown) und nativer Windows-Archiv-/Forced-Rollback-Smoke OK. ZIP-CRC OK, keine doppelt verschachtelte Bundlewurzel, beide Playbooks mit je 15 Strategien und Live-/Deep-Prompts in der ZIP. Die gepackte Session-Datei entspricht dem neuen Frontendbuild.
+- Echte installierte Instanz: tokengebundene Health passt zu PID/launcher.json; mit dem Session-Client aus dem installierten Bundle Catalog/Sessions/Privacy 200; sechs Sessions erhalten; Labor-HTML 200. Reale WebView-Requests fuer Models/Settings/Sessions ebenfalls 200. Shell bestaetigt genau ein registriertes Tray-Symbol. Aktiver AI-Ordner bleibt `%LOCALAPPDATA%\DebateAI\ai`, 15 Strategien inklusive Gegenfrage/Beweislast/Widerlegung.
+- Rueckwege: unveraenderter Programmrueckweg `source/dist/DebateAI.before-header-d8f6482` samt ZIP; gestoppter Datenbackup ausserhalb Git unter `%LOCALAPPDATA%\DebateAI-recovery\pre-31e42382-20261113-083917`, alle 1269 Dateien hashgeprueft. Keine AppData-, Modell-, Session- oder Browserdaten geloescht.
+- Tests: Backend 1881 OK (4 Skips), Desktop 213 OK (1 Skip), Frontend 329/329, PWA 5/5. Workspace-Scripts 25 ausgefuehrt: 23 bestanden, 2 Umgebungsfehler (Newline-Dateiname auf Windows; Symlinkrecht fehlt). Erster Desktop-Aufruf ohne Projekt-PYTHONPATH und erster Archivaufruf mit nichtkanonischem Dateinamen scheiterten; korrigierte vollstaendige Wiederholungen sind gruen.
+- Restgrenzen: bestehende Gemini-Web-Sitzung erreicht beim Start keine Bereitschaft und verzoegert den Bestandsstart um rund 85 Sekunden. Kein Cookie geloescht, keine neue Anmeldung automatisiert. Ein separater Tray-Update-Statusrequest liefert beim Start weiterhin 403; geschuetzte UI-/Laborrequests funktionieren mit dem korrigierten Session-Client. Authenticode-Status `NotSigned`, keine externe Releasepublikation behauptet.
+
+| Runtime-Gate | Evidenz / Grenze dieses Laufs |
+| --- | --- |
+| 1 EXE/Buildursprung | Echter installierter Besitzer und Pfad geprueft, Runtime d8f6482b |
+| 2 Backend/DB | Neue instanzgebundene Health, Bestandsmigration und API-Reads OK |
+| 3 Tray/UI/Labor | Native Tray-Registrierung, echte WebView-Reads, Laborassets und Catalog OK; keine Klick-/Hardwareabnahme |
+| 4 Daten | Gestoppter validierter Backup, sechs Sessions und 15 Playbooks erhalten |
+| 5 Ollama | Vorhandenen nativen Server nicht beendet; Qwen-Warmup ready im Startlog, keine neue Nutzwertmessung |
+| 6 Mikrofon/Systemaudio | Nicht in diesem Lauf real aufgenommen |
+| 7 Deutsch/Sprecher/Live | Automatisierte Suites gruen; reale Hardwareabnahme offen |
+| 8 Overlay | Nicht manuell abgenommen |
+| 9 Modi/Profile/Strategien | Backendtests und aktive 15 Strategien geprueft; Human-Review offen |
+| 10 Revisionen | Backend-Regressionen gruen; keine neue Live-Hardwaremessung |
+| 11 Hintergrund/Sofortpfad | Kein Leistungsnachweis; oben genannten langsamen Gemini-Start beachten |
+| 12 Keys/DPAPI | Bestehende Appdaten erhalten; keine API-Key-Extraktion oder neue Provider-Key-Abnahme |
+| 13 Provider | Vorhandene Subscription-Bridge meldet 22 Modelle, keine neue Chatantwortmessung; Gemini nicht ready |
+| 14 Shutdown/Restart | Eigene alte Instanz sauber beendet, neue echte Instanz/API bereit |
+| 15 Update/Rollback | Finales Archiv nativ mit erfolgreichem Update und erzwungenem Rollback getestet |
+
+- Naechste konkrete Aktion: bei Bedarf die bestehende Gemini-Web-Sitzung ueber die sichtbare Verbindungsoberflaeche durch den Nutzer erneuern und die echte Audio-/Humanabnahme durchfuehren; keine erneute Grundsatzimplementierung oder unnoetiger Rebuild.
+

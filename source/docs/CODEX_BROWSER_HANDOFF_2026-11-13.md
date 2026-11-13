@@ -109,10 +109,22 @@ Diese Zahlen sind Testevidenz für die jeweiligen Schichten; sie ersetzen nicht 
 
 Echte Windows-WebView2-/DPI-/Tray-/Mikrofon-/Systemaudio-Abnahme, reale deutsche Sprachmessungen, Ollama-/ChatGPT-/Gemini-Verfügbarkeit, Authenticode-Signatur und Release-Publikation bleiben getrennte Betreiber- bzw. Hardware-Gates. Ein fehlender Provider-Schlüssel darf nicht als interner Codefehler und ein Mock-Ergebnis nicht als reale Modellmessung ausgegeben werden.
 
-## Aktueller Paket-Smoke-Blocker (13.11.2026)
+## Historischer Paket-Smoke-Blocker (13.11.2026, im neuen Stand nicht reproduziert)
 
 Der erneute Smoke gegen `source/dist/DebateAI` wurde in einem kontrollierten Workspace-Temp-Verzeichnis gestartet. Der Testcontainer-TEMP selbst scheiterte separat mit `WinError 5` beim Aufräumen; im Workspace-TEMP kam der Prozess bis zum eingebetteten PostgreSQL-Start. Das PostgreSQL-Log enthält:
 
 `listening on IPv4 address "127.0.0.1"` und `database system is ready to accept connections`
 
-Der Launcher meldete trotzdem nach dem Timeout `postgres start failed` und beendete die Instanz. Das ist ein noch offener Unterschied zwischen realer Windows-Prozess-/`postmaster.pid`-Semantik im Paket und dem isolierten Unit-Test des Ready-Waiters. Die nächste KI muss deshalb die tatsächliche PID-Zuordnung des direkt gestarteten `postgres.exe`, den Inhalt/Status von `postmaster.pid` und `process.poll()` im gebauten EXE instrumentiert prüfen. Bis dieser Paket-Smoke grün ist, darf der ZIP-Stand nicht als vollständig abgenommener Finalinstaller bezeichnet werden.
+Der Launcher meldete damals trotzdem nach dem Timeout `postgres start failed` und beendete die Instanz. Der inzwischen geholte `31e42382`-Stand enthaelt weitere Windows-PID-/Ready-Fixes. Beim echten Neubau mit Python 3.12.10 sind Bundle-Smoke und nativer Archiv-/Forced-Rollback-Smoke gruen; auch die Bestandsdatenbank startete. Dieser historische Fehler ist daher kein aktuell nachgewiesener Paketblocker mehr. Bei Wiederauftreten die echte PID-Zuordnung des direkt gestarteten `postgres.exe`, `postmaster.pid` und `process.poll()` pruefen, nicht den alten Fehlertext als neue Diagnose uebernehmen.
+
+## Nachtrag: nachgewiesene Webview-Ursache und Fix d8f6482b
+
+Der Cookie-Fallback allein erklaerte den echten Browserfehler nicht vollstaendig. Uvicorn und der RequestGuard senden den Instanzheader beide. Browser-/Node-Fetch fasst identische Werte als `token, token` zusammen; der Session-Client schickte diese Liste statt eines einzelnen Tokens weiter. Der RequestGuard bevorzugt den expliziten Header vor dem Cookie und wies ihn korrekt mit 403 ab. Python-urllib las nur den ersten Headerwert und maskierte damit den Fehler im alten Smoke.
+
+`frontend/public/calibration/session.mjs` normalisiert jetzt ausschliesslich identische wiederholte Headerwerte. Widerspruechliche Werte blockieren die geschuetzte Anfrage. Kein Host-/Origin-/Token-Guard wurde abgeschwaecht. Zwei zusaetzliche echte Headers/Response-Regressionsfaelle waren vor dem Fix rot; danach Frontend 329/329 gruen. Derselbe Session-Client liefert gegen die reale Windows-EXE beim ersten Aufruf fuer Catalog, Sessions und Privacy jeweils 200.
+
+Fuer Browserdiagnosen deshalb immer Fetch-Headersemantik pruefen und nicht nur einen Python-Request als Browserbeweis ausgeben. Nur Anzahl und Gleichheit von Headerwerten protokollieren, nie Tokenwerte. Tray-Registrierung ist ebenfalls nativ bestaetigt: genau ein Symbol. Der lokale Shell-Pruefhelfer musste uID=0 verwenden, passend zum Verhalten der installierten pystray-Fassung; ein falscher Pruefhelfer darf keinen neuen Produktfix ausloesen.
+
+Aktuelle automatische Evidenz: Backend 1881 Tests (4 Skips), Desktop 213 (1 Skip), Frontend 329, PWA 5. Workspace-Scripts: 25 Tests mit zwei Windows-Umgebungsfehlern (ungueltiger Newline-Dateiname und fehlendes Symlinkrecht), nicht als vollstaendig bestanden melden. Reale Mikrofon-/Systemaudio-/Provider-/Human-/Signaturabnahme bleibt separat.
+
+Finaler lokaler Kandidat: Runtime `d8f6482baa5d3fa0ee000017c6c8830cd590532f`, installiert unter `C:\Users\User\Datein\Coding\DebateAI\source\dist\DebateAI\DebateAI.exe`. ZIP 434543711 Bytes, SHA256 `E88ADDC4DE38C649C9BFA8335EC3CD86E313B97770DE57777F8596FADA47D5F6`; erneuter Bundle- und nativer Archiv-/Rollback-Smoke gruen. Neuer echter Besitzer PID 38400; Health-Token, Catalog/Sessions/Privacy 200, sechs Sessions, 15 aktive Playbooks und ein Shell-Trayicon nachgewiesen. Vor dem Start kalter Datenbackup mit 1269 hashvalidierten Dateien ausserhalb Git, binaerer Rueckweg separat erhalten. Kein signierter Produktionsrelease (`NotSigned`). Die bestehende Gemini-Web-Sitzung ist nicht ready und verzoegert den Start um rund 85 Sekunden. Ein einzelner Tray-Update-Statusrequest liefert beim Start noch 403; nicht mit den nun erfolgreichen Hauptfenster-/Laborrequests verwechseln. Alle 15 Runtime-Gates samt Grenzen stehen im neuesten Abschnitt von `.ai/DEBATE_AI_OPTIMIERUNG.md`.
