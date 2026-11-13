@@ -40,6 +40,27 @@ class EmbeddedPostgresTests(unittest.TestCase):
             )
         self.assertEqual(9876, self.pg.started_pid)
 
+    def test_windows_rejects_stale_postmaster_pidfile(self):
+        self.pg.pgdata.mkdir()
+        pidfile = self.pg.pgdata / "postmaster.pid"
+        pidfile.write_text(
+            f"9876\n{self.pg.pgdata}\n900\n54321\n\n\n0\nready \n"
+        )
+        process = mock.Mock(pid=1234)
+        process.poll.return_value = None
+        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
+                mock.patch(
+                    "debateai_desktop.pg.time.monotonic",
+                    side_effect=[0.0, 31.0],
+                ), \
+                mock.patch("debateai_desktop.pg.socket.create_connection") as connect:
+            self.assertFalse(
+                self.pg._wait_for_postgres(
+                    54321, process, timeout=30, started_at=1000
+                )
+            )
+        connect.assert_not_called()
+
     @unittest.skipUnless(__import__("sys").platform == "win32", "Windows path contract")
     def test_postgres_uses_ascii_short_path_for_non_ascii_data_root(self):
         unicode_root = self.data_dir / "Pruefung ä"
