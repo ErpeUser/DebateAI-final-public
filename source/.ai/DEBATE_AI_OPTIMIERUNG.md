@@ -2938,3 +2938,8 @@ Cloud-Modellabnahme wurde simuliert.
 - Der generische PATCH-Endpunkt fuer Knowledge-Source-Metadaten verweigert jetzt Mutationen des integrierten offerings-Sources; nutzerverwaltete collection/files-Quellen bleiben aenderbar.
 - Regressionstests pruefen Ablehnung des Built-ins, erlaubte Nutzerquelle und 404 bei fehlender Quelle.
 
+### Konverter-Output – 2026-11-13
+
+- Knowledge-Dateiimporte persistieren konvertierten Markdown jetzt hoechstens bis zum bestehenden 100.000-Zeichen-Vertrag des Dossiers; damit bleibt der Rohupload begrenzt und der gespeicherte/embeddete Text ebenfalls.
+- Die eigentliche Office-/Archivkonvertierung bleibt ein separater Ressourcen-Gate fuer eine spaetere tiefere Parser-Haertung.
+
