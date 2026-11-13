@@ -2886,3 +2886,21 @@ Cloud-Modellabnahme wurde simuliert.
 - Regressionstest `test_local_desktop_calibration_assets_are_bootstrap_paths`
   ist gruen. Nach dem neuen EXE-Build erscheint der Button unten links im
   Hauptfenster und oeffnet das Labor als eingebetteten Dialog.
+
+### Korrektur der realen Labor-/Tray-Installation (2026-11-13)
+
+- Der vorherige Austausch war nicht abgeschlossen: der alte Prozess hielt
+  `source/dist/DebateAI` offen; `Move-Item` verschachtelte den Kandidaten als
+  `source/dist/DebateAI/DebateAI`. Dieser Zustand ist keine Installation.
+- Tray-Ursache: der eigene pystray-Setup-Callback ersetzte den Standard,
+  ohne `icon.visible = True` zu setzen. Der bestehende Verhaltenstest
+  reproduziert das und ist nach der Korrektur gruen.
+- Labor und Hauptfenster verwenden denselben Same-Origin-Sitzungsbootstrap:
+  einmalig `/api/meta` abwarten, den Instanzheader nur im Speicher behalten,
+  erst danach geschuetzte Daten laden. Zwei gleichzeitige Aufrufe und ein
+  fehlgeschlagener Bootstrap mit Wiederholung sind getestet. Die reale API
+  lieferte sieben erhaltene Debatten und keine aktive Debatte.
+- Desktop: 210 Tests OK (1 Rechte-Skip); RequestGuard: 31 Tests OK.
+  Der Bundle-Smoke prueft jetzt auch die Laborassets ohne Zusatzheader und
+  den Modellkatalog mit Instanzheader. Neuer Build und sichtbare Windows-
+  Abnahme werden erst nach ihrer Ausfuehrung bestaetigt.

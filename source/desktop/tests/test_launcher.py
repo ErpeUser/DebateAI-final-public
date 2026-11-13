@@ -593,6 +593,7 @@ class LauncherHelperTests(unittest.TestCase):
         pystray.Menu.side_effect = lambda *items: items
         pystray.MenuItem.side_effect = lambda label, action: (label, action)
         icon = pystray.Icon.return_value
+        icon.visible = False
         icon.run.side_effect = lambda *, setup: setup(icon)
         with (
             patch.dict(launcher.sys.modules, {"pystray": pystray}),
@@ -603,6 +604,7 @@ class LauncherHelperTests(unittest.TestCase):
             launcher._run_tray(8474, Path("data"), open_initial=True)
 
         request.assert_called_once_with(Path("data"))
+        self.assertTrue(icon.visible)
         opener.assert_not_called()
         self.assertTrue(callable(icon.run.call_args.kwargs["setup"]))
 

@@ -118,6 +118,25 @@ def check_local_asr(port: int, token: str) -> str:
     return payload.get("reason") or "unknown reason"
 
 
+def check_testlab(port: int, token: str) -> None:
+    """Exercise browser-loaded lab assets and the protected catalog in the EXE."""
+    for path in (
+        "/calibration.html", "/calibration/launcher.mjs",
+        "/calibration/launcher.css", "/calibration/lab.mjs",
+        "/calibration/session.mjs",
+    ):
+        with urllib.request.urlopen(f"http://localhost:{port}{path}", timeout=10) as response:
+            if response.status != 200 or not response.read():
+                raise RuntimeError(f"Testlabor asset unavailable: {path}")
+    request = urllib.request.Request(
+        f"http://localhost:{port}/api/calibration/catalog",
+        headers={"X-DebateAI-Instance": token},
+    )
+    with urllib.request.urlopen(request, timeout=30) as response:
+        if not isinstance(json.loads(response.read()).get("models"), list):
+            raise RuntimeError("Testlabor model catalog unavailable")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--bundle", type=Path)
@@ -151,6 +170,12 @@ def main() -> int:
                 dump_logs(Path(tmp))
                 return 1
             print("OK: bundled local ASR runtime usable")
+            try:
+                check_testlab(port, str(instance["token"]))
+            except Exception as exc:
+                print(f"FAIL: testlab bootstrap ({type(exc).__name__}: {exc})", file=sys.stderr)
+                return 1
+            print("OK: testlab assets and authenticated catalog usable")
         finally:
             if not stop_process(proc, Path(tmp) / "stop", timeout=90):
                 proc.kill()

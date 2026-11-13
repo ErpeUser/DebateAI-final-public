@@ -2,21 +2,21 @@ import type { AgentConfig, AIConfiguration, AIPromptConfig, AppMeta, ArgumentGra
 
 const BASE = "/api";
 const INSTANCE_HEADER = "X-DebateAI-Instance";
-let desktopInstanceToken = "";
+import { createDesktopSession } from "../../public/calibration/session.mjs";
+const desktopSession = createDesktopSession(
+  (input, init) => fetch(input, init), typeof window !== "undefined",
+);
 
-export const getDesktopInstanceToken = () => desktopInstanceToken;
+export const getDesktopInstanceToken = () => desktopSession.getToken();
 
 function desktopHeaders(headers?: HeadersInit): Headers {
   const value = new Headers(headers);
-  if (desktopInstanceToken) value.set(INSTANCE_HEADER, desktopInstanceToken);
+  if (desktopSession.getToken()) value.set(INSTANCE_HEADER, desktopSession.getToken());
   return value;
 }
 
 async function desktopFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  const response = await fetch(input, { ...init, headers: desktopHeaders(init?.headers) });
-  const received = response.headers?.get?.(INSTANCE_HEADER);
-  if (received) desktopInstanceToken = received;
-  return response;
+  return desktopSession.fetch(input, { ...init, headers: desktopHeaders(init?.headers) });
 }
 
 export interface NativeAudioStatus {
@@ -161,13 +161,10 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
   if (!headers.has("Content-Type") && !(options?.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
   }
-  if (desktopInstanceToken) headers.set(INSTANCE_HEADER, desktopInstanceToken);
   const res = await desktopFetch(`${BASE}${path}`, {
     ...options,
     headers,
   });
-  const receivedInstanceToken = res.headers?.get?.(INSTANCE_HEADER);
-  if (receivedInstanceToken) desktopInstanceToken = receivedInstanceToken;
   if (!res.ok) {
     const text = await res.text();
     let detail = text;

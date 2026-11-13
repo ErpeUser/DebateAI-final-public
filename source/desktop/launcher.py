@@ -879,6 +879,8 @@ def _run_tray(
             # interval: an immediate setup callback can still race the native
             # tray transition and leave the WebView form hidden.
             def request_initial_window(_icon) -> None:
+                # A custom pystray setup replaces its default visibility step.
+                _icon.visible = True
                 if not stopped.wait(1.0):
                     _request_owner_window(data_dir)
 

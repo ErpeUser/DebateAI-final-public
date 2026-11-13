@@ -1,4 +1,6 @@
 import { Recorder, createBlindTrial, recordVote, validateBlindSuite, validateBlindImport, comparisonSummary, formatPercent } from './core.mjs';
+import { createDesktopSession } from './session.mjs';
+const desktopSession = createDesktopSession((...args) => fetch(...args));
 
 const $ = id => document.getElementById(id);
 const KEY = 'debate-ai.calibration.v1';
@@ -61,7 +63,7 @@ function preset(){const p=PRESETS.find(p=>p[0]===$('preset').value);$('reference
 $('preset').addEventListener('change',preset);$('reference').addEventListener('input',invalidate);preset();
 
 async function api(path, options={}) {
-  const response=await fetch(`/api/calibration/${path}`,{credentials:'same-origin',cache:'no-store',...options});
+  const response=await desktopSession.fetch(`/api/calibration/${path}`,{credentials:'same-origin',cache:'no-store',...options});
   let payload;try{payload=await response.json();}catch{throw new Error('Backend liefert kein Diagnose-JSON. Anwendung und Paket-Integration pr\u00fcfen.');}
   if(!response.ok)throw new Error(typeof payload.detail==='string'?payload.detail:`Diagnose fehlgeschlagen (HTTP ${response.status}).`);
   return payload;
