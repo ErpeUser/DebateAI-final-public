@@ -2952,3 +2952,11 @@ Cloud-Modellabnahme wurde simuliert.
 - Unterbrochenen leeren Compress-Archive-Output behalten; nativer Tar-ZIP-Weg erzeugte 434543455 Bytes, SHA256 `FA8AE15486D02F8815DD4AA8A5A75F5CC0DE7CF485B083D51AA156FFA18C6FB5`.
 - Naechste Aktion: laufenden nativen Archiv-/Rollback-Smoke abschliessen, dann validierten Kandidaten mit altem Binary-Rollback nach `source/dist` uebernehmen. Backend-Gesamtsuite laeuft; Hardware/Provider/Signatur sind dadurch nicht abgenommen.
 
+### Echter WebView-403-Grund: zusammengefuehrte Instanzheader – 2026-11-13
+
+- Backend-Gesamtsuite frisch: 1881 Tests OK (4 Skips); nativer Windows-Archiv-/Forced-Rollback-Smoke des Runtime-Kandidaten OK. Vor dem Start mit Bestandsdaten wurde ein gestoppter Datenbackup ausserhalb des Repositories angelegt und alle 1269 Dateien hashgeprueft.
+- Beim realen Bestandsstart war das Labor weiter betroffen: Uvicorn und RequestGuard senden denselben Instanzheader. Fetch kombiniert beide als `token, token`; der bisherige Session-Client sendete diesen ungueltigen Wert weiter. Ein gueltiges Cookie konnte den priorisierten ungueltigen Header nicht ersetzen. Der manuelle Python-Client verbarg das, weil er nur den ersten Headerwert las.
+- `frontend/public/calibration/session.mjs` normalisiert identische Mehrfachwerte zu einem Token; widerspruechliche Werte werden vor einer geschuetzten Anfrage abgewiesen. Zwei neue Regressionstests waren rot und sind gruen, Frontend insgesamt 329/329 und Produktionsbuild OK. Kein Backend-/Authentisierungs-Guard wird abgeschwaecht.
+- Gegen die reale EXE mit Node-Fetch und genau diesem Client: Catalog, Sessions (6 vorhanden) und Privacy jeweils 200. Tray-Shell-Registrierung bestaetigt: genau ein Icon. Der lokale Diagnosehelfer musste uID=0 verwenden, weil die installierte pystray-Fassung beim Senden hID statt uID befuellt; dies ist keine Produktcodeaenderung.
+- Naechste Aktion: nur geaenderte generierte Frontend-Ressourcen in einen neuen Bundle-Kandidaten uebernehmen, Archiv/Smokes erneut pruefen, dann kontrolliert tauschen. Bereits gebaute Python-/Bridge-Binaerdateien sind unveraendert.
+
