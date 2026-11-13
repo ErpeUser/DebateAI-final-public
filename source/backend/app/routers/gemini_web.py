@@ -17,6 +17,7 @@ from app.services.identity import env_value
 from app.services.subscription_bridge import (
     cleanup_gemini_web_cookie,
     gemini_web_models,
+    get_endpoint,
     materialize_gemini_web_cookie,
     save_gemini_web_cookie,
     sync_gemini_web_bridge,
@@ -44,6 +45,14 @@ async def _status(
 ) -> dict[str, object]:
     configured = await stored_gemini_web_cookie_configured(db)
     models = gemini_web_models()
+    if not models and configured:
+        endpoint = await get_endpoint(db, "gemini-web")
+        if endpoint is not None and endpoint.enabled:
+            models = [
+                str(item.get("id") or "").strip()
+                for item in (endpoint.models or [])
+                if isinstance(item, dict) and str(item.get("id") or "").strip()
+            ]
     pro_available = _PRO_MODEL in models
     return {
         "available": bool(
