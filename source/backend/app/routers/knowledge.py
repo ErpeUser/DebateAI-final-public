@@ -31,6 +31,7 @@ from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
 MAX_KNOWLEDGE_IMPORT_BYTES = 25 * 1024 * 1024
+MAX_KNOWLEDGE_MARKDOWN_CHARS = 100_000
 
 
 async def _get_source_or_404(source_id: uuid.UUID, db: AsyncSession) -> KnowledgeSource:
@@ -278,7 +279,7 @@ async def upload_knowledge_file(
     record = KnowledgeRecord(
         source_id=source_id,
         title=filename,
-        body=markdown,
+        body=markdown[:MAX_KNOWLEDGE_MARKDOWN_CHARS],
         meta=json.dumps({
             "filename": filename,
             "format": ext,
