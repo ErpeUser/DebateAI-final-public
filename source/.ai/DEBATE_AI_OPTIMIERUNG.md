@@ -2943,3 +2943,12 @@ Cloud-Modellabnahme wurde simuliert.
 - Knowledge-Dateiimporte persistieren konvertierten Markdown jetzt hoechstens bis zum bestehenden 100.000-Zeichen-Vertrag des Dossiers; damit bleibt der Rohupload begrenzt und der gespeicherte/embeddete Text ebenfalls.
 - Die eigentliche Office-/Archivkonvertierung bleibt ein separater Ressourcen-Gate fuer eine spaetere tiefere Parser-Haertung.
 
+### Windows-Neubau und Knowledge-Testvertrag – 2026-11-13
+
+- Runtime-Basis: `31e423821cbcf49d5820264fe16a141a23b6a031`, echter Checkout `C:\Users\User\Datein\Coding\DebateAI`, Python 3.12.10 und Node 24, bestehende Release-Umgebung.
+- Der neue Knowledge-Source-Guard-Test verwendete einen unvollstaendigen FakeDB und erwartete ein ORM-Objekt statt des bestehenden `KnowledgeSourceOut`-Vertrags. Testdaten/DB-Double vervollstaendigt; echte Antwort-ID, geaenderter Name und Recordzaehler werden geprueft. Kein Runtime-Code geaendert.
+- Frisch: 44 fokussierte Backendtests OK; Desktop-Gesamtsuite mit vollstaendigem PYTHONPATH 213 Tests OK (1 Skip); Frontend 327/327 OK. Erster Desktop-Aufruf ohne Projekt-PYTHONPATH hatte zwei Importfehler, der korrigierte Gesamtlauf ist gruen.
+- Neues PyInstaller-Staging vorhanden. Bundle-Smoke frisch OK: tokengebundene Health, lokaler ASR, Laborassets/authentifizierter Katalog und sauberer Shutdown. Der alte PostgreSQL-Paketblocker tritt dabei nicht auf.
+- Unterbrochenen leeren Compress-Archive-Output behalten; nativer Tar-ZIP-Weg erzeugte 434543455 Bytes, SHA256 `FA8AE15486D02F8815DD4AA8A5A75F5CC0DE7CF485B083D51AA156FFA18C6FB5`.
+- Naechste Aktion: laufenden nativen Archiv-/Rollback-Smoke abschliessen, dann validierten Kandidaten mit altem Binary-Rollback nach `source/dist` uebernehmen. Backend-Gesamtsuite laeuft; Hardware/Provider/Signatur sind dadurch nicht abgenommen.
+

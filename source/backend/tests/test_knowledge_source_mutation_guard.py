@@ -1,5 +1,6 @@
 import unittest
 import uuid
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 from fastapi import HTTPException
@@ -24,6 +25,9 @@ class FakeDB:
     async def refresh(self, _source):
         return None
 
+    async def scalar(self, _query):
+        return 2
+
 
 class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_update_rejects_builtin_offerings_source(self):
@@ -36,11 +40,17 @@ class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, db.commits)
 
     async def test_update_allows_user_managed_source(self):
-        source = SimpleNamespace(source_type="files", name="Before", updated_at=None)
+        source = KnowledgeSource(
+            id=uuid.uuid4(), source_type="files", name="Before",
+            description="", config="{}", active=True,
+            created_at=datetime.now(timezone.utc), updated_at=None,
+        )
         db = FakeDB(source)
         body = SimpleNamespace(model_dump=lambda exclude_unset: {"name": "After"})
         result = await update_source(uuid.uuid4(), body, db)
-        self.assertIs(result, source)
+        self.assertEqual(source.id, result.id)
+        self.assertEqual("After", result.name)
+        self.assertEqual(2, result.record_count)
         self.assertEqual("After", source.name)
         self.assertEqual(1, db.commits)
 
