@@ -92,6 +92,7 @@ async def update_source(
     source_id: uuid.UUID, body: KnowledgeSourceUpdate, db: AsyncSession = Depends(get_db)
 ):
     source = await _get_source_or_404(source_id, db)
+    _require_user_source(source)
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(source, field, value)
     source.updated_at = datetime.now(timezone.utc)
