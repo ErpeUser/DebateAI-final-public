@@ -265,6 +265,72 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("refused", result.status)
         ai_lane.assert_not_awaited()
 
+    def test_claim_pii_is_minimized_and_refused(self):
+        cases = (
+            ("Wer ist [PERSON_1]?", "TOKEN"),
+            ("Kontakt +49 30 12345678", "PHONE"),
+            ("Mail sarah@example.com", "EMAIL"),
+        )
+        for claim, category in cases:
+            with self.subTest(category=category):
+                self.assertFalse(debate_research.is_safe_research_claim(claim))
+                minimized = debate_research.minimize_research_claim(claim)
+                self.assertNotIn(claim.split(maxsplit=1)[-1], minimized)
+                self.assertIn(
+                    category,
+                    debate_research.research_claim_pii_categories(claim),
+                )
+
+    def test_long_non_pii_claim_remains_safe(self):
+        claim = "Nicht personenbezogener Sachverhalt " * 20
+        self.assertGreater(len(claim), 300)
+        self.assertTrue(debate_research.is_safe_research_claim(claim))
+
+    async def test_unsafe_claim_makes_no_external_request(self):
+        client = mock.AsyncMock()
+        result = await debate_research.research_claim(
+            "Wer ist [PERSON_1]?",
+            "Inflationsrate Deutschland 2025",
+            client=client,
+        )
+        self.assertEqual("refused", result.status)
+        self.assertEqual([], result.sources)
+        client.get.assert_not_awaited()
+
+    async def test_direct_ai_web_lane_refuses_pii_claim(self):
+        provider_call = mock.AsyncMock(return_value="https://example.org/source")
+        with mock.patch(
+            "app.services.llm.generate_text",
+            new=provider_call,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Kontakt +49 30 12345678",
+                "Inflationsrate Deutschland 2025",
+                ["gemini_api"],
+            )
+
+        self.assertEqual([], sources)
+        provider_call.assert_not_awaited()
+
+    async def test_research_with_client_refuses_pii_claim(self):
+        client = httpx.AsyncClient()
+        try:
+            with mock.patch.object(
+                debate_research,
+                "_ai_web_sources",
+                new=mock.AsyncMock(),
+            ) as ai_lane:
+                result = await debate_research._research_with_client(
+                    client,
+                    "Mail sarah@example.com",
+                    "Inflationsrate Deutschland 2025",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertEqual("refused", result.status)
+        ai_lane.assert_not_awaited()
+
     async def test_unsafe_query_makes_no_external_request(self):
         client = mock.AsyncMock()
         result = await debate_research.research_claim(
