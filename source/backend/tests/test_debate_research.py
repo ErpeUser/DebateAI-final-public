@@ -247,6 +247,64 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("abgebrochene suche", debate_research._research_inflight)
 
+    async def test_live_fact_check_stops_after_first_successful_provider(self):
+        calls = []
+
+        async def fake_generate_text(model, *_args, **_kwargs):
+            calls.append(model)
+            return "https://api.example/live"
+
+        with mock.patch.object(
+            debate_research,
+            "_research_provider_ready",
+            return_value=True,
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["gemini_api", "cliproxyapi"],
+                research_mode="live",
+            )
+
+        self.assertEqual(["gemini-3.1-pro-preview"], calls)
+        self.assertEqual(["https://api.example/live"], [source.url for source in sources])
+
+    async def test_live_fact_check_skips_busy_chatgpt_web_and_uses_fallback(self):
+        calls = []
+
+        async def fake_generate_text(model, *_args, **_kwargs):
+            calls.append(model)
+            return "https://api.example/fallback"
+
+        with mock.patch(
+            "app.services.chatgpt_web.runtime_available",
+            return_value=True,
+        ), mock.patch(
+            "app.services.chatgpt_web.configured",
+            return_value=True,
+        ), mock.patch(
+            "app.services.chatgpt_web.model_confirmed",
+            return_value=True,
+        ), mock.patch(
+            "app.services.chatgpt_web.browser_busy",
+            return_value=True,
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["chatgpt_web", "gemini_api"],
+                research_mode="live",
+            )
+
+        self.assertEqual(["gemini-3.1-pro-preview"], calls)
+        self.assertEqual(["https://api.example/fallback"], [source.url for source in sources])
+
     async def test_provider_readiness_skips_unlogged_browser_lanes(self):
         async def fake_generate_text(model, *_args, **_kwargs):
             self.assertEqual("gemini-3.1-pro-preview", model)
