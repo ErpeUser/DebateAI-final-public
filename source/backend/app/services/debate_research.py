@@ -491,6 +491,7 @@ async def _wikipedia_sources(
     claim: str,
     query: str,
 ) -> list[ResearchSource]:
+    raise RuntimeError("Legacy research provider disabled")
     content, _content_type = await _bounded_get(
         client,
         WIKIPEDIA_API,
@@ -538,6 +539,7 @@ async def _duckduckgo_sources(
     claim: str,
     query: str,
 ) -> list[ResearchSource]:
+    raise RuntimeError("Legacy research provider disabled")
     content, _content_type = await _bounded_get(
         client,
         DUCKDUCKGO_API,
@@ -633,6 +635,7 @@ async def _duckduckgo_html_sources(
     claim: str,
     query: str,
 ) -> list[ResearchSource]:
+    raise RuntimeError("Legacy research provider disabled")
     content, _content_type = await _bounded_get(
         client,
         DUCKDUCKGO_HTML,
