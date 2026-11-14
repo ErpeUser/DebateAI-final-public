@@ -4027,6 +4027,23 @@ class AgentOrchestrator:
                     "external_insights": external_insights,
                 }
                 artifacts.append(artifact_summary)
+                # Surface each completed lane immediately. The speakable local
+                # answer remains unchanged; only the structured evidence packet
+                # is attached so the UI can show arriving rebuttal/example blobs
+                # before all lanes and the final consolidation finish.
+                self._experimental_lane_artifacts = list(artifacts)
+                try:
+                    await self._send_debate_update(
+                        recommendation.transcript_revision,
+                        recommendation.model_copy(update={
+                            "analysis_status": "analyzing",
+                            "research_status": "searching",
+                        }),
+                        origin="research",
+                    )
+                except Exception:
+                    # A partial lane must never block the remaining lanes.
+                    pass
                 try:
                     await self.websocket.send_json({
                         "type": "experimental_lane_update",
