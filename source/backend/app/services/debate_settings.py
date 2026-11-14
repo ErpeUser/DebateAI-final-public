@@ -58,8 +58,6 @@ def is_desktop_bundle() -> bool:
 @dataclass(frozen=True)
 class DebateSettings:
     mode: DebateMode = "persuasive"
-    # Selects the orchestration pipeline; standard preserves the existing behavior.
-    pipeline_mode: PipelineMode = "standard"
     research_enabled: bool = False
     research_frequency: ResearchFrequency = "normal"
     always_analogy: bool = False
@@ -76,6 +74,8 @@ class DebateSettings:
     simple_1to1_audio_mode: bool = False
     profile_id: str = ""
     profile_directive: str = ""
+    # Selects the orchestration pipeline; standard preserves positional compatibility.
+    pipeline_mode: PipelineMode = "standard"
 
     @property
     def cooldown_seconds(self) -> int:
