@@ -590,11 +590,24 @@ async def _ai_web_sources(
     are persisted as sources and the final answer still passes the normal
     source verification gates. Legacy search endpoints are never called.
     """
+    chatgpt_generate = None
     try:
         from app.services.chatgpt_web import generate as chatgpt_generate
     except Exception:
-        return []
-    if "chatgpt_web" not in providers:
+        pass
+    fallback_model = next(
+        (
+            model
+            for provider, model in (
+                ("gemini_web", "endpoint:gemini-web:gemini-3.1-pro"),
+                ("gemini_api", "gemini-3.1-pro-preview"),
+                ("cliproxyapi", "endpoint:subscription-ai:gpt-6-sol"),
+            )
+            if provider in providers
+        ),
+        "",
+    )
+    if chatgpt_generate is None and not fallback_model:
         return []
     prompt = (
         "Recherchiere diese Debattenaussage mit Originalquellen. "
@@ -603,12 +616,21 @@ async def _ai_web_sources(
         " Recherchefrage: " + query[:500]
     )
     try:
-        answer = await chatgpt_generate(
-            prompt,
-            system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
-            reasoning_effort="high",
-            research="search",
-        )
+        if chatgpt_generate is not None and "chatgpt_web" in providers:
+            answer = await chatgpt_generate(
+                prompt,
+                system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                reasoning_effort="high",
+                research="search",
+            )
+        else:
+            from app.services.llm import generate_text
+            answer = await generate_text(
+                fallback_model,
+                prompt,
+                system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                source="debate_research",
+            )
     except Exception:
         return []
     urls = []
