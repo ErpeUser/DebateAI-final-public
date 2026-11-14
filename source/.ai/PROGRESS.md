@@ -309,3 +309,17 @@ Behauptungen, bezahlte API ohne Freigabe oder ein Build vor Abschluss von P07–
 - **Offener Abnahmeschritt:** Einen ausführbaren Checkout oder einen reparierten GitHub-Runner bereitstellen und mindestens python -m unittest backend/tests/test_local_live_captioner.py backend/tests/test_debate_copilot.py ausführen; danach den realen 30–60-Sekunden-Replay messen.
 
 NÄCHSTER PUNKT: 002/A004
+
+## Masterauftrag – 2026-11-14 – 002/A004
+
+**Status: BEREITS ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch GitHub-Runner.**
+
+- **Aufgabe:** Verhindern, dass veraltete Generierungen aktuellere Claims sichtbar überschreiben.
+- **Nachweis der bestehenden Lösung:** AgentOrchestrator führt Claim-, Transcript-, Recommendation- und Generation-IDs. _send_debate_update() verwirft einen explizit älteren Claim-/Transcript-Stand; _analysis_context_is_current() bindet Hintergrundresultate zusätzlich an Session, Claim, Revision, Directive-Revision und Config-Generation. _schedule_debate_revision() bricht vor dem ersten sichtbaren Partial veraltete Worker ab und coalesct nach einem sichtbaren Partial.
+- **Vorhandene Regressionen:** backend/tests/test_debate_copilot.py deckt test_new_speech_cancels_stale_revision_and_runs_latest, test_final_negation_drops_slow_model_result_for_interim_claim, test_stale_revision_is_discarded_even_if_model_returns, test_server_rejects_explicitly_stale_live_update, test_stale_research_is_cached_without_broadcast und die Empfehlungsversionierung zwischen Instant- und Model-Card ab.
+- **Eigener neuer Code:** keiner; die vorhandenen Claim-/Transcript-/Generation-Verträge erfüllen den Quellcode-Teil.
+- **Fresh-Test-Ergebnis:** Nachweisbare aktuelle master-Actions für f3321922e4c7ccdd47df253f4129162e6d3f6cd7 (Tests 43632783683, Security 43632783688) endeten mit failure und steps: null. Das Repository klassifiziert dies als Runner-/Infrastrukturfehler; ein ausführbarer lokaler Checkout steht in dieser Sitzung nicht zur Verfügung.
+- **Commit/Push:** Fortschrittsnachweis in diesem Commit auf master; kein Produktcode geändert.
+- **Offener Abnahmeschritt:** Die fokussierten Backendtests in einem ausführbaren Checkout ausführen und zusätzlich ein deterministisches 30–60-Sekunden-Replay mit null Stale-Publishes aufzeichnen.
+
+NÄCHSTER PUNKT: 003/A005
