@@ -1002,9 +1002,15 @@ class AgentOrchestrator:
             )
 
         # Objection handler (fast scan loop over the freshest transcript)
+        objection_prompt = _get_prompt("objection_handler") or None
+        if self._experimental_mode:
+            objection_prompt = load_prompt_resource(
+                "experimental_debate_live_v1",
+                objection_prompt or "",
+            )
         self.objection_agent = ObjectionHandlerAgent(
             model_override=_get_model("objection_handler"),
-            prompt_override=_get_prompt("objection_handler") or None,
+            prompt_override=objection_prompt,
             meeting_context_text=self.meeting_context_text,
             session_id=session_id,
             debate_mode=debate_mode_for_meeting_type(
