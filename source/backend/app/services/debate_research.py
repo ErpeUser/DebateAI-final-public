@@ -149,6 +149,23 @@ def _clean_text(value: object) -> str:
     return " ".join(text.split()).strip()
 
 
+def _extract_published_at(content: bytes) -> str:
+    """Extract a publisher-supplied date without treating model prose as evidence."""
+    text = content.decode("utf-8", errors="replace")
+    patterns = (
+        r"<meta\\b[^>]*(?:property|name)\\s*=\\s*[\\\"'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)\\s*[\\\"'][^>]*content\\s*=\\s*[\\\"']([^\\\"']+)",
+        r"<meta\\b[^>]*content\\s*=\\s*[\\\"']([^\\\"']+)[\\\"'][^>]*(?:property|name)\\s*=\\s*[\\\"'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)",
+        r"\\\"datePublished\\\"\\s*:\\s*\\\"([^\\\"]+)\\\"",
+    )
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.IGNORECASE)
+        if match:
+            value = _clean_text(match.group(1))
+            if value:
+                return value[:80]
+    return ""
+
+
 def _canonical_url(value: object) -> str | None:
     raw = str(value or "").strip()
     if not raw:
