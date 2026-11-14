@@ -365,3 +365,16 @@ NÄCHSTER PUNKT: 005/A009
 - **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 006/A010
+
+## Masterauftrag – 2026-11-14 – 006/A010
+
+**Status: BLOCKIERT (Kostenklassifikation vorhanden, globaler Pre-Request-Opt-in fehlt).**
+
+- **Aufgabe:** Kostenlose lokale Tests von kostenpflichtigen Liveaufrufen trennen, Opt-in/Provider/Kostenhinweise anzeigen und ohne Freigabe keinen Cloudaufruf zulassen.
+- **Nachweis der bestehenden Lösung:** provider_capabilities.py markiert usage_billed versus local/subscription; llm.py blockiert nur Privacy-First-unzulässige Modelle; token_usage.py und TokenUsagePanel.tsx speichern und zeigen Verbrauch sowie Kostenschätzungen; docs/api-keys.md beschreibt die freiwillige API-Key-Nutzung und lokale Self-Hosted-Alternativen.
+- **Fehlender Vertrag:** Der aktuelle Quellstand enthält keinen nachweisbaren globalen, persistierten cloud_cost_opt_in-Gatekeeper, der jeden usage_billed-Aufruf vor dem Request stoppt. Eine vorhandene API-Konfiguration oder ein sichtbarer Kostentab ersetzt diese Schutzwirkung nicht.
+- **Eigener neuer Code:** keiner; ein unvollständiger Guard an nur einer LLM-Funktion würde andere Audio-/Research-/Bridgepfade offenlassen.
+- **Konkreter nächster Abnahmeschritt:** Einen zentralen, DB-gebundenen Kostenfreigabevertrag über alle LLM-, Audio- und Research-Adapter entwerfen, mit lokaler Default-Sperre, sichtbarem Provider-/Kostenhinweis, Opt-in-Audit und Regressionstest je Adapter. Erst danach darf dieser Punkt als erledigt gelten.
+- **Commit/Push:** Der Gap ist in diesem Commit auf master dauerhaft festgehalten.
+
+NÄCHSTER PUNKT: 007/A011
