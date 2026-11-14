@@ -14,7 +14,9 @@ from app.services.diagnostic_audio import read_audio_clip, MAX_UPLOAD_BYTES, Aud
 class MetricsTests(unittest.TestCase):
     def test_edit_distance_delegates_to_jiwer(self):
         word_output = SimpleNamespace(substitutions=0, deletions=1, insertions=0, wer=0.5)
-        char_output = SimpleNamespace(cer=0.25)
+        char_output = SimpleNamespace(
+            cer=0.25, substitutions=0, deletions=0, insertions=0
+        )
         with (
             patch(
                 "app.services.calibration_metrics.jiwer.process_words",
