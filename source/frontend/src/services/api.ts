@@ -627,7 +627,7 @@ export const applyDebateProfile = (profileId: string) =>
   request<DebateSettings>(`/debate-settings/profiles/${encodeURIComponent(profileId)}`, { method: "POST" });
 
 export const updateDebateSettings = (
-  update: Partial<Pick<DebateSettings, "mode" | "research_enabled" | "research_frequency" | "always_analogy" | "style_focus" | "voice_commands_enabled" | "argument_memory_enabled" | "transcript_retention_enabled" | "audio_archive_enabled" | "session_retrieval_enabled" | "learning_examples_enabled" | "graph_recording_enabled" | "memory_similarity_threshold" | "performance_profile" | "simple_1to1_audio_mode">>,
+  update: Partial<Pick<DebateSettings, "mode" | "research_enabled" | "research_frequency" | "always_analogy" | "style_focus" | "voice_commands_enabled" | "argument_memory_enabled" | "transcript_retention_enabled" | "audio_archive_enabled" | "session_retrieval_enabled" | "learning_examples_enabled" | "graph_recording_enabled" | "memory_similarity_threshold" | "performance_profile" | "simple_1to1_audio_mode" | "pipeline_mode">>,
 ) => request<DebateSettings>("/debate-settings", {
   method: "PATCH",
   body: JSON.stringify(update),
