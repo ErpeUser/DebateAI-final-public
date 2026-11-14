@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tempfile
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -193,32 +194,15 @@ def _audio_bytes(path: Path) -> bytes:
     return completed.stdout
 
 
-def transcribe_with_google_cloud(
-    audio_path: str | Path,
+def _recognize_google_chunk(
+    client: Any,
+    speech: Any,
+    content: bytes,
     *,
-    language_code: str = "de-DE",
-    project_id: str | None = None,
-    location: str = "global",
-    speaker_diarization: bool = False,
-    timeout_seconds: int = 1800,
+    language_code: str,
+    speaker_diarization: bool,
+    offset_seconds: float = 0.0,
 ) -> list[TranscriptSegment]:
-    """Transcribe a local media export through Google Speech-to-Text.
-
-    The v1 client accepts local bytes and is intentionally used here because a
-    video list is normally downloaded to disk first. Long recordings should be
-    chunked by the caller or uploaded to Cloud Storage and processed with the
-    v2 batch API. The import remains lazy so normal live calls do not need cloud
-    credentials.
-    """
-    del project_id, location, timeout_seconds
-    try:
-        from google.cloud import speech
-    except ImportError as exc:
-        raise RuntimeError("google-cloud-speech is required for video transcription") from exc
-    path = Path(audio_path)
-    if not path.is_file():
-        raise FileNotFoundError(path)
-    client = speech.SpeechClient()
     diarization_config = None
     if speaker_diarization:
         diarization_config = speech.SpeakerDiarizationConfig(
@@ -236,7 +220,7 @@ def transcribe_with_google_cloud(
     )
     response = client.recognize(
         config=config,
-        audio=speech.RecognitionAudio(content=_audio_bytes(path)),
+        audio=speech.RecognitionAudio(content=content),
     )
     segments: list[TranscriptSegment] = []
     for result in response.results:
@@ -245,8 +229,14 @@ def transcribe_with_google_cloud(
             continue
         alternative = alternatives[0]
         words = list(getattr(alternative, "words", []) or [])
-        start = float(words[0].start_time.total_seconds()) if words else 0.0
-        end = float(words[-1].end_time.total_seconds()) if words else start
+        start = (
+            float(words[0].start_time.total_seconds()) + offset_seconds
+            if words else offset_seconds
+        )
+        end = (
+            float(words[-1].end_time.total_seconds()) + offset_seconds
+            if words else start
+        )
         speaker = str(getattr(words[0], "speaker_tag", "") or "") if words else ""
         segments.append(TranscriptSegment(
             start_seconds=start,
@@ -256,6 +246,81 @@ def transcribe_with_google_cloud(
             confidence=float(alternative.confidence or 0) or None,
         ))
     return segments
+
+
+def _chunk_media(path: Path, directory: Path, *, seconds: int = 45) -> list[Path]:
+    """Create short PCM chunks so long local videos use Speech-to-Text safely."""
+    prefix = directory / "chunk-%05d.wav"
+    try:
+        subprocess.run(
+            [
+                "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
+                "-f", "segment", "-segment_time", str(seconds),
+                "-reset_timestamps", "1", "-ac", "1", "-ar", "16000",
+                "-c:a", "pcm_s16le", str(prefix),
+            ],
+            check=True,
+            capture_output=True,
+            timeout=1800,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("ffmpeg is required to split long media files") from exc
+    chunks = sorted(directory.glob("chunk-*.wav"))
+    if not chunks:
+        raise RuntimeError("ffmpeg produced no audio chunks")
+    return chunks
+
+
+def transcribe_with_google_cloud(
+    audio_path: str | Path,
+    *,
+    language_code: str = "de-DE",
+    project_id: str | None = None,
+    location: str = "global",
+    speaker_diarization: bool = False,
+    timeout_seconds: int = 1800,
+) -> list[TranscriptSegment]:
+    """Transcribe local audio/video through Google Speech-to-Text.
+
+    Short audio is sent directly. Long audio and every video container are
+    split into 45-second mono PCM chunks first; each response is offset back
+    onto the original timeline. This keeps the live path independent from
+    batch transcription while allowing a supplied video list to run without
+    waiting for one oversized synchronous request.
+    """
+    del project_id, location, timeout_seconds
+    try:
+        from google.cloud import speech
+    except ImportError as exc:
+        raise RuntimeError("google-cloud-speech is required for video transcription") from exc
+    path = Path(audio_path)
+    if not path.is_file():
+        raise FileNotFoundError(path)
+    client = speech.SpeechClient()
+    media_suffixes = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
+    needs_chunks = path.suffix.casefold() in media_suffixes or path.stat().st_size > 8_000_000
+    if not needs_chunks:
+        return _recognize_google_chunk(
+            client,
+            speech,
+            _audio_bytes(path),
+            language_code=language_code,
+            speaker_diarization=speaker_diarization,
+        )
+    with tempfile.TemporaryDirectory(prefix="debateai-stt-") as temp_dir:
+        chunks = _chunk_media(path, Path(temp_dir))
+        segments: list[TranscriptSegment] = []
+        for index, chunk in enumerate(chunks):
+            segments.extend(_recognize_google_chunk(
+                client,
+                speech,
+                chunk.read_bytes(),
+                language_code=language_code,
+                speaker_diarization=speaker_diarization,
+                offset_seconds=index * 45.0,
+            ))
+        return segments
+
 
 def build_video_artifact(
     *,
