@@ -392,3 +392,17 @@ NÄCHSTER PUNKT: 007/A011
 - **Offener Abnahmeschritt:** Backend-/DB-Testlauf mit PostgreSQL und ein Reconnect-/Persistenztest aus dem echten Desktopcheckout, einschließlich Prüfung, dass Rohtext, Refiner-Revision, Claim-Revision und Source-Passage getrennt erhalten bleiben.
 
 NÄCHSTER PUNKT: 008/A012
+## Masterauftrag – 2026-11-14 – 008/A012
+
+**Status: BLOCKIERT (starke Guardrails vorhanden, Evidence-ID-/Unsicherheitsvertrag fehlt).**
+
+- **Aufgabe:** Unbelegte Tatsachenbehauptungen verhindern, faktische Antwortsätze mit validierten Evidence-IDs verknüpfen und bei fehlenden Belegen Unsicherheit erzwingen.
+- **Nachweis der bestehenden Teillösung:** orchestrator.py blockiert viele unsichere Modellrevisionen über _contains_unsupported_numeric_assertion() und _contains_unsupported_evidence_claim(). Zahlen werden gegen Claim-/Quellenüberlappung, gleiche Zahlen sowie strukturierte Einheit-, Zeitraum- und Populationsfelder geprüft; Zitate, Attributionen, Kausalbehauptungen und Bedingungssätze verlangen gelesene, claimbezogene Passagen. ResearchSource/DebateSource bewahren retrieval_status, claim_relation, passage, content_hash, claim_revision und Scope-/Entailment-Metadaten. test_debate_copilot.py deckt unbelegte Zahlen, unverbundene Quellen, falschen Scope, passenden Scope und stale Revisionen ab.
+- **Fehlender Vertrag:** LiveDebateResponse und DebateRecommendation besitzen kein verpflichtendes evidence_ids-Feld je faktischem Antwortsatz; DebateSource hat keine kanonische Evidence-ID. Es gibt keine satzgenaue Zuordnung von answer_now/counterargument zu validierten Evidence-IDs und kein erzwungenes Unsicherheitsfeld mit den Zuständen none/asr/evidence/context/multiple. Die Erkennung setzt bei einem unsicheren Modellresultat nur confidence=low und needs_research=True; sie erzwingt noch keinen sichtbaren Unsicherheitssatz bzw. keine Evidence-ID-Prüfung für jede Ausgabe.
+- **Abgleich mit dem Mastervertrag:** Der archivierte Masterprompt fordert gültige target-Referenzen und evidence_ids für nichtleere Sprechtexte; der aktuelle Standardvertrag und prompts.py spiegeln diese Pflicht nicht vollständig wider. ExperimentalOption kann source_ids tragen, ersetzt aber den Standardvertrag nicht.
+- **Fresh-Test-Ergebnis:** Die vorhandenen Unit-/Mock-Regressionen sind nachweisbar, ein frischer Lauf bleibt wegen der aktuellen GitHub-Actions-Ausführung mit steps: null blockiert.
+- **Eigener neuer Code:** keiner; die Lücke betrifft einen zentralen Antwortvertrag und sollte als zusammenhängender Folgepunkt über Backend, Prompt, Frontend und Regressionen geschlossen werden.
+- **Konkreter nächster Abnahmeschritt:** Kanonische, stabile Evidence-ID pro gelesener Quelle einführen; Antwortsätze als strukturierte Claims mit validierten Evidence-IDs und uncertainty enum ausgeben; vor Broadcast/Persistenz jeden faktischen Satz gegen Evidence-ID, Claim-Revision, Scope und Passsage prüfen; Tests für fehlende IDs, falsche IDs, fehlende Belege, Unsicherheit und stale Evidence ergänzen.
+- **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 009/A013
