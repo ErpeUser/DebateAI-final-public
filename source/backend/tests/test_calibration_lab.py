@@ -42,6 +42,8 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(x['deletions'], 1)
         self.assertEqual(x['wer'], .25)
         self.assertEqual(x['critical_reference_tokens'], ['nicht'])
+        self.assertEqual(x['false_deletions'], 1)
+        self.assertEqual(x['false_deletion_tokens'], ['nicht'])
 
     def test_decimal_is_not_merged_into_integer(self):
         x = score_transcript('3,5 Prozent', '35 Prozent')
