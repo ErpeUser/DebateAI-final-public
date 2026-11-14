@@ -84,7 +84,7 @@ Useful switches:
 ```
 
 `-Research` is an explicit egress choice: only a short factual query produced
-by the local model can be sent to public Wikimedia and DuckDuckGo endpoints.
+by the local model can be sent to configured ChatGPT Web/Gemini AI research lanes.
 Audio and the transcript remain local. Without that switch, Privacy First
 blocks this research path as well.
 
