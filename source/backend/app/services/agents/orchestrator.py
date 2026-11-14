@@ -32,6 +32,7 @@ from app.models import Directive, Question, TranscriptEntry, Speaker
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
     REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
+    live_refiner_is_idle,
     refine_session,
     update_payload as refiner_update_payload,
 )
@@ -1106,6 +1107,8 @@ class AgentOrchestrator:
         self._consolidated_task: asyncio.Task | None = None
         self._objection_task: asyncio.Task | None = None
         self._debate_pending = False
+        self._last_transcript_activity_at: float | None = None
+        self._refiner_job: asyncio.Task | None = None
         # Once a speakable streaming partial is visible, keep that worker alive
         # long enough to publish its complete answer.  Cancelling at that point
         # makes continuous speech look like a broken copilot: every new partial
@@ -1942,6 +1945,7 @@ class AgentOrchestrator:
         utterance_id: str | None = None,
         is_local_mic: bool = False,
     ):
+        self._mark_transcript_activity()
         if (
             getattr(self, "debate_settings", DebateSettings()).voice_commands_enabled
             and is_local_mic
@@ -2018,6 +2022,7 @@ class AgentOrchestrator:
         normalized = " ".join(text.split()).strip()
         if not normalized or not utterance_id:
             return False
+        self._mark_transcript_activity()
         await self.transcript_buffer.add(
             normalized,
             speaker_name,
@@ -2094,6 +2099,7 @@ class AgentOrchestrator:
             or filler in {"aeh", "aehm", "äh", "ähm", "hm", "mhm"}
         ):
             return False
+        self._mark_transcript_activity()
         hypotheses = getattr(self, "_interim_debate_hypotheses", {})
         utterance_id = utterance_id or getattr(self, "_active_utterance_id", None) or uuid.uuid4().hex
         finalized_segments = getattr(self, "_finalized_interim_segments", set())
