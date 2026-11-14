@@ -132,6 +132,54 @@ logger = logging.getLogger(__name__)
 AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5
 
 
+def _select_relevant_transcript_excerpt(
+    transcript: str,
+    *,
+    claim: str,
+    standpoint: str,
+    context: str,
+    max_chars: int = 2400,
+) -> str:
+    """Select claim-relevant transcript lines before external analysis."""
+    clean = " ".join(str(transcript or "").split()).strip()
+    if not clean:
+        return ""
+    budget = max(800, min(int(max_chars), 2400))
+    lines = [line.strip() for line in re.split(r"(?<=[.!?])\s+", clean) if line.strip()]
+    if not lines:
+        return clean[:budget]
+    terms = {
+        token.casefold()
+        for value in (claim, standpoint, context)
+        for token in re.findall(r"[\wäöüß]+", str(value or ""))
+        if len(token) >= 4
+    }
+    scored = []
+    for index, line in enumerate(lines):
+        words = set(re.findall(r"[\wäöüß]+", line.casefold()))
+        score = len(terms.intersection(words))
+        if index == len(lines) - 1:
+            score += 1
+        scored.append((score, index, line))
+    selected = sorted(scored, key=lambda item: (-item[0], item[1]))
+    chosen: list[str] = []
+    chars = 0
+    for _score, _index, line in selected:
+        if line in chosen:
+            continue
+        needed = len(line) + (1 if chosen else 0)
+        if chosen and chars + needed > budget:
+            continue
+        if not chosen and len(line) > budget:
+            chosen.append(line[:budget])
+            break
+        chosen.append(line)
+        chars += needed
+    if not chosen:
+        chosen = [lines[-1][:budget]]
+    return " ".join(chosen)[:budget]
+
+
 def _external_analysis_deadline(priority: ExternalAnalysisPriority) -> int:
     """Keep live automatic research short while manual deep work stays long."""
     if priority is ExternalAnalysisPriority.MANUAL:
@@ -4003,7 +4051,13 @@ class AgentOrchestrator:
             complete_transcript = await self._get_complete_transcript()
         except Exception:
             complete_transcript = ""
-        recent_transcript = " ".join(str(complete_transcript or "").split())[-6000:]
+        recent_transcript = _select_relevant_transcript_excerpt(
+            complete_transcript,
+            claim=recommendation.target_claim,
+            standpoint=self.meeting_context,
+            context=relevant_context,
+            max_chars=2400,
+        )
 
         async def run_lane(
             label: str,
@@ -4039,7 +4093,7 @@ class AgentOrchestrator:
                     own_position=self.meeting_context,
                     relevant_context=(
                         relevant_context
-                        + "\n[RECENT TRANSCRIPT WINDOW]\n"
+                        + "\n[RELEVANT TRANSCRIPT]\n"
                         + recent_transcript_window
                         + "\n[EXPERIMENTELLE LANE: "
                         + label
