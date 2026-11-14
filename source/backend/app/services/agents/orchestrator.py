@@ -4175,20 +4175,8 @@ class AgentOrchestrator:
                 ]
 
         # A slow answer from an older utterance may still be useful in the cache,
-        # but it must never overwrite what the user is currently seeing. Completed
-        # experimental lanes are retained as historical evidence before that
-        # stale result is discarded from the visible pipeline.
+        # but it must never overwrite what the user is currently seeing.
         if revision != self._debate_revision or not self._analysis_context_is_current(context):
-            if (
-                getattr(self, "_experimental_mode", False)
-                and getattr(self, "_argument_graph_enabled", False)
-                and getattr(self, "_experimental_lane_artifacts", None)
-            ):
-                stale_payload = recommendation.model_dump(mode="json")
-                stale_payload["external_lane_artifacts"] = list(
-                    self._experimental_lane_artifacts
-                )
-                await self._persist_argument_recommendation(stale_payload)
             self._remember_topic_knowledge(context, recommendation, sources)
             return
         analysis = None
@@ -4322,6 +4310,16 @@ class AgentOrchestrator:
             analysis=analysis,
         )
         if revision != self._debate_revision or not self._analysis_context_is_current(context):
+            if (
+                getattr(self, "_experimental_mode", False)
+                and getattr(self, "_argument_graph_enabled", False)
+                and getattr(self, "_experimental_lane_artifacts", None)
+            ):
+                stale_payload = recommendation.model_dump(mode="json")
+                stale_payload["external_lane_artifacts"] = list(
+                    self._experimental_lane_artifacts
+                )
+                await self._persist_argument_recommendation(stale_payload)
             return
         if analysis is None:
             unavailable = recommendation.model_copy(update={
