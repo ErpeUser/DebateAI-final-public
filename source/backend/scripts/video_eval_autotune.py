@@ -20,7 +20,7 @@ from typing import Any
 
 from app.services.video_eval_evaluator import build_split_manifest, load_video_artifacts, save_manifest
 from app.services.ai_config import research_settings
-from app.services.video_eval_batch import process
+from video_eval_batch import process
 
 
 def _json(value: Any) -> str:
