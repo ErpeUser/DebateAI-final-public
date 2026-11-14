@@ -116,7 +116,7 @@ function renderResult(data){
     for(const [index,t] of model.trials.entries()){
       card.append(element('p',`Messung ${index+1}: ${t.status==='ok'?'erfolgreich':`fehlgeschlagen (${t.reason||'ohne Ergebnis'})`}`,'hint'));
       if(t.text!==undefined&&t.text!==null)card.append(element('p',t.text||'(kein Text)','transcript'));
-      if(t.metrics){const x=t.metrics;card.append(element('p',`Ersetzt: ${x.substitutions}; fehlt: ${x.deletions}; hinzugef\u00fcgt: ${x.insertions}.`,'hint'));
+      if(t.metrics){const x=t.metrics;card.append(element('p',`Ersetzt: ${x.substitutions}; fehlt: ${x.deletions}; hinzugef\u00fcgt: ${x.insertions}; kritisch gelöscht: ${x.false_deletions ?? 0}.`,'hint'));
         if(x.hallucinated_words!==undefined&&x.hallucinated_words!==null)card.append(element('p',`Stille-Test: ${x.hallucinated_words} ausgegebene W\u00f6rter. WER nicht definiert.`,'warning'));
         if(JSON.stringify(x.critical_reference_tokens)!==JSON.stringify(x.critical_hypothesis_tokens))card.append(element('p',`Zahlen/Negationen abweichend: Referenz [${(x.critical_reference_tokens||[]).join(', ')}], erkannt [${(x.critical_hypothesis_tokens||[]).join(', ')}]. Manuell pr\u00fcfen.`,'warning'));
       }
