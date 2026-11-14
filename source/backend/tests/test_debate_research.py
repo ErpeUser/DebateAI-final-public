@@ -330,6 +330,60 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(["gemini-3.1-pro-preview"], calls)
         self.assertEqual(["https://api.example/fallback"], [source.url for source in sources])
 
+    def test_source_ranking_exposes_primary_scientific_and_statistics_signals(self):
+        scientific = debate_research.ResearchSource(
+            title="Peer reviewed journal study",
+            url="https://doi.org/10.1234/example",
+            snippet="Abstract",
+            provider="gemini_api",
+            claim="Claim",
+            source_type="original",
+            trust_level="primary",
+            publisher="Nature Journal",
+            published_at="2026-01-01",
+            retrieval_status="read",
+            verification_status="read",
+            passage="Concrete passage.",
+        )
+        statistics = debate_research.ResearchSource(
+            title="Amtliche Statistik",
+            url="https://www.destatis.de/table",
+            snippet="Table",
+            provider="chatgpt_web",
+            claim="Claim",
+            source_type="original",
+            trust_level="primary",
+            publisher="Statistikamt",
+            retrieval_status="read",
+            verification_status="read",
+            passage="Concrete passage.",
+        )
+        snippet = debate_research.ResearchSource(
+            title="Search result",
+            url="https://example.org/result",
+            snippet="Snippet",
+            provider="cliproxyapi",
+            claim="Claim",
+            source_type="ai_web",
+        )
+
+        self.assertLess(
+            debate_research.source_priority(scientific)[0],
+            debate_research.source_priority(snippet)[0],
+        )
+        self.assertIn(
+            "scientific_publication",
+            debate_research.source_priority_reasons(scientific),
+        )
+        self.assertIn(
+            "official_statistics",
+            debate_research.source_priority_reasons(statistics),
+        )
+        self.assertIn(
+            "read_passage",
+            debate_research.source_priority_reasons(statistics),
+        )
+
     async def test_original_read_budget_is_balanced_across_provider_routes(self):
         providers = ["chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"]
         candidates = [
