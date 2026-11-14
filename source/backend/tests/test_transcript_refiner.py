@@ -145,5 +145,48 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(seen, [5, 6, 7])
 
 
+class LiveIdleTests(unittest.TestCase):
+    def test_live_refiner_waits_until_debate_and_speech_are_idle(self):
+        running = SimpleNamespace(done=lambda: False)
+        finished = SimpleNamespace(done=lambda: True)
+        self.assertFalse(refiner.live_refiner_is_idle(
+            stopped=False,
+            debate_pending=True,
+            objection_task=finished,
+            last_transcript_at=10.0,
+            now=20.0,
+        ))
+        self.assertFalse(refiner.live_refiner_is_idle(
+            stopped=False,
+            debate_pending=False,
+            objection_task=running,
+            last_transcript_at=10.0,
+            now=20.0,
+        ))
+        self.assertFalse(refiner.live_refiner_is_idle(
+            stopped=False,
+            debate_pending=False,
+            objection_task=finished,
+            last_transcript_at=19.0,
+            now=20.0,
+        ))
+        self.assertTrue(refiner.live_refiner_is_idle(
+            stopped=False,
+            debate_pending=False,
+            objection_task=finished,
+            last_transcript_at=10.0,
+            now=20.0,
+        ))
+
+    def test_live_refiner_never_runs_after_stop(self):
+        self.assertFalse(refiner.live_refiner_is_idle(
+            stopped=True,
+            debate_pending=False,
+            objection_task=None,
+            last_transcript_at=None,
+            now=20.0,
+        ))
+
+
 if __name__ == "__main__":
     unittest.main()
