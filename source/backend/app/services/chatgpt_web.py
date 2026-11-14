@@ -142,8 +142,9 @@ def _write_research_status(
         "research_mode": research,
         "state": state,
         "requested_at": requested_at,
-        "completed_at": datetime.now(UTC).isoformat(),
     }
+    if state != "started":
+        payload["completed_at"] = datetime.now(UTC).isoformat()
     if error_class:
         payload["error_class"] = error_class
     temporary = path.with_suffix(".json.new")
