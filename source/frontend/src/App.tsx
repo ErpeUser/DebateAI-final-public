@@ -238,7 +238,7 @@ function MainApp() {
   const nativeMicLevelRef = useRef(0);
   const nativeSystemAudioLevelRef = useRef(0);
   const [captureSystemAudio, setCaptureSystemAudio] = useState(true);
-  const { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats } =
+  const { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats } =
     useWebSocket();
   const { stopListening } = useSpeechRecognition();
 
@@ -1324,6 +1324,7 @@ function MainApp() {
             onDebateResearch={sendDebateResearch}
             onDebateAnalysisCancel={sendDebateAnalysisCancel}
             onDebateAnswerGood={sendDebateAnswerGood}
+            onExperimentalOptionSelected={sendExperimentalOptionSelected}
             debateResearchEnabled={debateSettings?.research_enabled ?? false}
             onDebateResearchEnabledChange={handleDebateResearchControl}
           />
