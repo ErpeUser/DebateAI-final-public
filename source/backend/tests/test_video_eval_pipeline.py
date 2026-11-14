@@ -1,4 +1,5 @@
 from app.services.video_eval_pipeline import (
+    attach_media_metadata,
     SourceCandidate,
     TranscriptSegment,
     build_eval_cases,
@@ -33,3 +34,22 @@ def test_eval_cases_do_not_turn_transcript_into_ground_truth():
     assert cases[0]["expected_response"] == ""
     assert cases[0]["difficulty"] == "source_check"
     assert cases[0]["source_candidates"] == ["10.1234/x"]
+
+
+def test_attach_media_metadata_records_hashes_and_quality_checks(tmp_path):
+    media = tmp_path / "sample.wav"
+    media.write_bytes(b"pcm-test")
+    artifact = attach_media_metadata(
+        build_video_artifact(
+            video_id="v1",
+            source_url="https://example.test/watch?v=1",
+            segments=[TranscriptSegment(0, 2, "Eine Studie von Ada 2021.", speaker="S1")],
+        ),
+        media,
+    )
+    assert artifact.original_url == artifact.source_url
+    assert artifact.source_platform == "example.test"
+    assert artifact.audio_hash
+    assert artifact.duration_seconds == 2
+    assert artifact.ingestion_checks["has_timestamps"] is True
+    assert artifact.ingestion_checks["has_speakers"] is True
