@@ -669,3 +669,17 @@ NÄCHSTER PUNKT: 027/A053
 
 NÄCHSTER PUNKT: 028/A054
 
+## Masterauftrag – 2026-11-14 – 028/A054
+
+**Status: BLOCKIERT (1,5-Sekunden-Gate vorhanden; Messung von Aktualität und Qualität offen).**
+
+- **Aufgabe:** Economy-Debounce von ungefähr 1–1,5 Sekunden messen und sicherstellen, dass er Antwortqualität und Aktualität nicht unbeabsichtigt verschlechtert.
+- **Aktueller Quellstand:** 'feed_interim_transcript()' begrenzt im 'economy'-Profil den Start neuer Copilot-Revisionen auf mindestens 1,5 Sekunden Abstand. Revisionen werden weiterhin aktualisiert und die neueste Hypothese bleibt maßgeblich; Economy verwendet zusätzlich den kleineren Kontext und das eigene Ressourcenprofil.
+- **Vorhandene Regressionen:** Performance-/Context-Tests prüfen die Profilweitergabe und die Economy-Konfiguration; die Stale-/Coalescing-Tests prüfen veraltete Antworten. Es gibt noch keinen dedizierten Zeitstempeltest für das 1,0–1,5-Sekunden-Fenster und keinen A/B-Nachweis für Erstreaktion, WER oder Antwortqualität.
+- **Offene Abnahme:** Auf Zielhardware sind schnelle Interim-Ereignisse mit monotonen Zeitstempeln gegen sichtbare Copilot-Starts, Antwortlatenz, CPU/Queue-Auslastung, Stale-Rate und semantische Qualität zu vergleichen. Ein 1,0-, 1,25- und 1,5-Sekunden-Replay muss zeigen, dass Economy nicht übermäßig alte Antworten zeigt.
+- **Fresh-Test-Ergebnis:** Der Quellvertrag ist statisch nachvollziehbar; ein frischer Windows-/ASR-/Providerlauf bleibt wegen fehlendem Checkout, Dependencies, Hardware und Actions mit 'steps: null' offen.
+- **Eigener neuer Code:** keiner; das bestehende 1,5-Sekunden-Gate erfüllt die technische Teilabdeckung.
+- **Commit/Push:** Der Blockierungsnachweis wird im Fortschrittsnachweis auf 'master' dokumentiert.
+
+NÄCHSTER PUNKT: 029/A055
+
