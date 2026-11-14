@@ -51,6 +51,7 @@ def live_refiner_is_idle(
     *,
     stopped: bool,
     debate_pending: bool,
+    active_claim_is_interim: bool = False,
     objection_task,
     last_transcript_at: float | None,
     now: float | None = None,
@@ -64,7 +65,7 @@ def live_refiner_is_idle(
     ``stopped`` is accepted explicitly so the same predicate remains safe
     during teardown; the end-of-call drain calls the refiner directly.
     """
-    if stopped or debate_pending:
+    if stopped or debate_pending or active_claim_is_interim:
         return False
     if objection_task is not None:
         try:
