@@ -10,12 +10,15 @@ No automatic prompt/model change is applied from an artifact.
 from __future__ import annotations
 
 import json
+import hashlib
 import re
 import subprocess
 import tempfile
 from dataclasses import asdict, dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any, Iterable
+from urllib.parse import urlsplit
 
 _URL_RE = re.compile(r'https?://[^\s<>"\']+')
 _DOI_RE = re.compile(r'\b10\.\d{4,9}/[-._;()/:A-Z0-9]+\b', re.IGNORECASE)
@@ -457,6 +460,49 @@ def build_video_artifact(
         eval_cases=build_eval_cases(rows, source_candidates=candidates),
     )
 
+
+def attach_media_metadata(
+    artifact: VideoEvalArtifact,
+    media_path: str | Path,
+    *,
+    subtitle_path: str | Path | None = None,
+) -> VideoEvalArtifact:
+    """Add reproducible hashes and timestamp/speaker checks to an artifact."""
+    path = Path(media_path)
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    suffix = path.suffix.casefold()
+    if suffix in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}:
+        artifact.video_hash = digest.hexdigest()
+    else:
+        artifact.audio_hash = digest.hexdigest()
+    if subtitle_path:
+        subtitle = Path(subtitle_path)
+        if subtitle.is_file():
+            subtitle_digest = hashlib.sha256()
+            with subtitle.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    subtitle_digest.update(chunk)
+            artifact.subtitle_hash = subtitle_digest.hexdigest()
+    artifact.original_url = artifact.source_url
+    artifact.source_platform = urlsplit(artifact.source_url).netloc or "local_file"
+    artifact.retrieval_timestamp = datetime.now(UTC).isoformat()
+    artifact.duration_seconds = max((
+        float(item.get("end_seconds") or 0.0) for item in artifact.transcript_segments
+    ), default=0.0)
+    artifact.ingestion_checks = {
+        "has_timestamps": all(
+            float(item.get("end_seconds") or 0.0) >= float(item.get("start_seconds") or 0.0)
+            for item in artifact.transcript_segments
+        ),
+        "has_speakers": any(str(item.get("speaker") or "").strip() for item in artifact.transcript_segments),
+        "has_chapters": False,
+        "transcript_segments": len(artifact.transcript_segments),
+        "source_candidates": len(artifact.source_candidates),
+    }
+    return artifact
 
 async def research_source_candidates(
     artifact: VideoEvalArtifact,
