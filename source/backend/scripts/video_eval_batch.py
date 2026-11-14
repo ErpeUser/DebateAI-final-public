@@ -19,11 +19,12 @@ from app.services.video_eval_pipeline import (
     build_video_artifact,
     research_source_candidates,
     save_artifact,
+    update_style_profile,
     transcribe_with_google_cloud,
 )
 
 
-async def process(item: dict, output_dir: Path, language: str, diarization: bool) -> Path:
+async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
     video_id = str(item["video_id"])
     segments = transcribe_with_google_cloud(
         item["audio"],
@@ -47,6 +48,7 @@ async def main() -> int:
     parser.add_argument("--out-dir", required=True)
     parser.add_argument("--language", default="de-DE")
     parser.add_argument("--speaker-diarization", action="store_true")
+    parser.add_argument("--style-profile", default="")
     args = parser.parse_args()
     items = json.loads(Path(args.video_list).read_text(encoding="utf-8"))
     if not isinstance(items, list):
@@ -54,7 +56,7 @@ async def main() -> int:
     output_dir = Path(args.out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     for item in items:
-        path = await process(item, output_dir, args.language, args.speaker_diarization)
+        path = await process(item, output_dir, args.language, args.speaker_diarization, args.style_profile)
         print(path)
     return 0
 
