@@ -3954,7 +3954,10 @@ class AgentOrchestrator:
                     source_ids = [
                         str(source.url)
                         for source in sources[:8]
-                        if str(getattr(source, "url", "") or "").strip()
+                        if (
+                            str(getattr(source, "url", "") or "").strip()
+                            and getattr(source, "retrieval_status", "") == "read"
+                        )
                     ]
 
                     def add_lane_insights(kind: str, values: object) -> None:
