@@ -496,7 +496,7 @@ def _contains_unsupported_numeric_assertion(
             )
         ):
             continue
-        evidence = " ".join((source.claim, source.passage, source.snippet)).casefold()
+        evidence = " ".join((source.claim, source.passage)).casefold()
         evidence_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", evidence))
         evidence_number_words = set(
             re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", evidence)
