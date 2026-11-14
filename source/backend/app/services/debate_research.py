@@ -453,105 +453,87 @@ async def _read_trusted_original(
 async def _ai_web_sources(
     claim: str,
     query: str,
-    providers: set[str],
+    providers: list[str] | set[str],
 ) -> list[ResearchSource]:
-    """Ask an enabled AI web lane for source-backed findings.
-
-    AI web output is treated as an untrusted source index: only explicit URLs
-    are persisted as sources and the final answer still passes the normal
-    source verification gates. Legacy search endpoints are never called.
-    """
+    """Fail over through every enabled AI-web provider in configured order."""
     chatgpt_generate = None
+    generate_text = None
     try:
         from app.services.chatgpt_web import generate as chatgpt_generate
     except Exception:
         pass
-    fallback_model = next(
-        (
-            model
-            for provider, model in (
-                ("gemini_web", "endpoint:gemini-web:gemini-3.1-pro"),
-                ("gemini_api", "gemini-3.1-pro-preview"),
-                ("cliproxyapi", "endpoint:subscription-ai:gpt-6-sol"),
-            )
-            if provider in providers
-        ),
-        "",
-    )
-    if chatgpt_generate is None and not fallback_model:
-        return []
+    try:
+        from app.services.llm import generate_text
+    except Exception:
+        pass
     prompt = (
         "Recherchiere diese Debattenaussage mit Originalquellen. "
         "Gib pro Quelle eine kurze Begründung und die vollständige URL aus. "
         "Keine Wikipedia- oder DuckDuckGo-Links. Aussage: " + claim[:800] +
         " Recherchefrage: " + query[:500]
     )
-    answer = ""
-    provider_label = ""
-    if chatgpt_generate is not None and "chatgpt_web" in providers:
+    models = {
+        "gemini_web": "endpoint:gemini-web:gemini-3.1-pro",
+        "gemini_api": "gemini-3.1-pro-preview",
+        "cliproxyapi": "endpoint:subscription-ai:gpt-6-sol",
+    }
+    answers: list[tuple[str, str]] = []
+    for provider in providers:
+        if provider not in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}:
+            continue
         try:
-            answer = await chatgpt_generate(
-                prompt,
-                system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
-                reasoning_effort="high",
-                research="search",
-            )
-            if answer:
-                provider_label = "chatgpt_web"
+            if provider == "chatgpt_web":
+                if chatgpt_generate is None:
+                    continue
+                answer = await chatgpt_generate(
+                    prompt,
+                    system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                    reasoning_effort="high",
+                    research="search",
+                )
+            else:
+                if generate_text is None:
+                    continue
+                answer = await generate_text(
+                    models[provider],
+                    prompt,
+                    system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                    source="debate_research",
+                )
         except Exception:
-            answer = ""
-    # A failed or empty ChatGPT-Web turn must fall through to the configured
-    # Gemini/CLIProxy route instead of silently dropping the research request.
-    if not answer and fallback_model:
-        try:
-            from app.services.llm import generate_text
-            answer = await generate_text(
-                fallback_model,
-                prompt,
-                system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
-                source="debate_research",
-            )
-            provider_label = next(
-                (
-                    provider
-                    for provider in ("gemini_web", "gemini_api", "cliproxyapi")
-                    if provider in providers
-                ),
-                "ai_web",
-            )
-        except Exception:
-            answer = ""
-    if not answer:
+            continue
+        if answer:
+            answers.append((provider, answer))
+            break
+    if not answers:
         return []
-    urls = []
-    for match in re.findall(r"https?://\S+", answer or ""):
-        raw_url = match.rstrip(".,;:)]}")
-        canonical = _canonical_url(raw_url)
-        if canonical is None:
-            continue
-        hostname = (urlsplit(canonical).hostname or "").casefold().rstrip(".")
-        # Keep the legacy providers disabled even when an AI response returns
-        # mixed-case, subdomain, or redirected-looking links.
-        if (
-            hostname == "wikipedia.org"
-            or hostname.endswith(".wikipedia.org")
-            or hostname == "duckduckgo.com"
-            or hostname.endswith(".duckduckgo.com")
-        ):
-            continue
-        if canonical not in urls:
-            urls.append(canonical)
-    snippet = " ".join((answer or "").split())[:900]
+    urls: list[tuple[str, str]] = []
+    seen: set[str] = set()
+    for provider, answer in answers:
+        for match in re.findall(r"https?://\\S+", answer):
+            raw_url = match.rstrip(".,;:)]}")
+            canonical = _canonical_url(raw_url)
+            if canonical is None:
+                continue
+            hostname = (urlsplit(canonical).hostname or "").casefold().rstrip(".")
+            if (
+                hostname == "wikipedia.org"
+                or hostname.endswith(".wikipedia.org")
+                or hostname == "duckduckgo.com"
+                or hostname.endswith(".duckduckgo.com")
+            ):
+                continue
+            if canonical in seen:
+                continue
+            seen.add(canonical)
+            urls.append((provider, canonical))
     return [
         ResearchSource(
             title="KI-Recherche: " + (urlsplit(url).hostname or "Quelle"),
             url=url,
-            snippet=snippet,
-            # The model's URL list is only a finding. Do not present its
-            # surrounding prose as a read source passage until the URL was
-            # fetched and parsed by the bounded source reader.
+            snippet=" ".join(answer for provider_name, answer in answers if provider_name == provider)[:900],
             passage="",
-            provider=provider_label,
+            provider=provider,
             claim=claim,
             verification_status="found",
             retrieval_status="found",
@@ -560,9 +542,8 @@ async def _ai_web_sources(
             publisher=urlsplit(url).hostname or "",
             retrieved_at=datetime.now(UTC).isoformat(),
         )
-        for url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
+        for provider, url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
     ]
-
 async def _research_with_client(
     client: httpx.AsyncClient,
     claim: str,
@@ -576,12 +557,16 @@ async def _research_with_client(
             status="unavailable",
             error="Research is disabled in AI settings",
         )
-    providers = {
-        provider for provider in configured["providers"]
+    providers = [
+        provider
+        for provider in configured["providers"]
         if provider not in {"wikipedia", "duckduckgo"}
-    }
+    ]
     tasks = []
-    if providers.intersection({"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}):
+    if any(
+        provider in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}
+        for provider in providers
+    ):
         tasks.append(_ai_web_sources(claim, query, providers))
     if not tasks:
         return ResearchResult(
