@@ -509,7 +509,7 @@ async def _ai_web_sources(
     urls: list[tuple[str, str]] = []
     seen: set[str] = set()
     for provider, answer in answers:
-        for match in re.findall(r"https?://\\S+", answer):
+        for match in re.findall(r"https?://\S+", answer):
             raw_url = match.rstrip(".,;:)]}")
             canonical = _canonical_url(raw_url)
             if canonical is None:
