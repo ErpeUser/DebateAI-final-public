@@ -261,6 +261,44 @@ def build_video_artifact(
     )
 
 
+async def research_source_candidates(
+    artifact: VideoEvalArtifact,
+    *,
+    max_candidates: int = 24,
+) -> VideoEvalArtifact:
+    """Verify transcript references through the AI-only research service."""
+    from app.services.debate_research import research_claim
+
+    verified: list[dict[str, Any]] = []
+    for candidate in artifact.source_candidates[:max_candidates]:
+        value = str(candidate.get("value") or "")
+        context = str(candidate.get("context") or value)
+        if not value:
+            continue
+        try:
+            result = await research_claim(context, value)
+        except Exception as exc:
+            verified.append({
+                "candidate": value,
+                "status": "unavailable",
+                "error": str(exc),
+                "sources": [],
+            })
+            continue
+        verified.append({
+            "candidate": value,
+            "status": result.status,
+            "error": result.error,
+            "sources": [source.model_dump(mode="json") for source in result.sources],
+        })
+    artifact.verified_sources = verified
+    artifact.improvement_notes.append(
+        "Quellenkandidaten wurden pro Claim an die KI-Recherche übergeben; "
+        "Wikipedia und DuckDuckGo bleiben ausgeschlossen."
+    )
+    return artifact
+
+
 def save_artifact(artifact: VideoEvalArtifact, output_path: str | Path) -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
