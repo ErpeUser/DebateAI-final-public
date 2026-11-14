@@ -463,6 +463,7 @@ async def generate_text(
             system=system,
             reasoning_effort="xhigh",
             research=chatgpt_web.research_mode(prompt, source=source),
+            source=source,
         )
         usage = None
     elif target.endpoint is not None:
@@ -1365,6 +1366,7 @@ async def _generate_json_once(
             system=system,
             reasoning_effort=reasoning_effort or "xhigh",
             research=chatgpt_web.research_mode(prompt, source=source),
+            source=source,
         )
         return parse_json_response(raw, response_schema)
     if target.endpoint is not None:
