@@ -127,6 +127,66 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("", result.passage)
         bounded.assert_awaited_once()
 
+    async def test_ai_web_failover_tries_all_enabled_routes(self):
+        calls = []
+
+        async def fake_generate_text(model, *_args, **_kwargs):
+            calls.append(model)
+            if len(calls) == 1:
+                raise RuntimeError("Gemini Web unavailable")
+            if len(calls) == 2:
+                return "https://api.example/gemini https://shared.example/source"
+            return "https://cli.example/source"
+
+        with mock.patch(
+            "app.services.chatgpt_web.generate",
+            new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"],
+            )
+
+        self.assertEqual(
+            [
+                "endpoint:gemini-web:gemini-3.1-pro",
+                "gemini-3.1-pro-preview",
+                "endpoint:subscription-ai:gpt-6-sol",
+            ],
+            calls,
+        )
+        self.assertEqual(
+            {"gemini_api", "cliproxyapi"},
+            {source.provider for source in sources},
+        )
+        self.assertEqual(
+            {"https://api.example/gemini", "https://shared.example/source", "https://cli.example/source"},
+            {source.url for source in sources},
+        )
+
+    async def test_ai_web_failover_returns_empty_when_all_enabled_routes_fail(self):
+        async def fake_generate_text(*_args, **_kwargs):
+            raise RuntimeError("provider unavailable")
+
+        with mock.patch(
+            "app.services.chatgpt_web.generate",
+            new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"],
+            )
+
+        self.assertEqual([], sources)
+
     def test_empty_and_pii_queries_are_refused(self):
         self.assertFalse(debate_research.is_safe_research_query("   "))
         for token in ("[PERSON_1]", "[EMAIL_2]", "[PHONE_3]", "[ADDRESS_4]"):
