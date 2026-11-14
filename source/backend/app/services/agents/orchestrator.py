@@ -3775,6 +3775,20 @@ class AgentOrchestrator:
             effort: str,
         ):
             started_at = time.perf_counter()
+            started_at_iso = datetime.now(UTC).isoformat()
+            lane_id = (
+                f"lane-{self.session_id}-{recommendation.claim_id or 'claim'}-"
+                f"{recommendation.claim_revision}-{label}-{uuid.uuid4().hex[:10]}"
+            )
+            route = provider_route(model_id)
+            provider = str(
+                route.get("provider")
+                or route.get("kind")
+                or model_id.split(":", 1)[0]
+            )
+            standpoint_snapshot = str(self.meeting_context or "")[:1200]
+            recent_transcript_window = str(relevant_context or "")[:2400]
+            consolidated_context = str(relevant_context or "")[:2400]
             try:
                 result = await self.objection_agent.analyze_deep(
                     recommendation,
@@ -3793,7 +3807,22 @@ class AgentOrchestrator:
                     prompt_resource=prompt_resource,
                 )
                 return {
+                    "lane_id": lane_id,
                     "label": label,
+                    "session_id": str(self.session_id),
+                    "claim_id": recommendation.claim_id,
+                    "claim_revision": recommendation.claim_revision,
+                    "transcript_revision": recommendation.transcript_revision,
+                    "generation_id": recommendation.generation_id,
+                    "standpoint_snapshot": standpoint_snapshot,
+                    "recent_transcript_window": recent_transcript_window,
+                    "consolidated_context": consolidated_context,
+                    "provider": provider,
+                    "model": model_id,
+                    "started_at": started_at_iso,
+                    "completed_at": datetime.now(UTC).isoformat(),
+                    "status": "completed",
+                    "prompt_version": prompt_resource,
                     "prompt_resource": prompt_resource,
                     "reasoning_effort": effort,
                     "analysis": result[0],
@@ -3803,7 +3832,22 @@ class AgentOrchestrator:
                 }
             except Exception as exc:
                 return {
+                    "lane_id": lane_id,
                     "label": label,
+                    "session_id": str(self.session_id),
+                    "claim_id": recommendation.claim_id,
+                    "claim_revision": recommendation.claim_revision,
+                    "transcript_revision": recommendation.transcript_revision,
+                    "generation_id": recommendation.generation_id,
+                    "standpoint_snapshot": standpoint_snapshot,
+                    "recent_transcript_window": recent_transcript_window,
+                    "consolidated_context": consolidated_context,
+                    "provider": provider,
+                    "model": model_id,
+                    "started_at": started_at_iso,
+                    "completed_at": datetime.now(UTC).isoformat(),
+                    "status": "failed",
+                    "prompt_version": prompt_resource,
                     "prompt_resource": prompt_resource,
                     "reasoning_effort": effort,
                     "analysis": None,
@@ -3823,8 +3867,22 @@ class AgentOrchestrator:
             for completed in asyncio.as_completed(tasks):
                 artifact = await completed
                 artifact_summary = {
+                    "lane_id": artifact["lane_id"],
                     "lane": artifact["label"],
-                    "status": "completed" if artifact["analysis"] is not None else "failed",
+                    "session_id": artifact["session_id"],
+                    "claim_id": artifact["claim_id"],
+                    "claim_revision": artifact["claim_revision"],
+                    "transcript_revision": artifact["transcript_revision"],
+                    "generation_id": artifact["generation_id"],
+                    "standpoint_snapshot": artifact["standpoint_snapshot"],
+                    "recent_transcript_window": artifact["recent_transcript_window"],
+                    "consolidated_context": artifact["consolidated_context"],
+                    "provider": artifact["provider"],
+                    "model": artifact["model"],
+                    "started_at": artifact["started_at"],
+                    "completed_at": artifact["completed_at"],
+                    "status": artifact["status"],
+                    "prompt_version": artifact["prompt_version"],
                     "prompt_resource": artifact["prompt_resource"],
                     "reasoning_effort": artifact["reasoning_effort"],
                     "latency_ms": artifact["latency_ms"],
