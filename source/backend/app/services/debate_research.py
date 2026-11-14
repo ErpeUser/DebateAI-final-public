@@ -22,6 +22,7 @@ from pydantic import BaseModel, Field
 
 from app.config import settings
 from app.services.ai_config import research_settings, unavailable_cooldown_seconds
+from app.services import external_audit
 from app.services.provider_capabilities import classify_provider_failure
 from app.services.pii.recognizers import (
     ADDRESS,
@@ -545,6 +546,7 @@ async def _read_trusted_original(
     client: httpx.AsyncClient,
     source: ResearchSource,
     query: str,
+    claim: str = "",
 ) -> ResearchSource:
     can_read_ai_source = (
         source.source_type == "ai_web"
@@ -556,6 +558,13 @@ async def _read_trusted_original(
         return source
     cached_document = _cache_get(_document_cache, source.url)
     if cached_document is None:
+        audit_id = external_audit.start_external_request(
+            provider_route=f"research-source:{source.provider}",
+            approval=external_audit.current_approval(),
+            data_category="source_document",
+            claim_id=external_audit.claim_id_for(claim),
+            target_host=source.url,
+        )
         try:
             content, content_type = await _bounded_get(
                 client,
@@ -563,8 +572,38 @@ async def _read_trusted_original(
                 max_bytes=_MAX_ORIGINAL_BYTES,
                 accepted_types=("application/xhtml+xml", "text/html", "text/plain"),
             )
-        except Exception:
+        except asyncio.CancelledError:
+            external_audit.finish_external_request(
+                audit_id,
+                approval=external_audit.current_approval(),
+                status="cancelled",
+                provider_route=f"research-source:{source.provider}",
+                data_category="source_document",
+                claim_id=external_audit.claim_id_for(claim),
+                target_host=source.url,
+            )
+            raise
+        except Exception as exc:
+            external_audit.finish_external_request(
+                audit_id,
+                approval=external_audit.current_approval(),
+                status="failed",
+                provider_route=f"research-source:{source.provider}",
+                data_category="source_document",
+                claim_id=external_audit.claim_id_for(claim),
+                target_host=source.url,
+                error_class=type(exc).__name__,
+            )
             return source
+        external_audit.finish_external_request(
+            audit_id,
+            approval=external_audit.current_approval(),
+            status="completed",
+            provider_route=f"research-source:{source.provider}",
+            data_category="source_document",
+            claim_id=external_audit.claim_id_for(claim),
+            target_host=source.url,
+        )
         _cache_set(
             _document_cache,
             source.url,
@@ -762,25 +801,31 @@ async def _ai_web_sources(
         ):
             continue
         try:
-            if provider == "chatgpt_web":
-                if chatgpt_generate is None:
-                    continue
-                answer = await chatgpt_generate(
-                    prompt,
-                    system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
-                    reasoning_effort="high",
-                    research="search",
-                    timeout_seconds=10 if research_mode == "live" else 660,
-                )
-            else:
-                if generate_text is None:
-                    continue
-                answer = await generate_text(
-                    models[provider],
-                    prompt,
-                    system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
-                    source="debate_research",
-                )
+            with external_audit.audit_context(
+                claim=claim,
+                data_category="research_claim",
+                approval=True,
+            ):
+                if provider == "chatgpt_web":
+                    if chatgpt_generate is None:
+                        continue
+                    answer = await chatgpt_generate(
+                        prompt,
+                        system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                        reasoning_effort="high",
+                        research="search",
+                        timeout_seconds=10 if research_mode == "live" else 660,
+                        source="debate_research",
+                    )
+                else:
+                    if generate_text is None:
+                        continue
+                    answer = await generate_text(
+                        models[provider],
+                        prompt,
+                        system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+                        source="debate_research",
+                    )
         except Exception as exc:
             _record_research_provider_failure(provider, exc)
             continue
@@ -933,7 +978,7 @@ async def _research_with_client(
                 break
         if original_indexes and configured["original_sources_required"]:
             read_results = await asyncio.gather(*(
-                _read_trusted_original(client, sources[index], query)
+                _read_trusted_original(client, sources[index], query, claim)
                 for index in original_indexes
             ))
             for index, read_source in zip(original_indexes, read_results):
