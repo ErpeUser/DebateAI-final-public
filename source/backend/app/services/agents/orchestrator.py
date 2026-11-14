@@ -1064,6 +1064,7 @@ class AgentOrchestrator:
         self._research_tasks: set[asyncio.Task] = set()
         self._research_cache: dict[str, ResearchResult] = {}
         self._topic_knowledge: dict[str, dict[str, object]] = {}
+        self._experimental_lane_artifacts: list[dict[str, object]] = []
         self._external_model_unavailable_until: dict[str, float] = {}
         try:
             configured_parallelism = (
