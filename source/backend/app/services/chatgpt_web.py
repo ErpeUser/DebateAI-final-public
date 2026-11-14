@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from app.services.redaction import redact_text
+from app.services import external_audit
 from app.services.identity import env_value
 
 MODEL_ID = "chatgpt-web:gpt-6"
@@ -271,6 +272,7 @@ async def generate(
     reasoning_effort: str | None = "xhigh",
     research: str | None = None,
     timeout_seconds: float = 660,
+    source: str = "",
 ) -> str:
     if not runtime_available():
         raise RuntimeError("ChatGPT Web ist in dieser Installation nicht verfuegbar.")
@@ -301,6 +303,18 @@ async def generate(
         )
         command = oracle_command(
             output, reasoning_effort=reasoning_effort, research=research_mode_value
+        )
+        audit_category = (
+            "research_claim"
+            if research_mode_value
+            else external_audit.data_category_for_source(source)
+        )
+        audit_id = external_audit.start_external_request(
+            provider_route="chatgpt-web:gpt-6",
+            approval=True,
+            data_category=audit_category,
+            claim_id=external_audit.current_claim_id(),
+            model_id=MODEL_ID,
         )
         env = os.environ.copy()
         env.update({
