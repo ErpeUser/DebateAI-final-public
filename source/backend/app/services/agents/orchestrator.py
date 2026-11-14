@@ -3893,7 +3893,7 @@ class AgentOrchestrator:
                     await self.websocket.send_json({
                         "type": "experimental_lane_update",
                         "data": {
-                            "session_id": self.session_id,
+                            "session_id": str(self.session_id),
                             "claim_id": recommendation.claim_id,
                             "claim_revision": recommendation.claim_revision,
                             "transcript_revision": recommendation.transcript_revision,
