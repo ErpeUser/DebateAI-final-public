@@ -105,6 +105,8 @@ export default function DebateOverlay() {
                   <details key={option.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
                     <summary className="cursor-pointer text-xs font-semibold text-white/80">{option.title}</summary>
                     <p className="mt-1.5 text-sm leading-5 text-white/70">{option.text}</p>
+                    {option.example && <p className="mt-1 text-xs leading-5 text-white/60"><strong>Beispiel:</strong> {option.example}</p>}
+                    {option.rationale && <p className="mt-1 text-xs leading-5 text-white/60"><strong>Warum:</strong> {option.rationale}</p>}
                   </details>
                 ))}
             </section>
