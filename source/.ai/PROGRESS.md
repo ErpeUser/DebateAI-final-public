@@ -763,3 +763,16 @@ NÄCHSTER PUNKT: 034/A063
 - **Commit/Push:** `670e02458bf44cd7a350f3e3999eb1d4db69ba99` (Runtime), `9139bcd50c7fbd935bb2425c82997eac613faf43` (Regression), `cf6d5d75f2132de427f851381f7dbd0fa5d59328` (Dependencies).
 
 NÄCHSTER PUNKT: 035/A065
+
+
+## Masterauftrag – 2026-11-14 – 035/A065
+**Status: ERLEDIGT (Suchmodus-Contract und nachvollziehbarer Status implementiert; echte interaktive Oracle-Browserabnahme extern blockiert).**
+
+- **Browser-Suchmodus:** `chatgpt_web.research_mode()` aktiviert Recherche nur für explizite Research-/Recherche-/Fact-Check-Anforderungen. `oracle_command(..., research="search")` erzwingt `--engine browser`, `--browser-research search`, GPT-6 und das dedizierte Chrome-Profil; API-Modus wird nicht verwendet. Die aktive `debate_research._ai_web_sources()`-Route übergibt genau diesen Suchmodus.
+- **Nachvollziehbarer Status:** `chatgpt_web.generate()` schreibt atomar `research-status.json` in das dedizierte Oracle-Home. Der Status enthält nur Provider, Modell, Modus (`search`/`deep` oder `null`), Zustand (`started`/`completed`/`failed`/`cancelled`), Zeitstempel und eine Fehlerklasse; Prompts, Antworttexte, Cookies und CLI-Ausgaben werden nicht gespeichert.
+- **Status-API:** `/api/chatgpt-web/status` gibt den redigierten `research_status`-Block neben der bestehenden GPT-6-/Thinking-Verifikation aus. Der Login-Marker bleibt auf UI-Modell und Extra High begrenzt; der per Request gespeicherte Suchstatus ist davon getrennt.
+- **Regression:** `test_generate_persists_search_mode_status` startet einen Fake-Oracle-Prozess, prüft `--browser-research search`, `state == completed`, `research_mode == search` und dass der Prompt nicht im Statusfile landet. Bestehende Tests prüfen zusätzlich explizite Research-Erkennung und Browser-/GPT-6-/Extra-High-Flags.
+- **Validierung:** `chatgpt_web.py`, `app/routers/chatgpt_web.py` und `test_chatgpt_web.py` wurden per Python-AST syntaktisch geprüft. Der echte interaktive Oracle-Browser-/Loginlauf ist in dieser Umgebung nicht verfügbar; daher wird kein live bestätigter Web-Suchstatus behauptet.
+- **Commit/Push:** `bb30a5cd515d952f4c8be8f49527f68e210f8a26` (Status-API), `b31aab8d5eab82c91b4703b560d2360e4fe22401` (Request-Status), `7fcb3b0517c82623ce43bbf9158b455cfdcb602e` (Router), `54dc8e69bfb3e9d034c9f489bd79e5d6f1e9a059` (Regression), `9b0d7851a1445371f7c7cc87c07c66fc2c299fcf` (Timestamp-Korrektur).
+
+NÄCHSTER PUNKT: 036/A066
