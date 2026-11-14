@@ -541,4 +541,17 @@ NÄCHSTER PUNKT: 018/A033
 - **Fresh-Test-Ergebnis:** Fokussierte Filter-/Audit-Tests sind vorhanden, ein frischer Lauf bleibt wegen GitHub-Actions `steps: null` blockiert.
 - **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
-NÄCHSTER PUNKT: 019/A034
+## Masterauftrag – 2026-11-14 – 019/A036
+
+**Status: ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Den Transcript Refiner nur bei Live-Idle oder nach dem Gespräch ausführen und die Sofortantwort niemals verzögern; den vorhandenen Refiner verwenden.
+- **Umsetzung:** `transcript_refiner.live_refiner_is_idle()` blockiert Live-Refinement bei beendetem Orchestrator, pending Debatte, laufendem Sofortantwort-Task, aktivem Interim-Claim oder einem noch nicht abgelaufenen Ruhefenster von 1,5 Sekunden. `AgentOrchestrator` führt den bisherigen Refiner weiterhin als eigenen Poll-Task, startet den eigentlichen `refine_session()`-Aufruf aber nur nach diesem Gate. `feed_transcript()`, `feed_interim_transcript()` und manuelle Korrekturen aktualisieren den monotonic Aktivitätszeitpunkt; neue Sprache bricht einen laufenden Live-Refiner-Job cancellierbar ab, bevor er mit dem Copilot konkurriert.
+- **Post-Call-Vertrag:** Der Drain setzt `_stopped`, beendet den Live-Refiner und führt anschließend den vorhandenen vollständigen Refiner-Durchlauf mit `limit=None` als eigenen Drain-Schritt aus. Der Post-Import-Analysepfad verwendet unverändert denselben `refine_session()`-Refiner.
+- **Regressionen:** `test_transcript_refiner.py` prüft pending Debatte, laufenden Sofortantwort-Task, aktives Interim, frische Sprache, abgelaufenes Ruhefenster und Stop-Zustand. Die bestehenden Copilot-Regressionen für Interim, Negation, Coalescing und sofortige Antwort bleiben der Integrationsnachweis; sie wurden wegen der nicht ausführbaren Runner-Umgebung nicht frisch ausgeführt.
+- **Dokumentation:** `CLAUDE.md`, `docs/agents.md` und `docs/configuration.md` beschreiben den Refiner nun als idle-gated Polling plus Drain/Post-Import statt als unbedingten Live-Intervalllauf.
+- **Lokale Verifikation:** Die aus dem aktuellen master gelesenen Produktions- und Testdateien kompilieren mit `python -m py_compile`; die deterministischen Idle-Guard-Fälle laufen mit `A036 idle guard cases: PASS`.
+- **Fresh-Test-Ergebnis:** Ein vollständiger Backend-/Frontend-Lauf und GitHub-Actions-Neulauf bleiben offen: der private Checkout ist in dieser Umgebung nicht ausführbar, und die letzten Actions-Runs liefern weiterhin `steps: null`.
+- **Commit/Push:** Die Änderungen wurden direkt auf `master` gepusht; letzter A036-Commit `7bbb61c276083cd8adad4dd9e26c8d39c169635a`.
+
+NÄCHSTER PUNKT: 020/A037
