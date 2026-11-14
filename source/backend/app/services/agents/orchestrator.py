@@ -128,6 +128,7 @@ from app.services.provider_capabilities import (
 from app.services.agents.prompt_resources import load_prompt_resource
 
 logger = logging.getLogger(__name__)
+AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5
 
 
 def _annotate_experimental_sources(
@@ -3618,6 +3619,20 @@ class AgentOrchestrator:
                 and not has_numeric_fact
             )
         ):
+            return None
+
+        if (
+            not manual
+            and getattr(self, "_active_claim_is_interim", False)
+            and (
+                self._last_transcript_activity_at is None
+                or time.monotonic() - self._last_transcript_activity_at
+                < AUTOMATIC_RESEARCH_STABILITY_SECONDS
+            )
+        ):
+            # Interim speech is still changing. Wait for a later stable
+            # revision or the final transcript checkpoint before spending an
+            # external provider call; explicit manual research remains allowed.
             return None
 
         cached = query in self._research_cache
