@@ -378,3 +378,17 @@ NÄCHSTER PUNKT: 006/A010
 - **Commit/Push:** Der Gap ist in diesem Commit auf master dauerhaft festgehalten.
 
 NÄCHSTER PUNKT: 007/A011
+
+## Masterauftrag – 2026-11-14 – 007/A011
+
+**Status: BEREITS ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Audio, Rohtranskript, bereinigtes Transkript, Argumentgedächtnis und Quellen getrennt halten und falsches Überschreiben verhindern.
+- **Nachweis der bestehenden Lösung:** models.py trennt TranscriptEntry.raw_text, TranscriptEntryRevision und ProvisionalTranscriptRevision append-only; TranscriptDiscardAudit hält verworfene Segmente separat und PII-geschützt. Claim-/Argument-/Source-Objekte tragen eigene Claim-, Transcript- und Quellenrevisionen. Das Argumentgedächtnis und die ResearchSource-Persistenz bleiben revisioniert und werden bei stale Updates nur historisch gespeichert.
+- **Vorhandene Regressionen:** test_transcript_revisions.py, test_provisional_transcripts.py, test_atomic_claims.py, test_ghost_transcripts.py und die Revisions-/Research-Tests in test_debate_copilot.py prüfen append-only Historie, Rohtextbewahrung, Revisionsgrenzen, Claim-/Source-Bezug und stale Cache ohne sichtbares Überschreiben.
+- **Eigener neuer Code:** keiner; die vorhandene Persistenz- und Vertragsstruktur deckt die Trennung ab.
+- **Fresh-Test-Ergebnis:** Die aktuellen master-Actions sind wegen steps: null nicht ausführbar; die reale Datenbank-/Reconnect-Abnahme bleibt offen.
+- **Commit/Push:** Fortschrittsnachweis in diesem Commit auf master; kein Produktcode geändert.
+- **Offener Abnahmeschritt:** Backend-/DB-Testlauf mit PostgreSQL und ein Reconnect-/Persistenztest aus dem echten Desktopcheckout, einschließlich Prüfung, dass Rohtext, Refiner-Revision, Claim-Revision und Source-Passage getrennt erhalten bleiben.
+
+NÄCHSTER PUNKT: 008/A012
