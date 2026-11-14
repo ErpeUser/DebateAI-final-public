@@ -101,16 +101,20 @@ async def _resolve_media_path(item: dict, directory: Path) -> Path:
 
 
 async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
-    video_id = str(item["video_id"])
-    segments = transcribe_with_google_cloud(
-        item["audio"],
-        language_code=language,
-        project_id=item.get("project_id"),
-        speaker_diarization=diarization,
-    )
+    video_id = str(item.get("video_id") or item.get("id") or "").strip()
+    if not video_id:
+        raise ValueError("video-list item is missing video_id")
+    with tempfile.TemporaryDirectory(prefix="debateai-video-") as temp_dir:
+        media_path = await _resolve_media_path(item, Path(temp_dir))
+        segments = transcribe_with_google_cloud(
+            media_path,
+            language_code=language,
+            project_id=item.get("project_id"),
+            speaker_diarization=diarization,
+        )
     artifact = build_video_artifact(
         video_id=video_id,
-        source_url=str(item.get("source_url") or ""),
+        source_url=str(item.get("source_url") or item.get("media_url") or ""),
         segments=segments,
         language_code=language,
     )
