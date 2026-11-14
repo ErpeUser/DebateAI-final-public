@@ -3168,6 +3168,48 @@ class AgentOrchestrator:
         sample["ui_acknowledged_at"] = datetime.now(UTC).isoformat()
         return True
 
+    async def select_experimental_option(
+        self,
+        *,
+        claim_id: str,
+        recommendation_revision: int,
+        option_id: str,
+    ) -> bool:
+        """Apply a deliberate experimental response choice to the visible card."""
+        recommendation = self.objection_agent.latest_recommendation
+        if (
+            getattr(self, "_experimental_mode", False) is not True
+            or not claim_id
+            or recommendation.pipeline_mode != "experimental_debateai"
+            or recommendation.claim_id != claim_id
+            or recommendation.recommendation_revision != recommendation_revision
+            or not option_id
+        ):
+            return False
+        options = []
+        selected_item = None
+        for option in recommendation.strategy_options:
+            if str(option.get("id") or "") == option_id:
+                selected_item = option
+            options.append({**option, "selected": str(option.get("id") or "") == option_id})
+        if selected_item is None or not str(selected_item.get("text") or "").strip():
+            return False
+        selected_kind = str(selected_item.get("kind") or "")
+        selected_text = " ".join(str(selected_item.get("text") or "").split())
+        updated = recommendation.model_copy(update={
+            "strategy_options": options,
+            "selected_strategy_id": option_id,
+            "answer_now": selected_text,
+            "primary_move": "question" if selected_kind == "counter_question" else "answer",
+            "selection_reason": "Vom Nutzer als passendster Antwortzug ausgewählt.",
+        })
+        await self._send_debate_update(
+            recommendation.transcript_revision or self._debate_revision,
+            updated,
+            origin="user_selection",
+        )
+        return True
+
     async def confirm_good_debate_answer(
         self,
         *,
