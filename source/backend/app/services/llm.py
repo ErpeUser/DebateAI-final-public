@@ -38,6 +38,7 @@ from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
 from app.services import chatgpt_web
+from app.services import external_audit
 from app.services.identity import env_value
 
 logger = logging.getLogger(__name__)
@@ -138,6 +139,18 @@ def _apply_output_budget(payload: dict, model_id: str, budget: int | None = None
 def _truncated(data: dict) -> bool:
     choices = data.get("choices") or [{}]
     return (choices[0] or {}).get("finish_reason") == "length"
+
+
+def _audit_category(source: str) -> str:
+    return (
+        external_audit.current_data_category()
+        if external_audit.current_data_category() != "unknown"
+        else external_audit.data_category_for_source(source)
+    )
+
+
+def _audit_route(provider: str, model_id: str) -> str:
+    return f"{provider}:{model_id}"
 
 
 class LLMKeyMissing(ValueError):
@@ -281,22 +294,65 @@ async def _subscription_budget_target(model_id: str) -> tuple[str, OpenAIEndpoin
     return fallback_id, endpoint, endpoint.api_key or ""
 
 
-async def _call_google(model_id: str, prompt: str, system: str | None, temperature: float | None, key: str) -> tuple[str, object]:
+async def _call_google(
+    model_id: str,
+    prompt: str,
+    system: str | None,
+    temperature: float | None,
+    key: str,
+    source: str = "",
+) -> tuple[str, object]:
     config_kwargs = {}
     if system is not None:
         config_kwargs["system_instruction"] = system
     if temperature is not None:
         config_kwargs["temperature"] = temperature
-    client = _google_client(key)
-    response = await client.aio.models.generate_content(
-        model=model_id,
-        contents=prompt,
-        config=types.GenerateContentConfig(**config_kwargs) if config_kwargs else None,
+    request_id = external_audit.start_external_request(
+        provider_route=_audit_route("google", model_id),
+        approval=True,
+        data_category=_audit_category(source),
+        claim_id=external_audit.current_claim_id(),
+        model_id=model_id,
+    )
+    try:
+        client = _google_client(key)
+        response = await client.aio.models.generate_content(
+            model=model_id,
+            contents=prompt,
+            config=types.GenerateContentConfig(**config_kwargs) if config_kwargs else None,
+        )
+    except asyncio.CancelledError:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="cancelled",
+            provider_route=_audit_route("google", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+        )
+        raise
+    except Exception as exc:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="failed",
+            provider_route=_audit_route("google", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            error_class=type(exc).__name__,
+        )
+        raise
+    external_audit.finish_external_request(
+        request_id, approval=True, status="completed",
+        provider_route=_audit_route("google", model_id),
+        data_category=_audit_category(source), model_id=model_id,
     )
     return response.text or "", getattr(response, "usage_metadata", None)
 
 
-async def _call_openai(model_id: str, endpoint: OpenAIEndpoint, prompt: str, system: str | None, temperature: float | None, key: str) -> tuple[str, object]:
+async def _call_openai(
+    model_id: str,
+    endpoint: OpenAIEndpoint,
+    prompt: str,
+    system: str | None,
+    temperature: float | None,
+    key: str,
+    source: str = "",
+) -> tuple[str, object]:
     messages = []
     if system is not None:
         messages.append({"role": "system", "content": system})
@@ -305,14 +361,45 @@ async def _call_openai(model_id: str, endpoint: OpenAIEndpoint, prompt: str, sys
     if temperature is not None:
         payload["temperature"] = temperature
     _apply_output_budget(payload, model_id)
-    async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
-        resp = await client.post(
-            f"{endpoint.base_url}/chat/completions",
-            headers=auth_headers(key),
-            json=payload,
+    request_id = external_audit.start_external_request(
+        provider_route=_audit_route("openai-compatible", model_id),
+        approval=True,
+        data_category=_audit_category(source),
+        claim_id=external_audit.current_claim_id(),
+        model_id=model_id,
+        target_host=endpoint.base_url,
+    )
+    try:
+        async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
+            resp = await client.post(
+                f"{endpoint.base_url}/chat/completions",
+                headers=auth_headers(key),
+                json=payload,
+            )
+            _raise_for_status(resp)
+            data = resp.json()
+    except asyncio.CancelledError:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="cancelled",
+            provider_route=_audit_route("openai-compatible", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            target_host=endpoint.base_url,
         )
-        _raise_for_status(resp)
-        data = resp.json()
+        raise
+    except Exception as exc:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="failed",
+            provider_route=_audit_route("openai-compatible", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            target_host=endpoint.base_url, error_class=type(exc).__name__,
+        )
+        raise
+    external_audit.finish_external_request(
+        request_id, approval=True, status="completed",
+        provider_route=_audit_route("openai-compatible", model_id),
+        data_category=_audit_category(source), model_id=model_id,
+        target_host=endpoint.base_url,
+    )
     return data["choices"][0]["message"]["content"] or "", data.get("usage")
 
 
@@ -325,16 +412,40 @@ async def generate_text(
     session_id: object | None = None,
     source: str = "",
 ) -> str:
-    target = await _prepare_call(model_id, "text generation", source)
+    route = _audit_route(provider_for(model_id), model_id)
+    category = _audit_category(source)
+    try:
+        target = await _prepare_call(model_id, "text generation", source)
+    except Exception as exc:
+        external_audit.record_external_request(
+            provider_route=route,
+            approval=False,
+            data_category=category,
+            status="refused",
+            model_id=model_id,
+            error_class=type(exc).__name__,
+        )
+        raise
     # The PII Shield's model-call boundary repairs one missed session token,
     # then refuses anything that is still unsafe (services/pii/egress.py).
-    prompt, system = await pii_egress.protect_and_guard(
-        prompt,
-        system=system,
-        model_id=model_id,
-        session_id=session_id,
-        source=source,
-    )
+    try:
+        prompt, system = await pii_egress.protect_and_guard(
+            prompt,
+            system=system,
+            model_id=model_id,
+            session_id=session_id,
+            source=source,
+        )
+    except Exception as exc:
+        external_audit.record_external_request(
+            provider_route=route,
+            approval=False,
+            data_category=category,
+            status="blocked" if exc.__class__.__name__ == "PiiEgressBlocked" else "refused",
+            model_id=model_id,
+            error_class=type(exc).__name__,
+        )
+        raise
     usage_model_id = model_id
     if target.provider == chatgpt_web.PROVIDER:
         text = await chatgpt_web.generate(
@@ -351,7 +462,7 @@ async def generate_text(
     else:
         try:
             text, usage = await _call_google(
-                model_id, prompt, system, temperature, target.key
+                model_id, prompt, system, temperature, target.key, source
             )
         except Exception as exc:
             if not (
@@ -362,7 +473,7 @@ async def generate_text(
             try:
                 fallback_id, endpoint, key = await _subscription_budget_target(model_id)
                 text, usage = await _call_openai(
-                    fallback_id, endpoint, prompt, system, temperature, key
+                    fallback_id, endpoint, prompt, system, temperature, key, source
                 )
                 usage_model_id = fallback_id
             except Exception:
