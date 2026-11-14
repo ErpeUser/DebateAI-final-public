@@ -26,8 +26,8 @@ _STUDY_RE = re.compile(
 )
 
 _CITATION_RE = re.compile(
-    r"\\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\\'-]{2,}(?:\\s+et\\s+al\\.)?"
-    r"(?:,?\\s+)(?:19|20)\\d{2}\\b"
+    r"\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\'-]{2,}(?:\s+et\s+al\.)?"
+    r"(?:,?\s+)(?:19|20)\d{2}\b"
 )
 
 
