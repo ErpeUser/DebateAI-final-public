@@ -87,6 +87,41 @@ async def _request_tuning_review(summary: dict[str, Any]) -> dict[str, Any]:
     return {"provider": provider, "status": "completed", **payload}
 
 
+def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
+    """Normalize a plain URL list into the batch processor contract."""
+    if not isinstance(raw_items, list):
+        raise ValueError("video-list must be a JSON array")
+    normalized: list[dict[str, Any]] = []
+    for index, item in enumerate(raw_items):
+        if isinstance(item, str):
+            value = item.strip()
+            if not value:
+                raise ValueError(f"video-list item {index + 1} is empty")
+            normalized.append({
+                "video_id": f"video-{index + 1:04d}",
+                "video_page_url": value,
+            })
+            continue
+        if not isinstance(item, dict):
+            raise ValueError(
+                f"video-list item {index + 1} must be an object or URL string"
+            )
+        row = dict(item)
+        if not str(row.get("video_id") or row.get("id") or "").strip():
+            row["video_id"] = f"video-{index + 1:04d}"
+        if not any(
+            str(row.get(key) or "").strip()
+            for key in (
+                "audio", "video", "media_path",
+                "media_url", "video_url", "audio_url",
+                "video_page_url", "video_page", "page_url", "source_url",
+            )
+        ) and str(row.get("url") or "").strip():
+            row["video_page_url"] = str(row["url"]).strip()
+        normalized.append(row)
+    return normalized
+
+
 def _run_checks(repo_root: str, command: str) -> dict[str, Any]:
     if not repo_root or not command:
         return {"status": "not_requested", "command": "", "returncode": None, "output": ""}
@@ -101,9 +136,8 @@ def _run_checks(repo_root: str, command: str) -> dict[str, Any]:
 
 
 async def run(video_list: Path, out_dir: Path, *, language: str, diarization: bool, style_profile: str, repo_root: str, test_command: str) -> Path:
-    items = json.loads(video_list.read_text(encoding="utf-8"))
-    if not isinstance(items, list) or not all(isinstance(item, dict) for item in items):
-        raise ValueError("video-list must be a JSON array of objects")
+    raw_items = json.loads(video_list.read_text(encoding="utf-8"))
+    items = _normalize_video_items(raw_items)
     out_dir.mkdir(parents=True, exist_ok=True)
     artifact_paths: list[Path] = []
     for item in items:
