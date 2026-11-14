@@ -270,6 +270,7 @@ async def generate(
     system: str | None = None,
     reasoning_effort: str | None = "xhigh",
     research: str | None = None,
+    timeout_seconds: float = 660,
 ) -> str:
     if not runtime_available():
         raise RuntimeError("ChatGPT Web ist in dieser Installation nicht verfuegbar.")
@@ -321,7 +322,8 @@ async def generate(
             )
             try:
                 stdout, stderr = await asyncio.wait_for(
-                    process.communicate(content.encode("utf-8")), timeout=660
+                    process.communicate(content.encode("utf-8")),
+                    timeout=max(1.0, float(timeout_seconds)),
                 )
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 if process is not None:
