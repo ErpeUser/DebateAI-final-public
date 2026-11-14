@@ -641,10 +641,38 @@ async def _google_json(
     client = _google_client(key)
 
     async def call(text_prompt: str, config):
-        response = await client.aio.models.generate_content(
-            model=model_id,
-            contents=text_prompt,
-            config=config,
+        request_id = external_audit.start_external_request(
+            provider_route=_audit_route("google", model_id),
+            approval=True,
+            data_category=_audit_category(source),
+            claim_id=external_audit.current_claim_id(),
+            model_id=model_id,
+        )
+        try:
+            response = await client.aio.models.generate_content(
+                model=model_id,
+                contents=text_prompt,
+                config=config,
+            )
+        except asyncio.CancelledError:
+            external_audit.finish_external_request(
+                request_id, approval=True, status="cancelled",
+                provider_route=_audit_route("google", model_id),
+                data_category=_audit_category(source), model_id=model_id,
+            )
+            raise
+        except Exception as exc:
+            external_audit.finish_external_request(
+                request_id, approval=True, status="failed",
+                provider_route=_audit_route("google", model_id),
+                data_category=_audit_category(source), model_id=model_id,
+                error_class=type(exc).__name__,
+            )
+            raise
+        external_audit.finish_external_request(
+            request_id, approval=True, status="completed",
+            provider_route=_audit_route("google", model_id),
+            data_category=_audit_category(source), model_id=model_id,
         )
         await record_token_usage(
             session_id, source, model_id, getattr(response, "usage_metadata", None)
@@ -949,14 +977,45 @@ async def _openai_json(
         if accepts_optional:
             _apply_output_budget(payload, model_id, output_budget)
         if on_partial_json is None:
-            async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
-                resp = await client.post(
-                    f"{endpoint.base_url}/chat/completions",
-                    headers=auth_headers(key),
-                    json=payload,
+            request_id = external_audit.start_external_request(
+                provider_route=_audit_route("openai-compatible", model_id),
+                approval=True,
+                data_category=_audit_category(source),
+                claim_id=external_audit.current_claim_id(),
+                model_id=model_id,
+                target_host=endpoint.base_url,
+            )
+            try:
+                async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
+                    resp = await client.post(
+                        f"{endpoint.base_url}/chat/completions",
+                        headers=auth_headers(key),
+                        json=payload,
+                    )
+                    _raise_for_status(resp)
+                    data = resp.json()
+            except asyncio.CancelledError:
+                external_audit.finish_external_request(
+                    request_id, approval=True, status="cancelled",
+                    provider_route=_audit_route("openai-compatible", model_id),
+                    data_category=_audit_category(source), model_id=model_id,
+                    target_host=endpoint.base_url,
                 )
-                _raise_for_status(resp)
-                data = resp.json()
+                raise
+            except Exception as exc:
+                external_audit.finish_external_request(
+                    request_id, approval=True, status="failed",
+                    provider_route=_audit_route("openai-compatible", model_id),
+                    data_category=_audit_category(source), model_id=model_id,
+                    target_host=endpoint.base_url, error_class=type(exc).__name__,
+                )
+                raise
+            external_audit.finish_external_request(
+                request_id, approval=True, status="completed",
+                provider_route=_audit_route("openai-compatible", model_id),
+                data_category=_audit_category(source), model_id=model_id,
+                target_host=endpoint.base_url,
+            )
             await record_token_usage(session_id, source, model_id, data.get("usage"))
             if _truncated(data):
                 # Say why the JSON will not parse. Retrying cannot help: the model
