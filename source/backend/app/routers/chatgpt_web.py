@@ -88,6 +88,7 @@ def _status(*, state: str = "idle", message: str = "") -> dict[str, object]:
         "latency_ms": evidence.get("latency_ms"),
         "verified_at": evidence.get("verified_at", ""),
         "verification": evidence.get("verification", ""),
+        "research_status": chatgpt_web.research_status(),
         "login_available": bool(_setting("LOGIN_COMMAND")),
         "login_state": state,
         "message": message or (
