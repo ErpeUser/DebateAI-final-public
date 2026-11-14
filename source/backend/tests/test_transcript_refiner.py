@@ -76,6 +76,9 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         good = _entry("um so [PERSON_1] will send it", 1)
         bad = _entry("[PERSON_2] agreed", 2)
         db = MagicMock()
+        db.scalar = AsyncMock(return_value=None)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
         speakers_result = MagicMock()
         speakers_result.scalars.return_value.all.return_value = []
         good_result = MagicMock()
@@ -99,6 +102,10 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         kwargs = call.call_args.kwargs
         self.assertEqual(kwargs["session_id"], sid)
         self.assertEqual(kwargs["source"], refiner.REFINER_SOURCE)
+        revision_rows = [call.args[0] for call in db.add.call_args_list]
+        self.assertEqual(["original", "refiner"], [row.source for row in revision_rows])
+        self.assertEqual("um so [PERSON_1] will send it", revision_rows[0].text)
+        self.assertEqual(good.text, revision_rows[1].text)
         self.assertIn("[PERSON_1]", call.call_args.args[1])
 
     async def test_refine_session_batches_pending_rows_and_survives_a_failed_batch(self):
