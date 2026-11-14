@@ -3234,6 +3234,14 @@ class AgentOrchestrator:
                     recommendation,
                     external_insight_count=len(recommendation.sources),
                 ).model_dump(mode="json")
+                # The dedicated event carries a full recommendation snapshot too.
+                # Preserve the incremental evidence packets there so its
+                # backwards-compatible reducer cannot erase lane blobs that the
+                # preceding debate_update already exposed.
+                if recommendation.pipeline_mode == "experimental_debateai":
+                    experimental_payload.setdefault("recommendation", {})[
+                        "external_lane_artifacts"
+                    ] = list(getattr(self, "_experimental_lane_artifacts", []))
                 await self.websocket.send_json({
                     "type": "experimental_debate_update",
                     "data": experimental_payload,
