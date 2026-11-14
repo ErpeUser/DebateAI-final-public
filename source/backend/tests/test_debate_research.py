@@ -105,6 +105,28 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             bounded.await_args.kwargs["max_bytes"],
         )
 
+    async def test_original_reader_keeps_unreadable_source_unverified(self):
+        source = debate_research.ResearchSource(
+            title="Quelle",
+            url="https://www.destatis.de/original",
+            snippet="Treffer",
+            provider="chatgpt_web",
+            claim="Inflation",
+        )
+        with mock.patch.object(
+            debate_research,
+            "_bounded_get",
+            side_effect=ValueError("content type not allowed"),
+        ) as bounded:
+            result = await debate_research._read_trusted_original(
+                mock.AsyncMock(), source, "Inflation"
+            )
+
+        self.assertEqual("found", result.verification_status)
+        self.assertEqual("found", result.retrieval_status)
+        self.assertEqual("", result.passage)
+        bounded.assert_awaited_once()
+
     def test_empty_and_pii_queries_are_refused(self):
         self.assertFalse(debate_research.is_safe_research_query("   "))
         for token in ("[PERSON_1]", "[EMAIL_2]", "[PHONE_3]", "[ADDRESS_4]"):
