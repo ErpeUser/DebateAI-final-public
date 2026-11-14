@@ -5140,3 +5140,9 @@ class AgentOrchestrator:
                 except (asyncio.CancelledError, Exception):
                     pass
             await self.audio_gateway.close()
+            await self.audio_gateway.connect()
+            self._gateway_task = asyncio.create_task(self._handle_gateway_responses())
+            return True
+        except Exception as exc:
+            logger.warning("Audio Gateway reconnect failed: %s", exc)
+            return False
