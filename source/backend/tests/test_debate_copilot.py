@@ -612,6 +612,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._recommendation_revision = 0
         orchestrator._debate_revision = 0
         orchestrator._research_tasks = set()
+        orchestrator._research_group_tasks = {}
         orchestrator._research_cache = {}
         orchestrator._last_research_at = 0.0
         orchestrator._debate_diagnostics = []
@@ -1911,6 +1912,46 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Originalquelle", payload["data"]["research_query"])
         orchestrator._run_debate_research.assert_awaited_once()
         self.assertTrue(orchestrator._run_debate_research.await_args.kwargs["force_refresh"])
+
+    async def test_identical_manual_research_groups_coalesce_per_claim_revision(self):
+        class Agent:
+            latest_recommendation = DebateRecommendation(
+                answer_now="Das folgt nicht aus der Quelle.",
+                counterargument="Die Interpretation ist nicht belegt.",
+                counter_question="Wo steht das im Original?",
+                analogy="Das ist wie eine Bildunterschrift ohne Bild.",
+                target_claim="Die Quelle belegt acht Prozent.",
+            )
+
+        orchestrator = self._orchestrator(Agent())
+        self._enable_external_analyst(orchestrator)
+        orchestrator._debate_revision = 4
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        async def run_research(*_args, **_kwargs):
+            started.set()
+            await release.wait()
+
+        orchestrator._run_debate_research = AsyncMock(side_effect=run_research)
+        try:
+            accepted = await asyncio.gather(
+                orchestrator.request_debate_research("translation"),
+                orchestrator.request_debate_research("translation"),
+            )
+            self.assertEqual([True, True], accepted)
+            await asyncio.wait_for(started.wait(), 0.5)
+            self.assertEqual(1, orchestrator._run_debate_research.await_count)
+            self.assertEqual(1, len(orchestrator._research_group_tasks))
+        finally:
+            release.set()
+            await asyncio.gather(
+                *list(orchestrator._research_tasks),
+                return_exceptions=True,
+            )
+            await asyncio.sleep(0)
+
+        self.assertEqual({}, orchestrator._research_group_tasks)
 
     async def test_manual_deep_analysis_can_be_cancelled_without_stopping_shared_provider(self):
         started = asyncio.Event()
