@@ -597,3 +597,17 @@ NÄCHSTER PUNKT: 022/A040
 
 NÄCHSTER PUNKT: 023/A047
 
+## Masterauftrag – 2026-11-14 – 023/A047
+
+**Status: BEREITS ERLEDIGT (generische Interim-Revision und stale-sicherer Antwortwechsel); Fresh-Test BLOCKIERT durch Runner/Checkout.**
+
+- **Aufgabe:** Bedeutungsändernde Wörter in Interim-Revisionen erkennen, insbesondere Negationen, Zahlen, Namen und Bedingungen, eine passende Claim-Revision erzeugen und die Antwortänderung testen.
+- **Nachweis der Laufzeit:** 'feed_interim_transcript()' normalisiert und dedupliziert Hypothesen je 'utterance_id'; jede geänderte Hypothese erhöht '_transcript_revision', setzt dieselbe Äußerung als aktiven Claim mit neuer Revision und plant die nächste Copilot-Analyse. '_new_analysis_context()' übernimmt diese Revision als 'claim_revision'; '_send_debate_update()' erlaubt nur die aktuelle Revision desselben Interims-Claims und verwirft ältere Claims/Antworten.
+- **Stale-Schutz:** Vor einer sichtbaren Partialantwort wird der laufende Worker abgebrochen; nach sichtbarer Partialantwort werden neue Interims coalesced, die aktuelle Antwort darf fertig werden und die neueste Revision läuft anschließend. Dadurch kann eine langsame positive Antwort nicht die spätere Negation oder eine andere bedeutungsändernde Revision überschreiben.
+- **Regressionen:** Die neue 'test_interim_meaning_changes_create_new_claim_revision_and_answer' deckt '50→15 Prozent', 'Anna→Berta' und 'Wenn→Falls' ab und prüft neue Revision, neue Claim-Revision, geändertes Antwortfeld und geänderte Live-Hypothese. Die vorhandenen Negations-, Finalisierungs-, stale-worker- und manuellen Zahlenkorrekturtests bleiben bestehen.
+- **Fresh-Test-Ergebnis:** Die aktuelle Copilot-Testdatei kompiliert mit 'python -m py_compile'. Ein ausführbarer fokussierter Async-Testlauf ist wegen privatem Checkout, fehlenden Backend-Abhängigkeiten und der bisherigen GitHub-Actions-Runs mit 'steps: null' nicht frisch ausführbar.
+- **Eigener neuer Code:** Nur die gezielte Regression; kein zweiter semantischer Erkennungsweg und keine zusätzliche Antwortpipeline.
+- **Commit/Push:** '15c6ba0fa1cb038deeb906fe8f47127d59b81ffe' (Regression), '2eec10eca79750d8733216c5964f9e76cc7ad7b6' (case-insensitive semantic cases).
+
+NÄCHSTER PUNKT: 024/A049
+
