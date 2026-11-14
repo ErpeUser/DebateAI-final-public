@@ -533,6 +533,13 @@ async def research_source_candidates(
             continue
         artifact.source_candidates.append(asdict(candidate))
         existing_values.add(candidate.value.casefold())
+        case_id = f"segment-{candidate.segment_index + 1:04d}"
+        for case in artifact.eval_cases:
+            if case.get("case_id") == case_id:
+                refs = list(case.get("source_candidates") or [])
+                if candidate.value not in refs:
+                    refs.append(candidate.value)
+                case["source_candidates"] = refs
     candidates = artifact.source_candidates if max_candidates is None else artifact.source_candidates[:max_candidates]
     verified: list[dict[str, Any]] = []
     for candidate in candidates:
