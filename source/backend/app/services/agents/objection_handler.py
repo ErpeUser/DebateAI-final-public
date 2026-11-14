@@ -112,9 +112,14 @@ def build_deep_analysis_prompt(
     """Build one bounded, dynamic analyst request without generic playbooks."""
     source_lines = []
     for source in sources[:3]:
-        passage = " ".join((source.passage or source.snippet).split())[:360]
-        if passage:
+        # A search hit is a lead, not evidence. Only passages explicitly read
+        # by the configured web provider may enter the evidence block; this
+        # prevents snippets from being silently promoted to proof.
+        if getattr(source, "retrieval_status", "") == "read" and source.passage.strip():
+            passage = " ".join(source.passage.split())[:360]
             source_lines.append(f"- {source.title[:120]}: {passage}")
+        elif source.title:
+            source_lines.append(f"- {source.title[:120]}: Quelle gefunden, aber noch nicht gelesen")
     evidence = "\n".join(source_lines) or "(keine gelesenen Quellen; nichts als belegt ausgeben)"
     template = load_prompt_resource(prompt_name, _DEEP_ANALYSIS_PROMPT_TEMPLATE)
     values = {
@@ -1074,6 +1079,7 @@ class ObjectionHandlerAgent:
         sources: list[DebateSource],
         reasoning_effort_override: str | None = None,
         analysis_phase: str = "follow_up",
+        prompt_resource: str | None = None,
     ) -> tuple[DeepDebateAnalysis, str]:
         """Use the existing hosted model route as a debate analyst, not a search summary."""
         if model_id == "chatgpt-web:gpt-6":
@@ -1087,7 +1093,7 @@ class ObjectionHandlerAgent:
             own_position=own_position,
             relevant_context=relevant_context,
             sources=sources,
-            prompt_name=prompt_name,
+            prompt_name=prompt_resource or prompt_name,
         )
         phase_defaults = {
             "new_topic": "Erstelle einmalig eine belastbare Themenlandkarte mit Positionen, Prämissen, Beweislast, Gegenargumenten, offenen Fragen und Recherchebedarf.",
