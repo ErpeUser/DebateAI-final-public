@@ -621,9 +621,11 @@ async def _ai_web_sources(
             title="KI-Recherche: " + urlsplit(url).netloc,
             url=url,
             snippet=" ".join((answer or "").split())[:900],
+            passage=" ".join((answer or "").split())[:900],
             provider="chatgpt_web",
             claim=claim,
             verification_status="found",
+            retrieval_status="read",
             source_type="ai_web",
             trust_level="unknown",
         )
