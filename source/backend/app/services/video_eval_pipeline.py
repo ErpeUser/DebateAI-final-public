@@ -182,67 +182,60 @@ def transcribe_with_google_cloud(
     speaker_diarization: bool = False,
     timeout_seconds: int = 1800,
 ) -> list[TranscriptSegment]:
-    """Transcribe a local audio/video export through Google Speech-to-Text v2.
+    """Transcribe a local media export through Google Speech-to-Text.
 
-    The Google dependency is imported lazily so the application can start
-    without cloud credentials. Set GOOGLE_CLOUD_PROJECT or pass project_id.
+    The v1 client accepts local bytes and is intentionally used here because a
+    video list is normally downloaded to disk first. Long recordings should be
+    chunked by the caller or uploaded to Cloud Storage and processed with the
+    v2 batch API. The import remains lazy so normal live calls do not need cloud
+    credentials.
     """
+    del project_id, location, timeout_seconds
     try:
-        from google.cloud import speech_v2
-        from google.cloud.speech_v2.types import cloud_speech
+        from google.cloud import speech
     except ImportError as exc:
         raise RuntimeError("google-cloud-speech is required for video transcription") from exc
-    import os
-
-    project = project_id or os.getenv("GOOGLE_CLOUD_PROJECT", "")
-    if not project:
-        raise RuntimeError("GOOGLE_CLOUD_PROJECT is required for Google transcription")
     path = Path(audio_path)
     if not path.is_file():
         raise FileNotFoundError(path)
-    client = speech_v2.SpeechClient()
-    recognizer = f"projects/{project}/locations/{location}/recognizers/_"
-    config_kwargs: dict[str, Any] = {
-        "auto_decoding_config": cloud_speech.AutoDetectDecodingConfig(),
-        "language_codes": [language_code],
-        "model": "long",
-    }
+    client = speech.SpeechClient()
+    diarization_config = None
     if speaker_diarization:
-        config_kwargs["diarization_config"] = cloud_speech.SpeakerDiarizationConfig(
+        diarization_config = speech.SpeakerDiarizationConfig(
+            enable_speaker_diarization=True,
             min_speaker_count=1,
             max_speaker_count=8,
         )
-    config = cloud_speech.RecognitionConfig(**config_kwargs)
-    request = cloud_speech.BatchRecognizeRequest(
-        recognizer=recognizer,
-        config=config,
-        files=[cloud_speech.BatchRecognizeFile(
-            uri=path.as_uri(),
-            config=cloud_speech.RecognitionConfig(**config_kwargs),
-        )],
+    config = speech.RecognitionConfig(
+        encoding=speech.RecognitionConfig.AudioEncoding.ENCODING_UNSPECIFIED,
+        language_code=language_code,
+        enable_word_time_offsets=True,
+        enable_automatic_punctuation=True,
+        diarization_config=diarization_config,
+        model="latest_long",
     )
-    operation = client.batch_recognize(request=request)
-    response = operation.result(timeout=timeout_seconds)
+    response = client.recognize(
+        config=config,
+        audio=speech.RecognitionAudio(content=path.read_bytes()),
+    )
     segments: list[TranscriptSegment] = []
-    for result_set in getattr(response, "results", {}).values():
-        for result in getattr(result_set, "transcript", []) or []:
-            alternatives = getattr(result, "alternatives", []) or []
-            if not alternatives:
-                continue
-            alternative = alternatives[0]
-            words = getattr(alternative, "words", []) or []
-            start = float(getattr(words[0].start_offset, "total_seconds", lambda: 0)()) if words else 0.0
-            end = float(getattr(words[-1].end_offset, "total_seconds", lambda: start)()) if words else start
-            speaker = str(getattr(words[0], "speaker_label", "") or "") if words else ""
-            segments.append(TranscriptSegment(
-                start_seconds=start,
-                end_seconds=end,
-                text=_clean(getattr(alternative, "transcript", "")),
-                speaker=speaker,
-                confidence=float(getattr(alternative, "confidence", 0) or 0) or None,
-            ))
+    for result in response.results:
+        alternatives = result.alternatives
+        if not alternatives:
+            continue
+        alternative = alternatives[0]
+        words = list(getattr(alternative, "words", []) or [])
+        start = float(words[0].start_time.total_seconds()) if words else 0.0
+        end = float(words[-1].end_time.total_seconds()) if words else start
+        speaker = str(getattr(words[0], "speaker_tag", "") or "") if words else ""
+        segments.append(TranscriptSegment(
+            start_seconds=start,
+            end_seconds=end,
+            text=_clean(alternative.transcript),
+            speaker=speaker,
+            confidence=float(alternative.confidence or 0) or None,
+        ))
     return segments
-
 
 def build_video_artifact(
     *,
