@@ -140,36 +140,42 @@ async def persist_provisional_revision(
     session_id: uuid.UUID,
     data: dict,
 ) -> PersistedProvisionalRevision:
+    async def discard(reason: str) -> PersistedProvisionalRevision:
+        await record_discarded_segment(
+            db, session_id, data, reason=reason, producer="provisional_transcript"
+        )
+        return PersistedProvisionalRevision(None, False)
+
     segment_id = str(data.get("segment_id") or "").strip()
     if not segment_id or len(segment_id) > MAX_PROVISIONAL_SEGMENT_ID_CHARS:
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_segment_id")
 
     raw_revision = data.get("segment_revision")
     if isinstance(raw_revision, bool):
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_segment_revision")
     try:
         if isinstance(raw_revision, float) and not raw_revision.is_integer():
-            return PersistedProvisionalRevision(None, False)
+            return await discard("invalid_segment_revision")
         revision = int(raw_revision or 0)
     except (TypeError, ValueError, OverflowError):
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_segment_revision")
     if revision <= 0:
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_segment_revision")
 
     incoming_text = str(data.get("text") or "")
     if (
         not incoming_text.strip()
         or not _within_provisional_limits(incoming_text)
     ):
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_text")
 
     mode = str(data.get("mode") or "replace").strip().lower()
     if mode not in _PROVISIONAL_MODES:
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_mode")
 
     track_id = str(data.get("track_id") or data.get("track") or "mixed").strip()
     if not track_id or len(track_id) > MAX_PROVISIONAL_TRACK_ID_CHARS:
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_track_id")
 
     # These values land in SQL INTEGER columns. Reject malformed, negative, or
     # overflowing metadata before opening a transaction or minting PII tokens.
@@ -184,14 +190,14 @@ async def persist_provisional_revision(
         or (data.get("audio_end_sample") is not None and end_sample is None)
         or (start_sample is not None and end_sample is not None and end_sample < start_sample)
     ):
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_audio_span")
     sample_rate = _bounded_optional_int(
         data.get("sample_rate") if data.get("sample_rate") is not None else 16000,
         minimum=1,
         maximum=192_000,
     )
     if sample_rate is None:
-        return PersistedProvisionalRevision(None, False)
+        return await discard("invalid_sample_rate")
 
     # One short lock serializes revision validation and append materialization.
     # Validate before PII protection so stale/invalid replays do not mint vault
@@ -209,6 +215,7 @@ async def persist_provisional_revision(
         )
     ).scalar_one_or_none()
     if existing is not None:
+        await record_discarded_segment(db, session_id, data, reason="duplicate_revision")
         return PersistedProvisionalRevision(existing, False)
 
     latest = (
@@ -225,6 +232,7 @@ async def persist_provisional_revision(
     # Revision numbers are strictly increasing per segment. Gaps are allowed
     # because reconnects can legitimately lose an intermediate UI update.
     if latest is not None and revision <= latest.revision:
+        await record_discarded_segment(db, session_id, data, reason="stale_revision")
         return PersistedProvisionalRevision(latest, False)
     revision_count = await db.scalar(
         select(func.count())
@@ -235,6 +243,7 @@ async def persist_provisional_revision(
         )
     )
     if int(revision_count or 0) >= MAX_PROVISIONAL_REVISIONS_PER_SEGMENT:
+        await record_discarded_segment(db, session_id, data, reason="revision_limit")
         return PersistedProvisionalRevision(latest, False)
 
     protected_text = await shield.protect_text(db, session_id, incoming_text)
@@ -244,6 +253,7 @@ async def persist_provisional_revision(
         mode,
     )
     if text is None:
+        await record_discarded_segment(db, session_id, data, reason="materialization_limit")
         return PersistedProvisionalRevision(latest, False)
 
     row = ProvisionalTranscriptRevision(
