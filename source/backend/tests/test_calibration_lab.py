@@ -52,6 +52,10 @@ class MetricsTests(unittest.TestCase):
         self.assertEqual(x['substitutions'], 1)
         self.assertGreater(x['wer'], 0)
 
+    def test_number_deletion_is_marked_critical(self):
+        x = score_transcript("3,5 Prozent", "Prozent")
+        self.assertEqual(1, x["false_deletions"])
+        self.assertEqual(["3,5"], x["false_deletion_tokens"])
     def test_negative_number_sign_is_not_discarded(self):
         self.assertGreater(score_transcript("-3,5 Grad", "3,5 Grad")["wer"], 0)
 
