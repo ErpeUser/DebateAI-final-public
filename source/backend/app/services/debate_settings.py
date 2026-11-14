@@ -14,6 +14,7 @@ from app.services.app_settings import get_app_setting, set_app_setting
 SETTING_KEY = "debate.copilot.settings"
 RESEARCH_COOLDOWNS = {"never": 0, "low": 180, "normal": 60, "often": 20}
 DebateMode = Literal["persuasive", "forceful"]
+PipelineMode = Literal["standard", "experimental_debateai"]
 ResearchFrequency = Literal["never", "low", "normal", "often"]
 StyleFocus = Literal["balanced", "natural", "concise", "evidence"]
 PerformanceProfile = Literal["balanced", "economy"]
@@ -57,6 +58,8 @@ def is_desktop_bundle() -> bool:
 @dataclass(frozen=True)
 class DebateSettings:
     mode: DebateMode = "persuasive"
+    # Selects the orchestration pipeline; standard preserves the existing behavior.
+    pipeline_mode: PipelineMode = "standard"
     research_enabled: bool = False
     research_frequency: ResearchFrequency = "normal"
     always_analogy: bool = False
@@ -100,6 +103,7 @@ def _from_json(raw: str) -> DebateSettings:
         return fallback
 
     mode = data.get("mode")
+    pipeline_mode = data.get("pipeline_mode")
     frequency = data.get("research_frequency")
     enabled = data.get("research_enabled")
     analogy = data.get("always_analogy")
@@ -122,6 +126,11 @@ def _from_json(raw: str) -> DebateSettings:
         memory_threshold = fallback.memory_similarity_threshold
     return DebateSettings(
         mode=mode if mode in ("persuasive", "forceful") else fallback.mode,
+        pipeline_mode=(
+            pipeline_mode
+            if pipeline_mode in ("standard", "experimental_debateai")
+            else fallback.pipeline_mode
+        ),
         research_enabled=enabled if isinstance(enabled, bool) else fallback.research_enabled,
         research_frequency=(
             frequency if frequency in RESEARCH_COOLDOWNS else fallback.research_frequency
