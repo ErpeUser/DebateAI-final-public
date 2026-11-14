@@ -3303,6 +3303,14 @@ class AgentOrchestrator:
         sources = []
         for source in recommendation.sources:
             if source.url.rstrip("/") == source_url.rstrip("/"):
+                if (
+                    relation in {"supports", "contradicts"}
+                    and (
+                        source.retrieval_status != "read"
+                        or not source.passage.strip()
+                    )
+                ):
+                    return False
                 source = source.model_copy(update={
                     "claim_relation": relation,
                     "verification_status": relation,
