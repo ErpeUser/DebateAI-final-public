@@ -265,6 +265,19 @@ async def _terminate_child(process: asyncio.subprocess.Process) -> None:
         await asyncio.wait_for(process.wait(), timeout=5)
 
 
+def _record_refusal(source: str, research: str | None, error_class: str) -> None:
+    category = "research_claim" if research in {"search", "deep"} else external_audit.data_category_for_source(source)
+    external_audit.record_external_request(
+        provider_route="chatgpt-web:gpt-6",
+        approval=False,
+        data_category=category,
+        claim_id=external_audit.current_claim_id(),
+        status="refused",
+        model_id=MODEL_ID,
+        error_class=error_class,
+    )
+
+
 async def generate(
     prompt: str,
     *,
@@ -274,11 +287,15 @@ async def generate(
     timeout_seconds: float = 660,
     source: str = "",
 ) -> str:
+    research_mode_value = research if research in {"search", "deep"} else None
     if not runtime_available():
+        _record_refusal(source, research_mode_value, "RuntimeUnavailable")
         raise RuntimeError("ChatGPT Web ist in dieser Installation nicht verfuegbar.")
     if not configured():
+        _record_refusal(source, research_mode_value, "VerificationRequired")
         raise RuntimeError("ChatGPT Web ist nicht mehr bestaetigt. Bitte erneut anmelden.")
     if _LOGIN_RESERVED:
+        _record_refusal(source, research_mode_value, "LoginBusy")
         raise RuntimeError("Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen.")
 
     # Oracle owns one dedicated Chrome profile. Keep its complete browser
@@ -294,7 +311,6 @@ async def generate(
         os.close(handle)
         output = Path(name)
         output.unlink(missing_ok=True)
-        research_mode_value = research if research in {"search", "deep"} else None
         requested_at = datetime.now(UTC).isoformat()
         _write_research_status(
             state="started",
