@@ -101,6 +101,7 @@ from app.services.ai_config import (
     model_timeout_seconds,
     playbook_controls,
     provider_route,
+    research_settings,
     use_configuration_snapshot,
 )
 from app.services.external_analysis_scheduler import (
@@ -1054,8 +1055,13 @@ class AgentOrchestrator:
         self._topic_knowledge: dict[str, dict[str, object]] = {}
         self._external_model_unavailable_until: dict[str, float] = {}
         try:
+            configured_parallelism = (
+                int(research_settings().get("experimental_external_parallelism", 3))
+                if self._experimental_mode
+                else max_parallel_analyses()
+            )
             self._external_analysis_scheduler = external_analysis_scheduler(
-                max_parallel_analyses()
+                max(1, min(4, configured_parallelism))
             )
         except RuntimeError:
             self._external_analysis_scheduler = None
@@ -3492,7 +3498,12 @@ class AgentOrchestrator:
             return
         scheduler = getattr(self, "_external_analysis_scheduler", None)
         if scheduler is None:
-            scheduler = external_analysis_scheduler(max_parallel_analyses())
+            configured_parallelism = (
+                int(research_settings().get("experimental_external_parallelism", 3))
+                if getattr(self, "_experimental_mode", False)
+                else max_parallel_analyses()
+            )
+            scheduler = external_analysis_scheduler(max(1, min(4, configured_parallelism)))
             self._external_analysis_scheduler = scheduler
         async def execute_with_snapshot():
             with use_configuration_snapshot(snapshot):
