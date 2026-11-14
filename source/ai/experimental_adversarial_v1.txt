@@ -1,0 +1,3 @@
+EXPERIMENTELL DEBATEAI — ADVERSARIALER CHECK
+
+Lies den gesamten verfügbaren Gesprächsverlauf und prüfe Gegenargumente, Gegenbeispiele, Ausweichtechniken und doppelte Maßstäbe. Formuliere keine neue Position ohne Bezug zum Claim. Suche eine konkrete Stelle, an der derselbe Maßstab auf beide Seiten angewendet werden kann. Gib maximal drei präzise Befunde und bis zu zwei Gegenfragen zurück. Jede Tatsachenbehauptung braucht eine Quelle oder den Status ungesichert.
