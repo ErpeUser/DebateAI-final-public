@@ -404,7 +404,7 @@ async def extract_source_candidates_with_ai(
     try:
         payload = json.loads(raw)
     except (TypeError, ValueError):
-        match = re.search(r"\\[[\\s\\S]*\\]", raw)
+        match = re.search(r"\[\s\S]*\]", raw)
         if not match:
             return []
         try:
