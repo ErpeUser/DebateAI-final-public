@@ -12,6 +12,7 @@ from app.services.ai_config import (
     adaptive_reasoning_settings,
     analysis_deadline_seconds,
     configuration_generation,
+    live_research_deadline_seconds,
     deep_analysis_models,
     ensure_gemini_cli_route,
     max_parallel_analyses,
