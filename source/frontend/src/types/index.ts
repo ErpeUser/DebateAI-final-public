@@ -1115,6 +1115,20 @@ export interface ArgumentGraph {
   updated_at: string;
 }
 
+export interface ExperimentalLaneUpdate {
+  session_id: string;
+  claim_id: string;
+  claim_revision: number;
+  transcript_revision: number;
+  generation_id: string;
+  lane: "research" | "adversarial" | "rhetoric" | string;
+  status: "completed" | "failed";
+  prompt_resource: string;
+  reasoning_effort: "high" | "medium" | string;
+  latency_ms: number;
+  error: string;
+}
+
 export type WSMessage = {
   event_id?: number;
   session_sequence?: number;
@@ -1139,6 +1153,7 @@ export type WSMessage = {
   | { type: "agent_activity"; data: AgentActivitySnapshot }
   | { type: "debate_update"; data: DebateRecommendation }
   | { type: "experimental_debate_update"; data: ExperimentalDebateUpdate }
+  | { type: "experimental_lane_update"; data: ExperimentalLaneUpdate }
   | { type: "debate_research_control"; data: { enabled: boolean } }
   | { type: "synthesis_updated"; data: SessionSynthesis }
   | { type: "question_answered"; data: { id: string; answer_summary: string; needs_followup: boolean; followup_question: string } }
