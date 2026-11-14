@@ -223,6 +223,35 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
 
+    async def test_live_source_correction_rejects_unread_evidence(self):
+        source = DebateSource(
+            title="Treffer",
+            url="https://example.test/treffer",
+            claim="73 Prozent stimmen zu.",
+            snippet="73 Prozent stimmen zu.",
+            provider="test",
+            retrieval_status="found",
+        )
+        recommendation = DebateRecommendation(
+            claim_id="claim-1",
+            target_claim="73 Prozent stimmen zu.",
+            sources=[source],
+        )
+        orchestrator = object.__new__(AgentOrchestrator)
+        orchestrator.objection_agent = SimpleNamespace(
+            latest_recommendation=recommendation
+        )
+
+        changed = await orchestrator.apply_source_correction(
+            claim_id="claim-1",
+            source_url=source.url,
+            relation="supports",
+            affected_claim_ids=[],
+        )
+
+        self.assertFalse(changed)
+        self.assertEqual("found", recommendation.sources[0].retrieval_status)
+
     def test_unread_supporting_snippet_does_not_validate_a_number(self):
         recommendation = DebateRecommendation(
             answer_now="Die Quote liegt bei exakt 73 Prozent.",
