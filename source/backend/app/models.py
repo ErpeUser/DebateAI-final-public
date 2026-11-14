@@ -380,6 +380,35 @@ class ProvisionalTranscriptRevision(Base):
     )
 
 
+class TranscriptDiscardAudit(Base):
+    """Append-only audit row for transcript segments excluded from the final text.
+
+    Raw text is already PII-shielded by the caller. Keeping the producer,
+    segment revision and audio span makes latency/degradation investigations
+    reproducible without reintroducing dropped speech into the visible
+    transcript.
+    """
+
+    __tablename__ = "transcript_discard_audits"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("sessions.id", ondelete="CASCADE"), index=True
+    )
+    raw_text: Mapped[str] = mapped_column(Text, default="")
+    speaker_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("speakers.id", ondelete="SET NULL"), nullable=True
+    )
+    audio_start_sample: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    audio_end_sample: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    discard_reason: Mapped[str] = mapped_column(String(160), default="")
+    producer: Mapped[str] = mapped_column(String(80), default="")
+    segment_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class DebateClaimRecord(Base):
     """Revision-addressable debate claim with evidence and graph relations."""
 
