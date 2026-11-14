@@ -52,4 +52,4 @@ Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 python source/backend/scripts/video_eval_batch.py --video-list videos.json --out-dir ./artifacts --speaker-diarization
 ```
 
-Das lokale Sprachprofil wird mit jeder geprüften Videorunde versioniert. Es dient als Evaluationsinput für spätere Prompt-/Modellvergleiche; eine Änderung wird erst nach Review übernommen.
+Das lokale Sprachprofil wird mit jeder geprüften Videorunde versioniert. Zusätzlich bewertet ChatGPT Web die beobachteten Muster, Stärken und Verbesserungsmöglichkeiten; diese Bewertung wird im Artefakt als `ai_review` gespeichert. Beides dient als Evaluationsinput für spätere Prompt-/Modellvergleiche; eine Änderung wird erst nach Review übernommen.
