@@ -156,6 +156,32 @@ class WindowsAudioCaptureTests(unittest.TestCase):
         self.assertTrue(restart)
         self.assertIn("Standardgeraet", reason)
 
+    def test_device_endpoint_swap_with_same_stream_shape_is_restart(self):
+        capture = NativeWindowsAudioCapture()
+        microphone, loopback = select_default_devices(_FakeAudio())
+        capture._audio = _FakeAudio()
+        capture._streams = {0: _ActiveStream(), 1: _ActiveStream()}
+        capture._devices = {0: microphone, 1: loopback}
+        capture._last_callback_at = {0: 20.0, 1: 20.0}
+
+        class ChangedEndpointAudio(_FakeAudio):
+            def get_default_wasapi_device(self, *, d_in=False, d_out=False):
+                info = super().get_default_wasapi_device(d_in=d_in, d_out=d_out)
+                info["deviceUID"] = "new-microphone-endpoint"
+                return info
+
+            def get_default_wasapi_loopback(self):
+                info = super().get_default_wasapi_loopback()
+                info["deviceUID"] = "new-loopback-endpoint"
+                return info
+
+        capture._audio = ChangedEndpointAudio()
+        with patch("app.services.windows_audio_capture.time.monotonic", return_value=20.1):
+            restart, reason = capture._restart_needed_sync()
+
+        self.assertTrue(restart)
+        self.assertIn("Standardgeraet", reason)
+
     def test_native_callback_reports_a_scaled_live_meter_level(self):
         capture = NativeWindowsAudioCapture()
         capture._converters[0] = Pcm16Converter(16000, 1)
