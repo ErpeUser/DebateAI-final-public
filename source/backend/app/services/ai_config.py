@@ -753,12 +753,33 @@ def research_settings() -> dict[str, Any]:
             return max(minimum, min(maximum, int(raw.get(name, default))))
         except (TypeError, ValueError):
             return default
+    # Legacy search endpoints are retired globally. Research must use the
+    # configured AI web/API providers so the visible answer can integrate the
+    # findings without exposing provider-by-provider output.
+    legacy_disabled = {"duckduckgo", "wikipedia"}
+    enabled = [provider for provider in enabled if provider not in legacy_disabled]
+    configured_fallback = raw.get("fallback_providers")
+    fallback = (
+        [
+            str(provider)
+            for provider in configured_fallback
+            if str(provider) not in legacy_disabled
+        ]
+        if isinstance(configured_fallback, list)
+        else ["gemini_web", "gemini_api", "cliproxyapi"]
+    )
     return {
         "enabled": raw.get("enabled", True) is not False,
-        "providers": enabled if isinstance(providers, list) else ["duckduckgo", "wikipedia"],
+        "providers": enabled if isinstance(providers, list) else ["chatgpt_web", "gemini_web"],
         "steps": bounded("steps", 2, 1, 5),
         "timeout_seconds": bounded("timeout_seconds", 20, 3, 120),
         "original_sources_required": raw.get("original_sources_required", True) is not False,
+        "legacy_providers_disabled": sorted(legacy_disabled),
+        "primary_provider": str(raw.get("primary_provider") or "chatgpt_web"),
+        "fallback_providers": fallback,
+        "experimental_external_parallelism": bounded(
+            "experimental_external_parallelism", 3, 1, 4
+        ),
     }
 
 
