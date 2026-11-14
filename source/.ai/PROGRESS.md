@@ -750,3 +750,16 @@ NÄCHSTER PUNKT: 033/A060
 - **Commits/Push:** `5080e565216dbb21b6589539e159fd21012f8765` (Capture-Instrumentierung), `68649255d1d16348654bc0da1f088058fa198914` (Replay-Metriken), `e00685fcfcb5080098d488fa5ef1c74ddfee0e44` (Zero-Assert), `bceed6dbb3f1cae6aab557134ea19fb0b692b273` (Benchmark wiederhergestellt und Ergebnisexport).
 
 NÄCHSTER PUNKT: 034/A063
+
+
+## Masterauftrag – 2026-11-14 – 034/A063
+**Status: ERLEDIGT.**
+
+- **Dead Code entfernt:** `source/backend/app/services/debate_research.py` enthält keine aktiven oder unerreichbaren Legacy-Pfade für Wikipedia, DuckDuckGo Instant Answer oder DuckDuckGo-HTML mehr. Entfernt wurden die drei Endpoint-Konstanten, der DuckDuckGo-HTML-Parser, die HTML-Normalisierung, die Wikipedia-/DuckDuckGo-Quellenfunktionen, die Related-Topics-Hilfsfunktion und der HTML-Provider.
+- **Kompatibilität bewahrt:** `research_settings()` filtert weiterhin die historischen IDs `wikipedia` und `duckduckgo` aus alten Konfigurationen. Die Provider-Schlüssel in den JSON-Konfigurationen bleiben als Migrations-/Abwärtskompatibilitätsmarker erhalten; aktive Recherche plant ausschließlich die konfigurierten AI-Web-/Gemini-/CLIProxy-Routen.
+- **Regression angepasst:** `test_legacy_providers_are_disabled_even_in_old_configuration` speist weiterhin eine alte Providerliste ein, erwartet `unavailable`, bestätigt das Fehlen der entfernten Helper-Symbole und prüft, dass `_ai_web_sources` nicht aufgerufen wird.
+- **Dependencies bereinigt:** `beautifulsoup4` und `lxml` wurden aus `source/desktop/constraints-windows-py312.txt` entfernt. Eine Repository-Suche fand keine verbleibenden Imports oder Verwendungen dieser Pakete.
+- **Validierung:** `debate_research.py` und `test_debate_research.py` wurden per Python-AST syntaktisch geprüft. Ein frischer Async-/Providerlauf bleibt wegen fehlendem ausführbarem privatem Checkout und Backend-Abhängigkeiten blockiert; die testbare Kompatibilitätslogik ist im Quellstand enthalten.
+- **Commit/Push:** `670e02458bf44cd7a350f3e3999eb1d4db69ba99` (Runtime), `9139bcd50c7fbd935bb2425c82997eac613faf43` (Regression), `cf6d5d75f2132de427f851381f7dbd0fa5d59328` (Dependencies).
+
+NÄCHSTER PUNKT: 035/A065
