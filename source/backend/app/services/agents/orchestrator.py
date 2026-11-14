@@ -132,6 +132,13 @@ logger = logging.getLogger(__name__)
 AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5
 
 
+def _external_analysis_deadline(priority: ExternalAnalysisPriority) -> int:
+    """Keep live automatic research short while manual deep work stays long."""
+    if priority is ExternalAnalysisPriority.MANUAL:
+        return analysis_deadline_seconds()
+    return live_research_deadline_seconds()
+
+
 def _annotate_experimental_sources(
     sources: list[DebateSource],
     *,
@@ -3890,11 +3897,7 @@ class AgentOrchestrator:
                 context,
                 priority,
                 execute_with_snapshot,
-                deadline_seconds=(
-                    analysis_deadline_seconds()
-                    if priority is ExternalAnalysisPriority.MANUAL
-                    else live_research_deadline_seconds()
-                ),
+                deadline_seconds=_external_analysis_deadline(priority),
                 is_current=lambda: self._analysis_context_is_current(context),
             )
         except (ExternalAnalysisCancelled, ExternalAnalysisSuperseded):
@@ -4998,8 +5001,3 @@ class AgentOrchestrator:
                 except (asyncio.CancelledError, Exception):
                     pass
             await self.audio_gateway.close()
-        except Exception:
-            pass
-
-        try:
-            await self.audio_gateway.connect()
