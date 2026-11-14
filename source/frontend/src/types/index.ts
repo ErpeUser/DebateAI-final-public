@@ -953,6 +953,43 @@ export interface ExperimentalStrategyOption {
   provisional?: boolean;
 }
 
+export interface ExternalLaneInsight {
+  insight_id: string;
+  lane_id: string;
+  kind: string;
+  text: string;
+  source_ids: string[];
+  confidence: "high" | "medium" | "low" | string;
+  claim_id?: string;
+  claim_revision?: number;
+  transcript_revision?: number;
+  generation_id?: string;
+}
+
+export interface ExternalLaneArtifact {
+  lane_id: string;
+  lane: "research" | "adversarial" | "rhetoric" | string;
+  session_id?: string;
+  claim_id?: string;
+  claim_revision?: number;
+  transcript_revision?: number;
+  generation_id?: string;
+  standpoint_snapshot?: string;
+  recent_transcript_window?: string;
+  consolidated_context?: string;
+  provider: string;
+  model: string;
+  started_at: string;
+  completed_at?: string;
+  status: "running" | "completed" | "failed" | "cancelled" | string;
+  prompt_version?: string;
+  prompt_resource?: string;
+  reasoning_effort?: "none" | "low" | "medium" | "high" | "xhigh" | string;
+  latency_ms?: number;
+  error?: string;
+  external_insights?: ExternalLaneInsight[];
+}
+
 export interface ExperimentalDebateUpdate {
   session_id: string;
   claim_id: string;
@@ -998,6 +1035,7 @@ export interface DebateRecommendation {
   answer_now: string;
   pipeline_mode?: "standard" | "experimental_debateai";
   strategy_options?: ExperimentalStrategyOption[];
+  external_lane_artifacts?: ExternalLaneArtifact[];
   selected_strategy_id?: string;
   selection_reason?: string;
   counterargument: string;
