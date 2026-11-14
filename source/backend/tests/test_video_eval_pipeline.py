@@ -53,3 +53,20 @@ def test_attach_media_metadata_records_hashes_and_quality_checks(tmp_path):
     assert artifact.duration_seconds == 2
     assert artifact.ingestion_checks["has_timestamps"] is True
     assert artifact.ingestion_checks["has_speakers"] is True
+    assert artifact.ingestion_checks["audio_hash_available"] is True
+
+
+def test_attach_media_metadata_keeps_audio_identity_for_video_fallback(tmp_path):
+    media = tmp_path / "sample.mp4"
+    media.write_bytes(b"not-a-real-container")
+    artifact = attach_media_metadata(
+        build_video_artifact(
+            video_id="v-video",
+            source_url="https://example.test/video/1",
+            segments=[TranscriptSegment(0, 1, "Beispiel.", speaker="S1")],
+        ),
+        media,
+    )
+    assert artifact.video_hash
+    assert artifact.audio_hash
+    assert artifact.ingestion_checks["audio_hash_kind"] in {"decoded_audio", "container_fallback"}
