@@ -230,8 +230,7 @@ powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1
 The idempotent setup installs Ollama when needed, pulls Qwen3 4B, selects local
 Parakeet v3 transcription, and configures the live Sprechspur plus all
 background agents. Privacy First is on by default. Pass `-Research` only if
-you want short, model-produced factual queries sent to public Wikimedia and
-DuckDuckGo endpoints; audio and transcript text still remain local. See the
+you want short, model-produced factual queries sent to configured ChatGPT Web/Gemini AI research lanes; audio and transcript text still remain local. See the
 [Windows quickstart](docs/quickstart.md#local-german-debate-copilot-on-windows-no-api-key)
 for system-audio selection, data locations, switches, and recovery steps.
 
