@@ -348,6 +348,27 @@ export default function DebateCoachPanel({
                 </p>
               </article>
 
+              {recommendation.pipeline_mode === "experimental_debateai" && recommendation.strategy_options && recommendation.strategy_options.length > 0 && (
+                <div className="mt-2 space-y-1.5" aria-label="Experimentelle Antwortzüge">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-brand-mid-gray">
+                    Weitere Züge auswählen
+                  </p>
+                  {recommendation.strategy_options
+                    .filter((option) => option.id !== recommendation.selected_strategy_id)
+                    .map((option) => (
+                      <details key={option.id} className="rounded-lg border border-brand-light-gray-1 bg-surface px-3 py-2 font-body text-xs text-brand-gray">
+                        <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
+                          {option.title}
+                        </summary>
+                        <p className="mt-1.5 leading-5">{option.text}</p>
+                      </details>
+                    ))}
+                  {recommendation.selection_reason && (
+                    <p className="text-[11px] text-brand-mid-gray">Ausgewählt: {recommendation.selection_reason}</p>
+                  )}
+                </div>
+              )}
+
               {(alternativeText || recommendation.counterargument) && (
                 <details className="mt-2 rounded-lg border border-brand-light-gray-1 bg-brand-light-gray-2 px-3 py-2 font-body text-xs text-brand-gray">
                   <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
