@@ -940,8 +940,34 @@ export interface ExperimentalStrategyOption {
   kind: "contradiction" | "example" | "counter_question" | "refutation";
   title: string;
   text: string;
+  example?: string;
+  rationale?: string;
   source_ids?: string[];
   confidence?: "high" | "medium" | "low";
+  selected?: boolean;
+  rank?: number;
+  claim_id?: string;
+  claim_revision?: number;
+  transcript_revision?: number;
+  generation_id?: string;
+  provisional?: boolean;
+}
+
+export interface ExperimentalDebateUpdate {
+  session_id: string;
+  claim_id: string;
+  claim_revision: number;
+  transcript_revision: number;
+  generation_id: string;
+  options_revision: number;
+  options: ExperimentalStrategyOption[];
+  selected_option_id: string;
+  selection_reason: string;
+  external_insight_count: number;
+  research_status: string;
+  analysis_status: string;
+  created_at: string;
+  recommendation?: DebateRecommendation;
 }
 
 export interface DebateRecommendation {
@@ -964,7 +990,7 @@ export interface DebateRecommendation {
   confidence: "high" | "medium" | "low";
   needs_research: boolean;
   research_query: string;
-  research_status: "idle" | "searching" | "completed" | "unavailable" | "cancelled";
+  research_status: "idle" | "searching" | "completed" | "unavailable" | "blocked_by_privacy" | "cancelled";
   sources: DebateSource[];
   analysis_status: "idle" | "analyzing" | "completed" | "unavailable" | "cancelled";
   analysis_can_cancel: boolean;
@@ -1112,6 +1138,7 @@ export type WSMessage = {
   | { type: "status"; data: WSStatusData }
   | { type: "agent_activity"; data: AgentActivitySnapshot }
   | { type: "debate_update"; data: DebateRecommendation }
+  | { type: "experimental_debate_update"; data: ExperimentalDebateUpdate }
   | { type: "debate_research_control"; data: { enabled: boolean } }
   | { type: "synthesis_updated"; data: SessionSynthesis }
   | { type: "question_answered"; data: { id: string; answer_summary: string; needs_followup: boolean; followup_question: string } }
