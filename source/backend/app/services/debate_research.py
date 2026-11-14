@@ -23,6 +23,16 @@ from pydantic import BaseModel, Field
 from app.config import settings
 from app.services.ai_config import research_settings, unavailable_cooldown_seconds
 from app.services.provider_capabilities import classify_provider_failure
+from app.services.pii.recognizers import (
+    ADDRESS,
+    CARD,
+    EMAIL,
+    IP,
+    PHONE,
+    PERSON,
+    SSN,
+    find_patterns,
+)
 
 
 _USER_AGENT = "DebateAI/0.6.6 (https://github.com/ErpeUser/DebateAI)"
@@ -32,6 +42,7 @@ _HEADERS = {"User-Agent": _USER_AGENT, "Api-User-Agent": _USER_AGENT}
 # CARD, IP, ...) from bypassing the egress gate.
 _PII_TOKEN = re.compile(r"\[[A-Z][A-Z0-9_-]{1,31}_\d+\]", re.IGNORECASE)
 _EMAIL = re.compile(r"\b[^\s@]+@[^\s@]+\.[^\s@]+\b")
+_QUERY_PII_CATEGORIES = frozenset({EMAIL, PHONE, SSN, CARD, IP, ADDRESS, PERSON})
 _HTML_TAG = re.compile(r"<[^>]+>")
 _TRUSTED_ORIGINAL_SUFFIXES = (
     ".bund.de",
@@ -141,9 +152,57 @@ class ResearchResult(BaseModel):
     error: str = ""
 
 
+def _query_pii_spans(text: str) -> list[tuple[int, int, str]]:
+    """Find structured or tokenized PII before a query reaches any provider."""
+    spans = [
+        (span.start, span.end, span.category)
+        for span in find_patterns(text, set(_QUERY_PII_CATEGORIES))
+    ]
+    for match in _PII_TOKEN.finditer(text):
+        spans.append((match.start(), match.end(), "TOKEN"))
+    spans.sort(key=lambda item: (item[0], -(item[1] - item[0])))
+    selected: list[tuple[int, int, str]] = []
+    occupied_until = -1
+    for start, end, category in spans:
+        if start < occupied_until:
+            continue
+        selected.append((start, end, category))
+        occupied_until = end
+    return selected
+
+
+def _minimize_research_query(query: str) -> tuple[str, tuple[str, ...]]:
+    """Normalize a query and redact PII for diagnostics; never send it."""
+    text = _clean_text(query)
+    spans = _query_pii_spans(text)
+    if not spans:
+        return text, ()
+    pieces: list[str] = []
+    cursor = 0
+    categories: list[str] = []
+    for start, end, category in spans:
+        pieces.append(text[cursor:start])
+        pieces.append(f"[REDACTED_{category}]")
+        cursor = end
+        if category not in categories:
+            categories.append(category)
+    pieces.append(text[cursor:])
+    return "".join(pieces), tuple(categories)
+
+
+def minimize_research_query(query: str) -> str:
+    """Return a provider-safe diagnostic form of a research query."""
+    return _minimize_research_query(query)[0]
+
+
+def research_query_pii_categories(query: str) -> tuple[str, ...]:
+    """Return redacted PII categories without exposing matched values."""
+    return _minimize_research_query(query)[1]
+
+
 def is_safe_research_query(query: str) -> bool:
-    text = (query or "").strip()
-    return bool(text) and len(text) <= 300 and not _PII_TOKEN.search(text) and not _EMAIL.search(text)
+    text, categories = _minimize_research_query(query)
+    return bool(text) and len(text) <= 300 and not categories
 
 
 def _clean_text(value: object) -> str:
@@ -647,6 +706,8 @@ async def _ai_web_sources(
     research_mode: ResearchMode = "deep",
 ) -> list[ResearchSource]:
     """Fail over through every enabled AI-web provider in configured order."""
+    if not is_safe_research_query(query):
+        return []
     chatgpt_generate = None
     generate_text = None
     try:
@@ -752,6 +813,13 @@ async def _research_with_client(
     *,
     research_mode: ResearchMode = "deep",
 ) -> ResearchResult:
+    if not is_safe_research_query(query):
+        return ResearchResult(
+            claim=claim,
+            query=_clean_text(query),
+            status="refused",
+            error="Research query was empty or contained private data",
+        )
     configured = research_settings()
     if not configured["enabled"]:
         return ResearchResult(
