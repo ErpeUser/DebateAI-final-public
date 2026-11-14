@@ -4,8 +4,10 @@ from app.services.video_eval_pipeline import (
     attach_media_metadata,
     SourceCandidate,
     TranscriptSegment,
+    VideoEvalArtifact,
     build_eval_cases,
     build_rhetorical_profile,
+    evaluate_rhetoric_profile,
     extract_source_candidates,
 )
 
@@ -40,6 +42,62 @@ def test_video_source_extraction_redacts_pii_before_external_call(monkeypatch):
     assert prompts
     assert "+49 30 12345678" not in prompts[0]
     assert "[REDACTED_PHONE]" in prompts[0]
+
+
+def test_video_source_extraction_focuses_source_context(monkeypatch):
+    from app.services import chatgpt_web
+    from app.services.video_eval_pipeline import extract_source_candidates_with_ai
+
+    prompts = []
+
+    async def fake_generate(prompt, **_kwargs):
+        prompts.append(prompt)
+        return "[]"
+
+    monkeypatch.setattr(chatgpt_web, "configured", lambda: True)
+    monkeypatch.setattr(chatgpt_web, "runtime_available", lambda: True)
+    monkeypatch.setattr(chatgpt_web, "generate", fake_generate)
+
+    asyncio.run(
+        extract_source_candidates_with_ai(
+            "DISTANT_ONLY_MARKER " + ("irrelevanter Verlauf " * 1500)
+            + " Siehe Studie Alpha 2024 unter https://example.org/report. "
+            + ("weiterer irrelevanter Verlauf " * 1500)
+        )
+    )
+
+    assert prompts
+    assert "https://example.org/report" in prompts[0]
+    assert "DISTANT_ONLY_MARKER" not in prompts[0]
+    assert len(prompts[0]) < 5000
+
+
+def test_rhetoric_review_uses_claim_focused_excerpt(monkeypatch):
+    from app.services import chatgpt_web
+
+    prompts = []
+
+    async def fake_generate(prompt, **_kwargs):
+        prompts.append(prompt)
+        return "Bewertung"
+
+    monkeypatch.setattr(chatgpt_web, "generate", fake_generate)
+    artifact = VideoEvalArtifact(
+        transcript_segments=[{"text": "DISTANT_TRANSCRIPT_MARKER " + ("Fülltext " * 1500)}],
+        eval_cases=[{
+            "claim": "Aktueller Claim",
+            "speaker": "S1",
+            "context_before": "Benötigter Kontext",
+        }],
+    )
+
+    asyncio.run(evaluate_rhetoric_profile(artifact, sample_chars=12000))
+
+    assert prompts
+    assert "Aktueller Claim" in prompts[0]
+    assert "Benötigter Kontext" in prompts[0]
+    assert "DISTANT_TRANSCRIPT_MARKER" not in prompts[0]
+    assert len(prompts[0]) < 8000
 
 
 def test_rhetorical_profile_counts_debate_moves():
