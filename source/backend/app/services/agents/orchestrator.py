@@ -4406,6 +4406,10 @@ class AgentOrchestrator:
                 with external_audit.audit_context(
                     claim=recommendation.target_claim,
                     data_category="research_claim",
+                    approval=(
+                        manual
+                        or bool(getattr(getattr(self, "debate_settings", None), "research_enabled", False))
+                    ),
                 ):
                     result = await research_claim(
                         recommendation.target_claim,
