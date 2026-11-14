@@ -1844,6 +1844,48 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("cancelled", final_payload["data"]["analysis_status"])
         self.assertFalse(final_payload["data"]["analysis_can_cancel"])
 
+    async def test_refiner_update_keeps_claim_revision_generation_separate(self):
+        orchestrator = self._orchestrator(MagicMock())
+        orchestrator._transcript_revision = 7
+        orchestrator._debate_revision = 3
+        entry = SimpleNamespace(
+            id=uuid.uuid4(),
+            session_id=orchestrator.session_id,
+            text="So [PERSON_1] widerspricht nicht.",
+            raw_text="so [PERSON_1] widerspricht nicht",
+            refined_at=None,
+            sequence=1,
+            speaker_id=None,
+        )
+        db = SimpleNamespace(commit=AsyncMock())
+
+        class SessionContext:
+            async def __aenter__(self):
+                return db
+
+            async def __aexit__(self, *_args):
+                return False
+
+        with (
+            patch("app.database.async_session", return_value=SessionContext()),
+            patch(
+                "app.services.agents.orchestrator.refine_session",
+                AsyncMock(return_value=[entry]),
+            ),
+        ):
+            count = await orchestrator._refine_recent_transcript(
+                limit=60, source_label="test"
+            )
+
+        self.assertEqual(1, count)
+        self.assertEqual(7, orchestrator._transcript_revision)
+        self.assertEqual(3, orchestrator._debate_revision)
+        orchestrator.websocket.send_json.assert_awaited_once()
+        self.assertEqual(
+            "transcript_updated",
+            orchestrator.websocket.send_json.await_args.args[0]["type"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()
