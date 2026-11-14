@@ -21,6 +21,7 @@ import type {
   AgentActivityRecord,
   DebateRecommendation,
   DebateResearchCategory,
+  ExternalLaneArtifact,
 } from "../../types";
 
 interface DebateCoachPanelProps {
@@ -208,6 +209,9 @@ export default function DebateCoachPanel({
   const strategyPoints = recommendation?.research_status !== "completed"
     ? recommendation?.argument_points.slice(0, 4) ?? []
     : [];
+  const laneArtifacts: ExternalLaneArtifact[] = recommendation?.pipeline_mode === "experimental_debateai"
+    ? recommendation.external_lane_artifacts ?? []
+    : [];
 
   return (
     <section aria-labelledby="debate-coach-title" className="px-4 pb-3">
@@ -392,6 +396,53 @@ export default function DebateCoachPanel({
                     <p className="text-[11px] text-brand-mid-gray">Ausgewählt: {recommendation.selection_reason}</p>
                   )}
                 </div>
+              )}
+
+              {laneArtifacts.length > 0 && (
+                <section className="mt-2 space-y-1.5" aria-label="Eintreffende Debatte-Lanes">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-brand-mid-gray">
+                      Eintreffende Recherche &amp; Widerlegung
+                    </p>
+                    <span className="font-body text-[10px] text-brand-mid-gray">
+                      {laneArtifacts.filter((artifact) => artifact.status === "completed").length}/{laneArtifacts.length} fertig
+                    </span>
+                  </div>
+                  {laneArtifacts.map((artifact) => (
+                    <details key={artifact.lane_id} className="rounded-lg border border-brand-light-gray-1 bg-surface px-3 py-2 font-body text-xs text-brand-gray">
+                      <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
+                        {artifact.lane === "adversarial"
+                          ? "Widerlegung & Gegenbeispiele"
+                          : artifact.lane === "rhetoric"
+                            ? "Schlagfertige Formulierung"
+                            : "Quellen & Faktencheck"}
+                        {" · "}
+                        {artifact.status === "completed" ? "eingetroffen" : artifact.status}
+                      </summary>
+                      {artifact.error && <p className="mt-1 leading-5 text-amber-800 dark:text-amber-200">{artifact.error}</p>}
+                      {artifact.external_insights && artifact.external_insights.length > 0 ? (
+                        <div className="mt-1.5 space-y-1.5">
+                          {artifact.external_insights.map((insight) => (
+                            <details key={insight.insight_id} className="rounded-md bg-brand-light-gray-2 px-2.5 py-1.5">
+                              <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
+                                {insight.kind === "counterexample"
+                                  ? "Gegenbeispiel"
+                                  : insight.kind === "counter_question"
+                                    ? "Gegenfrage"
+                                    : insight.kind === "source"
+                                      ? "Quelle"
+                                      : "Widerlegung"}
+                              </summary>
+                              <p className="mt-1 leading-5">{insight.text}</p>
+                            </details>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="mt-1 leading-5 text-brand-mid-gray">Noch kein ausklappbarer Befund eingetroffen.</p>
+                      )}
+                    </details>
+                  ))}
+                </section>
               )}
 
               {(alternativeText || recommendation.counterargument) && (
