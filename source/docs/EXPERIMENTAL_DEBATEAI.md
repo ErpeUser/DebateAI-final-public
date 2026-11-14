@@ -52,4 +52,14 @@ Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 python source/backend/scripts/video_eval_batch.py --video-list videos.json --out-dir ./artifacts --speaker-diarization
 ```
 
+Nach dem Erzeugen mehrerer Videoartefakte kann ein leakage-sicherer Evaluationssplit und ein blinder Paarvergleich erzeugt werden:
+
+```bash
+python source/backend/scripts/video_eval_evaluate.py \
+  --artifacts-dir ./artifacts \
+  --out ./artifacts/evaluation-manifest.json
+```
+
+Der Evaluator hält ein Video und dieselbe Claim-Familie immer in demselben Split und erzeugt Test-Paare mit den neutralen Labels A/B. Erst nach der Bewertung werden die Baseline-/Kandidatenlabels aufgelöst. Er verändert keine Prompts, Modelle oder Produktionszweige automatisch.
+
 Das lokale Sprachprofil wird mit jeder geprüften Videorunde versioniert. Zusätzlich bewertet ChatGPT Web die beobachteten Muster, Stärken und Verbesserungsmöglichkeiten; diese Bewertung wird im Artefakt als `ai_review` gespeichert. Beides dient als Evaluationsinput für spätere Prompt-/Modellvergleiche; eine Änderung wird erst nach Review übernommen.
