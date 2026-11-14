@@ -777,6 +777,62 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Google", update["analyst_provider"])
         self.assertIn("Schwaechere", update["counter_question"])
 
+    async def test_interim_meaning_changes_create_new_claim_revision_and_answer(self):
+        class MeaningAwareAgent:
+            latest_recommendation = DebateRecommendation()
+            last_outcome = {"kind": "no_findings", "items": 0}
+
+            def __init__(self):
+                self.windows = []
+
+            async def run_cycle(self, **kwargs):
+                window = kwargs["transcript_window"]
+                self.windows.append(window)
+                changed = any(token in window for token in ("15 Prozent", "Berta", "falls"))
+                self.latest_recommendation = DebateRecommendation(
+                    answer_now=(
+                        "Die neue Revision aendert die Antwort."
+                        if changed
+                        else "Die erste Revision erhaelt ihre Antwort."
+                    ),
+                    target_claim=window,
+                    confidence="medium",
+                )
+                return []
+
+        cases = (
+            ("Es sind 50 Prozent.", "Es sind 15 Prozent."),
+            ("Anna hat zugestimmt.", "Berta hat zugestimmt."),
+            ("Wenn die Quelle stimmt, gilt der Schluss.", "Falls die Quelle stimmt, gilt der Schluss."),
+        )
+        for first_text, changed_text in cases:
+            with self.subTest(first_text=first_text, changed_text=changed_text):
+                agent = MeaningAwareAgent()
+                orchestrator = self._orchestrator(agent)
+                await orchestrator.feed_interim_transcript(first_text, utterance_id="meaning-utt")
+                first_task = orchestrator._objection_task
+                first_task.set_name("debate-test-meaning-first")
+                await asyncio.wait_for(first_task, 0.5)
+                first_revision = orchestrator._transcript_revision
+
+                await orchestrator.feed_interim_transcript(changed_text, utterance_id="meaning-utt")
+                second_task = orchestrator._objection_task
+                second_task.set_name("debate-test-meaning-second")
+                await asyncio.wait_for(second_task, 0.5)
+
+                self.assertEqual(first_revision + 1, orchestrator._transcript_revision)
+                self.assertEqual(2, orchestrator._debate_revision)
+                self.assertIn(changed_text, agent.windows[-1])
+                updates = [
+                    call.args[0]["data"]
+                    for call in orchestrator.websocket.send_json.await_args_list
+                    if call.args[0].get("type") == "debate_update"
+                    and call.args[0]["data"].get("origin") == "model"
+                ]
+                self.assertGreaterEqual(len(updates), 2)
+                self.assertNotEqual(updates[-2]["answer_now"], updates[-1]["answer_now"])
+                self.assertEqual(2, updates[-1]["claim_revision"])
+
     async def test_final_negation_replaces_interim_for_same_utterance(self):
         class Agent:
             latest_recommendation = DebateRecommendation()
