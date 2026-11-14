@@ -150,7 +150,17 @@ def _audit_category(source: str) -> str:
 
 
 def _audit_route(provider: str, model_id: str) -> str:
-    return f"{provider}:{model_id}"
+    """Return a stable configured route id without exposing endpoint secrets."""
+    if model_id.startswith("endpoint:"):
+        parts = model_id.split(":", 2)
+        if len(parts) >= 2 and parts[1]:
+            return f"endpoint:{parts[1]}"
+    try:
+        from app.services.ai_config import provider_route
+        route_id = str(provider_route(model_id).get("id") or "").strip()
+    except Exception:
+        route_id = ""
+    return f"{route_id or provider}:{provider}"
 
 
 class LLMKeyMissing(ValueError):
@@ -457,7 +467,7 @@ async def generate_text(
         usage = None
     elif target.endpoint is not None:
         text, usage = await _call_openai(
-            model_id, target.endpoint, prompt, system, temperature, target.key
+            model_id, target.endpoint, prompt, system, temperature, target.key, source
         )
     else:
         try:
@@ -1324,13 +1334,30 @@ async def _generate_json_once(
     a prompt whose instructions are interleaved with per-cycle data has no
     cacheable prefix at all (ALP-285).
     """
-    target = await _prepare_call(model_id, "structured generation", source)
+    route = _audit_route(provider_for(model_id), model_id)
+    category = _audit_category(source)
+    try:
+        target = await _prepare_call(model_id, "structured generation", source)
+    except Exception as exc:
+        external_audit.record_external_request(
+            provider_route=route, approval=False, data_category=category,
+            status="refused", model_id=model_id, error_class=type(exc).__name__,
+        )
+        raise
     # The shield guards both halves. An instruction block is prompt text that
     # leaves the machine like any other, so splitting a prompt must not move
     # anything past the egress boundary.
-    prompt, system = await pii_egress.protect_and_guard(
-        prompt, system=system, model_id=model_id, session_id=session_id, source=source
-    )
+    try:
+        prompt, system = await pii_egress.protect_and_guard(
+            prompt, system=system, model_id=model_id, session_id=session_id, source=source
+        )
+    except Exception as exc:
+        external_audit.record_external_request(
+            provider_route=route, approval=False, data_category=category,
+            status="blocked" if exc.__class__.__name__ == "PiiEgressBlocked" else "refused",
+            model_id=model_id, error_class=type(exc).__name__,
+        )
+        raise
     hint = schema_hint or _default_schema_hint(response_schema)
     if target.provider == chatgpt_web.PROVIDER:
         raw = await chatgpt_web.generate(
