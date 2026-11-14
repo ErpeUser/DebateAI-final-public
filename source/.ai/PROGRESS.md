@@ -501,3 +501,16 @@ NÄCHSTER PUNKT: 015/A030
 - **Commit/Push:** Produktionsfix `e3a8d79a3141c12e6a535df32ae31866633f9d55`, Regressionstest `74ad7c9723f2cab356f749a986c8eb302038b7fe`; der Fortschrittsnachweis folgt in diesem Commit auf master.
 
 NÄCHSTER PUNKT: 016/A031
+## Masterauftrag – 2026-11-14 – 016/A031
+
+**Status: BEREITS ERLEDIGT (konservativer Refiner-/Revisionvertrag); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Zahlen, Einheiten, Namen, Negationen und Bedingungen vor unzulässiger Transcript-Bereinigung schützen und Roh-/Endtranskript semantisch sowie lexikalisch vergleichen.
+- **Nachweis der bestehenden Lösung:** `transcript_refiner.py` akzeptiert eine Korrektur nur bei identischer `lexical_sequence` in Originalreihenfolge, identischer PII-Token-Multimenge und einer begrenzten Längenratio. Damit dürfen Zahlen, Einheiten, Namen/Platzhalter, Negationen und Konditionswörter weder entfernt, ersetzt, umgeordnet noch renummeriert werden; erlaubt sind nur Zeichensetzung, Satzgrenzen, Groß-/Kleinschreibung und Leerzeichen. `raw_text` wird vor der ersten akzeptierten Refinement-Änderung unverändert gesichert; manuelle Korrekturen und bereits refinierte Zeilen sind gesperrt.
+- **Vorhandene Regressionen:** `test_transcript_refiner.py` prüft identische Token mit Zeichensetzung, Rollen-/Negationsumordnung, entfernte/hinzugefügte/renummerierte Personen-, Organisations-, E-Mail- und Telefon-Token sowie Original-`raw_text`-Erhalt. `transcript_revisions.py` und `test_transcript_revisions.py` halten manuelle Revisionen append-only und entwerten abhängige Empfehlungen.
+- **Fresh-Test-Ergebnis:** Der Quellvertrag und die fokussierten Regressionen sind vorhanden; ein aktueller Lauf bleibt wegen GitHub-Actions `steps: null` und fehlendem ausführbaren Checkout offen. Ein echter Audio-/ASR-Roh-vs.-Final-Lauf mit deutschen Zahlen, Einheiten und Bedingungen ist zusätzlich noch eine Windows-/Hardwareabnahme.
+- **Eigener neuer Code:** keiner; die konservative Refinerbarriere deckt den Punkt bereits ab.
+- **Konkreter nächster Abnahmeschritt:** Im ausführbaren Backend-Checkout die Refiner-/Revisionstests und einen deutschen Fixture-Lauf mit `50 Prozent`, `10 Euro`, Eigennamen, `nicht`, `wenn/falls` und absichtlichen Wortänderungen ausführen; jede unzulässige Änderung muss verworfen und auditierbar im Rohtext erhalten bleiben.
+- **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 017/A032
