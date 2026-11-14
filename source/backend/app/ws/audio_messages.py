@@ -42,6 +42,7 @@ _CONTROL_TYPES = {
     "debate_analysis_cancel",
     "debate_update_ack",
     "debate_answer_good",
+    "debate_option_select",
     "debate_learning_revoke",
 }
 
@@ -316,6 +317,12 @@ async def _handle_text_message(
         await orchestrator.confirm_good_debate_answer(
             claim_id=str(data.get("claim_id") or ""),
             recommendation_revision=int(data.get("recommendation_revision") or 0),
+        )
+    elif data.get("type") == "debate_option_select":
+        await orchestrator.select_experimental_option(
+            claim_id=str(data.get("claim_id") or ""),
+            recommendation_revision=int(data.get("recommendation_revision") or 0),
+            option_id=str(data.get("option_id") or "")[:120],
         )
     elif data.get("type") == "debate_learning_revoke":
         await orchestrator.revoke_good_debate_answer(
