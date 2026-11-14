@@ -160,6 +160,8 @@ def _query_pii_spans(text: str) -> list[tuple[int, int, str]]:
     ]
     for match in _PII_TOKEN.finditer(text):
         spans.append((match.start(), match.end(), "TOKEN"))
+    for match in _EMAIL.finditer(text):
+        spans.append((match.start(), match.end(), "EMAIL"))
     spans.sort(key=lambda item: (item[0], -(item[1] - item[0])))
     selected: list[tuple[int, int, str]] = []
     occupied_until = -1
