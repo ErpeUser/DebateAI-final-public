@@ -318,6 +318,19 @@ class DebateBenchmarkTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(result["command_consumed"])
         self.assertTrue(result["transcript_unchanged"])
 
+    async def test_deterministic_supersession_replay_has_zero_stale_publishes(self):
+        replay = create_application_replay(ApplicationFixtureAgent(FakeClock()))
+
+        result = await replay.supersession_probe(
+            list(DEFAULT_TURNS),
+            delay_seconds=0,
+            timeout_seconds=1,
+        )
+
+        self.assertEqual(0, result["failure_count"])
+        self.assertEqual(0, result["stale_publishes"])
+        self.assertEqual(0, replay.websocket.stale_publishes)
+
     async def test_application_replay_does_not_count_template_without_model_answer(self):
         replay = create_application_replay(TemplateOnlyFixtureAgent())
 
