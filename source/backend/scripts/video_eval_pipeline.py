@@ -16,6 +16,7 @@ from app.services.video_eval_pipeline import (
     build_video_artifact,
     research_source_candidates,
     save_artifact,
+    update_style_profile,
     transcribe_with_google_cloud,
 )
 
@@ -29,6 +30,7 @@ def main() -> int:
     parser.add_argument("--language", default="de-DE")
     parser.add_argument("--project-id", default=None)
     parser.add_argument("--speaker-diarization", action="store_true")
+    parser.add_argument("--style-profile", default="", help="Persistent local rhetoric profile JSON")
     args = parser.parse_args()
     segments = transcribe_with_google_cloud(
         args.audio,
@@ -44,6 +46,8 @@ def main() -> int:
     )
     artifact = asyncio.run(research_source_candidates(artifact))
     save_artifact(artifact, args.out)
+    if args.style_profile:
+        update_style_profile(args.style_profile, artifact.rhetorical_profile)
     print(f"saved {args.out} ({len(segments)} transcript segments)")
     return 0
 
