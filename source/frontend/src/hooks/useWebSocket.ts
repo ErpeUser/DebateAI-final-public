@@ -382,6 +382,17 @@ export function useWebSocket() {
     }
   }, []);
 
+  const sendExperimentalOptionSelected = useCallback((claimId: string, recommendationRevision: number, optionId: string) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: "debate_option_select",
+        claim_id: claimId,
+        recommendation_revision: recommendationRevision,
+        option_id: optionId,
+      }));
+    }
+  }, []);
+
   const sendTrackState = useCallback((track: AudioTrack, active: boolean) => {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({ type: "track_state", track, active }));
@@ -404,5 +415,5 @@ export function useWebSocket() {
     });
   }, [resolveStop, armStopDeadline]);
 
-  return { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats };
+  return { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats };
 }
