@@ -115,7 +115,13 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
         )
         artifact = build_video_artifact(
             video_id=video_id,
-            source_url=str(\n                item.get("source_url")\n                or item.get("media_url")\n                or item.get("video_url")\n                or item.get("audio_url")\n                or ""\n            ),
+            source_url=str(
+                item.get("source_url")
+                or item.get("media_url")
+                or item.get("video_url")
+                or item.get("audio_url")
+                or ""
+            ),
             segments=segments,
             language_code=language,
         )
