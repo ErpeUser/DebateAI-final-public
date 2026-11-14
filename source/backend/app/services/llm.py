@@ -1031,30 +1031,61 @@ async def _openai_json(
         finish_reason = None
         usage = None
         partial_sent = False
-        async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
-            async with client.stream(
-                "POST",
-                f"{endpoint.base_url}/chat/completions",
-                headers=auth_headers(key),
-                json=payload,
-            ) as resp:
-                _raise_for_status(resp)
-                async for line in resp.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    raw = line[5:].strip()
-                    if not raw or raw == "[DONE]":
-                        continue
-                    chunk = json.loads(raw)
-                    usage = chunk.get("usage") or usage
-                    choice = (chunk.get("choices") or [{}])[0] or {}
-                    finish_reason = choice.get("finish_reason") or finish_reason
-                    content += (choice.get("delta") or {}).get("content") or ""
-                    if not partial_sent:
-                        partial = _completed_json_string_field(content, "answer_now")
-                        if partial:
-                            partial_sent = True
-                            await on_partial_json(partial)
+        request_id = external_audit.start_external_request(
+            provider_route=_audit_route("openai-compatible", model_id),
+            approval=True,
+            data_category=_audit_category(source),
+            claim_id=external_audit.current_claim_id(),
+            model_id=model_id,
+            target_host=endpoint.base_url,
+        )
+        try:
+            async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
+                async with client.stream(
+                    "POST",
+                    f"{endpoint.base_url}/chat/completions",
+                    headers=auth_headers(key),
+                    json=payload,
+                ) as resp:
+                    _raise_for_status(resp)
+                    async for line in resp.aiter_lines():
+                        if not line.startswith("data:"):
+                            continue
+                        raw = line[5:].strip()
+                        if not raw or raw == "[DONE]":
+                            continue
+                        chunk = json.loads(raw)
+                        usage = chunk.get("usage") or usage
+                        choice = (chunk.get("choices") or [{}])[0] or {}
+                        finish_reason = choice.get("finish_reason") or finish_reason
+                        content += (choice.get("delta") or {}).get("content") or ""
+                        if not partial_sent:
+                            partial = _completed_json_string_field(content, "answer_now")
+                            if partial:
+                                partial_sent = True
+                                await on_partial_json(partial)
+        except asyncio.CancelledError:
+            external_audit.finish_external_request(
+                request_id, approval=True, status="cancelled",
+                provider_route=_audit_route("openai-compatible", model_id),
+                data_category=_audit_category(source), model_id=model_id,
+                target_host=endpoint.base_url,
+            )
+            raise
+        except Exception as exc:
+            external_audit.finish_external_request(
+                request_id, approval=True, status="failed",
+                provider_route=_audit_route("openai-compatible", model_id),
+                data_category=_audit_category(source), model_id=model_id,
+                target_host=endpoint.base_url, error_class=type(exc).__name__,
+            )
+            raise
+        external_audit.finish_external_request(
+            request_id, approval=True, status="completed",
+            provider_route=_audit_route("openai-compatible", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            target_host=endpoint.base_url,
+        )
         await record_token_usage(session_id, source, model_id, usage)
         if finish_reason == "length":
             raise LLMReplyTruncated(model_id, source)
