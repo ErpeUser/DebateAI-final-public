@@ -33,7 +33,7 @@ def _verified_oracle_selection(home: Path, started_at: float) -> dict[str, objec
         thinking = browser.get("thinkingSelection") if isinstance(browser, dict) else None
         if not isinstance(model, dict) or not isinstance(thinking, dict):
             continue
-        if not model.get("verified") or str(model.get("resolvedLabel", "")).strip() not in {"GPT-6", "Latest"}:
+        if not model.get("verified") or str(model.get("resolvedLabel", "")).strip() != "GPT-6":
             continue
         if not thinking.get("verified") or thinking.get("requestedLevel") != "extra-high":
             continue
