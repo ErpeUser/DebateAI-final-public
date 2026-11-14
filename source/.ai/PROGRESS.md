@@ -474,3 +474,17 @@ NÄCHSTER PUNKT: 013/A027
 - **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 014/A029
+## Masterauftrag – 2026-11-14 – 014/A029
+
+**Status: BLOCKIERT (Revision-Stale-Schutz vorhanden, sichtbare Antwort-TTL fehlt).**
+
+- **Aufgabe:** Eine nachvollziehbare maximale Gültigkeitsdauer für sichtbare Antworten einführen; veraltete Antworten ersetzen oder eindeutig als veraltet kennzeichnen.
+- **Nachweis der bestehenden Teillösung:** Backend-Updates tragen `generated_at`, monotone `recommendation_revision`, Claim-/Transcriptrevision und `origin`; stale Claims/Generierungen werden bei neuen Revisionen verworfen. `DebateCoachPanel.tsx` zeigt die Aktualisierungszeit und erkennt bei angehefteten Karten eine neuere Version (`hasNewVersion`).
+- **Fehlender Vertrag:** Es gibt keine Antwort-TTL bzw. `valid_until`/`expires_at` für sichtbare Debate-Karten und keinen automatischen Timer, der eine Karte nach maximaler Gültigkeitsdauer ausblendet oder als veraltet markiert. `TranscriptBuffer.get_window(max_age_seconds=300)` begrenzt nur Analysekontext, nicht die Sichtbarkeit einer bereits ausgespielten Antwort. `generated_at` ist reine Anzeigeinformation.
+- **Vorhandene Regressionen:** `test_server_rejects_explicitly_stale_live_update`, Stale-Revision-/Research-Tests und Frontend-Pinning/Revisionstests schützen gegen neue konkurrierende Updates; ein zeitbasierter Ablauf im Leerlauf ist nicht getestet.
+- **Eigener neuer Code:** keiner; die Lücke ist ein übergreifender Backend-/WebSocket-/Frontend-Vertrag und sollte mit einer expliziten, begründeten TTL sowie stale-UI-/Broadcast-Tests geschlossen werden.
+- **Konkreter nächster Abnahmeschritt:** TTL semantisch festlegen, `valid_until` serverseitig ausstellen, abgelaufene Karten bei WebSocket/Frontend als `stale` kennzeichnen oder ersetzen, Pinning/Benutzerkopie davon trennen und Fake-Clock-Regressionen für Ablauf, neue Claims und Reconnect ergänzen.
+- **Fresh-Test-Ergebnis:** Kein zeitbasierter Volltest ausgeführt; GitHub-Actions bleiben mit `steps: null` blockiert.
+- **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 015/A030
