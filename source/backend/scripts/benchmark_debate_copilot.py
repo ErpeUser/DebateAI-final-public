@@ -343,6 +343,7 @@ def summarize(
     *,
     cancellation_count: int,
     probe_failure_count: int = 0,
+    stale_publishes: int = 0,
 ) -> dict:
     ok = [record for record in records if record.get("status") == "ok"]
     first = [float(record["first_update_ms"]) for record in ok]
@@ -375,6 +376,7 @@ def summarize(
             + probe_failure_count
         ),
         "cancellation_count": cancellation_count,
+        "stale_publishes": stale_publishes,
         "median_first_update_ms": round(statistics.median(first), 3) if first else None,
         "p95_first_update_ms": _percentile_nearest_rank(first, 0.95),
         "median_current_update_ms": round(statistics.median(current), 3) if current else None,
@@ -514,6 +516,7 @@ class ApplicationReplay:
         # timestamps cannot be mistaken for this turn's first model paint.
         while not self.websocket.events.empty():
             self.websocket.events.get_nowait()
+        stale_before = self.websocket.stale_publishes
         started = self.clock()
         record = {
             "turn_index": turn_index,
@@ -526,6 +529,7 @@ class ApplicationReplay:
             "deep_revision_ms": None,
             "accepted_model_ms": None,
             "ui_acknowledged": False,
+            "stale_publishes": 0,
             "deep_recommendation": None,
             "source_refinement_ms": None,
             "research_status": "disabled",
@@ -634,6 +638,7 @@ class ApplicationReplay:
                 self._quarantine()
             record["error_type"] = type(exc).__name__
             record["error"] = str(exc)[:500]
+        record["stale_publishes"] = self.websocket.stale_publishes - stale_before
         return record
 
     def _quarantine(self) -> None:
@@ -713,6 +718,7 @@ class ApplicationReplay:
             "completed_count": sum(status != "cancelled" for status in statuses),
             "statuses": statuses,
             "failure_count": sum(status == "failed" for status in statuses),
+            "stale_publishes": self.websocket.stale_publishes,
             "records": records,
         }
 
@@ -759,6 +765,7 @@ class ApplicationReplay:
             "visible_model_updates": len(model_updates),
             "first_visible_ms": elapsed_ms(started, first[0]) if first else None,
             "first_answer": first[1].get("answer_now") if first else None,
+            "stale_publishes": self.websocket.stale_publishes,
             "status": "ok" if first else "failed",
         }
 
@@ -801,6 +808,7 @@ class ApplicationReplay:
             "visible_model_updates": len(updates),
             "first_visible_ms": elapsed_ms(started, first[0]) if first else None,
             "first_answer": first[1].get("answer_now") if first else None,
+            "stale_publishes": self.websocket.stale_publishes,
             "status": "ok" if consumed is True and first else "failed",
         }
 
@@ -850,6 +858,13 @@ def create_application_replay(
     orchestrator._research_cache = {}
     orchestrator._last_research_at = 0.0
     orchestrator._debate_diagnostics = []
+    websocket.set_head_provider(
+        lambda: {
+            "claim_id": getattr(orchestrator, "_active_claim_id", None),
+            "transcript_revision": getattr(orchestrator, "_transcript_revision", 0),
+            "claim_is_interim": getattr(orchestrator, "_active_claim_is_interim", False),
+        }
+    )
     return ApplicationReplay(orchestrator, websocket, clock)
 
 
