@@ -641,15 +641,24 @@ async def _ai_web_sources(
         "Keine Wikipedia- oder DuckDuckGo-Links. Aussage: " + claim[:800] +
         " Recherchefrage: " + query[:500]
     )
-    try:
-        if chatgpt_generate is not None and "chatgpt_web" in providers:
+    answer = ""
+    provider_label = ""
+    if chatgpt_generate is not None and "chatgpt_web" in providers:
+        try:
             answer = await chatgpt_generate(
                 prompt,
                 system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
                 reasoning_effort="high",
                 research="search",
             )
-        else:
+            if answer:
+                provider_label = "chatgpt_web"
+        except Exception:
+            answer = ""
+    # A failed or empty ChatGPT-Web turn must fall through to the configured
+    # Gemini/CLIProxy route instead of silently dropping the research request.
+    if not answer and fallback_model:
+        try:
             from app.services.llm import generate_text
             answer = await generate_text(
                 fallback_model,
@@ -657,9 +666,18 @@ async def _ai_web_sources(
                 system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
                 source="debate_research",
             )
-    except Exception:
+            provider_label = next(
+                (
+                    provider
+                    for provider in ("gemini_web", "gemini_api", "cliproxyapi")
+                    if provider in providers
+                ),
+                "ai_web",
+            )
+        except Exception:
+            answer = ""
+    if not answer:
         return []
-    provider_label = "chatgpt_web" if chatgpt_generate is not None and "chatgpt_web" in providers else next((provider for provider in ("gemini_web", "gemini_api", "cliproxyapi") if provider in providers), "ai_web")
     urls = []
     for match in re.findall(r"https?://\S+", answer or ""):
         raw_url = match.rstrip(".,;:)]}")
