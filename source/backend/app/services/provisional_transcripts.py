@@ -41,6 +41,9 @@ async def record_discarded_segment(
 ) -> None:
     """Persist a bounded, privacy-shielded audit row for rejected ASR input."""
     raw_text = str(data.get("text") or "")
+    # Persist only the shielded representation; direct callers may bypass the
+    # websocket path that normally protects interim transcript text first.
+    raw_text = await shield.protect_text(db, session_id, raw_text)
     raw_speaker_id = str(data.get("speaker_id") or "").strip()
     try:
         speaker_id = uuid.UUID(raw_speaker_id) if raw_speaker_id else None
