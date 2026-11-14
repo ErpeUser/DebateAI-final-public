@@ -570,6 +570,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             provider="test",
             claim=original.target_claim,
             verification_status="read",
+            retrieval_status="read",
         )
         refined = DebateRecommendation(
             answer_now="Die amtliche Rate lag laut Quelle bei 2,2 Prozent.",
