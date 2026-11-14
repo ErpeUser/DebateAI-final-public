@@ -528,3 +528,17 @@ NÄCHSTER PUNKT: 017/A032
 - **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 018/A033
+## Masterauftrag – 2026-11-14 – 018/A033
+
+**Status: BLOCKIERT (Auditmodell vorhanden, Transcriber-Filter nicht vollständig angebunden).**
+
+- **Aufgabe:** Jedes verworfene Transcript-Segment mit Rohtext, Zeitbereich, Sprecher, Filtergrund und Revision erfassen und die bestehende `TranscriptDiscardAudit`-Struktur für alle Filter verwenden.
+- **Nachweis der bestehenden Lösung:** `TranscriptDiscardAudit` in `models.py` enthält `session_id`, PII-geschütztes `raw_text`, `speaker_id`, `audio_start_sample`, `audio_end_sample`, `discard_reason`, `producer`, `segment_revision` und `created_at`. `record_discarded_segment()` in `provisional_transcripts.py` validiert/begrenzt diese Felder; ungültige, doppelte, stale, revidierte und limitierte Provisional-Segmente werden dort append-only auditiert.
+- **Vorhandene Regressionen:** `test_provisional_transcripts.py` und die Ghost-/Replay-Tests decken Identität, Audio-Spans, Revisionen, ungültige Eingaben und Discard-Gründe der Provisional-Schicht ab. `test_transcriber_failures.py` unterscheidet echte Provider-/Modellfehler von gefilterten kurzen, leisen, leeren und Halluzinationssegmenten.
+- **Fehlender Vertrag:** `batch_transcriber.py`, `local_transcriber.py` und `openai_transcriber.py` protokollieren `below energy floor`, `Filtered hallucinated transcript` oder `Filtered short transcript` und geben `None` zurück, erhalten aber keine Session-/Sprecher-/Zeit-/Revisiondaten und rufen `record_discarded_segment()` nicht auf. Damit sind verworfene Low-Energy-/Halluzinations-/Kurztextsegmente nicht vollständig in `TranscriptDiscardAudit` repräsentiert.
+- **Eigener neuer Code:** keiner; die fehlende Anbindung muss als gemeinsamer Audiojob-/Queue-Vertrag umgesetzt werden, damit Rohdaten PII-geschützt bleiben und nicht an jedem Adapter separat persistiert werden.
+- **Konkreter nächster Abnahmeschritt:** Transcriber-Ergebnis um strukturierte Filterereignisse (Grund, Rohtextreferenz, Audio-Spans, Sprecher, Segmentrevision) erweitern, im `OrderedTranscriptionQueue`/Audiohandler an `record_discarded_segment()` weiterreichen und Regressionen für Low-Energy, Phantomphrase, Kurztext, Provider-Empty, Sprecherwechsel und stale Revision ergänzen.
+- **Fresh-Test-Ergebnis:** Fokussierte Filter-/Audit-Tests sind vorhanden, ein frischer Lauf bleibt wegen GitHub-Actions `steps: null` blockiert.
+- **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 019/A034
