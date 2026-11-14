@@ -14,7 +14,15 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         marker = root / "verified.json"
         node.write_bytes(b"node")
         cli.write_text("// oracle", encoding="utf-8")
-        marker.write_text("{}", encoding="utf-8")
+        marker.write_text(json.dumps({
+            "requested_model": "gpt-6",
+            "actual_model": "gpt-6",
+            "model_label": "GPT-6",
+            "thinking": "xhigh",
+            "thinking_label": "Extra High",
+            "verification": "Oracle UI-Auswahl bestaetigt",
+            "verified_at": "2026-11-14T00:00:00Z",
+        }), encoding="utf-8")
         return {
             "DEBATEAI_CHATGPT_WEB_NODE": str(node),
             "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
@@ -138,6 +146,29 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(1, starts)
 
+    def test_malformed_or_wrong_model_evidence_is_not_configured(self):
+        from app.services import chatgpt_web
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            environment = self._environment(root)
+            marker = Path(environment["DEBATEAI_CHATGPT_WEB_MARKER"])
+            marker.write_text(json.dumps({
+                "requested_model": "gpt-6",
+                "actual_model": "gpt-5",
+                "model_label": "Latest",
+                "thinking": "xhigh",
+                "thinking_label": "Extra High",
+                "verification": "Oracle UI-Auswahl bestaetigt",
+                "verified_at": "2026-11-14T00:00:00Z",
+            }), encoding="utf-8")
+            with mock.patch.dict(os.environ, environment, clear=False):
+                self.assertFalse(chatgpt_web.configured())
+                self.assertFalse(chatgpt_web.model_confirmed())
+            marker.write_text("{", encoding="utf-8")
+            with mock.patch.dict(os.environ, environment, clear=False):
+                self.assertFalse(chatgpt_web.configured())
+
     async def test_generate_reads_oracle_output_without_exposing_cli_noise(self):
         from app.services import chatgpt_web
 
@@ -216,8 +247,14 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("search", command[command.index("--browser-research") + 1])
         self.assertEqual("completed", status["state"])
         self.assertEqual("search", status["research_mode"])
+        self.assertTrue(status["model_confirmed"])
+        self.assertTrue(status["search_requested"])
+        self.assertFalse(status["search_confirmed"])
         self.assertEqual("completed", persisted["state"])
         self.assertEqual("search", persisted["research_mode"])
+        self.assertTrue(persisted["model_confirmed"])
+        self.assertTrue(persisted["search_requested"])
+        self.assertFalse(persisted["search_confirmed"])
         self.assertNotIn("Pruefe die Originalquelle.", json.dumps(persisted))
 
     async def test_generate_serializes_the_shared_browser_profile(self):
