@@ -461,3 +461,16 @@ NÄCHSTER PUNKT: 012/A026
 - **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 013/A027
+## Masterauftrag – 2026-11-14 – 013/A027
+
+**Status: BEREITS ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Veraltete lokale Generierungen vor dem ersten sichtbaren Teilresultat abbrechen und nach Veröffentlichung eines brauchbaren Partials die Coalescing-Logik erhalten.
+- **Nachweis der bestehenden Lösung:** `_schedule_debate_revision()` setzt die neueste Revision als pending, cancelt einen laufenden Worker vor sichtbarer Partialantwort und startet den neuesten Worker. Sobald `publish_model_partial()` ein brauchbares Partial sendet, setzt es `_debate_partial_visible=True`; weitere Interims werden dann coalesced, der laufende Worker darf seine vollständige Antwort veröffentlichen und die neueste Revision folgt danach. Snapshot-/Claim-/Transcript-Gates verwerfen zusätzliche stale Ergebnisse.
+- **Vorhandene Regressionen:** `test_new_speech_cancels_stale_revision_and_runs_latest` beweist Abbruch vor sichtbarem Ergebnis und Ausführung der zweiten Revision; `test_streamed_model_sentence_is_broadcast_before_full_model_finishes` beweist sichtbares Partial vor Vollantwort; `test_final_negation_drops_slow_model_result_for_interim_claim`, `test_stale_revision_is_discarded_even_if_model_returns` und `test_server_rejects_explicitly_stale_live_update` prüfen Claim-/Revision-Schutz nach Folgeänderungen.
+- **Fresh-Test-Ergebnis:** Die Regressionen sind im Quellstand vorhanden, ein aktueller Lauf bleibt wegen GitHub-Actions `steps: null` und fehlendem ausführbaren Checkout blockiert.
+- **Eigener neuer Code:** keiner; die geforderte Vorher-/Nachher-Schedulinglogik ist bereits vorhanden.
+- **Konkreter nächster Abnahmeschritt:** Im ausführbaren Checkout den fokussierten Copilot-Testlauf und ein 30–60-Sekunden-Replay mit langsamer Fake-/realer lokaler Modellantwort wiederholen; dabei null stale sichtbare Publishes und genau eine brauchbare Partialkarte vor der Vollantwort protokollieren.
+- **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 014/A029
