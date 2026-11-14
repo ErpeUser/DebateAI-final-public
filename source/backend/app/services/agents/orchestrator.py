@@ -27,7 +27,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import async_session
 from app.services.identity import env_value
-from app.models import Directive, Question, TranscriptEntry, Speaker, TranscriptEntry
+from app.models import Directive, Question, TranscriptEntry, Speaker
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
     REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
