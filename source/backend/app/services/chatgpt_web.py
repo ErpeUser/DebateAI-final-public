@@ -359,6 +359,15 @@ async def generate(
                 research=research_mode_value,
                 requested_at=requested_at,
             )
+            external_audit.finish_external_request(
+                audit_id,
+                approval=True,
+                status="completed",
+                provider_route="chatgpt-web:gpt-6",
+                data_category=audit_category,
+                claim_id=external_audit.current_claim_id(),
+                model_id=MODEL_ID,
+            )
             return answer
         except asyncio.CancelledError:
             _write_research_status(
@@ -367,12 +376,31 @@ async def generate(
                 requested_at=requested_at,
                 error_class="CancelledError",
             )
+            external_audit.finish_external_request(
+                audit_id,
+                approval=True,
+                status="cancelled",
+                provider_route="chatgpt-web:gpt-6",
+                data_category=audit_category,
+                claim_id=external_audit.current_claim_id(),
+                model_id=MODEL_ID,
+            )
             raise
         except Exception as exc:
             _write_research_status(
                 state="failed",
                 research=research_mode_value,
                 requested_at=requested_at,
+                error_class=type(exc).__name__,
+            )
+            external_audit.finish_external_request(
+                audit_id,
+                approval=True,
+                status="failed",
+                provider_route="chatgpt-web:gpt-6",
+                data_category=audit_category,
+                claim_id=external_audit.current_claim_id(),
+                model_id=MODEL_ID,
                 error_class=type(exc).__name__,
             )
             raise
