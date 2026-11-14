@@ -10,9 +10,11 @@ Example:
 from __future__ import annotations
 
 import argparse
+import asyncio
 
 from app.services.video_eval_pipeline import (
     build_video_artifact,
+    research_source_candidates,
     save_artifact,
     transcribe_with_google_cloud,
 )
@@ -40,6 +42,7 @@ def main() -> int:
         segments=segments,
         language_code=args.language,
     )
+    artifact = asyncio.run(research_source_candidates(artifact))
     save_artifact(artifact, args.out)
     print(f"saved {args.out} ({len(segments)} transcript segments)")
     return 0
