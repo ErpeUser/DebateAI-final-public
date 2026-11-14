@@ -10,6 +10,7 @@ Architecture:
 """
 
 import asyncio
+import hashlib
 import json
 import logging
 import os
@@ -126,6 +127,70 @@ from app.services.provider_capabilities import (
 from app.services.agents.prompt_resources import load_prompt_resource
 
 logger = logging.getLogger(__name__)
+
+
+def _annotate_experimental_sources(
+    sources: list[DebateSource],
+    *,
+    target_claim: str,
+) -> list[DebateSource]:
+    """Attach deterministic evidence metadata without inventing a fact.
+
+    A conflict is only marked when already-read evidence has an explicit
+    supports/contradicts relation. Search hits, unread passages, and unclear
+    relations remain unknown so the UI never treats a URL list as proof.
+    """
+    if not sources:
+        return []
+    groups: dict[str, list[tuple[int, str]]] = {}
+    for index, source in enumerate(sources):
+        relation = str(source.claim_relation or "unclear")
+        if (
+            source.retrieval_status != "read"
+            or not str(source.passage or "").strip()
+            or relation not in {"supports", "contradicts"}
+        ):
+            continue
+        claim_key = " ".join(
+            str(source.claim or target_claim or "").casefold().split()
+        )[:320]
+        if claim_key:
+            groups.setdefault(claim_key, []).append((index, relation))
+    conflict_ids: dict[int, str] = {}
+    for claim_key, members in groups.items():
+        relations = {relation for _, relation in members}
+        if relations == {"supports", "contradicts"}:
+            conflict_id = "conflict-" + hashlib.sha256(
+                claim_key.encode("utf-8")
+            ).hexdigest()[:16]
+            for index, _relation in members:
+                conflict_ids[index] = conflict_id
+    annotated: list[DebateSource] = []
+    claim_terms = {
+        token for token in re.findall(r"[\\wäöüß]+", str(target_claim).casefold())
+        if len(token) >= 5
+    }
+    for index, source in enumerate(sources):
+        update: dict[str, object] = {}
+        if index in conflict_ids:
+            update["conflict_group_id"] = conflict_ids[index]
+        if (
+            source.retrieval_status == "read"
+            and str(source.passage or "").strip()
+            and claim_terms
+        ):
+            passage_terms = set(
+                re.findall(r"[\\wäöüß]+", str(source.passage).casefold())
+            )
+            overlap = len(claim_terms.intersection(passage_terms))
+            if overlap >= min(2, len(claim_terms)):
+                update["scope_match"] = "match"
+                update["entailment_confidence"] = max(
+                    float(source.entailment_confidence or 0.0),
+                    0.7,
+                )
+        annotated.append(source.model_copy(update=update) if update else source)
+    return annotated
 
 
 def _bind_research_result(
@@ -3055,18 +3120,22 @@ class AgentOrchestrator:
             })
         if recommendation.sources:
             atomic_ids = [claim.id for claim in recommendation.atomic_claims]
-            recommendation = recommendation.model_copy(update={
-                "sources": [
-                    source.model_copy(update={
-                        "claim_id": source.claim_id or recommendation.claim_id,
-                        "claim_revision": source.claim_revision or recommendation.claim_revision,
-                        "transcript_revision": source.transcript_revision or recommendation.transcript_revision,
-                        "affected_claim_ids": source.affected_claim_ids or atomic_ids,
-                        "affected_claims": source.affected_claims or [claim.text for claim in recommendation.atomic_claims],
-                    })
-                    for source in recommendation.sources
-                ]
-            })
+            bound_sources = [
+                source.model_copy(update={
+                    "claim_id": source.claim_id or recommendation.claim_id,
+                    "claim_revision": source.claim_revision or recommendation.claim_revision,
+                    "transcript_revision": source.transcript_revision or recommendation.transcript_revision,
+                    "affected_claim_ids": source.affected_claim_ids or atomic_ids,
+                    "affected_claims": source.affected_claims or [claim.text for claim in recommendation.atomic_claims],
+                })
+                for source in recommendation.sources
+            ]
+            if recommendation.pipeline_mode == "experimental_debateai":
+                bound_sources = _annotate_experimental_sources(
+                    bound_sources,
+                    target_claim=recommendation.target_claim,
+                )
+            recommendation = recommendation.model_copy(update={"sources": bound_sources})
         self.objection_agent.latest_recommendation = recommendation
         payload = recommendation.model_dump(mode="json")
         payload.update(
