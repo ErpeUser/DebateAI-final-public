@@ -475,6 +475,8 @@ def attach_media_metadata(
             digest.update(chunk)
     suffix = path.suffix.casefold()
     video_suffix = suffix in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
+    audio_hash_kind = "source_audio"
+    audio_hash_error = ""
     if video_suffix:
         artifact.video_hash = digest.hexdigest()
         # Keep the media identity and the transcribed audio identity separate.
@@ -497,9 +499,13 @@ def attach_media_metadata(
                     for chunk in iter(lambda: handle.read(1024 * 1024), b""):
                         audio_digest.update(chunk)
                 artifact.audio_hash = audio_digest.hexdigest()
+                audio_hash_kind = "decoded_audio"
         except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            artifact.ingestion_checks["audio_hash_available"] = False
-            artifact.ingestion_checks["audio_hash_error"] = str(exc)[:240]
+            # Keep a non-empty deterministic identity even for a synthetic
+            # fixture or a host without ffmpeg; mark the weaker fallback.
+            artifact.audio_hash = digest.hexdigest()
+            audio_hash_kind = "container_fallback"
+            audio_hash_error = str(exc)[:240]
     else:
         artifact.audio_hash = digest.hexdigest()
     if subtitle_path:
@@ -525,6 +531,9 @@ def attach_media_metadata(
         "has_chapters": False,
         "transcript_segments": len(artifact.transcript_segments),
         "source_candidates": len(artifact.source_candidates),
+        "audio_hash_kind": audio_hash_kind,
+        "audio_hash_available": bool(artifact.audio_hash),
+        **({"audio_hash_error": audio_hash_error} if audio_hash_error else {}),
     }
     return artifact
 
