@@ -319,7 +319,7 @@ async def _call_google(
         config_kwargs["temperature"] = temperature
     request_id = external_audit.start_external_request(
         provider_route=_audit_route("google", model_id),
-        approval=True,
+        approval=external_audit.current_approval(),
         data_category=_audit_category(source),
         claim_id=external_audit.current_claim_id(),
         model_id=model_id,
@@ -333,21 +333,21 @@ async def _call_google(
         )
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=True, status="cancelled",
+            request_id, approval=external_audit.current_approval(), status="cancelled",
             provider_route=_audit_route("google", model_id),
             data_category=_audit_category(source), model_id=model_id,
         )
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=True, status="failed",
+            request_id, approval=external_audit.current_approval(), status="failed",
             provider_route=_audit_route("google", model_id),
             data_category=_audit_category(source), model_id=model_id,
             error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=True, status="completed",
+        request_id, approval=external_audit.current_approval(), status="completed",
         provider_route=_audit_route("google", model_id),
         data_category=_audit_category(source), model_id=model_id,
     )
@@ -373,7 +373,7 @@ async def _call_openai(
     _apply_output_budget(payload, model_id)
     request_id = external_audit.start_external_request(
         provider_route=_audit_route("openai-compatible", model_id),
-        approval=True,
+        approval=external_audit.current_approval(),
         data_category=_audit_category(source),
         claim_id=external_audit.current_claim_id(),
         model_id=model_id,
@@ -390,7 +390,7 @@ async def _call_openai(
             data = resp.json()
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=True, status="cancelled",
+            request_id, approval=external_audit.current_approval(), status="cancelled",
             provider_route=_audit_route("openai-compatible", model_id),
             data_category=_audit_category(source), model_id=model_id,
             target_host=endpoint.base_url,
@@ -398,14 +398,14 @@ async def _call_openai(
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=True, status="failed",
+            request_id, approval=external_audit.current_approval(), status="failed",
             provider_route=_audit_route("openai-compatible", model_id),
             data_category=_audit_category(source), model_id=model_id,
             target_host=endpoint.base_url, error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=True, status="completed",
+        request_id, approval=external_audit.current_approval(), status="completed",
         provider_route=_audit_route("openai-compatible", model_id),
         data_category=_audit_category(source), model_id=model_id,
         target_host=endpoint.base_url,
@@ -654,7 +654,7 @@ async def _google_json(
     async def call(text_prompt: str, config):
         request_id = external_audit.start_external_request(
             provider_route=_audit_route("google", model_id),
-            approval=True,
+            approval=external_audit.current_approval(),
             data_category=_audit_category(source),
             claim_id=external_audit.current_claim_id(),
             model_id=model_id,
@@ -667,21 +667,21 @@ async def _google_json(
             )
         except asyncio.CancelledError:
             external_audit.finish_external_request(
-                request_id, approval=True, status="cancelled",
+                request_id, approval=external_audit.current_approval(), status="cancelled",
                 provider_route=_audit_route("google", model_id),
                 data_category=_audit_category(source), model_id=model_id,
             )
             raise
         except Exception as exc:
             external_audit.finish_external_request(
-                request_id, approval=True, status="failed",
+                request_id, approval=external_audit.current_approval(), status="failed",
                 provider_route=_audit_route("google", model_id),
                 data_category=_audit_category(source), model_id=model_id,
                 error_class=type(exc).__name__,
             )
             raise
         external_audit.finish_external_request(
-            request_id, approval=True, status="completed",
+            request_id, approval=external_audit.current_approval(), status="completed",
             provider_route=_audit_route("google", model_id),
             data_category=_audit_category(source), model_id=model_id,
         )
@@ -990,7 +990,7 @@ async def _openai_json(
         if on_partial_json is None:
             request_id = external_audit.start_external_request(
                 provider_route=_audit_route("openai-compatible", model_id),
-                approval=True,
+                approval=external_audit.current_approval(),
                 data_category=_audit_category(source),
                 claim_id=external_audit.current_claim_id(),
                 model_id=model_id,
@@ -1007,7 +1007,7 @@ async def _openai_json(
                     data = resp.json()
             except asyncio.CancelledError:
                 external_audit.finish_external_request(
-                    request_id, approval=True, status="cancelled",
+                    request_id, approval=external_audit.current_approval(), status="cancelled",
                     provider_route=_audit_route("openai-compatible", model_id),
                     data_category=_audit_category(source), model_id=model_id,
                     target_host=endpoint.base_url,
@@ -1015,14 +1015,14 @@ async def _openai_json(
                 raise
             except Exception as exc:
                 external_audit.finish_external_request(
-                    request_id, approval=True, status="failed",
+                    request_id, approval=external_audit.current_approval(), status="failed",
                     provider_route=_audit_route("openai-compatible", model_id),
                     data_category=_audit_category(source), model_id=model_id,
                     target_host=endpoint.base_url, error_class=type(exc).__name__,
                 )
                 raise
             external_audit.finish_external_request(
-                request_id, approval=True, status="completed",
+                request_id, approval=external_audit.current_approval(), status="completed",
                 provider_route=_audit_route("openai-compatible", model_id),
                 data_category=_audit_category(source), model_id=model_id,
                 target_host=endpoint.base_url,
@@ -1044,7 +1044,7 @@ async def _openai_json(
         partial_sent = False
         request_id = external_audit.start_external_request(
             provider_route=_audit_route("openai-compatible", model_id),
-            approval=True,
+            approval=external_audit.current_approval(),
             data_category=_audit_category(source),
             claim_id=external_audit.current_claim_id(),
             model_id=model_id,
@@ -1077,7 +1077,7 @@ async def _openai_json(
                                 await on_partial_json(partial)
         except asyncio.CancelledError:
             external_audit.finish_external_request(
-                request_id, approval=True, status="cancelled",
+                request_id, approval=external_audit.current_approval(), status="cancelled",
                 provider_route=_audit_route("openai-compatible", model_id),
                 data_category=_audit_category(source), model_id=model_id,
                 target_host=endpoint.base_url,
@@ -1085,14 +1085,14 @@ async def _openai_json(
             raise
         except Exception as exc:
             external_audit.finish_external_request(
-                request_id, approval=True, status="failed",
+                request_id, approval=external_audit.current_approval(), status="failed",
                 provider_route=_audit_route("openai-compatible", model_id),
                 data_category=_audit_category(source), model_id=model_id,
                 target_host=endpoint.base_url, error_class=type(exc).__name__,
             )
             raise
         external_audit.finish_external_request(
-            request_id, approval=True, status="completed",
+            request_id, approval=external_audit.current_approval(), status="completed",
             provider_route=_audit_route("openai-compatible", model_id),
             data_category=_audit_category(source), model_id=model_id,
             target_host=endpoint.base_url,
@@ -1243,7 +1243,7 @@ async def _ollama_native_debate_json(
     partial_sent = False
     request_id = external_audit.start_external_request(
         provider_route=_audit_route("ollama", model_id),
-        approval=True,
+        approval=external_audit.current_approval(),
         data_category=_audit_category(source),
         claim_id=external_audit.current_claim_id(),
         model_id=model_id,
@@ -1276,7 +1276,7 @@ async def _ollama_native_debate_json(
                             usage = chunk
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=True, status="cancelled",
+            request_id, approval=external_audit.current_approval(), status="cancelled",
             provider_route=_audit_route("ollama", model_id),
             data_category=_audit_category(source), model_id=model_id,
             target_host=base_url,
@@ -1284,14 +1284,14 @@ async def _ollama_native_debate_json(
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=True, status="failed",
+            request_id, approval=external_audit.current_approval(), status="failed",
             provider_route=_audit_route("ollama", model_id),
             data_category=_audit_category(source), model_id=model_id,
             target_host=base_url, error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=True, status="completed",
+        request_id, approval=external_audit.current_approval(), status="completed",
         provider_route=_audit_route("ollama", model_id),
         data_category=_audit_category(source), model_id=model_id,
         target_host=base_url,
