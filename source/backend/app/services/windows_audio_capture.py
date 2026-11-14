@@ -512,11 +512,23 @@ class NativeWindowsAudioCapture:
             if self._system_requested and loopback is not None:
                 expected[1] = loopback
             current = {
-                track: (device.index, device.sample_rate, device.channels)
+                track: (
+                    device.index,
+                    device.sample_rate,
+                    device.channels,
+                    device.endpoint_id,
+                    device.stable_id,
+                )
                 for track, device in self._devices.items()
             }
             selected = {
-                track: (device.index, device.sample_rate, device.channels)
+                track: (
+                    device.index,
+                    device.sample_rate,
+                    device.channels,
+                    device.endpoint_id,
+                    device.stable_id,
+                )
                 for track, device in expected.items()
             }
             if current != selected:
