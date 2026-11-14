@@ -320,6 +320,32 @@ async def research_source_candidates(
     return artifact
 
 
+def update_style_profile(
+    profile_path: str | Path,
+    profile: dict[str, Any],
+) -> Path:
+    """Merge a reviewed rhetoric profile into a persistent local JSON file."""
+    path = Path(profile_path)
+    current: dict[str, Any] = {}
+    if path.is_file():
+        try:
+            loaded = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                current = loaded
+        except (OSError, ValueError):
+            current = {}
+    history = list(current.get("history") or [])
+    history.append(profile)
+    history = history[-50:]
+    merged = dict(profile)
+    merged["history"] = history
+    merged["profile_revision"] = len(history)
+    merged["review_required_before_prompt_change"] = True
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    return path
+
+
 def save_artifact(artifact: VideoEvalArtifact, output_path: str | Path) -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
