@@ -644,11 +644,14 @@ async def _ai_web_sources(
             title="KI-Recherche: " + urlsplit(url).netloc,
             url=url,
             snippet=" ".join((answer or "").split())[:900],
-            passage=" ".join((answer or "").split())[:900],
+            # The model's URL list is only a finding. Do not present its
+            # surrounding prose as a read source passage until the URL was
+            # fetched and parsed by the bounded source reader.
+            passage="",
             provider=provider_label,
             claim=claim,
             verification_status="found",
-            retrieval_status="read",
+            retrieval_status="found",
             source_type="ai_web",
             trust_level="unknown",
         )
