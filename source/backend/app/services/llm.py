@@ -1230,30 +1230,61 @@ async def _ollama_native_debate_json(
     usage: dict = {}
     done_reason = ""
     partial_sent = False
-    async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
-        if on_partial_json is None:
-            response = await client.post(f"{base_url}/api/chat", json=payload)
-            _raise_for_status(response)
-            data = response.json()
-            content = (data.get("message") or {}).get("content") or ""
-            done_reason = data.get("done_reason") or ""
-            usage = data
-        else:
-            async with client.stream("POST", f"{base_url}/api/chat", json=payload) as response:
+    request_id = external_audit.start_external_request(
+        provider_route=_audit_route("ollama", model_id),
+        approval=True,
+        data_category=_audit_category(source),
+        claim_id=external_audit.current_claim_id(),
+        model_id=model_id,
+        target_host=base_url,
+    )
+    try:
+        async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
+            if on_partial_json is None:
+                response = await client.post(f"{base_url}/api/chat", json=payload)
                 _raise_for_status(response)
-                async for line in response.aiter_lines():
-                    if not line.strip():
-                        continue
-                    chunk = json.loads(line)
-                    content += (chunk.get("message") or {}).get("content") or ""
-                    if not partial_sent:
-                        partial = _completed_json_string_field(content, "answer_now")
-                        if partial:
-                            partial_sent = True
-                            await on_partial_json(partial)
-                    if chunk.get("done"):
-                        done_reason = chunk.get("done_reason") or ""
-                        usage = chunk
+                data = response.json()
+                content = (data.get("message") or {}).get("content") or ""
+                done_reason = data.get("done_reason") or ""
+                usage = data
+            else:
+                async with client.stream("POST", f"{base_url}/api/chat", json=payload) as response:
+                    _raise_for_status(response)
+                    async for line in response.aiter_lines():
+                        if not line.strip():
+                            continue
+                        chunk = json.loads(line)
+                        content += (chunk.get("message") or {}).get("content") or ""
+                        if not partial_sent:
+                            partial = _completed_json_string_field(content, "answer_now")
+                            if partial:
+                                partial_sent = True
+                                await on_partial_json(partial)
+                        if chunk.get("done"):
+                            done_reason = chunk.get("done_reason") or ""
+                            usage = chunk
+    except asyncio.CancelledError:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="cancelled",
+            provider_route=_audit_route("ollama", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            target_host=base_url,
+        )
+        raise
+    except Exception as exc:
+        external_audit.finish_external_request(
+            request_id, approval=True, status="failed",
+            provider_route=_audit_route("ollama", model_id),
+            data_category=_audit_category(source), model_id=model_id,
+            target_host=base_url, error_class=type(exc).__name__,
+        )
+        raise
+    external_audit.finish_external_request(
+        request_id, approval=True, status="completed",
+        provider_route=_audit_route("ollama", model_id),
+        data_category=_audit_category(source), model_id=model_id,
+        target_host=base_url,
+    )
     await record_token_usage(session_id, source, model_id, {
         "prompt_tokens": usage.get("prompt_eval_count", 0),
         "completion_tokens": usage.get("eval_count", 0),
