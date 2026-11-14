@@ -11,6 +11,7 @@ import asyncio
 import json
 import os
 import tempfile
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.services.redaction import redact_text
@@ -94,6 +95,60 @@ def _record_verification_failure(message: str) -> None:
     temporary = failure.with_suffix(".json.new")
     temporary.write_text(json.dumps({"message": message}, ensure_ascii=False), encoding="utf-8")
     temporary.replace(failure)
+
+
+def _research_status_path() -> Path:
+    home = _path("DEBATEAI_CHATGPT_WEB_HOME")
+    return home / "research-status.json" if home.name else Path()
+
+
+def research_status() -> dict[str, object]:
+    path = _research_status_path()
+    default = {
+        "provider": PROVIDER,
+        "model": "gpt-6",
+        "research_mode": None,
+        "state": "idle",
+    }
+    if not path.is_file():
+        return default
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {**default, "state": "invalid"}
+    if not isinstance(payload, dict):
+        return {**default, "state": "invalid"}
+    allowed = {
+        "provider", "model", "research_mode", "state",
+        "requested_at", "completed_at", "error_class",
+    }
+    return {**default, **{key: value for key, value in payload.items() if key in allowed}}
+
+
+def _write_research_status(
+    *,
+    state: str,
+    research: str | None,
+    requested_at: str,
+    error_class: str | None = None,
+) -> None:
+    path = _research_status_path()
+    if not path.name:
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload: dict[str, object] = {
+        "provider": PROVIDER,
+        "model": "gpt-6",
+        "research_mode": research,
+        "state": state,
+        "requested_at": requested_at,
+        "completed_at": datetime.now(UTC).isoformat(),
+    }
+    if error_class:
+        payload["error_class"] = error_class
+    temporary = path.with_suffix(".json.new")
+    temporary.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+    temporary.replace(path)
 
 
 def _thinking_time(reasoning_effort: str | None) -> str:
