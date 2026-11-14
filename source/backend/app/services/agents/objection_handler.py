@@ -202,7 +202,7 @@ class DebateRecommendation(BaseModel):
     needs_research: bool = False
     research_query: str = ""
     research_status: Literal[
-        "idle", "searching", "completed", "unavailable", "cancelled"
+        "idle", "searching", "completed", "unavailable", "blocked_by_privacy", "cancelled"
     ] = "idle"
     research_alert: str = ""
     sources: list[DebateSource] = Field(default_factory=list)
