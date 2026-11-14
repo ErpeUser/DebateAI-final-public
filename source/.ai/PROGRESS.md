@@ -683,3 +683,16 @@ NÄCHSTER PUNKT: 028/A054
 
 NÄCHSTER PUNKT: 029/A055
 
+## Masterauftrag – 2026-11-14 – 029/A055
+
+**Status: ERLEDIGT (1,5-Sekunden-Claim-Stabilitätsgate); Fresh-Provider-Test BLOCKIERT durch Runner/Checkout.**
+
+- **Aufgabe:** Automatische externe Recherche erst nach sinnvoller Claim-Stabilität oder einem Final-Checkpoint starten, mit ungefähr 1–2 Sekunden Stabilitätskriterium und getesteten Ausnahmen.
+- **Laufzeitfix:** 'AgentOrchestrator._maybe_schedule_research()' verweigert automatische Recherche solange der aktive Claim noch interim ist und seit der letzten Transkriptaktivität weniger als 'AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5' Sekunden vergangen sind. Nach stabiler Interim-Zeit darf die aktuelle Revision recherchieren; 'feed_transcript()' setzt den Interim-Status am Final-Checkpoint zurück, und explizite manuelle Recherche umgeht das automatische Gate.
+- **Zusammenspiel:** Query-Cache, Inflight-Task, External-Analysis-Scheduler und Stale-Kontextprüfung bleiben unverändert. Das Gate schützt nur den externen Start und verzögert weder lokale Sofortantworten noch die Interim-Revision selbst.
+- **Regression:** 'test_automatic_research_waits_for_stable_interim_claim' prüft Unterdrückung nach 0,5 Sekunden, Freigabe nach 1,6 Sekunden und die Final-Checkpoint-Ausnahme; die bestehenden Recherche-/Cooldown-/Stale-Tests bleiben bestehen.
+- **Lokale Verifikation:** 'python -m py_compile' für die aktuelle Orchestrator- und Copilot-Testdatei lief erfolgreich. Ein echter Provider-/Browserlauf und ein vollständiger fokussierter Async-Test bleiben wegen privatem Checkout, fehlenden Dependencies und Actions mit 'steps: null' offen.
+- **Commit/Push:** '42aedc859b217cfa44a2a1dcba9cab6dd18e406a' (Regression), 'dd82cd7edb54639e8c010e239b91f2455143ed2e' (Stabilitätsgate).
+
+NÄCHSTER PUNKT: 030/A056
+
