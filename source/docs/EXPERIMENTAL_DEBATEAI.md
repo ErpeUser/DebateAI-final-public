@@ -1,0 +1,41 @@
+# Experimentell DebateAI
+
+## Modi
+
+`pipeline_mode: standard` bleibt der Default und erhält den bisherigen Live-Copilot-Ablauf. `pipeline_mode: experimental_debateai` aktiviert nur die neue Debatte-Kette:
+
+1. Das Teiltranskript wird sofort an das lokale Modell gegeben.
+2. Das Modell erzeugt Widerspruch, Beispiel/Analogie, Gegenfrage und Widerlegung.
+3. Es wählt einen Zug. Nur dieser steht groß als „Jetzt sagen“; die anderen Züge erscheinen als aufklappbare Blobs.
+4. Zwischenstände bleiben vorläufig und werden bei jeder neuen Transkript-Revision ersetzt. Ein langer Beitrag muss nicht vollständig beendet sein.
+5. Recherche und adversariale Analyse laufen im Hintergrund nur bei Intervall, manueller Anforderung oder einem finalen Checkpoint.
+6. Externe Befunde werden in den lokalen Integrationsschritt übernommen. Die UI stellt keine Anbieterantworten gegenüber.
+7. Consolidated Analyst beobachtet weiterhin den gesamten Gesprächsverlauf und behält die bestehenden Doppelstandard- und Konsistenzprüfungen.
+
+Die sichtbare Antwort stammt damit immer aus dem lokalen Antwortvertrag. Quellen, externe Gegenargumente und Unsicherheiten bleiben am Claim und an der Revision gespeichert.
+
+## Rechercheanbieter
+
+Wikipedia und DuckDuckGo sind global deaktiviert. Die Runtime filtert beide IDs auch dann heraus, wenn eine alte JSON-Konfiguration sie noch enthält. Recherche verwendet zuerst ChatGPT Web / Oracle und kann auf Gemini Web, Gemini API oder CLIProxy zurückfallen. Die Oracle-Integration behält ihre Single-Flight-Sperre für das dedizierte Browserprofil; der experimentelle Scheduler darf dadurch keine ungetesteten parallelen Browserprofile erzeugen.
+
+## Video- und Sprachprofilpipeline
+
+`source/backend/scripts/video_eval_pipeline.py` verarbeitet einen lokalen Audio-/Videoexport mit Google Cloud Speech-to-Text. `GOOGLE_CLOUD_PROJECT` und gültige Google-Anmeldedaten müssen gesetzt sein.
+
+Das erzeugte JSON-Artefakt enthält:
+
+- vollständige Transkriptsegmente mit Zeitstempeln und optionalen Sprecher-Tags,
+- Quellenkandidaten aus URLs, DOIs und Studienverweisen,
+- Rhetorikprofil mit Frage-, Widerlegungs- und Analogie-Raten,
+- reproduzierbare Evaluationsfälle pro Segment,
+- einen Hinweis, dass das Rohtranskript nicht automatisch als Referenzantwort gilt.
+
+Die Quellenkandidaten werden anschließend durch die KI-Webrecherche verifiziert und im Artefakt ergänzt. Prompt-, Modell- oder Stiländerungen werden nicht automatisch in Produktion übernommen. Ein Review-/Eval-Lauf muss zuerst eine Verbesserung nachweisen; erst danach wird eine Änderung bewusst aktiviert.
+
+Beispiel:
+
+```bash
+python source/backend/scripts/video_eval_pipeline.py --audio ./debate.wav --video-id debate-001 --out ./artifacts/debate-001.json --speaker-diarization
+```
+
+Für sehr lange Dateien sollte der Audioexport in Abschnitte geteilt oder vorab in Cloud Storage gelegt und über die Google-Batch-Variante verarbeitet werden. Die Live-Pipeline wartet nicht auf diese Batchauswertung.
