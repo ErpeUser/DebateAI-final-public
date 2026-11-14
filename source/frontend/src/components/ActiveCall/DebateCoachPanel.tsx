@@ -33,6 +33,7 @@ interface DebateCoachPanelProps {
   onResearchEnabledChange?: (enabled: boolean) => void;
   onQuickAction?: (directive: string) => void;
   onGoodAnswer?: (claimId: string, recommendationRevision: number) => void;
+  onExperimentalOptionSelected?: (claimId: string, recommendationRevision: number, optionId: string) => void;
   onCancelAnalysis?: () => void;
 }
 
@@ -150,6 +151,7 @@ export default function DebateCoachPanel({
   onResearchEnabledChange,
   onQuickAction,
   onGoodAnswer,
+  onExperimentalOptionSelected,
   onCancelAnalysis,
 }: DebateCoachPanelProps) {
   const [pinnedRecommendation, setPinnedRecommendation] = useState<DebateRecommendation | null>(null);
@@ -170,12 +172,21 @@ export default function DebateCoachPanel({
     && liveRecommendation.research_alert !== pinnedRecommendation?.research_alert
       ? liveRecommendation.research_alert
       : "";
+  const selectedOption = recommendation?.pipeline_mode === "experimental_debateai"
+    ? recommendation.strategy_options?.find((option) => option.id === recommendation.selected_strategy_id)
+    : undefined;
   const preferredMove = recommendation?.primary_move === "question" ? questionMove : answerMove;
   const fallbackMove = preferredMove.key === "counter_question" ? answerMove : questionMove;
-  const primaryMove = recommendation?.[preferredMove.key] ? preferredMove : fallbackMove;
+  const primaryMove = recommendation?.pipeline_mode === "experimental_debateai"
+    ? { key: "answer_now" as const, label: selectedOption?.title || "Sofortsatz", icon: MessageSquare }
+    : (recommendation?.[preferredMove.key] ? preferredMove : fallbackMove);
   const alternativeMove = primaryMove.key === "counter_question" ? answerMove : questionMove;
-  const primaryText = recommendation?.[primaryMove.key] ?? "";
-  const alternativeText = recommendation?.[alternativeMove.key] ?? "";
+  const primaryText = recommendation?.pipeline_mode === "experimental_debateai"
+    ? recommendation.answer_now
+    : recommendation?.[primaryMove.key] ?? "";
+  const alternativeText = recommendation?.pipeline_mode === "experimental_debateai"
+    ? ""
+    : recommendation?.[alternativeMove.key] ?? "";
   const copyRecommendation = async () => {
     const text = primaryText || recommendation?.counterargument || "";
     if (!text) return;
@@ -361,6 +372,20 @@ export default function DebateCoachPanel({
                           {option.title}
                         </summary>
                         <p className="mt-1.5 leading-5">{option.text}</p>
+                        {option.example && <p className="mt-1 leading-5"><span className="font-semibold text-brand-dark-gray">Beispiel:</span> {option.example}</p>}
+                        {option.rationale && <p className="mt-1 leading-5"><span className="font-semibold text-brand-dark-gray">Warum:</span> {option.rationale}</p>}
+                        <button
+                          type="button"
+                          onClick={() => onExperimentalOptionSelected?.(
+                            recommendation.claim_id,
+                            recommendation.recommendation_revision,
+                            option.id,
+                          )}
+                          disabled={!onExperimentalOptionSelected}
+                          className="mt-2 rounded-md border border-brand-teal/30 bg-brand-teal/5 px-2 py-1 font-semibold text-brand-teal disabled:cursor-not-allowed disabled:opacity-45"
+                        >
+                          Diese Antwort verwenden
+                        </button>
                       </details>
                     ))}
                   {recommendation.selection_reason && (
