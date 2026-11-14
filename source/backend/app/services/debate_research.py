@@ -365,6 +365,72 @@ class _OriginalTextParser(HTMLParser):
                 self.parts.append(text)
 
 
+def source_priority_reasons(source: ResearchSource) -> tuple[str, ...]:
+    """Explain the provider-neutral ranking signals for one source."""
+    reasons: list[str] = []
+    if source.retrieval_status == "read" and source.passage.strip():
+        reasons.append("read_passage")
+    if source.source_type == "original":
+        reasons.append("original_document")
+    if source.trust_level == "primary":
+        reasons.append("primary_source")
+    metadata = " ".join(
+        (source.title, source.publisher, urlsplit(source.url).hostname or "")
+    ).casefold()
+    if any(
+        token in metadata
+        for token in (
+            "doi.org",
+            "pubmed",
+            "ncbi",
+            "journal",
+            "nature.com",
+            "science.org",
+            "arxiv.org",
+        )
+    ):
+        reasons.append("scientific_publication")
+    if any(
+        token in metadata
+        for token in (
+            "statistik",
+            "statistics",
+            "statistical",
+            "amt",
+            "official data",
+            "government data",
+            "census",
+        )
+    ):
+        reasons.append("official_statistics")
+    if source.publisher.strip():
+        reasons.append("publisher_metadata")
+    if source.published_at.strip():
+        reasons.append("published_date")
+    if source.claim_relation in {"supports", "contradicts"}:
+        reasons.append("explicit_claim_relation")
+    return tuple(reasons)
+
+
+def source_priority(source: ResearchSource) -> tuple[int, tuple[str, ...]]:
+    """Return a stable score and its reasons; lower score sorts first."""
+    reasons = source_priority_reasons(source)
+    weights = {
+        "read_passage": -100,
+        "original_document": -60,
+        "primary_source": -45,
+        "scientific_publication": -30,
+        "official_statistics": -30,
+        "explicit_claim_relation": -15,
+        "publisher_metadata": -5,
+        "published_date": -3,
+    }
+    score = sum(weights.get(reason, 0) for reason in reasons)
+    if source.retrieval_status != "read" or not source.passage.strip():
+        score += 200
+    return score, reasons
+
+
 def _trusted_original_url(value: str) -> bool:
     hostname = (urlsplit(value).hostname or "").casefold()
     return any(
@@ -782,14 +848,7 @@ async def _research_with_client(
             ))
             for index, read_source in zip(original_indexes, read_results):
                 sources[index] = read_source
-        sources.sort(key=lambda source: (
-            0 if source.verification_status == "read" and (
-                _trusted_original_url(source.url) or source.source_type == "original"
-            )
-            else 1 if source.verification_status == "read"
-            else 2 if _trusted_original_url(source.url) or source.source_type == "ai_web"
-            else 3
-        ))
+        sources.sort(key=source_priority)
         sources = sources[: min(settings.DEBATE_RESEARCH_MAX_SOURCES, configured["steps"] * 2)]
         if (
             configured["original_sources_required"]
