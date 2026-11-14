@@ -27,7 +27,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import async_session
 from app.services.identity import env_value
-from app.models import Directive, Question
+from app.models import Directive, Question, Speaker, TranscriptEntry
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
     REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
@@ -40,7 +40,11 @@ from app.services.agents.activity import (
     saved_outcome,
 )
 from app.services.agents.base import TranscriptBuffer
-from app.services.agents.speaker_context import build_speaker_aliases, speaker_display_name
+from app.services.agents.speaker_context import (
+    build_speaker_aliases,
+    format_transcript_segment,
+    speaker_display_name,
+)
 from app.services.agents.consolidated_analyst import ConsolidatedAnalystAgent
 from app.services.agents.event_bus import CooldownSubscriber, EventBus
 from app.services.agents.objection_handler import (
@@ -1191,6 +1195,36 @@ class AgentOrchestrator:
         # Transcript flush (step 1) + drain stages + the final save step.
         return 2 + len(self.drain_stages(mode))
 
+    async def _get_complete_transcript(self) -> str:
+        """Load the durable, ordered transcript for experimental checkpoints."""
+        try:
+            async with async_session() as db:
+                result = await db.execute(
+                    select(TranscriptEntry, Speaker.name, Speaker.speaker_type)
+                    .outerjoin(Speaker, Speaker.id == TranscriptEntry.speaker_id)
+                    .where(TranscriptEntry.session_id == self.session_id)
+                    .order_by(TranscriptEntry.sequence.asc())
+                )
+                rows = result.all()
+            aliases = self.speaker_aliases()
+            lines = []
+            for entry, speaker_name, speaker_type in rows:
+                speaker_id = str(entry.speaker_id) if entry.speaker_id else ""
+                lines.append(
+                    format_transcript_segment(
+                        entry.text,
+                        speaker_name or "Unknown",
+                        speaker_id=speaker_id,
+                        speaker_type=speaker_type,
+                        alias=aliases.get(speaker_id),
+                    )
+                )
+            if lines:
+                return "\n".join(lines)
+        except Exception as exc:
+            logger.warning("Complete transcript load failed; using live buffer: %s", exc)
+        return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
+
     async def start(self):
         """Connect all agents and wire event subscriptions."""
         try:
@@ -2311,6 +2345,12 @@ class AgentOrchestrator:
             drain_total_steps,
             result,
         )
+        if getattr(self, "_experimental_mode", False):
+            # Refinement may have replaced durable rows; refresh the complete
+            # transcript before final reasoning so earlier turns remain visible.
+            transcript_window = await self._get_complete_transcript()
+            transcript_available = transcript_window != "(No recent transcript)"
+            result["transcript_available"] = transcript_available
         await self._run_final_insights_stage(
             stages,
             progress_callback,
@@ -4057,9 +4097,7 @@ class AgentOrchestrator:
             ):
                 # Final/checkpoint turns get the complete bounded transcript;
                 # interim turns keep the short window for immediate latency.
-                transcript_window = await self.transcript_buffer.get_full(
-                    aliases=self.speaker_aliases()
-                )
+                transcript_window = await self._get_complete_transcript()
             else:
                 transcript_window = await self.transcript_buffer.get_window(
                     max_age_seconds=settings.OBJECTION_WINDOW_SECONDS,
