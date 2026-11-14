@@ -3476,7 +3476,25 @@ class AgentOrchestrator:
 
     async def request_debate_research(self, category: str) -> bool:
         """Force one fresh, narrow check of the currently visible claim."""
-        if self._stopped or self.local_only:
+        if self._stopped:
+            return False
+        if self.local_only:
+            # Privacy-First blocks cloud research explicitly while preserving
+            # the local live answer. The UI receives a durable status instead
+            # of waiting forever for a task that must never be scheduled.
+            recommendation = self.objection_agent.latest_recommendation
+            if recommendation.target_claim.strip():
+                blocked = recommendation.model_copy(update={
+                    "research_status": "blocked_by_privacy",
+                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                    "analysis_status": "completed",
+                    "analysis_can_cancel": False,
+                })
+                await self._send_debate_update(
+                    self._debate_revision,
+                    blocked,
+                    origin="research",
+                )
             return False
         model_ids = self._external_analysis_models()
         if not model_ids:
@@ -3592,6 +3610,23 @@ class AgentOrchestrator:
                     manual=priority is ExternalAnalysisPriority.MANUAL,
                 )
 
+        if self.local_only:
+            # Defensive guard for replay/import callers that bypass the public
+            # research request method. Never enqueue a cloud provider in this
+            # mode, and surface the reason to the client.
+            if self._analysis_context_is_current(context):
+                blocked = recommendation.model_copy(update={
+                    "research_status": "blocked_by_privacy",
+                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                    "analysis_status": "completed",
+                    "analysis_can_cancel": False,
+                })
+                await self._send_debate_update(
+                    revision,
+                    blocked,
+                    origin="research",
+                )
+            return
         try:
             await scheduler.run(
                 context,
@@ -4098,6 +4133,13 @@ class AgentOrchestrator:
                 debate_settings.always_analogy,
             )
             recommendation = model_recommendation
+            if self.local_only and recommendation.needs_research:
+                recommendation = recommendation.model_copy(update={
+                    "research_status": "blocked_by_privacy",
+                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                    "analysis_status": "completed",
+                    "analysis_can_cancel": False,
+                })
             if _has_speakable_guidance(
                 recommendation, debate_settings.always_analogy
             ):
