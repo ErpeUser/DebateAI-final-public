@@ -9,6 +9,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import re
 import ipaddress
 import socket
 import tempfile
@@ -191,6 +192,12 @@ async def _resolve_media_path(
     )
 
 
+def _safe_video_id(value: object, fallback: str) -> str:
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", str(value or "").strip())
+    cleaned = cleaned.strip("._-")[:96]
+    return cleaned or fallback
+
+
 def _normalize_video_item(item: object, index: int) -> dict:
     """Accept a plain URL list as well as richly described video objects."""
     if isinstance(item, str):
@@ -219,9 +226,10 @@ def _normalize_video_item(item: object, index: int) -> dict:
 
 
 async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
-    video_id = str(item.get("video_id") or item.get("id") or "").strip()
-    if not video_id:
-        raise ValueError("video-list item is missing video_id")
+    video_id = _safe_video_id(
+        item.get("video_id") or item.get("id"),
+        fallback="video-unknown",
+    )
     with tempfile.TemporaryDirectory(prefix="debateai-video-") as temp_dir:
         media_path = await _resolve_media_path(
             item,
