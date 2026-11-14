@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
@@ -173,6 +174,25 @@ def build_eval_cases(
     return cases
 
 
+def _audio_bytes(path: Path) -> bytes:
+    """Extract mono 16 kHz WAV bytes when the input is a video container."""
+    if path.suffix.casefold() not in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}:
+        return path.read_bytes()
+    try:
+        completed = subprocess.run(
+            [
+                "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
+                "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1",
+            ],
+            check=True,
+            capture_output=True,
+            timeout=900,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        raise RuntimeError("ffmpeg is required to extract audio from video files") from exc
+    return completed.stdout
+
+
 def transcribe_with_google_cloud(
     audio_path: str | Path,
     *,
@@ -216,7 +236,7 @@ def transcribe_with_google_cloud(
     )
     response = client.recognize(
         config=config,
-        audio=speech.RecognitionAudio(content=path.read_bytes()),
+        audio=speech.RecognitionAudio(content=_audio_bytes(path)),
     )
     segments: list[TranscriptSegment] = []
     for result in response.results:
