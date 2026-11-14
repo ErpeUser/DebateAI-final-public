@@ -3849,6 +3849,11 @@ class AgentOrchestrator:
             ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
              "experimental_strategist_v1", "medium"),
         )
+        try:
+            complete_transcript = await self._get_complete_transcript()
+        except Exception:
+            complete_transcript = ""
+        recent_transcript = " ".join(str(complete_transcript or "").split())[-6000:]
 
         async def run_lane(
             label: str,
@@ -3869,7 +3874,7 @@ class AgentOrchestrator:
                 or model_id.split(":", 1)[0]
             )
             standpoint_snapshot = str(self.meeting_context or "")[:1200]
-            recent_transcript_window = str(relevant_context or "")[:2400]
+            recent_transcript_window = recent_transcript
             consolidated_context = str(relevant_context or "")[:2400]
             try:
                 result = await self.objection_agent.analyze_deep(
@@ -3878,6 +3883,8 @@ class AgentOrchestrator:
                     own_position=self.meeting_context,
                     relevant_context=(
                         relevant_context
+                        + "\n[RECENT TRANSCRIPT WINDOW]\n"
+                        + recent_transcript_window
                         + "\n[EXPERIMENTELLE LANE: "
                         + label
                         + "]\n"
