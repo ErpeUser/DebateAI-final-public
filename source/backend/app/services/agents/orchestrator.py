@@ -3140,6 +3140,18 @@ class AgentOrchestrator:
         payload = recommendation.model_dump(mode="json")
         payload.update(
             {
+                # Evidence packets from completed experimental lanes are retained
+                # beside the revision-addressed claim record. They are metadata
+                # and structured findings only; the visible answer remains local.
+                **(
+                    {
+                        "external_lane_artifacts": list(
+                            getattr(self, "_experimental_lane_artifacts", [])
+                        )
+                    }
+                    if recommendation.pipeline_mode == "experimental_debateai"
+                    else {}
+                ),
                 # Legacy clients use revision; keep it monotonic with the actual
                 # visible card revision instead of the model request revision.
                 "revision": self._recommendation_revision,
@@ -3936,6 +3948,51 @@ class AgentOrchestrator:
         try:
             for completed in asyncio.as_completed(tasks):
                 artifact = await completed
+                analysis_result = artifact.get("analysis")
+                external_insights: list[dict[str, object]] = []
+                if analysis_result is not None:
+                    source_ids = [
+                        str(source.url)
+                        for source in sources[:8]
+                        if str(getattr(source, "url", "") or "").strip()
+                    ]
+
+                    def add_lane_insights(kind: str, values: object) -> None:
+                        for index, value in enumerate(values if isinstance(values, list) else []):
+                            text = " ".join(str(value or "").split()).strip()
+                            if not text:
+                                continue
+                            external_insights.append({
+                                "insight_id": (
+                                    f"{artifact['lane_id']}:{kind}:{index}"
+                                ),
+                                "lane_id": artifact["lane_id"],
+                                "kind": kind,
+                                "text": text[:1200],
+                                "source_ids": source_ids,
+                                "confidence": "low",
+                                "claim_id": artifact["claim_id"],
+                                "claim_revision": artifact["claim_revision"],
+                                "transcript_revision": artifact["transcript_revision"],
+                                "generation_id": artifact["generation_id"],
+                            })
+
+                    add_lane_insights(
+                        "counterexample",
+                        getattr(analysis_result, "counterarguments", []),
+                    )
+                    add_lane_insights(
+                        "rebuttal",
+                        [getattr(analysis_result, "rebuttal", "")],
+                    )
+                    add_lane_insights(
+                        "counter_question",
+                        getattr(analysis_result, "followups", []),
+                    )
+                    add_lane_insights(
+                        "source",
+                        getattr(analysis_result, "evidence", []),
+                    )
                 artifact_summary = {
                     "lane_id": artifact["lane_id"],
                     "lane": artifact["label"],
@@ -3957,6 +4014,7 @@ class AgentOrchestrator:
                     "reasoning_effort": artifact["reasoning_effort"],
                     "latency_ms": artifact["latency_ms"],
                     "error": artifact["error"],
+                    "external_insights": external_insights,
                 }
                 artifacts.append(artifact_summary)
                 try:
