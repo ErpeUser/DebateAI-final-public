@@ -611,3 +611,17 @@ NÄCHSTER PUNKT: 023/A047
 
 NÄCHSTER PUNKT: 024/A048
 
+## Masterauftrag – 2026-11-14 – 024/A048
+
+**Status: BEREITS ERLEDIGT (Cache-/Inflight-/Scheduler-Deduplizierung vorhanden); Fresh-Test BLOCKIERT durch Runner/Checkout.**
+
+- **Aufgabe:** Automatische Recherche je Claim-Revision deduplizieren, den vorhandenen Cache und Inflight-Scheduler verwenden und identische externe Aufträge vermeiden.
+- **Nachweis der Recherchepipeline:** 'debate_research.py' normalisiert sichere Queries, hält einen TTL-begrenzten Suchcache und teilt parallele identische Queries über '_research_inflight' mit einem abgeschirmten gemeinsamen Task. Der Test 'test_identical_live_queries_share_one_inflight_research' prüft, dass der Provider bei parallelen gleichen Anfragen nur einmal aufgerufen wird.
+- **Orchestratorvertrag:** 'AgentOrchestrator' nutzt zusätzlich den per-session '_research_cache', den Research-Cooldown und den 'ExternalAnalysisScheduler', der wartende automatische Jobs pro Session coalesced. '_bind_research_result()' bindet wiederverwendete Quellen an den aktuellen Claim und die aktuelle 'claim_revision'; ein stale Kontext darf nur Cache/Topic-Knowledge aktualisieren und nichts sichtbar senden.
+- **Vorhandene Regressionen:** Tests decken identische Inflight-Recherche, Scheduler-Ersatz wartender automatischer Jobs, Cooldown, Privacy-First-Sperre, manuellen Cache-Bypass sowie 'test_stale_research_is_cached_without_broadcast' ab. Die bestehende Query-Schlüsselung bleibt absichtlich mit Claim-/Revisionsbindung kombiniert, damit gleiche Fakten wiederverwendbar sind, ohne eine alte Antwort sichtbar zu reaktivieren.
+- **Fresh-Test-Ergebnis:** Der Quell- und Testvertrag ist vorhanden; ein frischer fokussierter Async-/Providerlauf bleibt wegen fehlendem privatem Checkout, Dependencies und GitHub-Actions-Runs mit 'steps: null' blockiert.
+- **Eigener neuer Code:** keiner; die vorhandene Cache-/Inflight-/Schedulerstrecke erfüllt den Quellcode-Teil.
+- **Commit/Push:** Der Status wird im Fortschrittsnachweis auf 'master' dokumentiert.
+
+NÄCHSTER PUNKT: 025/A050
+
