@@ -39,6 +39,9 @@ _claim_id: contextvars.ContextVar[str] = contextvars.ContextVar(
 _data_category: contextvars.ContextVar[str] = contextvars.ContextVar(
     "external_audit_data_category", default="unknown"
 )
+_approval: contextvars.ContextVar[bool] = contextvars.ContextVar(
+    "external_audit_approval", default=True
+)
 
 
 def _audit_path() -> Path:
@@ -61,6 +64,10 @@ def current_data_category() -> str:
     return _data_category.get()
 
 
+def current_approval() -> bool:
+    return _approval.get()
+
+
 def data_category_for_source(source: object = "") -> str:
     """Map an internal caller label to a bounded audit data category."""
     value = str(source or "").casefold().replace("-", "_")
@@ -76,19 +83,25 @@ def audit_context(
     *,
     claim: object | None = None,
     data_category: str | None = None,
+    approval: bool | None = None,
 ) -> Iterator[None]:
     """Attach non-content context to requests made in this async task."""
     claim_token = None
     category_token = None
+    approval_token = None
     if claim is not None:
         claim_token = _claim_id.set(claim_id_for(claim))
     if data_category is not None:
         category_token = _data_category.set(
             data_category if data_category in _CATEGORIES else "unknown"
         )
+    if approval is not None:
+        approval_token = _approval.set(bool(approval))
     try:
         yield
     finally:
+        if approval_token is not None:
+            _approval.reset(approval_token)
         if category_token is not None:
             _data_category.reset(category_token)
         if claim_token is not None:
