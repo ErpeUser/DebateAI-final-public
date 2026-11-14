@@ -542,9 +542,10 @@ async def persist_argument_recommendation(
                                 "research_alert",
                                 "analyst_model",
                                 "analyst_research_performed",
+                                "external_lane_artifacts",
                             )
                             if raw.get(key) not in (None, "", [])
-                        }
+                        },
                     },
                     "updated_at": datetime.now(UTC),
                 }
