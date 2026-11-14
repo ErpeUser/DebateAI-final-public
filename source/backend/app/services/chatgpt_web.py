@@ -237,8 +237,15 @@ async def generate(
         os.close(handle)
         output = Path(name)
         output.unlink(missing_ok=True)
+        research_mode_value = research if research in {"search", "deep"} else None
+        requested_at = datetime.now(UTC).isoformat()
+        _write_research_status(
+            state="started",
+            research=research_mode_value,
+            requested_at=requested_at,
+        )
         command = oracle_command(
-            output, reasoning_effort=reasoning_effort, research=research
+            output, reasoning_effort=reasoning_effort, research=research_mode_value
         )
         env = os.environ.copy()
         env.update({
@@ -277,6 +284,27 @@ async def generate(
             answer = output.read_text(encoding="utf-8").strip()
             if not answer:
                 raise RuntimeError("ChatGPT Web hat keine Antwort geliefert.")
+            _write_research_status(
+                state="completed",
+                research=research_mode_value,
+                requested_at=requested_at,
+            )
             return answer
+        except asyncio.CancelledError:
+            _write_research_status(
+                state="cancelled",
+                research=research_mode_value,
+                requested_at=requested_at,
+                error_class="CancelledError",
+            )
+            raise
+        except Exception as exc:
+            _write_research_status(
+                state="failed",
+                research=research_mode_value,
+                requested_at=requested_at,
+                error_class=type(exc).__name__,
+            )
+            raise
         finally:
             output.unlink(missing_ok=True)
