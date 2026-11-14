@@ -41,10 +41,15 @@ async def record_discarded_segment(
 ) -> None:
     """Persist a bounded, privacy-shielded audit row for rejected ASR input."""
     raw_text = str(data.get("text") or "")
+    raw_speaker_id = str(data.get("speaker_id") or "").strip()
+    try:
+        speaker_id = uuid.UUID(raw_speaker_id) if raw_speaker_id else None
+    except (ValueError, AttributeError):
+        speaker_id = None
     row = TranscriptDiscardAudit(
         session_id=session_id,
         raw_text=raw_text[:MAX_PROVISIONAL_SEGMENT_CHARS],
-        speaker_id=None,
+        speaker_id=speaker_id,
         audio_start_sample=_bounded_optional_int(
             data.get("audio_start_sample"), minimum=0, maximum=2_147_483_647
         ),
