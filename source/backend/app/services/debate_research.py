@@ -504,7 +504,6 @@ async def _ai_web_sources(
             continue
         if answer:
             answers.append((provider, answer))
-            break
     if not answers:
         return []
     urls: list[tuple[str, str]] = []
