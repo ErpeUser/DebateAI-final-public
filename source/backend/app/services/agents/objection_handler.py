@@ -162,7 +162,12 @@ class ConditionalFollowUp(BaseModel):
 
 
 class LiveDebateResponse(BaseModel):
-    """The small model-owned contract for the latency-critical live turn."""
+    """The small model-owned contract for the latency-critical live turn.
+
+    The experimental pipeline may fill the optional four-move contract in the
+    same local call. Standard mode continues to consume only the existing live
+    fields; omitted experimental fields remain empty.
+    """
 
     answer_now: str = ""
     counterargument: str = ""
@@ -171,6 +176,12 @@ class LiveDebateResponse(BaseModel):
     primary_move: Literal["answer", "question"]
     target_claim: str
     argument_points: list[str] = Field(default_factory=list, max_length=3)
+    # Experimental DebateAI fields. Keeping them optional preserves the
+    # standard one-call contract while allowing the local model to generate
+    # all four candidate moves instead of reconstructing them later.
+    strategy_options: list[dict[str, Any]] = Field(default_factory=list, max_length=4)
+    selected_strategy_id: str = ""
+    selection_reason: str = ""
     confidence: Literal["high", "medium", "low"] = "low"
     needs_research: bool = False
     research_query: str = ""
