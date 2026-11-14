@@ -70,6 +70,10 @@ class RevealingWebSocket:
                     data.get("data") or {},
                 )
                 if not persisted.created:
+                    # Rejected/replayed provisional segments still produce an
+                    # append-only discard audit row; commit that audit before
+                    # dropping the websocket payload.
+                    await db.commit()
                     return
                 await db.commit()
         if isinstance(data, (dict, list)) and vault.has_tokens(json.dumps(data, ensure_ascii=False)):
