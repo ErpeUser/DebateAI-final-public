@@ -74,6 +74,37 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("chatgpt_web", result.sources[0].provider)
         ai_lane.assert_awaited_once()
 
+    async def test_trusted_original_is_opened_and_relevant_passage_is_read(self):
+        source = debate_research.ResearchSource(
+            title="Originalquelle",
+            url="https://www.destatis.de/original",
+            snippet="Kurzer Fundstellenhinweis",
+            provider="chatgpt_web",
+            claim="Inflation",
+        )
+        document = (
+            b"<html><body><h1>Inflation</h1>"
+            b"<p>Die Verbraucherpreise stiegen im Jahresdurchschnitt um einen "
+            b"messbaren Wert und die Entwicklung ist fuer die Einordnung relevant.</p>"
+            b"<script>private noise</script></body></html>"
+        )
+        bounded = mock.AsyncMock(return_value=(document, "text/html"))
+        with mock.patch.object(debate_research, "_bounded_get", bounded):
+            result = await debate_research._read_trusted_original(
+                mock.AsyncMock(), source, "Inflation Verbraucherpreise"
+            )
+
+        self.assertEqual("read", result.verification_status)
+        self.assertEqual("read", result.retrieval_status)
+        self.assertEqual("original", result.source_type)
+        self.assertIn("Verbraucherpreise", result.passage)
+        self.assertNotIn("private noise", result.passage)
+        bounded.assert_awaited_once()
+        self.assertEqual(
+            debate_research._MAX_ORIGINAL_BYTES,
+            bounded.await_args.kwargs["max_bytes"],
+        )
+
     def test_empty_and_pii_queries_are_refused(self):
         self.assertFalse(debate_research.is_safe_research_query("   "))
         for token in ("[PERSON_1]", "[EMAIL_2]", "[PHONE_3]", "[ADDRESS_4]"):
