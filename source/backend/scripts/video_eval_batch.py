@@ -209,6 +209,9 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
             video_id=video_id,
             source_url=str(
                 item.get("source_url")
+                or item.get("video_page_url")
+                or item.get("video_page")
+                or item.get("page_url")
                 or item.get("media_url")
                 or item.get("video_url")
                 or item.get("audio_url")
