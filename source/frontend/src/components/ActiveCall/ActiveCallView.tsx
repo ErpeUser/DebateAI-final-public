@@ -51,6 +51,7 @@ interface ActiveCallViewProps {
   onDebateResearch: (category: DebateResearchCategory) => void;
   onDebateAnalysisCancel: () => void;
   onDebateAnswerGood: (claimId: string, recommendationRevision: number) => void;
+  onExperimentalOptionSelected: (claimId: string, recommendationRevision: number, optionId: string) => void;
   debateResearchEnabled: boolean;
   onDebateResearchEnabledChange: (enabled: boolean) => void;
 }
@@ -127,6 +128,7 @@ export default function ActiveCallView({
   onDebateResearch,
   onDebateAnalysisCancel,
   onDebateAnswerGood,
+  onExperimentalOptionSelected,
   debateResearchEnabled,
   onDebateResearchEnabledChange,
 }: ActiveCallViewProps) {
@@ -392,6 +394,7 @@ export default function ActiveCallView({
             onResearch={onDebateResearch}
             onCancelAnalysis={onDebateAnalysisCancel}
             onGoodAnswer={onDebateAnswerGood}
+            onExperimentalOptionSelected={onExperimentalOptionSelected}
             researchEnabled={debateResearchEnabled}
             privacyFirst={activity?.call.privacy_first ?? false}
             onResearchEnabledChange={onDebateResearchEnabledChange}
