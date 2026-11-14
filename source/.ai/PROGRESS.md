@@ -434,3 +434,16 @@ NÄCHSTER PUNKT: 010/A014
 - **Commit/Push:** Der Status und die historische Evidenz werden dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 011/A015
+## Masterauftrag – 2026-11-14 – 011/A015
+
+**Status: BEREITS ERLEDIGT (versionierte Abnahmematrix; reale Hardware-/Cloud-Gates bleiben offen).**
+
+- **Aufgabe:** Eine reproduzierbare Gesamt-Abnahmematrix gegen die verbindliche Produktvision erstellen und fehlende reale Hardware- oder Cloudtests als offen markieren.
+- **Nachweis:** `source/.ai/DEBATE_AI_OPTIMIERUNG.md` enthält die versionierte V3-Abnahmematrix A01–A24 sowie die Produktvision-/P1–P3-Matrix mit Anforderung, Dateien/Tests, Nachweis, Grenze und Status. `source/.ai/QUALITY_PLAN.md` ergänzt eine Acceptance-/Release-Error-Matrix mit reproduzierbaren Testbefehlen und Statusklassen. `source/docs/RECONCILIATION_MATRIX_DE.md`, `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`, `source/docs/DESKTOP_FINAL.md` und `source/docs/DEBATE_AI_VISION_FINAL.md` trennen technische Quell-/Mock-/Paketnachweise von echter Windows-, Audio-, Provider-, Human- und Signaturabnahme.
+- **Explizite offene Zustände:** Die Matrix kennzeichnet reale deutsche Hardware-/Overlap-/Mikrofonabnahme, WebView2/DPI/Overlay, echte ChatGPT-/Gemini-Antworten, Cloud-/Login-/Kostenfreigaben, Rollback gegen aktuellen master und Signatur/Releasepublikation als `BLOCKED`, `OFFEN` oder `NUR UNIT-GETESTET`; ein Unit-Test oder historischer Build wird nicht stillschweigend als Vollabnahme gezählt.
+- **Reproduzierbarkeit:** Die Dokumente nennen konkrete Discovery-/Frontend-/PWA-/Desktop-/Bundle-/Archiv-/Evidence-Gate-Befehle, erwartete Nenner und die Bindung von EXE-/ZIP-/Commit-Hashes. Historische Testzahlen werden ausdrücklich von aktuellen Läufen getrennt.
+- **Eigener neuer Code:** keiner; die geforderte Matrix und ihre konservative Statussprache existieren bereits.
+- **Fresh-Test-Ergebnis:** Für diesen Dokumentationspunkt ist kein Produktlauf erforderlich; ein aktueller Volltest bleibt wegen `steps: null` in GitHub Actions und fehlender Windows-/Hardwareumgebung offen.
+- **Commit/Push:** Der Nachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 012/A026
