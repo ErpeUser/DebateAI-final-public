@@ -302,6 +302,30 @@ class AiConfigurationTests(unittest.TestCase):
         })
         self.assertEqual(900, analysis_deadline_seconds())
 
+    def test_live_research_deadline_is_bounded_to_short_budget(self):
+        save_provider_configuration({
+            "routes": [
+                {"id": "cli", "model_id": "endpoint:subscription-ai:gpt-6-sol", "enabled": True}
+            ],
+            "live_research_deadline_seconds": 10,
+        })
+        self.assertEqual(10, live_research_deadline_seconds())
+
+        save_provider_configuration({
+            "routes": [
+                {"id": "cli", "model_id": "endpoint:subscription-ai:gpt-6-sol", "enabled": True}
+            ],
+            "live_research_deadline_seconds": 1,
+        })
+        self.assertEqual(8, live_research_deadline_seconds())
+
+        save_provider_configuration({
+            "routes": [
+                {"id": "cli", "model_id": "endpoint:subscription-ai:gpt-6-sol", "enabled": True}
+            ],
+            "live_research_deadline_seconds": 99,
+        })
+        self.assertEqual(15, live_research_deadline_seconds())
     def test_configuration_generation_changes_when_an_active_prompt_changes(self):
         save_provider_configuration({
             "routes": [
