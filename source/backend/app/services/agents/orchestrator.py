@@ -2975,6 +2975,7 @@ class AgentOrchestrator:
                     source.model_copy(update={
                         "claim_id": source.claim_id or recommendation.claim_id,
                         "claim_revision": source.claim_revision or recommendation.claim_revision,
+                        "transcript_revision": source.transcript_revision or recommendation.transcript_revision,
                         "affected_claim_ids": source.affected_claim_ids or atomic_ids,
                         "affected_claims": source.affected_claims or [claim.text for claim in recommendation.atomic_claims],
                     })
