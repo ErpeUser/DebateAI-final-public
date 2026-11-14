@@ -406,3 +406,17 @@ NÄCHSTER PUNKT: 008/A012
 - **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 009/A013
+## Masterauftrag – 2026-11-14 – 009/A013
+
+**Status: BLOCKIERT (externer Windows-/Hardware-/Provider-Abnahmeschritt).**
+
+- **Aufgabe:** Das tatsächliche Windows-Gesamtprodukt mit EXE, WebView2, Ollama, ffmpeg, PostgreSQL sowie ChatGPT-/Gemini-Bridges ausführen und Releaseversion und Ergebnisse dokumentieren.
+- **Vorhandene Ausführungskontrakte:** DESKTOP_FINAL.md und build_debate_assistant.ps1 beschreiben Python 3.12/Node 24, WebView2, native Ollama-/api/chat-Probe (qwen3:4b), ffmpeg, eingebettetes PostgreSQL, ONNX, CLIProxyAPI/Gemini, Gemini Web Bridge, ChatGPT Oracle, PyInstaller, Bundle-/Archiv-/Rollback-Smokes und Hashbindung von Commit, ZIP und EXE. v3-manual-acceptance-runbook.md trennt automatische Evidenz von manueller Windows-/Mikrofon-/Humanabnahme.
+- **Vorhandene historische Hinweise:** FINAL_VERIFICATION_2026-11-11.md, CODEX_BROWSER_HANDOFF_2026-11-13.md und DESKTOP_FINAL.md enthalten frühere Linux-/Windows- bzw. historische Paketbeobachtungen. Sie weisen ausdrücklich darauf hin, dass eine Teilkopie, ein alter Build, ein Mock oder ein Quelltest keine aktuelle DebateAI-master-EXE, WebView2-, Hardware- oder Providerfreigabe beweist.
+- **Nicht nachgewiesen:** In dieser Sitzung existieren weder der echte Windows-Checkout noch eine aus dem aktuellen master gebaute EXE/ZIP, WebView2, Mikrofon/WASAPI-Hardware, lokaler Ollama-Endpunkt, ffmpeg/PostgreSQL-Lauf oder sichtbare ChatGPT-/Gemini-Login-/Bridgeprobe. Die GitHub-Actions-Läufe liefern zusätzlich `steps: null` und daher keinen CI-Pass.
+- **Eigener neuer Code:** keiner; der Quellcode-/Buildvertrag ist vorhanden, der fehlende Nachweis ist eine externe Ausführungs- und Betreiberumgebung.
+- **Konkreter nächster Abnahmeschritt:** Im echten Windows-Arbeitsordner `origin/master` synchronisieren, den aktuellen Commit mit `build_debate_assistant.ps1 -Python <3.12> -IncludeOracle` bauen, ZIP-/EXE-/Bundle-Smoke sowie die 15 Runtime-Gates aus DESKTOP_FINAL.md ausführen, exakte Releaseversion/Commit/ZIP-SHA256/EXE-Pfad und alle Provider-/Hardwareergebnisse protokollieren. Bei Login nur sichtbare offizielle Oberflächen verwenden; keine Cookies/Passwörter extrahieren.
+- **Fresh-Test-Ergebnis:** Nicht ausführbar in der aktuellen Linux-/GitHub-API-Arbeitsumgebung; kein Test darf als bestanden gemeldet werden.
+- **Commit/Push:** Der externe Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 010/A014
