@@ -320,6 +320,62 @@ async def research_source_candidates(
     return artifact
 
 
+async def evaluate_rhetoric_profile(
+    artifact: VideoEvalArtifact,
+    *,
+    sample_chars: int = 12000,
+) -> VideoEvalArtifact:
+    """Ask the configured ChatGPT Web lane to review the deterministic profile.
+
+    The review is stored as evidence alongside the local metrics. It never
+    edits prompts, model routing, or production settings automatically.
+    """
+    profile_json = json.dumps(artifact.rhetorical_profile, ensure_ascii=False, indent=2)
+    transcript = " ".join(
+        str(item.get("text") or "") for item in artifact.transcript_segments
+    )[:max(1000, sample_chars)]
+    prompt = (
+        "Bewerte das Debatten-Sprachprofil anhand der folgenden Messwerte und des "
+        "Transkriptauszugs. Nenne konkrete beobachtete Muster, starke rhetorische "
+        "Techniken, verbesserbare Punkte und zwei messbare Evaluationskriterien. "
+        "Erfinde keine Fakten und schreibe keine neue Antwort für die Debatte.\\n\\n"
+        "MESSWERTE:\\n" + profile_json + "\\n\\nTRANSKRIPTAUSZUG:\\n" + transcript
+    )
+    try:
+        from app.services.chatgpt_web import generate
+
+        review = await generate(
+            prompt,
+            system=(
+                "Du bist der Rhetorik-Evaluator der Experimentell-DebateAI-Pipeline. "
+                "Arbeite konkret, fair und prüfbar. Gib nur die Profilbewertung zurück."
+            ),
+            reasoning_effort="high",
+            research="none",
+        )
+        artifact.rhetorical_profile["ai_review"] = {
+            "provider": "chatgpt_web",
+            "status": "completed",
+            "text": str(review or "").strip()[:12000],
+        }
+        artifact.improvement_notes.append(
+            "ChatGPT Web hat das lokale Sprachprofil bewertet; die Bewertung bleibt "
+            "ein Review-Artefakt und ändert keine Prompts automatisch."
+        )
+    except Exception as exc:
+        artifact.rhetorical_profile["ai_review"] = {
+            "provider": "chatgpt_web",
+            "status": "unavailable",
+            "text": "",
+            "error": str(exc),
+        }
+        artifact.improvement_notes.append(
+            "Die ChatGPT-Web-Rhetorikbewertung war nicht verfügbar; lokale Metriken "
+            "und Evaluationsfälle wurden trotzdem gespeichert."
+        )
+    return artifact
+
+
 def update_style_profile(
     profile_path: str | Path,
     profile: dict[str, Any],
