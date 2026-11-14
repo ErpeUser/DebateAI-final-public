@@ -420,3 +420,17 @@ NÄCHSTER PUNKT: 009/A013
 - **Commit/Push:** Der externe Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 010/A014
+## Masterauftrag – 2026-11-14 – 010/A014
+
+**Status: BLOCKIERT (historischer echter Lauf vorhanden, aktuelle master-Neuabnahme offen).**
+
+- **Aufgabe:** Durch Update- und Rollbacktests belegen, dass Modelle, Profile, Promptdateien, Browser-Sessions, Playbooks, Datenbanken und Schlüssel erhalten bleiben; das Windows-Runbook verwenden.
+- **Vorhandene Implementierung/Tests:** `source/desktop/scripts/smoke_update_archive.py` führt ein signiertes Archiv durch Staging, atomaren Austausch, Health-Gate und erzwungenen Rollback; `test_update_acceptance.py` deckt signiertes Resume/Swap/Rollback und bounded memory ab (Windows-klassifiziert). `windows-final-recovery.md` und `DESKTOP_FINAL.md` verlangen AppData-/DPAPI-/master.key-/Browserprofil-/Modell-/Prompt-/Playbook-/DB-Erhalt, kontrollierten Backup, keine Löschung und getrennten Binär-/Schema-Rollback.
+- **Historischer Realnachweis:** `.ai/DEBATE_AI_OPTIMIERUNG.md` dokumentiert für Runtime `d8f6482b` einen echten Windows-Start mit Bundle-Smoke und nativem Update-/Forced-Rollback-Smoke, gestopptem Backup außerhalb Git mit 1269 hashgeprüften Dateien, erhaltenen sechs Sessions und 15 Playbooks, unverändertem Programmrückweg und ohne Löschung von AppData, Modellen, Sessions oder Browserdaten. Der Bericht weist zugleich `NotSigned`, Gemini-not-ready und offene Hardware-/Provider-/Human-Gates aus.
+- **Warum offen:** Dieser Runtime-/ZIP-Nachweis ist an einen historischen Windows-Checkout/Kandidaten gebunden, nicht an den aktuellen master-Head dieser Sitzung. Es fehlt die erneute Prüfung des aktuellen EXE-/ZIP-Builds einschließlich sichtbarer Profil-/Browser-/Key-/Modell-/Prompt-/DB-Vergleiche sowie eines echten Rollbacks auf diesem Stand. GitHub-Actions mit `steps: null` liefern hierfür keinen Ersatz.
+- **Eigener neuer Code:** keiner; Update-/Rollback-Mechanik und Runbook sind vorhanden.
+- **Konkreter nächster Abnahmeschritt:** Im echten Windows-Checkout aktuellen `origin/master` synchronisieren, vor Update einen kontrollierten Staging-/Hash-Index für alle genannten Datenklassen erstellen, `build_debate_assistant.ps1` ausführen, `smoke_update_archive.py` plus reale App-Start-/Health-/DB-/Session-/Playbook-/Providerprüfungen laufen lassen, danach absichtlich fehlerhaften Start erzwingen, Rollback prüfen und Vorher-/Nachher-Hashes sowie Nutzerpfad dokumentieren. Keine Secrets/Cookies extrahieren oder AppData löschen.
+- **Fresh-Test-Ergebnis:** In der aktuellen Linux-/GitHub-API-Arbeitsumgebung nicht ausführbar; historische Evidenz wird nicht als aktueller master-Pass gezählt.
+- **Commit/Push:** Der Status und die historische Evidenz werden dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 011/A015
