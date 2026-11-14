@@ -456,8 +456,29 @@ async def research_source_candidates(
     """Verify transcript references through the AI-only research service."""
     from app.services.debate_research import research_claim
 
-    verified: list[dict[str, Any]] = []
+    transcript = " ".join(
+        str(item.get("text") or "") for item in artifact.transcript_segments
+    )
+    existing_values = {
+        str(item.get("value") or "").casefold()
+        for item in artifact.source_candidates
+        if str(item.get("value") or "").strip()
+    }
+    ai_candidates = await extract_source_candidates_with_ai(
+        transcript,
+        (
+            TranscriptSegment(**item)
+            for item in artifact.transcript_segments
+            if isinstance(item, dict)
+        ),
+    )
+    for candidate in ai_candidates:
+        if candidate.value.casefold() in existing_values:
+            continue
+        artifact.source_candidates.append(asdict(candidate))
+        existing_values.add(candidate.value.casefold())
     candidates = artifact.source_candidates if max_candidates is None else artifact.source_candidates[:max_candidates]
+    verified: list[dict[str, Any]] = []
     for candidate in candidates:
         value = str(candidate.get("value") or "")
         context = str(candidate.get("context") or value)
