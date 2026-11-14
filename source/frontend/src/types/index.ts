@@ -935,8 +935,21 @@ export type DebateResearchCategory =
   | "interpretation"
   | "all";
 
+export interface ExperimentalStrategyOption {
+  id: string;
+  kind: "contradiction" | "example" | "counter_question" | "refutation";
+  title: string;
+  text: string;
+  source_ids?: string[];
+  confidence?: "high" | "medium" | "low";
+}
+
 export interface DebateRecommendation {
   answer_now: string;
+  pipeline_mode?: "standard" | "experimental_debateai";
+  strategy_options?: ExperimentalStrategyOption[];
+  selected_strategy_id?: string;
+  selection_reason?: string;
   counterargument: string;
   counter_question: string;
   primary_move: "answer" | "question";
@@ -977,6 +990,7 @@ export interface DebateRecommendation {
 
 export interface DebateSettings {
   mode: "persuasive" | "forceful";
+  pipeline_mode: "standard" | "experimental_debateai";
   research_enabled: boolean;
   research_frequency: "low" | "normal" | "often";
   always_analogy: boolean;
