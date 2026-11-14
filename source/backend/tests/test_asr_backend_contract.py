@@ -225,6 +225,23 @@ class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(3, len(sockets))
         await backend.close()
 
+    async def test_readiness_timeout_stops_owned_server_immediately(self):
+        manager = _FakeServerManager()
+        backend = NemotronStreamingASRBackend(
+            server_manager=manager,
+            connect=lambda _url: None,
+            event_timeout=0.001,
+        )
+        with mock.patch(
+            "app.services.asr_backend._server_readiness",
+            return_value=(False, "still down"),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "not ready"):
+                await backend._check_readiness()
+
+        self.assertEqual(1, manager.started)
+        self.assertEqual(1, manager.stopped)
+
     async def test_owned_server_is_started_for_readiness_and_stopped_on_close(self):
         manager = _FakeServerManager()
         backend = NemotronStreamingASRBackend(
