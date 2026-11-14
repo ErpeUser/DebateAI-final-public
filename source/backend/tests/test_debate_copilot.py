@@ -1714,6 +1714,62 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(task)
         self.assertEqual(set(), orchestrator._research_tasks)
 
+    def test_automatic_research_waits_for_stable_interim_claim(self):
+        orchestrator = self._orchestrator(MagicMock())
+        self._enable_external_analyst(orchestrator)
+        orchestrator._debate_revision = 1
+        orchestrator._active_claim_id = "claim-1"
+        orchestrator._active_claim_is_interim = True
+        orchestrator._last_transcript_activity_at = 100.0
+        recommendation = DebateRecommendation(
+            answer_now="Das pruefen wir.",
+            counterargument="Die Zahl ist unbelegt.",
+            counter_question="Welche Quelle?",
+            analogy="Eine Zahl ohne Quelle ist wie ein Preis ohne Produkt.",
+            needs_research=True,
+            research_query="Inflationsrate Deutschland 2025",
+            target_claim="Die Rate betrug acht Prozent in Deutschland.",
+        )
+
+        with mock.patch(
+            "app.services.agents.orchestrator.time.monotonic",
+            return_value=100.5,
+        ):
+            self.assertIsNone(orchestrator._maybe_schedule_research(1, recommendation))
+
+        fake_task = MagicMock()
+        fake_task.done.return_value = False
+
+        def capture_task(coro, **_kwargs):
+            coro.close()
+            return fake_task
+
+        with (
+            mock.patch(
+                "app.services.agents.orchestrator.time.monotonic",
+                return_value=101.6,
+            ),
+            mock.patch(
+                "app.services.agents.orchestrator.asyncio.create_task",
+                side_effect=capture_task,
+            ),
+        ):
+            self.assertIs(fake_task, orchestrator._maybe_schedule_research(1, recommendation))
+
+        orchestrator._active_claim_is_interim = False
+        orchestrator._last_research_at = 0.0
+        with (
+            mock.patch(
+                "app.services.agents.orchestrator.time.monotonic",
+                return_value=100.5,
+            ),
+            mock.patch(
+                "app.services.agents.orchestrator.asyncio.create_task",
+                side_effect=capture_task,
+            ),
+        ):
+            self.assertIs(fake_task, orchestrator._maybe_schedule_research(1, recommendation))
+
     def test_research_frequency_controls_event_cooldown(self):
         orchestrator = self._orchestrator(MagicMock())
         self._enable_external_analyst(orchestrator)
