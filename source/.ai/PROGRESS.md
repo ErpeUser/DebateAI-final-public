@@ -874,3 +874,17 @@ NÄCHSTER PUNKT: 042/A080
 - **Commit/Push:** 619c7d7935834efd28fee4308bea79b817a89171 (Oracle-Child-Budget), d7d4c9ceebfece68b9b225a3ff36b9a2d63abff3 (Research-Modi/Browser-Gate), 7c8e8f24fa41062e28ee95761749727cbc988898 (Orchestrator-Mode), 6f2db2e8449ed288c27df8971e0c086c41ed9edd (Mode-Caches), 89409b780518467f1cdde632dbd448fbc1b5f2bd und 79d29e877521730f908ee13ba8a993768423dbc0 (Regressionen).
 
 NÄCHSTER PUNKT: 043/A081
+
+
+## Masterauftrag – 2026-11-14 – 043/A081
+**Status: QUELLCODE ERLEDIGT; echte Provider-/Originalquellenabnahme offen.**
+
+- **Einheitlicher Vertrag:** ChatGPT Web, Gemini Web, Gemini API und CLIProxy laufen durch dieselbe ResearchSource-Normalisierung, denselben bounded Original-Reader und dieselben retrieval_status-/passage-Gates. Providerlabels bleiben nur Herkunftsmetadaten; kein Provider darf ein Suchsnippet direkt als Beleg markieren.
+- **Ausgewogene Originalquellen:** Die Originalleseauswahl nimmt jetzt höchstens eine Quelle je Providerroute, bis zum bestehenden Quellen-/Schrittkontingent. Ein ChatGPT-Treffer kann dadurch nicht alle Leseplätze verbrauchen und Gemini-/API-/CLIProxy-Quellen aus dem Passage-Gate verdrängen.
+- **Harte Originalquellen-Anforderung:** Wenn original_sources_required aktiv ist und ausschließlich AI-Web-Treffer ohne gelesene Passage vorliegen, bleibt das Ergebnis unavailable mit unverifizierten Treffern; Snippets werden nicht in eine completed-Evidenz umgewandelt. Sobald mindestens eine konkrete Passage gelesen wurde, bleiben weitere Treffer sichtbar, aber ungeprüft.
+- **Bestehende Claimbindung:** Jede Quelle trägt weiterhin den konkreten Claim; spätere Revision-/Scope-/Relation-Gates verlangen zusätzlich gelesene Passage und passende Claimbeziehung. Providerübergreifende Quellen erhalten damit identische Belegregeln.
+- **Regressionen:** test_original_read_budget_is_balanced_across_provider_routes bestätigt einen Leseversuch für alle vier Providerlabels im Kontingent. test_all_unread_ai_sources_remain_unavailable bestätigt, dass ein ausschließliches Treffer-/Snippet-Ergebnis nicht als completed gilt.
+- **Validierung:** debate_research.py und test_debate_research.py wurden per Python-AST geprüft. Ein frischer Provider-/Dokumentenlauf bleibt wegen fehlendem ausführbarem privaten Checkout, fehlenden Backend-Abhängigkeiten und nicht vorhandenen realen Originalquellen blockiert.
+- **Commit/Push:** 3d5fd7ad3f9708426cd4e371b4a4322ad1be4674 (providerneutrale Leseauswahl und Unread-Gate), 2fed19af64e7232176b200d114aa4d1955bb93df (Regressionen).
+
+NÄCHSTER PUNKT: 044/A082
