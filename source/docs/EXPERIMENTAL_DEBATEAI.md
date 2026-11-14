@@ -38,7 +38,7 @@ Beispiel:
 python source/backend/scripts/video_eval_pipeline.py --audio ./debate.wav --video-id debate-001 --out ./artifacts/debate-001.json --speaker-diarization --style-profile ./artifacts/rhetoric-profile.json
 ```
 
-Für sehr lange Dateien sollte der Audioexport in Abschnitte geteilt oder vorab in Cloud Storage gelegt und über die Google-Batch-Variante verarbeitet werden. Die Live-Pipeline wartet nicht auf diese Batchauswertung.
+Lange Audio-/Videodateien werden vor der synchronen Google-Anfrage automatisch in 45-Sekunden-PCM-Abschnitte geteilt und auf die Originalzeitstempel zurückgesetzt. Die Live-Pipeline wartet nicht auf diese Batchauswertung; ffmpeg muss für Videodateien und lange Dateien verfügbar sein.
 
 Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 
