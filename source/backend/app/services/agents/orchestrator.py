@@ -27,7 +27,7 @@ from sqlalchemy import select
 from app.config import settings
 from app.database import async_session
 from app.services.identity import env_value
-from app.models import Directive, Question, Speaker, TranscriptEntry
+from app.models import Directive, Question, TranscriptEntry, Speaker, TranscriptEntry
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
     REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
@@ -2169,6 +2169,44 @@ class AgentOrchestrator:
         if _live_orchestrators.get(self.session_id) is self:
             del _live_orchestrators[self.session_id]
 
+    async def _load_complete_transcript(self) -> str:
+        """Load the durable full transcript for final/checkpoint analysis.
+
+        The live ring buffer stays bounded for latency. At a final checkpoint
+        the persisted rows are the source of truth, so long meetings do not
+        silently lose older turns merely because the in-memory window rolled.
+        """
+        try:
+            async with async_session() as db:
+                rows = (
+                    await db.execute(
+                        select(TranscriptEntry)
+                        .where(TranscriptEntry.session_id == self.session_id)
+                        .order_by(TranscriptEntry.sequence)
+                    )
+                ).scalars().all()
+        except Exception as exc:
+            logger.warning("Complete transcript load failed; using live buffer: %s", exc)
+            return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
+        if not rows:
+            return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
+        aliases = self.speaker_aliases()
+        names = {
+            str(speaker.get("id") or ""): speaker_display_name(speaker)
+            for speaker in self.speakers
+        }
+        lines = [
+            format_transcript_segment(
+                row.text,
+                names.get(str(row.speaker_id or ""), "Unknown"),
+                speaker_id=str(row.speaker_id) if row.speaker_id else None,
+                alias=aliases.get(str(row.speaker_id or "")),
+            )
+            for row in rows
+            if str(row.text or "").strip()
+        ]
+        return "\n".join(lines) or await self.transcript_buffer.get_full(aliases=aliases)
+
     async def close_all(self):
         self._stopped = True
         self._unregister_live()
@@ -2333,9 +2371,7 @@ class AgentOrchestrator:
         if "call_briefing" in stages:
             result["synthesis_generated"] = False
 
-        transcript_window = await self.transcript_buffer.get_window(
-            aliases=self.speaker_aliases()
-        )
+        transcript_window = await self._load_complete_transcript()
         transcript_available = transcript_window != "(No recent transcript)"
         result["transcript_available"] = transcript_available
 
