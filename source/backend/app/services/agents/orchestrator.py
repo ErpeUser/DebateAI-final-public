@@ -53,6 +53,7 @@ from app.services.agents.objection_handler import (
     _has_speakable_guidance,
 )
 from app.services.debate_contracts import DebateSource
+from app.services.experimental_debate import build_experimental_update
 from app.services.agents.opportunity_specialist import run_opportunity_specialist_cycle
 from app.services.agents.strategic_signals import (
     STRATEGIC_SIGNALS_SLUG,
@@ -3062,6 +3063,20 @@ class AgentOrchestrator:
             await self.websocket.send_json({"type": "debate_update", "data": payload})
         except Exception as exc:  # A closed socket must not strand persistence.
             logger.debug("Debate update socket closed: %s", exc)
+        if recommendation.pipeline_mode == "experimental_debateai":
+            try:
+                experimental_payload = build_experimental_update(
+                    recommendation,
+                    external_insight_count=len(recommendation.sources),
+                ).model_dump(mode="json")
+                await self.websocket.send_json({
+                    "type": "experimental_debate_update",
+                    "data": experimental_payload,
+                })
+            except Exception as exc:
+                # A malformed optional event must never suppress the legacy
+                # debate_update that old clients already received.
+                logger.warning("Experimental debate event could not be emitted: %s", exc)
         if getattr(self, "_argument_graph_enabled", False):
             task = asyncio.create_task(
                 self._persist_argument_recommendation(payload),
