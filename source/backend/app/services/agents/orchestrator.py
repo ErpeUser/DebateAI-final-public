@@ -4637,6 +4637,7 @@ class AgentOrchestrator:
             stopped=self._stopped,
             debate_pending=self._debate_pending,
             objection_task=self._objection_task,
+            active_claim_is_interim=self._active_claim_is_interim,
             last_transcript_at=self._last_transcript_activity_at,
         )
 
