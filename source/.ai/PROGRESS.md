@@ -639,3 +639,18 @@ NÄCHSTER PUNKT: 025/A050
 
 NÄCHSTER PUNKT: 026/A052
 
+## Masterauftrag – 2026-11-14 – 026/A052
+
+**Status: BEREITS ERLEDIGT (Graceful-Drain-/Persistenzkette vorhanden); Fresh-Test BLOCKIERT durch Runner/DB/Hardware.**
+
+- **Aufgabe:** Sauberen Session-Abschluss sicherstellen: Audio-Drain, finale Transcript-Segmente, ausstehende Jobs, Persistenz und Prozessbereinigung.
+- **Abschlussreihenfolge:** Der Audiohandler stoppt neue Aufnahme, schließt Gateway-Sender und native Capture, setzt den Queue-Sentinel, drainiert den Diarisierungsworker mit einer begrenzten Deadline, flusht Mikrofon- und System-ASR, wartet auf 'OrderedTranscriptionQueue.drain()' und finalisiert erst danach das Call-Segment.
+- **Finale Analyse:** 'AgentOrchestrator.graceful_drain()' markiert die Sitzung beendet, cancelt Live-/Gateway-/Recherche-/Argument-/Refiner-Tasks, lädt das vollständige persistierte Transkript und führt den Refiner mit 'limit=None' sowie finale Insights, Reconciliation, Opportunity-Matching und Briefing aus. Danach schließen 'close_all()', Activity, Audio-Gateway und Streaming-Transcriber.
+- **Persistenz/Fehlerpfad:** Drain-Zusammenfassung, Segmentpfade und Sessionzustand werden vor dem finalen Abschluss persistiert. Ein überschrittenes Audio-Drain-Limit wird sichtbar als 'audio_gap' gemeldet und nicht stillschweigend als vollständig behandelt; ein minimaler Disconnect überspringt bewusst teure Analyse.
+- **Regressionen:** 'test_orchestrator_graceful_drain', 'test_audio_handler', Ordered-Transcription-Drain-, System-Track-Flush- und Native-Capture-Stop-Tests prüfen Reihenfolge, Sentinel/Queue-Abschluss, Task-Cancellation, Segmentpersistenz und Fehlerstatus.
+- **Fresh-Test-Ergebnis:** Der Quell- und Testvertrag ist vorhanden; ein frischer vollständiger DB-/Audio-/Provider-Langlauf bleibt wegen fehlendem ausführbarem Checkout, Dependencies, echter Hardware und GitHub-Actions-Runs mit 'steps: null' offen.
+- **Eigener neuer Code:** keiner; die bestehende Abschlusskette erfüllt den Quellcode-Teil.
+- **Commit/Push:** Der Status wird im Fortschrittsnachweis auf 'master' dokumentiert.
+
+NÄCHSTER PUNKT: 027/A053
+
