@@ -133,6 +133,9 @@ async def _download_video_page(
     ]
     if not candidates:
         raise ValueError("video page did not produce a supported audio/video file")
+    total_bytes = sum(path.stat().st_size for path in directory.iterdir() if path.is_file())
+    if total_bytes > _MAX_MEDIA_BYTES:
+        raise ValueError("video page download exceeds the 1 GB safety limit")
     # Prefer a merged video over a separate audio-only rendition.
     candidates.sort(
         key=lambda path: (
