@@ -610,7 +610,7 @@ async def _ai_web_sources(
     except Exception:
         return []
     urls = []
-    for match in re.findall(r"https?://\\S+", answer or ""):
+    for match in re.findall(r"https?://\S+", answer or ""):
         url = match.rstrip(".,;:)]}")
         if url and url not in urls and "wikipedia.org" not in url and "duckduckgo.com" not in url:
             urls.append(url)
