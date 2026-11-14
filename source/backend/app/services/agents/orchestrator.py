@@ -3723,38 +3723,105 @@ class AgentOrchestrator:
         Each lane has a separate prompt and result, then local integration
         merges the findings into one recommendation.
         """
-        lane_directives = (
-            ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu."),
-            ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe."),
-            ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel."),
+        lane_specs = (
+            ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu.",
+             "experimental_research_v1", "high"),
+            ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe.",
+             "experimental_adversarial_v1", "high"),
+            ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
+             "experimental_strategist_v1", "medium"),
         )
 
-        async def run_lane(label: str, directive: str):
-            return label, await self.objection_agent.analyze_deep(
-                recommendation,
-                model_id=model_id,
-                own_position=self.meeting_context,
-                relevant_context=(
-                    relevant_context
-                    + "\n[EXPERIMENTELLE LANE: "
-                    + label
-                    + "]\n"
-                    + directive
-                ),
-                sources=sources,
-                reasoning_effort_override="high",
-                analysis_phase=analysis_phase,
-            )
+        async def run_lane(
+            label: str,
+            directive: str,
+            prompt_resource: str,
+            effort: str,
+        ):
+            started_at = time.perf_counter()
+            try:
+                result = await self.objection_agent.analyze_deep(
+                    recommendation,
+                    model_id=model_id,
+                    own_position=self.meeting_context,
+                    relevant_context=(
+                        relevant_context
+                        + "\n[EXPERIMENTELLE LANE: "
+                        + label
+                        + "]\n"
+                        + directive
+                    ),
+                    sources=sources,
+                    reasoning_effort_override=effort,
+                    analysis_phase=analysis_phase,
+                    prompt_resource=prompt_resource,
+                )
+                return {
+                    "label": label,
+                    "prompt_resource": prompt_resource,
+                    "reasoning_effort": effort,
+                    "analysis": result[0],
+                    "prompt": result[1],
+                    "latency_ms": round((time.perf_counter() - started_at) * 1000),
+                    "error": "",
+                }
+            except Exception as exc:
+                return {
+                    "label": label,
+                    "prompt_resource": prompt_resource,
+                    "reasoning_effort": effort,
+                    "analysis": None,
+                    "prompt": "",
+                    "latency_ms": round((time.perf_counter() - started_at) * 1000),
+                    "error": str(exc)[:240],
+                }
 
-        results = await asyncio.gather(
-            *(run_lane(label, directive) for label, directive in lane_directives),
-            return_exceptions=True,
-        )
-        successful = [item for item in results if not isinstance(item, BaseException)]
-        if not successful:
+        tasks = [
+            asyncio.create_task(run_lane(*spec))
+            for spec in lane_specs
+        ]
+        artifacts: list[dict] = []
+        analyses: list[DeepDebateAnalysis] = []
+        prompts: list[str] = []
+        try:
+            for completed in asyncio.as_completed(tasks):
+                artifact = await completed
+                artifact_summary = {
+                    "lane": artifact["label"],
+                    "status": "completed" if artifact["analysis"] is not None else "failed",
+                    "prompt_resource": artifact["prompt_resource"],
+                    "reasoning_effort": artifact["reasoning_effort"],
+                    "latency_ms": artifact["latency_ms"],
+                    "error": artifact["error"],
+                }
+                artifacts.append(artifact_summary)
+                try:
+                    await self.websocket.send_json({
+                        "type": "experimental_lane_update",
+                        "data": {
+                            "session_id": self.session_id,
+                            "claim_id": recommendation.claim_id,
+                            "claim_revision": recommendation.claim_revision,
+                            "transcript_revision": recommendation.transcript_revision,
+                            "generation_id": recommendation.generation_id,
+                            **artifact_summary,
+                        },
+                    })
+                except Exception:
+                    pass
+                if artifact["analysis"] is not None:
+                    analyses.append(artifact["analysis"])
+                    prompts.append(artifact["prompt"])
+        finally:
+            for task in tasks:
+                if not task.done():
+                    task.cancel()
+            if tasks:
+                await asyncio.gather(*tasks, return_exceptions=True)
+
+        self._experimental_lane_artifacts = artifacts
+        if not analyses:
             return None, "", ""
-        analyses = [item[1][0] for item in successful]
-        prompts = [item[1][1] for item in successful]
 
         def unique(values: list[str], limit: int) -> list[str]:
             result: list[str] = []
@@ -3785,7 +3852,10 @@ class AgentOrchestrator:
                 analyses[0].interpretation,
             ),
         })
-        return merged, "\n\n".join(prompts), model_id
+        return merged, json.dumps(
+            {"lanes": artifacts, "prompts": prompts},
+            ensure_ascii=False,
+        ), model_id
 
 
     async def _execute_debate_research(
