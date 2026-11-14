@@ -13,6 +13,8 @@ import time
 from datetime import UTC, datetime
 from html.parser import HTMLParser
 from typing import Literal
+
+ResearchMode = Literal["live", "deep"]
 from urllib.parse import parse_qs, unquote, urljoin, urlsplit, urlunsplit
 
 import httpx
@@ -478,7 +480,11 @@ def reset_research_provider_health(provider: str | None = None) -> None:
         _research_provider_cooldown_until.pop(item, None)
 
 
-def _research_provider_ready(provider: str) -> bool:
+def _research_provider_ready(
+    provider: str,
+    *,
+    allow_busy: bool = False,
+) -> bool:
     """Gate a lane on cooldown and the login/session readiness it needs."""
     now = time.monotonic()
     blocked_until = _research_provider_cooldown_until.get(provider, 0.0)
@@ -497,7 +503,7 @@ def _research_provider_ready(provider: str) -> bool:
                 reason = "login_required"
             elif not chatgpt_web.model_confirmed():
                 reason = "model_unconfirmed"
-            elif chatgpt_web.browser_busy():
+            elif chatgpt_web.browser_busy() and not allow_busy:
                 reason = "browser_busy"
         except Exception:
             reason = "runtime_unavailable"
@@ -571,6 +577,8 @@ async def _ai_web_sources(
     claim: str,
     query: str,
     providers: list[str] | set[str],
+    *,
+    research_mode: ResearchMode = "deep",
 ) -> list[ResearchSource]:
     """Fail over through every enabled AI-web provider in configured order."""
     chatgpt_generate = None
@@ -599,7 +607,10 @@ async def _ai_web_sources(
     for provider in provider_order:
         if provider not in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}:
             continue
-        if not _research_provider_ready(provider):
+        if not _research_provider_ready(
+            provider,
+            allow_busy=research_mode == "deep",
+        ):
             continue
         try:
             if provider == "chatgpt_web":
@@ -610,6 +621,7 @@ async def _ai_web_sources(
                     system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
                     reasoning_effort="high",
                     research="search",
+                    timeout_seconds=10 if research_mode == "live" else 660,
                 )
             else:
                 if generate_text is None:
@@ -626,6 +638,8 @@ async def _ai_web_sources(
         if answer:
             _record_research_provider_success(provider)
             answers.append((provider, answer))
+            if research_mode == "live":
+                break
     if not answers:
         return []
     urls: list[tuple[str, str]] = []
@@ -669,6 +683,8 @@ async def _research_with_client(
     client: httpx.AsyncClient,
     claim: str,
     query: str,
+    *,
+    research_mode: ResearchMode = "deep",
 ) -> ResearchResult:
     configured = research_settings()
     if not configured["enabled"]:
@@ -691,7 +707,14 @@ async def _research_with_client(
         provider in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}
         for provider in providers
     ):
-        tasks.append(_ai_web_sources(claim, query, providers))
+        tasks.append(
+            _ai_web_sources(
+                claim,
+                query,
+                providers,
+                research_mode=research_mode,
+            )
+        )
     if not tasks:
         return ResearchResult(
             claim=claim,
@@ -702,7 +725,10 @@ async def _research_with_client(
     try:
         batches = await asyncio.wait_for(
             asyncio.gather(*tasks, return_exceptions=True),
-            timeout=configured["timeout_seconds"],
+            timeout=min(
+                configured["timeout_seconds"],
+                10 if research_mode == "live" else configured["timeout_seconds"],
+            ),
         )
     except TimeoutError:
         return ResearchResult(
@@ -772,6 +798,7 @@ async def research_claim(
     query: str,
     *,
     client: httpx.AsyncClient | None = None,
+    research_mode: ResearchMode = "deep",
 ) -> ResearchResult:
     clean_claim = _clean_text(claim)
     clean_query = _clean_text(query)
@@ -782,11 +809,19 @@ async def research_claim(
             status="refused",
             error="Research query was empty or contained private data",
         )
+    mode: ResearchMode = research_mode if research_mode in {"live", "deep"} else "deep"
     total_timeout = research_settings()["timeout_seconds"]
+    if mode == "live":
+        total_timeout = min(total_timeout, 10)
     if client is not None:
         try:
             return await asyncio.wait_for(
-                _research_with_client(client, clean_claim, clean_query),
+                _research_with_client(
+                    client,
+                    clean_claim,
+                    clean_query,
+                    research_mode=mode,
+                ),
                 timeout=total_timeout,
             )
         except TimeoutError:
@@ -796,7 +831,7 @@ async def research_claim(
                 status="unavailable",
                 error="Research timed out",
             )
-    key = clean_query.casefold()
+    key = clean_query.casefold() if mode == "deep" else f"live:{clean_query.casefold()}"
     cached = _cache_get(_search_cache, key)
     if cached is not None:
         return _result_for_claim(cached[0], clean_claim)
@@ -806,7 +841,12 @@ async def research_claim(
         async def run() -> ResearchResult:
             try:
                 return await asyncio.wait_for(
-                    _research_with_client(_research_client(total_timeout), clean_claim, clean_query),
+                    _research_with_client(
+                        _research_client(total_timeout),
+                        clean_claim,
+                        clean_query,
+                        research_mode=mode,
+                    ),
                     timeout=total_timeout,
                 )
             except TimeoutError:
