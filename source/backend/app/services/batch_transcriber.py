@@ -117,7 +117,7 @@ def _too_short(text: str) -> bool:
     # Preserve meaningful one-word interjections and numeric corrections,
     # including decimal/percentage forms that are not str.isdecimal().
     if normalized in _MEANINGFUL_SHORT_UTTERANCES or bool(
-        re.fullmatch(r"\\d+(?:[.,]\\d+)?%?", normalized)
+        re.fullmatch(r"\d+(?:[.,]\d+)?%?", normalized)
     ):
         return False
     if len(text.split()) >= _MIN_WORD_COUNT:
