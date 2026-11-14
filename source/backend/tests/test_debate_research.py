@@ -247,6 +247,31 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertNotIn("abgebrochene suche", debate_research._research_inflight)
 
+    async def test_live_and_deep_modes_keep_separate_inflight_cache_entries(self):
+        modes = []
+
+        async def fake_research(_client, claim, query, *, research_mode):
+            modes.append(research_mode)
+            return debate_research.ResearchResult(
+                claim=claim,
+                query=query,
+                status="completed",
+            )
+
+        with mock.patch.object(debate_research, "_research_with_client", fake_research):
+            await debate_research.research_claim(
+                "Claim",
+                "gleiche Suche",
+                research_mode="live",
+            )
+            await debate_research.research_claim(
+                "Claim",
+                "gleiche Suche",
+                research_mode="deep",
+            )
+
+        self.assertEqual(["live", "deep"], modes)
+
     async def test_live_fact_check_stops_after_first_successful_provider(self):
         calls = []
 
