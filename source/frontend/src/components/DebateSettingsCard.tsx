@@ -11,7 +11,7 @@ type DebateSettingsPatch = Partial<Pick<
   | "learning_examples_enabled" | "graph_recording_enabled"
   | "memory_similarity_threshold"
   | "performance_profile"
-  | "simple_1to1_audio_mode"
+  | "simple_1to1_audio_mode" | "pipeline_mode"
 >>;
 
 interface ControlsProps {
@@ -42,6 +42,32 @@ const styleFocuses = [
 export function DebateSettingsControls({ settings, privacyFirst, saving, onChange }: ControlsProps) {
   return (
     <div className="space-y-5">
+      <div>
+        <p className="mb-2 font-body text-xs font-medium text-brand-gray">Pipeline</p>
+        <div className="grid gap-2 sm:grid-cols-2">
+          <button
+            type="button"
+            aria-pressed={settings.pipeline_mode === "standard"}
+            disabled={saving}
+            onClick={() => onChange({ pipeline_mode: "standard" })}
+            className={`rounded-lg border px-3 py-2 text-left transition-colors ${settings.pipeline_mode === "standard" ? "border-brand-teal bg-brand-teal/10 text-brand-dark-gray" : "border-brand-light-gray-1 bg-surface text-brand-gray"}`}
+          >
+            Standard
+            <span className="mt-0.5 block font-body text-[11px] font-normal text-brand-mid-gray">Bestehender Debattenablauf</span>
+          </button>
+          <button
+            type="button"
+            aria-pressed={settings.pipeline_mode === "experimental_debateai"}
+            disabled={saving}
+            onClick={() => onChange({ pipeline_mode: "experimental_debateai" })}
+            className={`rounded-lg border px-3 py-2 text-left transition-colors ${settings.pipeline_mode === "experimental_debateai" ? "border-brand-teal bg-brand-teal/10 text-brand-dark-gray" : "border-brand-light-gray-1 bg-surface text-brand-gray"}`}
+          >
+            Experimentell DebateAI
+            <span className="mt-0.5 block font-body text-[11px] font-normal text-brand-mid-gray">Vier sofortige Antwortzüge, Auswahl und Quellenintegration</span>
+          </button>
+        </div>
+      </div>
+
       <div>
         <p className="mb-2 font-body text-xs font-medium text-brand-gray">Rhetorischer Modus</p>
         <div className="grid gap-2 sm:grid-cols-2">
