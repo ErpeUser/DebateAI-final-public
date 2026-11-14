@@ -4337,16 +4337,24 @@ class AgentOrchestrator:
         if not model_ids:
             return
         query = recommendation.research_query.strip()
+        research_mode = "deep" if manual else "live"
+        cache_modes = getattr(self, "_research_cache_modes", None)
+        if cache_modes is None:
+            cache_modes = {}
+            self._research_cache_modes = cache_modes
         sources: list[DebateSource] = []
         if recommendation.needs_research and is_safe_research_query(query):
             result = None if force_refresh else self._research_cache.get(query)
+            if result is not None and cache_modes.get(query, "deep") != research_mode:
+                result = None
             if result is None:
                 result = await research_claim(
                     recommendation.target_claim,
                     query,
-                    research_mode="deep" if manual else "live",
+                    research_mode=research_mode,
                 )
                 self._research_cache[query] = result
+                cache_modes[query] = research_mode
             result = _bind_research_result(
                 result,
                 recommendation.target_claim,
