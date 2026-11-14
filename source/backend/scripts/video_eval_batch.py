@@ -13,7 +13,7 @@ import ipaddress
 import socket
 import tempfile
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import httpx
 
@@ -61,7 +61,7 @@ async def _download_media(url: str, directory: Path) -> Path:
                     location = response.headers.get("location", "")
                     if not location:
                         raise ValueError("media URL redirect has no location")
-                    current = str(response.url.join(location))
+                    current = urljoin(str(response.url), location)
                     continue
                 response.raise_for_status()
                 content_type = response.headers.get("content-type", "").split(";", 1)[0].casefold()
