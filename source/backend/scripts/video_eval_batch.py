@@ -1,11 +1,7 @@
 #!/usr/bin/env python3
 """Process a JSON video list with Google transcription and AI-only source research.
 
-Input format:
-[
-  {"video_id": "debate-001", "audio": "./001.wav", "source_url": "https://..."},
-  {"video_id": "debate-002", "audio": "./002.wav"}
-]
+Input items may provide local audio/video/media_path or a direct HTTPS media_url/video_url/audio_url/source_url. The latter is downloaded to a bounded temporary file before Google transcription.
 """
 
 from __future__ import annotations
@@ -13,7 +9,17 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import ipaddress
+import socket
+import tempfile
 from pathlib import Path
+from urllib.parse import urlsplit
+
+import httpx
+
+_MAX_MEDIA_BYTES = 1_000_000_000
+_MEDIA_SUFFIXES = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
+_CONTENT_SUFFIXES = {"audio/wav": ".wav", "audio/x-wav": ".wav", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 
 from app.services.video_eval_pipeline import (
     build_video_artifact,
