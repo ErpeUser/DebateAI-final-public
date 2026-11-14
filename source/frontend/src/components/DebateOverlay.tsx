@@ -86,6 +86,20 @@ export default function DebateOverlay() {
             <p className="text-[17px] font-medium leading-7 text-white">{answer || "Die Modellantwort wird gerade erzeugt …"}</p>
           </section>
 
+          {recommendation.pipeline_mode === "experimental_debateai" && recommendation.strategy_options && recommendation.strategy_options.length > 0 && (
+            <section className="space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Weitere Antwortzüge</p>
+              {recommendation.strategy_options
+                .filter((option) => option.id !== recommendation.selected_strategy_id)
+                .map((option) => (
+                  <details key={option.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
+                    <summary className="cursor-pointer text-xs font-semibold text-white/80">{option.title}</summary>
+                    <p className="mt-1.5 text-sm leading-5 text-white/70">{option.text}</p>
+                  </details>
+                ))}
+            </section>
+          )}
+
           {secondary && (
             <section className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-3">
               <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300">{primaryIsQuestion ? "Sofortantwort" : "Gegenfrage"}</p>
