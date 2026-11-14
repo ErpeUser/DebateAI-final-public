@@ -495,6 +495,8 @@ def _research_provider_ready(provider: str) -> bool:
                 reason = "runtime_unavailable"
             elif not chatgpt_web.configured():
                 reason = "login_required"
+            elif not chatgpt_web.model_confirmed():
+                reason = "model_unconfirmed"
             elif chatgpt_web.browser_busy():
                 reason = "browser_busy"
         except Exception:
@@ -516,7 +518,13 @@ def _research_provider_ready(provider: str) -> bool:
         _research_provider_health[provider] = {
             "provider": provider,
             "state": "blocked",
-            "failure_kind": "authentication" if "login" in reason or "session" in reason else "transport",
+            "failure_kind": (
+                "authentication"
+                if "login" in reason or "session" in reason
+                else "model"
+                if "model" in reason
+                else "transport"
+            ),
             "retryable": False,
             "reason": reason,
             "updated_at": datetime.now(UTC).isoformat(),
