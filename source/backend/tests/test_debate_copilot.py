@@ -28,6 +28,7 @@ from app.services.agents.orchestrator import (
     _unicode_words,
     _bind_research_result,
     _external_analysis_deadline,
+    _select_relevant_transcript_excerpt,
 )
 from app.services.debate_research import ResearchResult, ResearchSource
 from app.services.external_reasoning import AdaptiveReasoningEffort
@@ -39,6 +40,28 @@ SPEAKERS = [{"id": SPEAKER_ID, "name": "Alex", "speaker_type": "external"}]
 
 
 class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
+    def test_experimental_transcript_selector_keeps_relevant_context(self):
+        transcript = (
+            "DISTANT_TRANSCRIPT_MARKER " + ("unrelated filler " * 900)
+            + ". Aktueller Claim zur Inflation bleibt umstritten. "
+            + "Meine Position verlangt eine amtliche Statistik. "
+            + "Benötigter Kontext ist der Jahresdurchschnitt. "
+            + "Letzter Zug wiederholt den aktuellen Claim."
+        )
+        excerpt = _select_relevant_transcript_excerpt(
+            transcript,
+            claim="aktueller Claim Inflation",
+            standpoint="amtliche Statistik",
+            context="Jahresdurchschnitt",
+            max_chars=2400,
+        )
+
+        self.assertIn("Aktueller Claim", excerpt)
+        self.assertIn("amtliche Statistik", excerpt)
+        self.assertIn("Jahresdurchschnitt", excerpt)
+        self.assertNotIn("DISTANT_TRANSCRIPT_MARKER", excerpt)
+        self.assertLessEqual(len(excerpt), 2400)
+
     def test_single_primary_question_is_valid_without_a_mandatory_bundle(self):
         response = LiveDebateResponse(
             primary_move="question",
