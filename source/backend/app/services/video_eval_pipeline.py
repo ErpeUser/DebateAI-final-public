@@ -15,11 +15,11 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Iterable
 
-_URL_RE = re.compile(r"https?://[^\\s<>\\\"]+")
-_DOI_RE = re.compile(r"\\b10\\.\\d{4,9}/[-._;()/:A-Z0-9]+\\b", re.IGNORECASE)
+_URL_RE = re.compile(r'https?://[^\s<>"\']+')
+_DOI_RE = re.compile(r'\b10\.\d{4,9}/[-._;()/:A-Z0-9]+\b', re.IGNORECASE)
 _STUDY_RE = re.compile(
-    r"\\b(?:studie|paper|bericht|metaanalyse|meta-analyse|untersuchung)"
-    r"[^.]{0,160}\\b(?:19|20)\\d{2}\\b",
+    r"\b(?:studie|paper|bericht|metaanalyse|meta-analyse|untersuchung)"
+    r"[^.]{0,160}\b(?:19|20)\d{2}\b",
     re.IGNORECASE,
 )
 
@@ -103,8 +103,8 @@ def build_rhetorical_profile(
     words = [len(text.split()) for text in texts]
     joined = " ".join(texts)
     questions = sum(text.endswith("?") or "?" in text for text in texts)
-    rebuttals = sum(bool(re.search(r"\\b(aber|jedoch|stimmt nicht|falsch|trotzdem|widerleg)\\b", text, re.I)) for text in texts)
-    analogies = sum(bool(re.search(r"\\b(wie|als ob|beispiel|vergleich|analogie)\\b", text, re.I)) for text in texts)
+    rebuttals = sum(bool(re.search(r"\b(aber|jedoch|stimmt nicht|falsch|trotzdem|widerleg)\b", text, re.I)) for text in texts)
+    analogies = sum(bool(re.search(r"\b(wie|als ob|beispiel|vergleich|analogie)\b", text, re.I)) for text in texts)
     interruptions = sum(text.count("…") + text.count("--") for text in texts)
     return {
         "segment_count": len(rows),
