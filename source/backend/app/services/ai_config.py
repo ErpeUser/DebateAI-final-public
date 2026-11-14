@@ -630,13 +630,23 @@ def max_parallel_analyses() -> int:
 
 
 def analysis_deadline_seconds() -> int:
-    """One budget for queueing, research, retries, and provider fallbacks."""
+    """Long budget for deep analysis, retries, and provider fallbacks."""
     data = load_ai_json("providers.json", {})
     value = data.get("analysis_deadline_seconds", 180) if isinstance(data, dict) else 180
     try:
         return max(5, min(900, int(value)))
     except (TypeError, ValueError):
         return 180
+
+
+def live_research_deadline_seconds() -> int:
+    """Short budget for automatic live research before deep analysis."""
+    data = load_ai_json("providers.json", {})
+    value = data.get("live_research_deadline_seconds", 12) if isinstance(data, dict) else 12
+    try:
+        return max(8, min(15, int(value)))
+    except (TypeError, ValueError):
+        return 12
 
 
 def configuration_generation() -> int:
