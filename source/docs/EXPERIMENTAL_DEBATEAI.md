@@ -20,7 +20,7 @@ Wikipedia und DuckDuckGo sind global deaktiviert. Die Runtime filtert beide IDs 
 
 ## Video- und Sprachprofilpipeline
 
-`source/backend/scripts/video_eval_pipeline.py` verarbeitet Audio/Video mit Google Cloud Speech-to-Text. `GOOGLE_CLOUD_PROJECT` und gültige Google-Anmeldedaten müssen gesetzt sein. `video_eval_batch.py` akzeptiert lokale `audio`/`video`/`media_path` oder direkte öffentliche HTTPS-`media_url`/`video_url`/`audio_url`/`source_url`-Einträge; Webseiten-URLs werden aus Sicherheitsgründen als nicht direkt abspielbar abgelehnt.
+`source/backend/scripts/video_eval_pipeline.py` verarbeitet Audio/Video mit Google Cloud Speech-to-Text. `GOOGLE_CLOUD_PROJECT` und gültige Google-Anmeldedaten müssen gesetzt sein. `video_eval_batch.py` akzeptiert lokale `audio`/`video`/`media_path`, direkte öffentliche HTTPS-`media_url`/`video_url`/`audio_url` oder öffentliche Videoseiten über `video_page_url`/`page_url`/`source_url`. Bei einer Videoseite löst `yt-dlp` das Medium auf und lädt verfügbare automatische/manuelle Untertitel mit herunter; direkte Medien bleiben über den begrenzten HTTPS-Downloader geschützt.
 
 Das erzeugte JSON-Artefakt enthält:
 
@@ -45,7 +45,7 @@ Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 
 ```json
 [
-  {"video_id": "debate-001", "video_url": "https://cdn.example/debate-001.mp4", "source_url": "https://example/video"}
+  {"video_id": "debate-001", "video_page_url": "https://video.example/watch/123"}
 ]
 ```
 
