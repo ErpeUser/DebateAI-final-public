@@ -514,3 +514,17 @@ NÄCHSTER PUNKT: 016/A031
 - **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 017/A032
+## Masterauftrag – 2026-11-14 – 017/A032
+
+**Status: BLOCKIERT (Filter vorhanden, vollständige Discard-Audit-Durchreichung fehlt).**
+
+- **Aufgabe:** Niedrigenergie-, Kurztext- und Phantomphrasenfilter prüfen, echte Sprache nicht mit Störgeräuschen gleichsetzen und zweifelhafte Segmente auditierbar halten.
+- **Nachweis der bestehenden Lösung:** `batch_transcriber.py` nutzt `_audio_has_speech_energy()` mit RMS-Energy-Floor vor Provideraufrufen und `filter_transcript_text()` für bekannte Halluzinationsmuster, Bracket-Junk, repetitive Decoderloops und zu kurze Texte. `local_transcriber.py` und `openai_transcriber.py` verwenden denselben Filtervertrag. Die 015-Erweiterung schützt bedeutungsvolle Kurzinterjektionen und Zahlenkorrekturen.
+- **Vorhandene Regressionen:** `test_hallucination_filter.py` prüft Phantom-/Video-Intro-/Bracket-/Repeat-Fälle sowie echte wiederholte Rede; `test_openai_transcriber.py` prüft kurze und Low-Energy-Segmente ohne Netzwerk sowie Halluzinationsausgaben; `test_ghost_transcripts.py` prüft kurze neue Sprechersegmente. `provisional_transcripts.py`/`TranscriptDiscardAudit` auditieren bereits ungültige, doppelte, stale und limitierte Interim-Segmente.
+- **Fehlender Vertrag:** Die Low-Energy- und Textfilterpfade loggen `below energy floor`, `Filtered hallucinated transcript` oder `Filtered short transcript` und liefern `None`, schreiben aber nicht durchgängig eine `TranscriptDiscardAudit`-Zeile mit Rohtext, Zeitbereich, Sprecher und Filtergrund. Diese vollständige Abdeckung ist als Folgepunkt 018/A033 zu schließen.
+- **Eigener neuer Code:** keiner in diesem Punkt; ein nur lokales Logging wäre kein ausreichender Auditnachweis und würde den bestehenden Auditvertrag duplizieren.
+- **Konkreter nächster Abnahmeschritt:** Filtergründe als strukturierte Discard-Ereignisse vom Transcriber-/Audiojob an die bestehende `record_discarded_segment()`-Struktur weiterreichen, Low-Energy/Halluzination/Kurztext/Phantom unterscheiden und Tests für Rohtext, Samplezeitraum, Sprecher, Grund und Revision ergänzen. Echte Sprachfixtures müssen zusätzlich beweisen, dass leise aber verständliche Sprache nicht verworfen wird.
+- **Fresh-Test-Ergebnis:** Fokussierte Regressionen sind im Quellstand vorhanden, ein frischer Lauf bleibt wegen `steps: null` blockiert.
+- **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 018/A033
