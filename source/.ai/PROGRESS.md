@@ -832,3 +832,17 @@ NÄCHSTER PUNKT: 039/A076
 - **Commit/Push:** 47464cb1681e9d1ac9c9099adfce950290d68d52 (Lane-Health, Readiness, Cooldown, Fallback-Merge), 7b15eafef3f2e5dfe9d10e6159a88c74b919ddaa (Regressionen).
 
 NÄCHSTER PUNKT: 040/A077
+
+
+## Masterauftrag – 2026-11-14 – 040/A077
+**Status: QUELLCODE ERLEDIGT; externe Providerabnahme offen.**
+
+- **Gemeinsamer Regler:** Die drei experimentellen externen Lanes verwenden jetzt denselben AdaptiveReasoningEffort-Controller wie die bestehende Deep-Analysis-Schleife. Es wurde kein zweiter Regler und kein lane-spezifischer Zustand eingeführt.
+- **Adaptive Auswahl:** Vor jedem Lane-Aufruf wird die Denkstufe aus Claim-Phase, Stabilität des Themas und dem aktuellen Controllerzustand gewählt. Research und adversariale Lanes folgen den konfigurierten high/xhigh-Stufen. Die Rhetorik-Lane behält ihre medium-Basis für Anbieter, die diese Stufe unterstützen; bei Überlastung kann der gemeinsame Regler auf high anheben.
+- **Providerfähigkeiten:** Die ausgewählte Stufe wird über effective_reasoning_effort() und provider_route() an die bestätigten Fähigkeiten der aktiven Route angepasst. Für ChatGPT Web ohne bestätigte Effort-Fähigkeit bleibt die explizite Lane-Anforderung erhalten, statt fälschlich None zu senden.
+- **Rückkopplung:** Nach jeder abgeschlossenen oder über der Latenzschwelle liegenden Lane wird ihre gemessene Latenz mit observe() an denselben Controller zurückgegeben. Langsame Batches halten folgende Aufrufe auf high; stabile schnelle Ergebnisse erlauben die konfigurierte Wiederherstellung.
+- **Regressionen:** test_experimental_lanes_use_the_shared_adaptive_controller prüft xhigh für ein neues Thema, die Rhetorik-Basis medium, die Hochstufung nach einer langsamen Beobachtung und die Wiederherstellung nach zwei stabilen Beobachtungen. test_experimental_lane_effort_is_high_when_automation_is_disabled prüft den ehrlichen Fallback bei deaktivierter Automatik.
+- **Validierung:** test_debate_copilot.py wurde per Python-AST geprüft. Die vollständige Orchestratordatei überschreitet die verfügbare Einzelausgabegrenze; die geänderten Orchestratorbereiche wurden manuell auf Struktur und Aufrufverträge geprüft. Ein frischer Async-/Providerlauf bleibt wegen fehlendem ausführbarem privaten Checkout, fehlenden Backend-Abhängigkeiten und nicht vorhandener realer Provider-/Browser-Sitzung blockiert.
+- **Commit/Push:** b0becc04195e410c81c4423f0b0d1bfb531e456e (gemeinsamer Regler, adaptive Auswahl, Capability-Clamp und Latenz-Rückkopplung), fff22bbd06635792c9460d82631c7c00f92e5415 (Regressionen).
+
+NÄCHSTER PUNKT: 041/A078
