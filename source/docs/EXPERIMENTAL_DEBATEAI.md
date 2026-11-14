@@ -41,11 +41,12 @@ python source/backend/scripts/video_eval_pipeline.py --audio ./debate.wav --vide
 
 Lange Audio-/Videodateien werden vor der synchronen Google-Anfrage automatisch in 45-Sekunden-PCM-Abschnitte geteilt und auf die Originalzeitstempel zurückgesetzt. Die Live-Pipeline wartet nicht auf diese Batchauswertung; ffmpeg muss für Videodateien und lange Dateien verfügbar sein.
 
-Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
+Für mehrere Videos kann eine JSON-Liste verarbeitet werden. Eine Liste aus einfachen URLs reicht; optionale Objekte erlauben eigene IDs und Medienfelder:
 
 ```json
 [
-  {"video_id": "debate-001", "video_page_url": "https://video.example/watch/123"}
+  "https://video.example/watch/123",
+  {"video_id": "debate-002", "video_page_url": "https://video.example/watch/456"}
 ]
 ```
 
