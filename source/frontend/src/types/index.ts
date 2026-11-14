@@ -970,6 +970,30 @@ export interface ExperimentalDebateUpdate {
   recommendation?: DebateRecommendation;
 }
 
+export interface ExperimentalLaneUpdate {
+  type?: "experimental_lane_update";
+  session_id: string;
+  claim_id: string;
+  claim_revision: number;
+  transcript_revision: number;
+  generation_id: string;
+  lane_id: string;
+  lane: "research" | "adversarial" | "rhetoric" | string;
+  status: "running" | "completed" | "failed" | "cancelled" | string;
+  provider: string;
+  model: string;
+  prompt_version: string;
+  prompt_resource?: string;
+  reasoning_effort: "none" | "low" | "medium" | "high" | "xhigh" | string;
+  standpoint_snapshot: string;
+  recent_transcript_window: string;
+  consolidated_context: string;
+  started_at: string;
+  completed_at?: string;
+  latency_ms?: number;
+  error?: string;
+}
+
 export interface DebateRecommendation {
   answer_now: string;
   pipeline_mode?: "standard" | "experimental_debateai";
@@ -1153,6 +1177,7 @@ export type WSMessage = {
   | { type: "agent_activity"; data: AgentActivitySnapshot }
   | { type: "debate_update"; data: DebateRecommendation }
   | { type: "experimental_debate_update"; data: ExperimentalDebateUpdate }
+  | { type: "experimental_lane_update"; data: ExperimentalLaneUpdate }
   | { type: "experimental_lane_update"; data: ExperimentalLaneUpdate }
   | { type: "debate_research_control"; data: { enabled: boolean } }
   | { type: "synthesis_updated"; data: SessionSynthesis }
