@@ -167,6 +167,14 @@ class LiveIdleTests(unittest.TestCase):
             stopped=False,
             debate_pending=False,
             objection_task=finished,
+            active_claim_is_interim=True,
+            last_transcript_at=10.0,
+            now=20.0,
+        ))
+        self.assertFalse(refiner.live_refiner_is_idle(
+            stopped=False,
+            debate_pending=False,
+            objection_task=finished,
             last_transcript_at=19.0,
             now=20.0,
         ))
