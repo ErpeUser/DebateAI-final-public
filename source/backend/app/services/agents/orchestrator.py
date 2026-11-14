@@ -49,6 +49,7 @@ from app.services.agents.objection_handler import (
     DebateRecommendation,
     ObjectionHandlerAgent,
     build_atomic_claims,
+    normalize_experimental_strategies,
     _has_speakable_guidance,
 )
 from app.services.debate_contracts import DebateSource
@@ -752,6 +753,7 @@ class AgentOrchestrator:
         self._agent_configs = agent_configs or {}
         self.local_only = local_only
         self.debate_settings = debate_settings or DebateSettings()
+        self._experimental_mode = self.debate_settings.pipeline_mode == "experimental_debateai"
         if self.debate_settings.profile_directive:
             self.directives = [
                 directive for directive in self.directives
@@ -1102,6 +1104,25 @@ class AgentOrchestrator:
                 str(note.get("text") or ""),
             )
 
+
+    def _experimentalize_recommendation(self, recommendation: DebateRecommendation) -> DebateRecommendation:
+        """Attach the four local response moves for the isolated pipeline."""
+        if not getattr(self, "_experimental_mode", False):
+            return recommendation
+        recommendation = recommendation.model_copy(update={"pipeline_mode": "experimental_debateai"})
+        options = normalize_experimental_strategies(recommendation)
+        selected = recommendation.selected_strategy_id
+        if not selected:
+            selected = next((item["id"] for item in options if item.get("text")), "")
+        selected_text = next((item.get("text", "") for item in options if item.get("id") == selected), "")
+        # The chosen move is the only large visible answer; alternatives remain
+        # available as compact blobs for deliberate selection in the UI.
+        return recommendation.model_copy(update={
+            "strategy_options": options,
+            "selected_strategy_id": selected,
+            "answer_now": selected_text or recommendation.answer_now,
+            "selection_reason": recommendation.selection_reason or "Sofort passendster Zug mit konkretem Beispiel.",
+        })
     def briefing_enabled(self) -> bool:
         # The arbiter settles the briefing, so its model decides whether the
         # stage can run at all; a lens on a refused model degrades to a partial
@@ -3709,13 +3730,29 @@ class AgentOrchestrator:
             await self._send_debate_update(revision, unavailable, origin="research")
             return
 
-        candidate = self._merge_deep_analysis(
-            recommendation,
-            analysis,
-            model_id=used_model,
-            prompt=prompt,
-            sources=sources,
-        )
+        if getattr(self, "_experimental_mode", False):
+            # External lanes contribute evidence and adversarial material, while
+            # the local live line remains the selected answer.
+            candidate = recommendation.model_copy(update={
+                "pipeline_mode": "experimental_debateai",
+                "counterargument": analysis.counterarguments[0] if analysis.counterarguments else recommendation.counterargument,
+                "analogy": analysis.interpretation or recommendation.analogy,
+                "counter_question": analysis.followups[0] if analysis.followups else recommendation.counter_question,
+                "research_alert": analysis.rebuttal or recommendation.research_alert,
+                "analysis_status": "completed",
+                "analyst_model": used_model,
+                "analyst_prompt": prompt,
+                "sources": sources,
+            })
+            candidate = self._experimentalize_recommendation(candidate)
+        else:
+            candidate = self._merge_deep_analysis(
+                recommendation,
+                analysis,
+                model_id=used_model,
+                prompt=prompt,
+                sources=sources,
+            )
         if recommendation.needs_research and not sources:
             candidate = candidate.model_copy(update={"research_status": "unavailable"})
         candidate = candidate.model_copy(update={
@@ -3747,6 +3784,7 @@ class AgentOrchestrator:
         generation_context = self._new_analysis_context(revision)
 
         def stamp_context(value: DebateRecommendation) -> DebateRecommendation:
+            value = self._experimentalize_recommendation(value)
             return value.model_copy(update={
                 "session_id": value.session_id or str(self.session_id),
                 "claim_id": value.claim_id or generation_context.claim_id,
