@@ -263,15 +263,25 @@ class NemotronStreamingASRBackend:
             return
         if self._server_manager is None:
             raise RuntimeError(f"NeMo-Speech.cpp is not ready: {reason}")
-        await self._server_manager.start()
-        deadline = asyncio.get_running_loop().time() + self._event_timeout
-        while True:
-            ready, reason = await asyncio.to_thread(_server_readiness, self._base_url)
-            if ready:
-                return
-            if asyncio.get_running_loop().time() >= deadline:
-                raise RuntimeError(f"NeMo-Speech.cpp is not ready: {reason}")
-            await asyncio.sleep(0.1)
+        try:
+            await self._server_manager.start()
+            deadline = asyncio.get_running_loop().time() + self._event_timeout
+            while True:
+                ready, reason = await asyncio.to_thread(_server_readiness, self._base_url)
+                if ready:
+                    return
+                if asyncio.get_running_loop().time() >= deadline:
+                    raise RuntimeError(f"NeMo-Speech.cpp is not ready: {reason}")
+                await asyncio.sleep(0.1)
+        except BaseException:
+            # Readiness failure or cancellation must release a process that this
+            # backend started; shield keeps the stop running if the caller is
+            # itself being cancelled.
+            try:
+                await asyncio.shield(self._server_manager.stop())
+            except Exception:
+                pass
+            raise
 
     @staticmethod
     async def _event(socket: Any) -> dict[str, Any]:
