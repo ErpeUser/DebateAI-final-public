@@ -846,3 +846,17 @@ NÄCHSTER PUNKT: 040/A077
 - **Commit/Push:** b0becc04195e410c81c4423f0b0d1bfb531e456e (gemeinsamer Regler, adaptive Auswahl, Capability-Clamp und Latenz-Rückkopplung), fff22bbd06635792c9460d82631c7c00f92e5415 (Regressionen).
 
 NÄCHSTER PUNKT: 041/A078
+
+
+## Masterauftrag – 2026-11-14 – 041/A078
+**Status: QUELLCODE ERLEDIGT; reale Windows-/Oracle-Abnahme offen.**
+
+- **Strikte Modellbestätigung:** Der Desktop-Login akzeptiert für die Recherche nur noch das explizite Oracle-Label GPT-6. Das frühere Alias-Label Latest wird nicht mehr als GPT-6 ausgegeben; dadurch kann ein unklarer Modellstatus nicht als Pro-/GPT-6-Nachweis erscheinen.
+- **Markerprüfung:** chatgpt_web.configured() liest und validiert jetzt die nichtgeheimen Oracle-Evidenzfelder für angefordertes/aktives Modell, Modelllabel, Extra-High-Denkstufe, Verifikationsnachweis und Zeitstempel. Fehlende, beschädigte oder falsche Marker blockieren den Lauf.
+- **Transparenter Suchstatus:** Der ChatGPT-Web-Status unterscheidet model_confirmed, search_requested und search_confirmed. Der Browserbefehl bleibt explizit --engine browser, --model gpt-6, --browser-model-strategy current und --browser-research search/deep. Ein bloß nichtleerer Oracle-Output wird nicht als bestätigte Websuche ausgegeben; search_confirmed bleibt ohne strukturierten Oracle-Beleg false.
+- **Research-Gate:** Die Research-Lane prüft vor dem ChatGPT-Aufruf zusätzlich model_confirmed und überspringt unbestätigte Modell-/Loginzustände. Der Router zeigt die bestätigten Modell- und Denkstufenfelder separat an.
+- **Regressionen:** Backend-Tests prüfen gültige Evidenz, blockieren falsches GPT-5-/Latest- und beschädigtes Marker-JSON und prüfen, dass ein Search-Lauf zwar angefordert und mit Modellnachweis ausgeführt, aber ohne strukturierten Quellenbeleg nicht fälschlich als search_confirmed markiert wird. Desktop-Tests prüfen, dass Latest nicht als GPT-6 bestätigt wird; die bestehenden CLI-Flag- und Selector-Failure-Tests bleiben erhalten.
+- **Validierung:** chatgpt_web.py, chatgpt_web.py (Router), beide ChatGPT-Web-Testdateien und der Desktop-Login samt Tests wurden per Python-AST geprüft. Ein echter Windows-/Chrome-/Oracle-Lauf mit realer Anmeldung und Suchbeleg bleibt in dieser Umgebung nicht verfügbar und wird nicht als bestanden behauptet.
+- **Commit/Push:** 67dbe57bd72e6a827c2d85b7d4fcf1946a087bca (Desktop-Labelgate), f335104cd6bdffe0ebce7e7481444c3bd519d338 (Evidenzparser/Status), 1f5463577bd07bd50e33e2e0d407cab795e96756 (Backend-Regressionen), 6ead8bd56695c5ea8589d6a804d700a2d93cd90b (Routerstatus), 7c7ccc4b7bf1b5ab890cbfcba168303594533cc6 (Research-Gate), 58eb609f77cf8e96e7901bea871999b9e7cabee6 (Desktop-Regression).
+
+NÄCHSTER PUNKT: 042/A080
