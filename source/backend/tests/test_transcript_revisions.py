@@ -80,6 +80,40 @@ class TranscriptRevisionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Zahl und Sprecher korrigiert", corrected.reason)
         self.assertIs(result.revision, corrected)
 
+    async def test_manual_correction_after_refiner_preserves_asr_as_original(self):
+        session_id = uuid.uuid4()
+        transcript_id = uuid.uuid4()
+        entry = SimpleNamespace(
+            id=transcript_id,
+            session_id=session_id,
+            text="ASR text, refined.",
+            raw_text="ASR text",
+            speaker_id=None,
+            manual_corrected_at=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=_ScalarResult(entry))
+        db.scalar = AsyncMock(return_value=None)
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+
+        result = await apply_manual_transcript_revision(
+            db,
+            session_id,
+            transcript_id,
+            text="Manually corrected text.",
+            reason="manual wording correction",
+        )
+
+        original, manual = [call.args[0] for call in db.add.call_args_list]
+        self.assertEqual("ASR text", original.text)
+        self.assertEqual("original", original.source)
+        self.assertEqual("refiner", manual.source)
+        self.assertEqual("ASR text, refined.", manual.text)
+        self.assertEqual("Manually corrected text.", entry.text)
+        self.assertEqual("ASR text", entry.raw_text)
+        self.assertEqual(2, result.revision.revision)
+
 
 if __name__ == "__main__":
     unittest.main()
