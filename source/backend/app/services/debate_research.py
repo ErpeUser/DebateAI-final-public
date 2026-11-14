@@ -426,7 +426,13 @@ async def _read_trusted_original(
     source: ResearchSource,
     query: str,
 ) -> ResearchSource:
-    if source.verification_status == "read" or not _trusted_original_url(source.url):
+    can_read_ai_source = (
+        source.source_type == "ai_web"
+        and isinstance(client, httpx.AsyncClient)
+    )
+    if source.verification_status == "read" or (
+        not _trusted_original_url(source.url) and not can_read_ai_source
+    ):
         return source
     cached_document = _cache_get(_document_cache, source.url)
     if cached_document is None:
@@ -741,7 +747,13 @@ async def _research_with_client(
         original_indexes = [
             index for index, source in enumerate(sources)
             if source.verification_status != "read"
-            and _trusted_original_url(source.url)
+            and (
+                _trusted_original_url(source.url)
+                or (
+                    source.source_type == "ai_web"
+                    and isinstance(client, httpx.AsyncClient)
+                )
+            )
         ][:2]
         if original_indexes and configured["original_sources_required"]:
             read_results = await asyncio.gather(*(
@@ -751,9 +763,11 @@ async def _research_with_client(
             for index, read_source in zip(original_indexes, read_results):
                 sources[index] = read_source
         sources.sort(key=lambda source: (
-            0 if source.verification_status == "read" and _trusted_original_url(source.url)
+            0 if source.verification_status == "read" and (
+                _trusted_original_url(source.url) or source.source_type == "original"
+            )
             else 1 if source.verification_status == "read"
-            else 2 if _trusted_original_url(source.url)
+            else 2 if _trusted_original_url(source.url) or source.source_type == "ai_web"
             else 3
         ))
         sources = sources[: min(settings.DEBATE_RESEARCH_MAX_SOURCES, configured["steps"] * 2)]
