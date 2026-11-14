@@ -60,9 +60,53 @@ def runtime_available() -> bool:
     )
 
 
+def verification_evidence() -> dict[str, object]:
+    """Read the non-secret Oracle proof for the dedicated browser account."""
+    marker = _setting("MARKER")
+    if not marker:
+        return {}
+    try:
+        payload = json.loads(Path(marker).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return payload if isinstance(payload, dict) else {}
+
+
+def verified_selection() -> dict[str, bool]:
+    evidence = verification_evidence()
+    actual_model = str(evidence.get("actual_model") or "").casefold().strip()
+    requested_model = str(evidence.get("requested_model") or "").casefold().strip()
+    model_label = str(evidence.get("model_label") or "").strip()
+    thinking = str(evidence.get("thinking") or "").casefold().strip()
+    thinking_label = str(evidence.get("thinking_label") or "").casefold().strip()
+    verification = str(evidence.get("verification") or "").strip()
+    return {
+        "model_confirmed": (
+            actual_model == "gpt-6"
+            and requested_model == "gpt-6"
+            and model_label == "GPT-6"
+            and bool(verification)
+            and bool(evidence.get("verified_at"))
+        ),
+        "thinking_confirmed": (
+            thinking == "xhigh"
+            and thinking_label == "extra high"
+            and bool(verification)
+            and bool(evidence.get("verified_at"))
+        ),
+    }
+
+
+def model_confirmed() -> bool:
+    return verified_selection()["model_confirmed"]
+
+
 def configured() -> bool:
     marker = _setting("MARKER")
     if not marker or not Path(marker).is_file():
+        return False
+    selection = verified_selection()
+    if not selection["model_confirmed"] or not selection["thinking_confirmed"]:
         return False
     failure = _verification_failure_path()
     try:
@@ -107,7 +151,10 @@ def research_status() -> dict[str, object]:
     default = {
         "provider": PROVIDER,
         "model": "gpt-6",
+        "model_confirmed": False,
         "research_mode": None,
+        "search_requested": False,
+        "search_confirmed": False,
         "state": "idle",
     }
     if not path.is_file():
@@ -119,7 +166,8 @@ def research_status() -> dict[str, object]:
     if not isinstance(payload, dict):
         return {**default, "state": "invalid"}
     allowed = {
-        "provider", "model", "research_mode", "state",
+        "provider", "model", "model_confirmed", "research_mode",
+        "search_requested", "search_confirmed", "state",
         "requested_at", "completed_at", "error_class",
     }
     return {**default, **{key: value for key, value in payload.items() if key in allowed}}
@@ -139,7 +187,12 @@ def _write_research_status(
     payload: dict[str, object] = {
         "provider": PROVIDER,
         "model": "gpt-6",
+        "model_confirmed": model_confirmed(),
         "research_mode": research,
+        "search_requested": research in {"search", "deep"},
+        # Oracle was instructed to search, but this backend has no structured
+        # proof that a browser search actually ran. Never claim confirmation.
+        "search_confirmed": False,
         "state": state,
         "requested_at": requested_at,
     }
