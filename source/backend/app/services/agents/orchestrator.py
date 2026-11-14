@@ -4032,6 +4032,13 @@ class AgentOrchestrator:
                 # is attached so the UI can show arriving rebuttal/example blobs
                 # before all lanes and the final consolidation finish.
                 self._experimental_lane_artifacts = list(artifacts)
+                if (
+                    getattr(self, "_experimental_mode", False)
+                    and getattr(self, "_argument_graph_enabled", False)
+                ):
+                    lane_payload = recommendation.model_dump(mode="json")
+                    lane_payload["external_lane_artifacts"] = list(artifacts)
+                    await self._persist_argument_recommendation(lane_payload)
                 try:
                     await self._send_debate_update(
                         recommendation.transcript_revision,
