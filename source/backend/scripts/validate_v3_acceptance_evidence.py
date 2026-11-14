@@ -18,6 +18,12 @@ from typing import Any
 
 REQUIREMENTS = {"A06", "A18", "A21", "A22"}
 SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
+A06_EVENT_FIELDS = {
+    "speaker_switch": ("at_seconds", "speaker_before", "speaker_after"),
+    "device_switch": ("at_seconds", "track", "before_endpoint_id", "after_endpoint_id"),
+    "asr_failure": ("at_seconds", "track", "injected", "visible_status"),
+    "reconnect": ("at_seconds", "capture_id_before", "capture_id_after", "sequence_continuous"),
+}
 
 
 def _text(value: Any) -> str:
@@ -120,6 +126,45 @@ def _validate_common(
     return requirement, reference, environment
 
 
+def _validate_a06_events(payload: dict[str, Any], missing: list[str], errors: list[str]) -> None:
+    events = payload.get("events")
+    if not isinstance(events, list) or not events:
+        missing.append("events")
+        return
+    seen: set[str] = set()
+    for index, event in enumerate(events):
+        prefix = f"events[{index}]"
+        if not isinstance(event, dict):
+            errors.append(f"{prefix} must be an object")
+            continue
+        event_type = _text(event.get("type"))
+        if event_type not in A06_EVENT_FIELDS:
+            errors.append(f"{prefix}.type must be one of {', '.join(sorted(A06_EVENT_FIELDS))}")
+            continue
+        seen.add(event_type)
+        for field in A06_EVENT_FIELDS[event_type]:
+            _missing(event.get(field), f"{prefix}.{field}", missing)
+        at_seconds = event.get("at_seconds")
+        if (
+            isinstance(at_seconds, bool)
+            or not isinstance(at_seconds, numbers.Real)
+            or not math.isfinite(float(at_seconds))
+            or at_seconds < 0
+        ):
+            errors.append(f"{prefix}.at_seconds must be a finite non-negative number")
+        if event_type == "speaker_switch" and _text(event.get("speaker_before")) == _text(event.get("speaker_after")):
+            errors.append(f"{prefix} must change speaker identity")
+        if event_type == "device_switch" and _text(event.get("before_endpoint_id")) == _text(event.get("after_endpoint_id")):
+            errors.append(f"{prefix} must record different endpoint identities")
+        if event_type == "asr_failure" and event.get("injected") is not True:
+            errors.append(f"{prefix}.injected must be true for a deliberate recovery test")
+        if event_type == "reconnect" and event.get("sequence_continuous") is not True:
+            errors.append(f"{prefix}.sequence_continuous must be true after reconnect")
+    for event_type in A06_EVENT_FIELDS:
+        if event_type not in seen:
+            missing.append(f"events.{event_type}")
+
+
 def _validate_a06(
     payload: dict[str, Any],
     reference: dict[str, Any],
@@ -138,6 +183,7 @@ def _validate_a06(
         for name in ("microphone", "system_audio", "overlap", "device_switch", "backlog"):
             if flags.get(name) is not True:
                 errors.append(f"A06 scenario flag {name} must be true")
+    _validate_a06_events(payload, missing, errors)
     _missing(payload.get("transcript_complete"), "transcript_complete", missing)
     if payload.get("transcript_complete") is not True:
         errors.append("A06 transcript_complete must be true after manual comparison")
