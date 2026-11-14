@@ -931,3 +931,17 @@ NÄCHSTER PUNKT: 046/A084
 - **Commit/Push:** `d26ab07eecdf2429dc0a0e4dc51e23913a3326ad` (Claim-Gates), `aaf8b74b1e65d961a905b843b3e64245fd25f775` (Claim-Regressionen).
 
 NÄCHSTER PUNKT: 047/A085
+
+
+## Masterauftrag – 2026-11-14 – 047/A085
+**Status: QUELLCODE ERLEDIGT; externe Providerabnahme offen.**
+
+- **Experimentelle Debate-Lanes:** `_run_experimental_external_lanes()` lädt weiterhin nur den bestehenden vollständigen lokalen Transcript-Reader, überträgt aber nicht mehr pauschal die letzten 6.000 Zeichen. `_select_relevant_transcript_excerpt()` bewertet einzelne Sätze gegen aktuellen Claim, Standpunkt und benötigten Kontext, behält den jüngsten Zug als Tie-Breaker und begrenzt den externen Auszug auf 2.400 Zeichen. Der Prompt kennzeichnet ihn als `[RELEVANT TRANSCRIPT]`.
+- **Video-Quellenextraktion:** `extract_source_candidates_with_ai()` reduziert jeden Transcript vor dem PII-Sanitizer auf source-nahe URL-/DOI-/Studie-/Bericht-Kontexte. Die externe Extraktion erhält höchstens 3.600 Zeichen statt bis zu 36.000 Zeichen je Chunk; ein kleiner Cue-Satz-/Randfall-Fallback bleibt vorhanden.
+- **Rhetorik-Review:** `evaluate_rhetoric_profile()` überträgt Claims, Sprecher und `context_before` aus den vorhandenen Eval-Cases, begrenzt auf höchstens 6.000 Zeichen. Der vollständige Transkripttext wird für diese externe Review nicht mehr als Promptpräfix verwendet.
+- **Regressionen:** `test_experimental_transcript_selector_keeps_relevant_context` prüft Claim, Standpunkt und Kontext, entfernt einen entfernten Füllmarker und erzwingt das 2.400-Zeichen-Limit. `test_video_source_extraction_focuses_source_context` prüft, dass die URL erhalten bleibt, der entfernte Füllmarker fehlt und der externe Prompt unter 5.000 Zeichen bleibt. `test_rhetoric_review_uses_claim_focused_excerpt` prüft Claim-/Kontextbeibehalt, Ausschluss des entfernten Transcriptmarkers und das Review-Budget.
+- **Wiederherstellung/Validierung:** Beim Schreiben der großen Orchestrator-Datei wurde das MCP-Ausgabelimit am letzten Reconnect-Block sichtbar. Der fehlende Abschluss wurde im Folgecommit wiederhergestellt (`connect()`, Response-Task, Erfolg-/Fehlerpfad), danach wurde der erzeugte vollständige Blob per Python-AST geparst. Zusätzlich wurden die Video-Dateien und die Orchestrator-Regressionsdatei vollständig per AST geprüft; die Selector-Logik wurde mit einem isolierten lokalen Verhaltenstest ausgeführt.
+- **Wiederverwendet:** Bestehende `extract_source_candidates()`, Eval-Cases und lokale Transcript-Leser; keine neue Cloudbibliothek und kein zweiter Transkriptpfad.
+- **Commit/Push:** `55307c589af913955b7e1a05681bc30ebc008707` (source-/rhetoric-excerpt), `9c746f19cd3c71a3889d6e2565db47e048c35461` (Video-Regressionen), `ea66ccf830ca197f196f9397f5334c1816e72356` (experimenteller Claim-Selector), `ebd995fbff7663efec41ba0b50fa771238a919bd` (Orchestrator-Regression), `b52134692bd4ce22d2d6f616d8797b776cb08bb2` (Reconnect-Abschluss wiederhergestellt).
+
+NÄCHSTER PUNKT: 048/A086
