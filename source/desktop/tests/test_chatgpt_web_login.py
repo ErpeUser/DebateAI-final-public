@@ -60,6 +60,32 @@ class ChatGPTWebLoginTests(unittest.TestCase):
             self.assertNotIn("cookie", json.dumps(evidence).casefold())
             self.assertFalse(output.exists())
 
+    def test_latest_label_is_not_treated_as_confirmed_gpt6(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            home = root / "home"
+            session = home / "sessions" / "proof"
+            session.mkdir(parents=True, exist_ok=True)
+            metadata = {
+                "browser": {
+                    "modelSelection": {
+                        "verified": True,
+                        "resolvedLabel": "Latest",
+                    },
+                    "thinkingSelection": {
+                        "verified": True,
+                        "requestedLevel": "extra-high",
+                    },
+                }
+            }
+            (session / "meta.json").write_text(json.dumps(metadata), encoding="utf-8")
+            self.assertIsNone(
+                chatgpt_web_login._verified_oracle_selection(
+                    home,
+                    started_at=0,
+                )
+            )
+
     def test_failure_does_not_enable_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
