@@ -633,6 +633,7 @@ async def _ai_web_sources(
             )
     except Exception:
         return []
+    provider_label = "chatgpt_web" if chatgpt_generate is not None and "chatgpt_web" in providers else next((provider for provider in ("gemini_web", "gemini_api", "cliproxyapi") if provider in providers), "ai_web")
     urls = []
     for match in re.findall(r"https?://\S+", answer or ""):
         url = match.rstrip(".,;:)]}")
@@ -644,7 +645,7 @@ async def _ai_web_sources(
             url=url,
             snippet=" ".join((answer or "").split())[:900],
             passage=" ".join((answer or "").split())[:900],
-            provider="chatgpt_web",
+            provider=provider_label,
             claim=claim,
             verification_status="found",
             retrieval_status="read",
