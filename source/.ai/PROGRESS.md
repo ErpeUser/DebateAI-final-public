@@ -860,3 +860,17 @@ NÄCHSTER PUNKT: 041/A078
 - **Commit/Push:** 67dbe57bd72e6a827c2d85b7d4fcf1946a087bca (Desktop-Labelgate), f335104cd6bdffe0ebce7e7481444c3bd519d338 (Evidenzparser/Status), 1f5463577bd07bd50e33e2e0d407cab795e96756 (Backend-Regressionen), 6ead8bd56695c5ea8589d6a804d700a2d93cd90b (Routerstatus), 7c7ccc4b7bf1b5ab890cbfcba168303594533cc6 (Research-Gate), 58eb609f77cf8e96e7901bea871999b9e7cabee6 (Desktop-Regression).
 
 NÄCHSTER PUNKT: 042/A080
+
+
+## Masterauftrag – 2026-11-14 – 042/A080
+**Status: QUELLCODE ERLEDIGT; reale Queue-/Browserabnahme offen.**
+
+- **Modusweitergabe:** Die bestehende AUTOMATIC/MANUAL-Priority des äußeren ExternalAnalysisScheduler wird bis research_claim() und _research_with_client() weitergereicht. Automatische Checks verwenden den Modus live, manuelle Hintergrundrecherche deep.
+- **Kurzer Faktencheck:** Live-Recherche begrenzt das innere Provider-/Browserbudget auf zehn Sekunden, überspringt einen belegten ChatGPT-Web-Browserlock und versucht die Providerreihenfolge bis zum ersten nichtleeren Ergebnis. Fällt der erste Provider aus oder ist die Sitzung nicht bereit, läuft der konfigurierte Fallback weiter.
+- **Tiefe Recherche:** Deep-Recherche darf den bestehenden Oracle-Lock bis zur manuellen Deadline abwarten und aggregiert weiterhin alle aktivierten Providerantworten. Der bestehende äußere Scheduler behält seine 12-Sekunden-Live- und 180-Sekunden-Manual-Deadlines einschließlich Queuewartezeit.
+- **Child-Prozess:** chatgpt_web.generate() akzeptiert jetzt ein modeabhängiges timeout_seconds-Argument; der Oracle-Prozess wird im Live-Modus nach spätestens zehn Sekunden beendet, während Deep weiterhin das lange 660-Sekunden-Child-Budget nutzt. Automatische und tiefe Resultat-Caches werden getrennt geführt, damit ein kurzer Live-Treffer keine tiefe Nachrecherche ersetzt.
+- **Regressionen:** test_live_fact_check_stops_after_first_successful_provider prüft das frühe Ende. test_live_fact_check_skips_busy_chatgpt_web_and_uses_fallback prüft die Browserkapazitätsausweichung. test_live_and_deep_modes_keep_separate_inflight_cache_entries prüft getrennte Cache-/Inflight-Schlüssel; die bestehenden Deep-Failover-Tests bleiben unverändert.
+- **Validierung:** chatgpt_web.py, debate_research.py und test_debate_research.py wurden per Python-AST geprüft; der geänderte Orchestrator-Call und der Cache-/Mode-Block wurden manuell geprüft. Ein frischer Async-/Windows-/Oracle-Lauf bleibt wegen fehlendem ausführbarem privatem Checkout, fehlenden Backend-Abhängigkeiten und nicht vorhandener realer Browser-Sitzung blockiert.
+- **Commit/Push:** 619c7d7935834efd28fee4308bea79b817a89171 (Oracle-Child-Budget), d7d4c9ceebfece68b9b225a3ff36b9a2d63abff3 (Research-Modi/Browser-Gate), 7c8e8f24fa41062e28ee95761749727cbc988898 (Orchestrator-Mode), 6f2db2e8449ed288c27df8971e0c086c41ed9edd (Mode-Caches), 89409b780518467f1cdde632dbd448fbc1b5f2bd und 79d29e877521730f908ee13ba8a993768423dbc0 (Regressionen).
+
+NÄCHSTER PUNKT: 043/A081
