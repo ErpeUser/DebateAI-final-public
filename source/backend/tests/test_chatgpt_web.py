@@ -48,6 +48,60 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("search", command)
         self.assertNotIn("api", command)
 
+    async def test_terminate_child_reaps_after_graceful_exit(self):
+        from app.services import chatgpt_web
+
+        class Process:
+            returncode = None
+
+            def __init__(self):
+                self.actions = []
+
+            def terminate(self):
+                self.actions.append("terminate")
+
+            async def wait(self):
+                self.actions.append("wait")
+                self.returncode = 0
+
+            def kill(self):
+                self.actions.append("kill")
+
+        process = Process()
+        await chatgpt_web._terminate_child(process)
+
+        self.assertEqual(["terminate", "wait"], process.actions)
+        self.assertEqual(0, process.returncode)
+
+    async def test_terminate_child_kills_after_wait_timeout(self):
+        from app.services import chatgpt_web
+
+        class Process:
+            returncode = None
+
+            def __init__(self):
+                self.actions = []
+                self.wait_calls = 0
+
+            def terminate(self):
+                self.actions.append("terminate")
+
+            async def wait(self):
+                self.wait_calls += 1
+                self.actions.append("wait")
+                if self.wait_calls == 1:
+                    raise asyncio.TimeoutError
+                self.returncode = -9
+
+            def kill(self):
+                self.actions.append("kill")
+
+        process = Process()
+        await chatgpt_web._terminate_child(process)
+
+        self.assertEqual(["terminate", "wait", "kill", "wait"], process.actions)
+        self.assertEqual(-9, process.returncode)
+
     async def test_selector_failure_blocks_followup_without_another_browser_job(self):
         from app.services import chatgpt_web
 
