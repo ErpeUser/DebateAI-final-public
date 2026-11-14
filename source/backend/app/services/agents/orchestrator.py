@@ -3812,10 +3812,19 @@ class AgentOrchestrator:
         started_at = time.perf_counter()
         await self.activity.cycle_started("objection_handler")
         try:
-            transcript_window = await self.transcript_buffer.get_window(
-                max_age_seconds=settings.OBJECTION_WINDOW_SECONDS,
-                aliases=self.speaker_aliases(),
-            )
+            if getattr(self, "_experimental_mode", False) and not getattr(
+                self, "_active_claim_is_interim", False
+            ):
+                # Final/checkpoint turns get the complete bounded transcript;
+                # interim turns keep the short window for immediate latency.
+                transcript_window = await self.transcript_buffer.get_full(
+                    aliases=self.speaker_aliases()
+                )
+            else:
+                transcript_window = await self.transcript_buffer.get_window(
+                    max_age_seconds=settings.OBJECTION_WINDOW_SECONDS,
+                    aliases=self.speaker_aliases(),
+                )
             interim_hypotheses = getattr(self, "_interim_debate_hypotheses", {})
             if interim_hypotheses:
                 live_partial = next(reversed(interim_hypotheses.values()))[-1200:]
