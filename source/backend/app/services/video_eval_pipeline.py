@@ -53,6 +53,16 @@ class VideoEvalArtifact:
     schema_version: int = 1
     video_id: str = ""
     source_url: str = ""
+    # Provenance and reproducibility metadata from the video-list ingestion.
+    original_url: str = ""
+    source_platform: str = ""
+    retrieval_timestamp: str = ""
+    video_hash: str = ""
+    subtitle_hash: str = ""
+    audio_hash: str = ""
+    duration_seconds: float = 0.0
+    availability: str = "available"
+    ingestion_checks: dict[str, Any] = field(default_factory=dict)
     language_code: str = "de-DE"
     transcript_segments: list[dict[str, Any]] = field(default_factory=list)
     speaker_turns: list[dict[str, Any]] = field(default_factory=list)
