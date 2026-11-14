@@ -577,6 +577,57 @@ async def _duckduckgo_sources(
     return sources
 
 
+async def _ai_web_sources(
+    claim: str,
+    query: str,
+    providers: set[str],
+) -> list[ResearchSource]:
+    """Ask an enabled AI web lane for source-backed findings.
+
+    AI web output is treated as an untrusted source index: only explicit URLs
+    are persisted as sources and the final answer still passes the normal
+    source verification gates. Legacy search endpoints are never called.
+    """
+    try:
+        from app.services.chatgpt_web import generate as chatgpt_generate
+    except Exception:
+        return []
+    if "chatgpt_web" not in providers:
+        return []
+    prompt = (
+        "Recherchiere diese Debattenaussage mit Originalquellen. "
+        "Gib pro Quelle eine kurze Begründung und die vollständige URL aus. "
+        "Keine Wikipedia- oder DuckDuckGo-Links. Aussage: " + claim[:800] +
+        " Recherchefrage: " + query[:500]
+    )
+    try:
+        answer = await chatgpt_generate(
+            prompt,
+            system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
+            reasoning_effort="high",
+            research="search",
+        )
+    except Exception:
+        return []
+    urls = []
+    for match in re.findall(r"https?://[^\\s<>\\\"]+", answer or ""):
+        url = match.rstrip(".,;:)]}")
+        if url and url not in urls and "wikipedia.org" not in url and "duckduckgo.com" not in url:
+            urls.append(url)
+    return [
+        ResearchSource(
+            title="KI-Recherche: " + urlsplit(url).netloc,
+            url=url,
+            snippet=" ".join((answer or "").split())[:900],
+            provider="chatgpt_web",
+            claim=claim,
+            verification_status="found",
+            source_type="ai_web",
+            trust_level="unknown",
+        )
+        for url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
+    ]
+
 async def _duckduckgo_html_sources(
     client: httpx.AsyncClient,
     claim: str,
@@ -615,15 +666,13 @@ async def _research_with_client(
             status="unavailable",
             error="Research is disabled in AI settings",
         )
-    providers = set(configured["providers"])
+    providers = {
+        provider for provider in configured["providers"]
+        if provider not in {"wikipedia", "duckduckgo"}
+    }
     tasks = []
-    if "wikipedia" in providers:
-        tasks.append(_wikipedia_sources(client, claim, query))
-    if "duckduckgo" in providers:
-        tasks.extend((
-            _duckduckgo_sources(client, claim, query),
-            _duckduckgo_html_sources(client, claim, query),
-        ))
+    if providers.intersection({"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}):
+        tasks.append(_ai_web_sources(claim, query, providers))
     if not tasks:
         return ResearchResult(
             claim=claim,
