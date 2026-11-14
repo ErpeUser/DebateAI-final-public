@@ -61,6 +61,16 @@ def current_data_category() -> str:
     return _data_category.get()
 
 
+def data_category_for_source(source: object = "") -> str:
+    """Map an internal caller label to a bounded audit data category."""
+    value = str(source or "").casefold().replace("-", "_")
+    if any(token in value for token in ("research", "recherche", "fact_check")):
+        return "research_claim"
+    if any(token in value for token in ("transcript", "video", "rhetoric", "debate")):
+        return "transcript_excerpt"
+    return "model_prompt"
+
+
 @contextmanager
 def audit_context(
     *,
