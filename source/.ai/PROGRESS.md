@@ -488,3 +488,16 @@ NÄCHSTER PUNKT: 014/A029
 - **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 015/A030
+## Masterauftrag – 2026-11-14 – 015/A030
+
+**Status: BEREITS ERLEDIGT (ASR-Kurzfilter erweitert); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Bedeutungsvolle Kurzäußerungen wie „Nein“, „Doch“, „Warum“, „Nicht“ und kurze Zahlenkorrekturen vor ASR-Filtern schützen und die Regressionen erweitern.
+- **Änderung:** `batch_transcriber.py` erweitert `_MEANINGFUL_SHORT_UTTERANCES` um `nicht` und deutsche einwortige Zahlen; `_too_short()` akzeptiert zusätzlich ganzzahlige, dezimale und prozentuale Korrekturen per numerischem Regex (`42`, `2,2`, `8%`). Halluzinations-/Repetitionsfilter bleiben unverändert.
+- **Regression:** `test_hallucination_filter.py` prüft jetzt `Nein`, `Doch`, `Warum`, `Nicht`, `42`, `2,2`, `8%`, `acht` und `fünf` als durchzulassende Kurzäußerungen. Bestehende Tests für Wiederholung, Bracket-Junk, echte wiederholte Rede und logredigierte Zeichenlänge bleiben erhalten.
+- **TDD-Nachweis:** Der neue Erwartungstest wurde vor der Produktionsänderung gegen die alte Logik als RED beobachtet (`Nicht` wurde verworfen); nach der minimalen Filteränderung bestand die isolierte Kurzfilterprüfung als GREEN. Ein vollständiger Repository-Testlauf ist in dieser Sitzung wegen fehlendem Checkout/Dependencies und GitHub-Actions `steps: null` nicht ausführbar.
+- **Eigener neuer Code:** `batch_transcriber.py` geändert; Test ergänzt. Keine zweite Transkriptionspipeline eingeführt.
+- **Konkreter nächster Abnahmeschritt:** Im ausführbaren Backend-Checkout `python -m unittest tests.test_hallucination_filter tests.test_retranscribe tests.test_ordered_transcription` und anschließend den vollständigen Backend-Testlauf ausführen; zusätzlich dieselben Fälle mit echtem deutschem Audio und Zahlen-/Negationskorrekturen auf Windows prüfen.
+- **Commit/Push:** Produktionsfix `e3a8d79a3141c12e6a535df32ae31866633f9d55`, Regressionstest `74ad7c9723f2cab356f749a986c8eb302038b7fe`; der Fortschrittsnachweis folgt in diesem Commit auf master.
+
+NÄCHSTER PUNKT: 016/A031
