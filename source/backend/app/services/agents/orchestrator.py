@@ -4341,7 +4341,11 @@ class AgentOrchestrator:
         if recommendation.needs_research and is_safe_research_query(query):
             result = None if force_refresh else self._research_cache.get(query)
             if result is None:
-                result = await research_claim(recommendation.target_claim, query)
+                result = await research_claim(
+                    recommendation.target_claim,
+                    query,
+                    research_mode="deep" if manual else "live",
+                )
                 self._research_cache[query] = result
             result = _bind_research_result(
                 result,
