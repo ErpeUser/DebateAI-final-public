@@ -696,3 +696,17 @@ NÄCHSTER PUNKT: 029/A055
 
 NÄCHSTER PUNKT: 030/A056
 
+
+## Masterauftrag – 2026-11-14 – 030/A056
+
+**Status: BEREITS ERLEDIGT (Single-Flight pro Sitzung; Fresh-Test BLOCKIERT durch Runner/Checkout).**
+
+- **Aufgabe:** Bei schnell wechselnden Interim-Transkripten darf je Sitzung höchstens eine lokale Sofortantwort-Generation gleichzeitig aktiv sein.
+- **Laufzeitnachweis:** `AgentOrchestrator` besitzt pro Sitzung genau einen `_objection_task`. `_schedule_debate_revision()` markiert die neueste Revision als ausstehend, bricht einen laufenden Worker vor dem ersten sichtbaren Partial ab und startet danach nur den aktuellen Worker. Sobald ein brauchbares Partial sichtbar ist, werden weitere Interim-Revisionen coalesced; der laufende Worker beendet seine Generation und nimmt anschließend die neueste Revision aus derselben Worker-Schleife auf. Damit gibt es zu keinem Zeitpunkt zwei parallele lokale Sofortantwort-Generationen.
+- **Stale-Schutz:** Claim-, Transcript-, Generation- und Kontext-Gates verhindern, dass ein langsames Ergebnis einer älteren Interim-Revision nach einem schnellen Folgewechsel sichtbar publiziert wird.
+- **Regressionen:** `test_new_speech_cancels_stale_revision_and_runs_latest` prüft Abbruch des ersten Workers, genau einen Nachfolger und zwei Agent-Aufrufe. `test_final_negation_drops_slow_model_result_for_interim_claim`, `test_stale_revision_is_discarded_even_if_model_returns` und `test_streamed_model_sentence_is_broadcast_before_full_model_finishes` decken langsame stale Ergebnisse, Partial-Coalescing und die Sichtbarkeit vor der Vollantwort ab.
+- **Fresh-Test-Ergebnis:** Die Quell- und Regressionstraces sind auf `master` vorhanden. Ein aktueller fokussierter Async-Lauf bleibt wegen fehlendem ausführbarem privatem Checkout, Backend-Abhängigkeiten und GitHub-Actions-Runs mit `steps: null` blockiert.
+- **Eigener neuer Code:** keiner; die bestehende Single-Flight- und Stale-Revision-Strecke erfüllt den Quellcode-Teil.
+- **Commit/Push:** Der Status wird mit diesem Fortschrittscommit auf `master` dokumentiert.
+
+NÄCHSTER PUNKT: 031/A057
