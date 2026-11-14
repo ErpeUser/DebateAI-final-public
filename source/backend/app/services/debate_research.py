@@ -153,9 +153,9 @@ def _extract_published_at(content: bytes) -> str:
     """Extract a publisher-supplied date without treating model prose as evidence."""
     text = content.decode("utf-8", errors="replace")
     patterns = (
-        r"<meta\b[^>]*(?:property|name)\s*=\s*[\\"'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)\s*[\\"'][^>]*content\s*=\s*[\\"']([^\\"']+)",
-        r"<meta\b[^>]*content\s*=\s*[\\"']([^\\"']+)[\\"'][^>]*(?:property|name)\s*=\s*[\\"'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)",
-        r"\\"datePublished\\"\s*:\s*\\"([^\\"]+)\\"",
+        r'<meta\b[^>]*(?:property|name)\s*=\s*["\'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)\s*["\'][^>]*content\s*=\s*["\']([^"\']+)',
+        r'<meta\b[^>]*content\s*=\s*["\']([^"\']+)["\'][^>]*(?:property|name)\s*=\s*["\'](?:article:published_time|datepublished|citation_publication_date|dc.date|date)',
+        r'"datePublished"\s*:\s*"([^"]+)"',
     )
     for pattern in patterns:
         match = re.search(pattern, text, flags=re.IGNORECASE)
@@ -164,6 +164,7 @@ def _extract_published_at(content: bytes) -> str:
             if value:
                 return value[:80]
     return ""
+
 
 
 def _canonical_url(value: object) -> str | None:
