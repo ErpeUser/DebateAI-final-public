@@ -91,8 +91,12 @@ _HALLUCINATION_EXACT: set[str] = {
 # Minimum word count — single-word "transcriptions" from noise are almost always junk
 _MIN_WORD_COUNT = 2
 _MEANINGFUL_SHORT_UTTERANCES = {
-    "ja", "nein", "doch", "fünf", "fuenf", "stimmt", "falsch", "genau",
+    "ja", "nein", "doch", "nicht", "fünf", "fuenf", "stimmt", "falsch", "genau",
     "niemals", "immer", "warum", "wieso", "wann", "wo", "wer", "welche",
+    "null", "eins", "ein", "eine", "einen", "einer", "zwei", "drei", "vier",
+    "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "zwoelf",
+    "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn",
+    "neunzehn", "zwanzig", "hundert", "tausend",
 }
 
 # Chinese, Japanese, Thai, Lao, Khmer and Burmese are written without spaces
@@ -110,7 +114,11 @@ _MIN_UNSPACED_CHARS = 3
 
 def _too_short(text: str) -> bool:
     normalized = text.casefold().strip(" .,!?;:\"'()[]{}")
-    if normalized in _MEANINGFUL_SHORT_UTTERANCES or normalized.isdecimal():
+    # Preserve meaningful one-word interjections and numeric corrections,
+    # including decimal/percentage forms that are not str.isdecimal().
+    if normalized in _MEANINGFUL_SHORT_UTTERANCES or bool(
+        re.fullmatch(r"\\d+(?:[.,]\\d+)?%?", normalized)
+    ):
         return False
     if len(text.split()) >= _MIN_WORD_COUNT:
         return False
