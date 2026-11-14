@@ -450,6 +450,14 @@ function MainApp() {
         setDebateState((current) =>
           reduceDebateUpdate(current, messageSessionId, msg.data),
         );
+      } else if (msg.type === "experimental_debate_update") {
+        // The dedicated event is additive. Old clients still receive the
+        // legacy recommendation; current clients reduce the embedded snapshot.
+        if (msg.data.recommendation) {
+          setDebateState((current) =>
+            reduceDebateUpdate(current, messageSessionId, msg.data.recommendation),
+          );
+        }
       } else if (msg.type === "status") {
         if (shouldRecoverTranscriptsFromStatus(
           msg.data.state,
