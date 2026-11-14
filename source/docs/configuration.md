@@ -253,7 +253,7 @@ including a cloud gateway that is configured but paused.
 
 Transcript refinement closes the quality gap that local-only audio opens.
 The `transcript_refiner` agent (off by default; Admin -> Agents, any text
-model, local or cloud, interval default 45s) sends the tokenized text of
+model, local or cloud, idle-gated poll default 45s while quiet) sends the tokenized text of
 recent entries to its model to fix punctuation, casing, sentence boundaries
 and obvious mishearings, and writes the result back to `transcript_entries`
 with the transcriber's text kept in `raw_text` and `refined_at` set. A
