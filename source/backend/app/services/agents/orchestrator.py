@@ -1125,7 +1125,16 @@ class AgentOrchestrator:
         options = normalize_experimental_strategies(recommendation)
         selected = recommendation.selected_strategy_id
         if not selected:
-            selected = next((item["id"] for item in options if item.get("text")), "")
+            preferred_kinds = ("example", "refutation", "contradiction", "counter_question")
+            selected = next(
+                (
+                    item["id"]
+                    for kind in preferred_kinds
+                    for item in options
+                    if item.get("kind") == kind and item.get("text")
+                ),
+                "",
+            )
         selected_text = next((item.get("text", "") for item in options if item.get("id") == selected), "")
         # The chosen move is the only large visible answer; alternatives remain
         # available as compact blobs for deliberate selection in the UI.
