@@ -22,6 +22,7 @@ _MEDIA_SUFFIXES = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".mp4", ".mkv", ".we
 _CONTENT_SUFFIXES = {"audio/wav": ".wav", "audio/x-wav": ".wav", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
 
 from app.services.video_eval_pipeline import (
+    attach_media_metadata,
     build_video_artifact,
     evaluate_rhetoric_profile,
     research_source_candidates,
@@ -112,12 +113,17 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
             project_id=item.get("project_id"),
             speaker_diarization=diarization,
         )
-    artifact = build_video_artifact(
-        video_id=video_id,
-        source_url=str(item.get("source_url") or item.get("media_url") or ""),
-        segments=segments,
-        language_code=language,
-    )
+        artifact = build_video_artifact(
+            video_id=video_id,
+            source_url=str(item.get("source_url") or item.get("media_url") or ""),
+            segments=segments,
+            language_code=language,
+        )
+        artifact = attach_media_metadata(
+            artifact,
+            media_path,
+            subtitle_path=item.get("subtitle_path"),
+        )
     artifact = await research_source_candidates(artifact)
     artifact = await evaluate_rhetoric_profile(artifact)
     artifact_path = save_artifact(artifact, output_dir / f"{video_id}.json")
