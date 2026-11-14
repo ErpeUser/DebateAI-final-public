@@ -20,17 +20,17 @@ Wikipedia und DuckDuckGo sind global deaktiviert. Die Runtime filtert beide IDs 
 
 ## Video- und Sprachprofilpipeline
 
-`source/backend/scripts/video_eval_pipeline.py` verarbeitet einen lokalen Audio-/Videoexport mit Google Cloud Speech-to-Text. `GOOGLE_CLOUD_PROJECT` und gültige Google-Anmeldedaten müssen gesetzt sein.
+`source/backend/scripts/video_eval_pipeline.py` verarbeitet Audio/Video mit Google Cloud Speech-to-Text. `GOOGLE_CLOUD_PROJECT` und gültige Google-Anmeldedaten müssen gesetzt sein. `video_eval_batch.py` akzeptiert lokale `audio`/`video`/`media_path` oder direkte öffentliche HTTPS-`media_url`/`video_url`/`audio_url`/`source_url`-Einträge; Webseiten-URLs werden aus Sicherheitsgründen als nicht direkt abspielbar abgelehnt.
 
 Das erzeugte JSON-Artefakt enthält:
 
 - vollständige Transkriptsegmente mit Zeitstempeln und optionalen Sprecher-Tags,
-- Quellenkandidaten aus URLs, DOIs und Studienverweisen,
+- Quellenkandidaten aus URLs, DOIs und Studienverweisen sowie eine AI-Extraktion jeder im vollständigen Transkript erwähnten Quelle,
 - Rhetorikprofil mit Frage-, Widerlegungs- und Analogie-Raten,
 - reproduzierbare Evaluationsfälle pro Segment,
-- einen Hinweis, dass das Rohtranskript nicht automatisch als Referenzantwort gilt.
+- Provenienz (`original_url`, Plattform, Abrufzeitpunkt), Video-/Audio-/Untertitel-Hashes und Aufnahmeprüfungen für Zeitstempel, Sprecher und Kapitel,\n- einen Hinweis, dass das Rohtranskript nicht automatisch als Referenzantwort gilt.
 
-Die Quellenkandidaten werden anschließend durch die KI-Webrecherche verifiziert und im Artefakt ergänzt. Prompt-, Modell- oder Stiländerungen werden nicht automatisch in Produktion übernommen. Ein Review-/Eval-Lauf muss zuerst eine Verbesserung nachweisen; erst danach wird eine Änderung bewusst aktiviert.
+Die Quellenkandidaten werden anschließend durch die KI-Webrecherche verifiziert und im Artefakt ergänzt. Die Recherche verwendet ausschließlich ChatGPT Web/Oracle sowie die konfigurierten Gemini-Web/API- oder CLIProxy-Fallbacks; die genannten alten Suchanbieter werden weder aufgerufen noch gespeichert. Prompt-, Modell- oder Stiländerungen werden nicht automatisch in Produktion übernommen. Ein Review-/Eval-Lauf muss zuerst eine Verbesserung nachweisen; erst danach wird eine Änderung bewusst aktiviert.
 
 Beispiel:
 
@@ -44,7 +44,7 @@ Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 
 ```json
 [
-  {"video_id": "debate-001", "audio": "./001.wav", "source_url": "https://example/video"}
+  {"video_id": "debate-001", "video_url": "https://cdn.example/debate-001.mp4", "source_url": "https://example/video"}
 ]
 ```
 
