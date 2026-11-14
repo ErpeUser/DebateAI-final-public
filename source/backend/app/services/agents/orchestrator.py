@@ -1134,7 +1134,7 @@ class AgentOrchestrator:
         # One external research group may serve several distinct analysis
         # lanes, but the same claim revision/query must never create duplicate
         # groups while the first one is still active.
-        self._research_group_tasks: dict[tuple[str, int, str], asyncio.Task] = {}
+        self._research_group_tasks: dict[tuple[str, int, int, int, str], asyncio.Task] = {}
         self._research_cache: dict[str, ResearchResult] = {}
         self._topic_knowledge: dict[str, dict[str, object]] = {}
         self._experimental_lane_artifacts: list[dict[str, object]] = []
@@ -3568,16 +3568,18 @@ class AgentOrchestrator:
         self,
         context: AnalysisJobContext,
         query: str,
-    ) -> tuple[str, int, str]:
+    ) -> tuple[str, int, int, int, str]:
         return (
             str(context.claim_id),
             int(context.claim_revision),
+            int(context.directive_revision),
+            int(context.config_generation),
             self._research_group_query_key(query),
         )
 
     def _active_research_group(
         self,
-        key: tuple[str, int, str],
+        key: tuple[str, int, int, int, str],
     ) -> asyncio.Task | None:
         groups = getattr(self, "_research_group_tasks", None)
         if groups is None:
@@ -3592,7 +3594,7 @@ class AgentOrchestrator:
 
     def _register_research_group(
         self,
-        key: tuple[str, int, str],
+        key: tuple[str, int, int, int, str],
         task: asyncio.Task,
     ) -> asyncio.Task:
         groups = getattr(self, "_research_group_tasks", None)
@@ -4998,49 +5000,3 @@ class AgentOrchestrator:
             await self.audio_gateway.connect()
             self._gateway_task = asyncio.create_task(self._handle_gateway_responses())
             return True
-        except Exception as e:
-            logger.error(f"Audio Gateway reconnect failed: {e}")
-            return False
-
-
-def _synthesis_payload(synthesis) -> dict:
-    return {
-        "id": str(synthesis.id),
-        "session_id": str(synthesis.session_id),
-        "mode": synthesis.mode,
-        "status": synthesis.status,
-        "top_outcomes": synthesis.top_outcomes or [],
-        "client_objectives": synthesis.client_objectives or [],
-        "top_opportunities": synthesis.top_opportunities or [],
-        "risks_blockers": synthesis.risks_blockers or [],
-        "action_plan": synthesis.action_plan or [],
-        "unresolved_discovery_questions": synthesis.unresolved_discovery_questions or [],
-        "strategic_signals": synthesis.strategic_signals or [],
-        # Kept signals reach the live call view as insight rows now (ALP-308),
-        # so only the count travels here; the rows themselves are fetched on
-        # demand by the post-call history panel.
-        "signal_history_count": len(synthesis.signal_history or []),
-        "evidence_refs": synthesis.evidence_refs or [],
-        "lens_meeting": synthesis.lens_meeting or {},
-        "lens_discovery": synthesis.lens_discovery or {},
-        "arbiter_notes": synthesis.arbiter_notes or "",
-        "model_ids": synthesis.model_ids or {},
-        "error_message": synthesis.error_message or "",
-        "created_at": synthesis.created_at.isoformat(),
-        "updated_at": synthesis.updated_at.isoformat() if synthesis.updated_at else None,
-        "clusters": [
-            {
-                "id": str(cluster.id),
-                "synthesis_id": str(cluster.synthesis_id),
-                "session_id": str(cluster.session_id),
-                "title": cluster.title,
-                "summary": cluster.summary,
-                "priority": cluster.priority,
-                "confidence": cluster.confidence,
-                "related_question_ids": cluster.related_question_ids or [],
-                "evidence_refs": cluster.evidence_refs or [],
-                "created_at": cluster.created_at.isoformat(),
-            }
-            for cluster in getattr(synthesis, "clusters", [])
-        ],
-    }
