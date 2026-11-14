@@ -566,5 +566,19 @@ NÄCHSTER PUNKT: 018/A033
 - **Fresh-Test-Ergebnis:** Ein ausführbarer Backend-/Frontend-Lauf bleibt offen: Python-Abhängigkeiten und privater Checkout sind in dieser Umgebung nicht vorhanden; GitHub Actions liefert weiterhin keine ausführbaren Steps (`steps: null`).
 - **Commit/Push:** A037-Änderungen wurden direkt auf `master` gepusht; maßgebliche Commits `e58ba5015a31a6fdc89c2cfb5dd82ccd6beb05b4`, `8fb5a3d9f82d117289f88c8012c3aa9da1fdece1` und `eb3b87e2001773a78b1eef0c050324b009b79160`.
 
-NÄCHSTER PUNKT: 021/A039
+## Masterauftrag – 2026-11-14 – 021/A039
+
+**Status: BLOCKIERT (Metrik-/Quellvertrag umgesetzt; reale deutsche Audio-/Windows-Abnahme offen).**
+
+- **Aufgabe:** WER, CER und falsche Löschungen auf deutschen Audio-Fixtures und realer Windows-Hardware messen; etablierte Metrikbibliotheken statt eigener WER-Implementierung verwenden.
+- **Quellfix:** `calibration_metrics.py` nutzt jetzt JiWER 4 (`process_words` und `process_characters`) auf der bestehenden NFC-/Casefold-/Deutsch-Tokenisierung. `source/backend/requirements.txt` fordert `jiwer>=4.0,<5.0`; `desktop/constraints-windows-py312.txt` pinnt `jiwer==4.0.0`.
+- **Falsche Löschungen:** Die JiWER-Alignment-Chunks werden ausgewertet. Neben S/I/D gibt es nun `deleted_reference_tokens`, `false_deletions` und `false_deletion_tokens`; Negationen, Zahlen, Einheiten und Namen bleiben dadurch als kritische Löschungen sichtbar. Das Calibration-Labor zeigt den Zähler im Ergebnis.
+- **Regressionen:** `test_calibration_lab.py` prüft die JiWER-Delegation, Unicode/Punctuation, Negationsverlust, Dezimal-/Negativzahl-/Prozentfälle, leere Referenzen, vollständige Löschung, kritische Negationslöschung und kritische Zahlenlöschung. Die aktuellen Metric- und Testdateien kompilieren mit `python -m py_compile`.
+- **Vorhandene Messstrecke:** `calibration_runner.compare_asr()` verarbeitet denselben lokalen PCM16-Clip für mehrere Modelle/Wiederholungen, misst WER/CER/RTF und hält Fehler im Nenner; das Frontend weist auf kleine Stichproben und manuelle Prüfung kritischer Wörter hin.
+- **Offene Abnahme:** Es gibt weiterhin keine versionierte deutsche WAV-/Referenzkampagne mit aggregierten Ergebnissen, Audio-/Modell-/Host-/Hardware-Hashes und bestätigten `false_deletions`. Die vorhandenen kurzen WAVs sind ausdrücklich Evidence-Kandidaten; A21 verlangt denselben Referenz-Hash und Lauf auf echter Windows-Hardware. Ein Linux-/Mock-Lauf oder ein alter Realclip ersetzt diese Abnahme nicht.
+- **Fresh-Test-Ergebnis:** Vollständiger Backend-/Frontend-/Windows-Lauf und CI bleiben offen; private Checkout-/Abhängigkeiten fehlen hier und die Actions liefern weiterhin `steps: null`.
+- **Commit/Push:** Die Quelländerungen wurden direkt auf `master` gepusht; maßgebliche Commits `0aa3e241dbb795d549b75d15c9830180dabc0955`, `f39252bbef7024967b13329aee984bf30c3fc7b6`, `478e716617eaaa026b0fe81022eac07a30ab52a7` und `23a9395850f20492971753e8bbcdee7ac70b93f6`.
+
+NÄCHSTER PUNKT: 022/A040
+
 
