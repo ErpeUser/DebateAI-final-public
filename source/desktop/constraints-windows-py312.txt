@@ -36,6 +36,7 @@ httpx2==2.16.0
 huggingface_hub==1.33.0
 humanfriendly==10.0
 idna==3.20
+jiwer==4.0.0
 kaldi_native_fbank==1.22.5
 loguru==0.7.3
 lxml==6.1.3
