@@ -3940,6 +3940,20 @@ class AgentOrchestrator:
                 })
                 await self._send_debate_update(revision, unavailable, origin="research")
 
+    def _experimental_lane_effort(self, analysis_phase: str) -> str:
+        """Choose one effort for an experimental lane from the shared controller."""
+        controller = getattr(self, "_adaptive_external_reasoning", None)
+        if (
+            not getattr(self, "_adaptive_reasoning_enabled", True)
+            or controller is None
+        ):
+            return "high"
+        return controller.effort_for_next(
+            queue_depth=0,
+            is_new_topic=analysis_phase == "new_topic",
+            needs_deep_reanalysis=analysis_phase == "deep_reanalysis",
+        )
+
     async def _run_experimental_external_lanes(
         self,
         recommendation: DebateRecommendation,
@@ -3958,11 +3972,11 @@ class AgentOrchestrator:
         """
         lane_specs = (
             ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu.",
-             "experimental_research_v1", "high"),
+             "experimental_research_v1"),
             ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe.",
-             "experimental_adversarial_v1", "high"),
+             "experimental_adversarial_v1"),
             ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
-             "experimental_strategist_v1", "medium"),
+             "experimental_strategist_v1"),
         )
         try:
             complete_transcript = await self._get_complete_transcript()
@@ -3974,8 +3988,8 @@ class AgentOrchestrator:
             label: str,
             directive: str,
             prompt_resource: str,
-            effort: str,
         ):
+            effort = self._experimental_lane_effort(analysis_phase)
             started_at = time.perf_counter()
             started_at_iso = datetime.now(UTC).isoformat()
             lane_id = (
@@ -4070,6 +4084,23 @@ class AgentOrchestrator:
         try:
             for completed in asyncio.as_completed(tasks):
                 artifact = await completed
+                controller = getattr(self, "_adaptive_external_reasoning", None)
+                if (
+                    getattr(self, "_adaptive_reasoning_enabled", True)
+                    and controller is not None
+                ):
+                    latency_ms = int(artifact.get("latency_ms") or 0)
+                    if (
+                        artifact.get("status") == "completed"
+                        or latency_ms >= controller.latency_threshold_ms
+                    ):
+                        # Experimental lanes start together, so their queue
+                        # depth is zero; measured latency still feeds the same
+                        # controller used by serialized deep analysis.
+                        controller.observe(
+                            latency_ms=latency_ms,
+                            queue_depth=0,
+                        )
                 analysis_result = artifact.get("analysis")
                 external_insights: list[dict[str, object]] = []
                 if analysis_result is not None:
