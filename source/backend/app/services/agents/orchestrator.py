@@ -102,6 +102,7 @@ from app.services.ai_config import (
     adaptive_reasoning_settings,
     analysis_deadline_seconds,
     create_configuration_snapshot,
+    live_research_deadline_seconds,
     deep_analysis_models,
     max_parallel_analyses,
     model_cooldown_seconds,
@@ -3889,7 +3890,11 @@ class AgentOrchestrator:
                 context,
                 priority,
                 execute_with_snapshot,
-                deadline_seconds=analysis_deadline_seconds(),
+                deadline_seconds=(
+                    analysis_deadline_seconds()
+                    if priority is ExternalAnalysisPriority.MANUAL
+                    else live_research_deadline_seconds()
+                ),
                 is_current=lambda: self._analysis_context_is_current(context),
             )
         except (ExternalAnalysisCancelled, ExternalAnalysisSuperseded):
@@ -4998,5 +5003,3 @@ class AgentOrchestrator:
 
         try:
             await self.audio_gateway.connect()
-            self._gateway_task = asyncio.create_task(self._handle_gateway_responses())
-            return True
