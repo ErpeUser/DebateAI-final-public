@@ -4624,6 +4624,22 @@ class AgentOrchestrator:
                 classify_error(exc, self._get_model("objection_handler")),
             )
 
+    def _mark_transcript_activity(self) -> None:
+        """Cancel a live refinement as soon as speech resumes."""
+        self._last_transcript_activity_at = time.monotonic()
+        task = getattr(self, "_refiner_job", None)
+        if task is None or task.done() or task is asyncio.current_task():
+            return
+        task.cancel("live transcript activity")
+
+    def _live_refiner_is_idle(self) -> bool:
+        return live_refiner_is_idle(
+            stopped=self._stopped,
+            debate_pending=self._debate_pending,
+            objection_task=self._objection_task,
+            last_transcript_at=self._last_transcript_activity_at,
+        )
+
     async def _refine_recent_transcript(self, *, limit: int | None, source_label: str) -> int:
         """Refine pending entries and push each rewrite to the interface."""
         from app.database import async_session
@@ -4646,9 +4662,19 @@ class AgentOrchestrator:
         interval = self._get_interval(TRANSCRIPT_REFINER_SLUG, 45)
         await asyncio.sleep(interval)
         while not self._stopped:
+            if not self._live_refiner_is_idle():
+                await asyncio.sleep(interval)
+                continue
             await self.activity.cycle_started(TRANSCRIPT_REFINER_SLUG)
+            self._refiner_job = asyncio.create_task(
+                self._refine_recent_transcript(
+                    limit=REFINER_LIVE_WINDOW,
+                    source_label="transcript_refiner",
+                ),
+                name=f"transcript-refiner-{self.session_id}-job",
+            )
             try:
-                count = await self._refine_recent_transcript(limit=REFINER_LIVE_WINDOW, source_label="transcript_refiner")
+                count = await self._refiner_job
                 await self.activity.cycle_finished(
                     TRANSCRIPT_REFINER_SLUG,
                     {
@@ -4658,15 +4684,18 @@ class AgentOrchestrator:
                     },
                 )
             except asyncio.CancelledError:
-                break
+                if self._stopped:
+                    break
+                logger.debug("Transcript refiner pass cancelled because live speech resumed")
             except Exception as e:
                 logger.error(f"Transcript refiner loop error: {e}")
                 await self.activity.cycle_error(
                     TRANSCRIPT_REFINER_SLUG,
                     classify_error(e, self._get_model(TRANSCRIPT_REFINER_SLUG)),
                 )
+            finally:
+                self._refiner_job = None
             await asyncio.sleep(interval)
-
     async def _run_transcript_refinement_stage(
         self,
         stages: list[str],
