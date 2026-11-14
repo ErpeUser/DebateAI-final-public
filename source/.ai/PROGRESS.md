@@ -916,3 +916,18 @@ NÄCHSTER PUNKT: 045/A083
 - **Commit/Push:** `df3d2f857257bd37abe95ffaa1552679a9da7ee4` (Query-Erkennung, Minimierung und Gates), `b6314250475ea0361a5b75c7ac2082501ac5878a` (E-Mail-Erkennung in der statelessen Span-Auswahl), `98c2f7b3e456aced32d1e3c50bb1238cc06d6785` (Video-Chunk-Minimierung), `0843176eae90cf09b0751630bddf1973e7ae9047` und `41347a8f42d3a5fd0e7d1cfaa516e607264ba2ac` (Research-/Video-Regressionen).
 
 NÄCHSTER PUNKT: 046/A084
+
+
+## Masterauftrag – 2026-11-14 – 046/A084
+**Status: QUELLCODE ERLEDIGT; externe Providerabnahme offen.**
+
+- **Separater Claim-Gate:** Die vorhandene stateless PII-Erkennung wird jetzt auch auf den separat übermittelten Debatten-Claim angewendet. `is_safe_research_claim()` prüft leere Claims und erkannte Token-, E-Mail-, Telefon-, Adress-, SSN-, Karten-, IP- und Einleitungsnamen-Signale, ohne das 300-Zeichen-Limit der Suchfrage zu übernehmen.
+- **Providergrenzen:** `research_claim()`, `_research_with_client()` und `_ai_web_sources()` verweigern einen PII-haltigen Claim defensiv, bevor ChatGPT Web, Gemini Web, Gemini API oder CLIProxy erreicht werden. Die lokale `ResearchResult`-Bindung behält den bereinigten Claim für Status-/Revisionseinschreibung; kein PII-Wert wird in einer Providerfehlermeldung verwendet.
+- **Aktive Pfade:** Orchestrator-Automatik und manuelle Recherche, Video-`research_source_candidates()` und das Deep-Debate-Benchmark nutzen denselben `research_claim()`-Eintritt. Die direkte Video-Quellenextraktion bleibt durch den A083-Chunk-Sanitizer geschützt; ihre anschließende Claim-Verifikation fällt unter dieses Claim-Gate.
+- **Lange Claims:** Nicht personenbezogene Claims dürfen länger als 300 Zeichen bleiben; die Längenbegrenzung gilt weiterhin ausschließlich für externe Suchfragen.
+- **Regressionen:** `test_claim_pii_is_minimized_and_refused` prüft Token, Telefon und E-Mail sowie die redigierte Claim-Diagnose. `test_long_non_pii_claim_remains_safe` stellt sicher, dass lange sachliche Claims nicht wegen des Query-Limits blockiert werden. `test_unsafe_claim_makes_no_external_request`, `test_direct_ai_web_lane_refuses_pii_claim` und `test_research_with_client_refuses_pii_claim` bestätigen die Sperre am öffentlichen und an beiden defensiven internen Eintrittspunkten.
+- **Wiederverwendet:** Die A083-Funktion `_query_pii_spans()`/die vorhandenen PII-Recognizer; keine neue Bibliothek und keine Änderung an der getrennten A085-Transkriptminimierung.
+- **Validierung:** `source/backend/app/services/debate_research.py` und `source/backend/tests/test_debate_research.py` wurden nach den A084-Änderungen vollständig per Python-AST geparst (jeweils ohne Syntaxfehler). Ein frischer Async-/DB-/Providerlauf sowie echte Browser-/Oracle-Abnahme sind wegen fehlendem ausführbarem privatem Checkout, fehlenden Backend-Abhängigkeiten und nicht verfügbaren Provider-/Login-Sitzungen nicht durchführbar.
+- **Commit/Push:** `d26ab07eecdf2429dc0a0e4dc51e23913a3326ad` (Claim-Gates), `aaf8b74b1e65d961a905b843b3e64245fd25f775` (Claim-Regressionen).
+
+NÄCHSTER PUNKT: 047/A085
