@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 import uuid
 from collections import Counter
 from datetime import datetime, timezone
@@ -45,6 +46,38 @@ CONTEXT_ENTRIES = 4
 
 MIN_LENGTH_RATIO = 0.5
 MAX_LENGTH_RATIO = 1.6
+
+def live_refiner_is_idle(
+    *,
+    stopped: bool,
+    debate_pending: bool,
+    objection_task,
+    last_transcript_at: float | None,
+    now: float | None = None,
+    idle_grace_seconds: float = 1.5,
+) -> bool:
+    """Return whether a live refinement pass may start without racing speech.
+
+    The live copilot owns the latency-critical path. A refiner pass can start
+    only after the pending/active debate worker has settled and the most
+    recent transcript activity has been quiet for a short grace period.
+    ``stopped`` is accepted explicitly so the same predicate remains safe
+    during teardown; the end-of-call drain calls the refiner directly.
+    """
+    if stopped or debate_pending:
+        return False
+    if objection_task is not None:
+        try:
+            if not objection_task.done():
+                return False
+        except AttributeError:
+            # A test/detached caller may provide a task-like sentinel without
+            # ``done``; treating it as active is safer than delaying a reply.
+            return False
+    if last_transcript_at is None:
+        return True
+    current = time.monotonic() if now is None else now
+    return current - last_transcript_at >= max(0.0, idle_grace_seconds)
 
 # Synthetic rows the live handler writes on a resume; not speech.
 _MARKER_PREFIX = "--- Session Resumed"
