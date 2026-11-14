@@ -535,6 +535,13 @@ async def persist_argument_recommendation(
                                 "speaker_name",
                                 "speaker_type",
                                 "semantic_related_claim_ids",
+                                "pipeline_mode",
+                                "strategy_options",
+                                "selected_strategy_id",
+                                "selection_reason",
+                                "research_alert",
+                                "analyst_model",
+                                "analyst_research_performed",
                             )
                             if raw.get(key) not in (None, "", [])
                         }
