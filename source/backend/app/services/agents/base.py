@@ -80,6 +80,24 @@ class TranscriptBuffer:
                     ))
             return "\n".join(lines) if lines else "(No recent transcript)"
 
+    async def get_full(
+        self,
+        aliases: dict[str, str] | None = None,
+    ) -> str:
+        """Return the complete bounded ring-buffer transcript for a checkpoint."""
+        async with self._lock:
+            lines = [
+                format_transcript_segment(
+                    seg["text"],
+                    seg["speaker"],
+                    speaker_id=seg.get("speaker_id"),
+                    speaker_type=seg.get("speaker_type"),
+                    alias=(aliases or {}).get(str(seg.get("speaker_id") or "")),
+                )
+                for seg in self._segments
+            ]
+            return "\n".join(lines) if lines else "(No recent transcript)"
+
     async def clear(self):
         async with self._lock:
             self._segments.clear()
