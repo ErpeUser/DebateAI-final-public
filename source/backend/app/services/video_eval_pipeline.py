@@ -25,6 +25,11 @@ _STUDY_RE = re.compile(
     re.IGNORECASE,
 )
 
+_CITATION_RE = re.compile(
+    r"\\b[A-ZÄÖÜ][A-Za-zÄÖÜäöüß\\'-]{2,}(?:\\s+et\\s+al\\.)?"
+    r"(?:,?\\s+)(?:19|20)\\d{2}\\b"
+)
+
 
 @dataclass(frozen=True)
 class TranscriptSegment:
@@ -85,8 +90,10 @@ def extract_source_candidates(
         matches.append((match.start(), match.end(), match.group(0), "doi"))
     for match in _STUDY_RE.finditer(value):
         matches.append((match.start(), match.end(), _clean(match.group(0)), "study_reference"))
+    for match in _CITATION_RE.finditer(value):
+        matches.append((match.start(), match.end(), _clean(match.group(0)), "citation"))
     for start, end, candidate, kind in sorted(matches):
-        key = (kind, candidate.casefold())
+        key = candidate.casefold()
         if key in seen:
             continue
         seen.add(key)
