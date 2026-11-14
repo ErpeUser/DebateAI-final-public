@@ -968,7 +968,11 @@ class ObjectionHandlerAgent:
             return recommendation.model_copy(
                 update={"research_status": "unavailable", "sources": []}
             )
-        readable_sources = [source for source in sources if source.passage.strip()]
+        readable_sources = [
+            source
+            for source in sources
+            if source.retrieval_status == "read" and source.passage.strip()
+        ]
         if not readable_sources:
             return recommendation.model_copy(update={
                 "needs_research": False,
