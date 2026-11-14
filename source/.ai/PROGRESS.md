@@ -337,3 +337,17 @@ NÄCHSTER PUNKT: 003/A005
 - **Commit/Push:** Dieser Blocker- und Nachweisstatus wird dauerhaft in diesem Commit auf master dokumentiert.
 
 NÄCHSTER PUNKT: 004/A006
+
+## Masterauftrag – 2026-11-14 – 004/A006
+
+**Status: BLOCKIERT (Provider-/Kostenverträge vorhanden, expliziter Live-Cloud-Opt-in nicht nachgewiesen).**
+
+- **Aufgabe:** Kostenlose lokale Tests von kostenpflichtigen Liveaufrufen trennen, Opt-in und Providerstatus zeigen und Kostenhinweise geben.
+- **Bereits vorhanden:** provider_capabilities.py klassifiziert Routen als local, subscription, usage_billed oder unknown; provider_health.py verifiziert Schlüssel/Sessionstatus; Privacy First blockiert externe Routen fail-closed; modelPricing.ts und TokenUsagePanel.tsx zeigen veröffentlichte Kostenschätzungen und unterscheiden unbekannte Preise von 0.
+- **Vorhandene Regressionen:** provider-health-, Privacy-First-, Provider-Onboarding- und Research-Tests decken Verfügbarkeit, Authentifizierung, lokale Zulassung und deaktivierte Altanbieter ab.
+- **Nicht nachgewiesen:** Ein durchgesetztes, persistentes Nutzer-Opt-in, das jeden usage_billed-Aufruf vor dem Request blockiert, sowie ein frisch ausgeführter No-Cloud-Test ohne Freigabe. Die UI-/Kostenanzeige allein ist kein Beleg, dass kein kostenpflichtiger Request ausgelöst wird.
+- **Eigener neuer Code:** keiner; eine ungetestete globale Kosten-Schranke wäre riskanter als der bestehende Provider-/Privacy-Vertrag.
+- **Konkreter nächster Abnahmeschritt:** Einen ausführbaren Checkout mit lokalem Teststack bereitstellen, den Opt-in-Vertrag gegen die tatsächlichen Request-Gates prüfen und einen Test ergänzen, der bei fehlender Freigabe keinen externen Request erzeugt; anschließend den Test und die Provider-/Kostenanzeige gemeinsam ausführen.
+- **Commit/Push:** Dieser genaue Status wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 005/A009
