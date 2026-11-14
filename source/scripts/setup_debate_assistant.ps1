@@ -87,7 +87,7 @@ function Get-PrivacyPayload {
 function Get-ResearchEgressMessage {
     param([bool]$Research)
     if ($Research) {
-        return "Recherche aktiv: Nur kurze Faktenfragen koennen an Wikimedia und DuckDuckGo gesendet werden. Audio und Transkripte bleiben lokal."
+        return "Recherche aktiv: Nur kurze Faktenfragen koennen an die konfigurierten ChatGPT-Web/Gemini-Recherchekanaele gesendet werden. Audio und Transkripte bleiben lokal."
     }
     return "Privacy First aktiv: keine externe Recherche; Audio, Transkription und Textanalyse bleiben lokal."
 }
