@@ -25,7 +25,11 @@ class DebateSource(BaseModel):
     section: str = ""
     content_hash: str = ""
     claim_revision: int = 0
+    transcript_revision: int = 0
     claim_id: str = ""
+    conflict_group_id: str = ""
+    scope_match: Literal["match", "mismatch", "unknown"] = "unknown"
+    entailment_confidence: float = Field(default=0.0, ge=0.0, le=1.0)
     affected_claim_ids: list[str] = Field(default_factory=list, max_length=12)
     affected_claims: list[str] = Field(default_factory=list, max_length=12)
     numeric_unit: str = ""
