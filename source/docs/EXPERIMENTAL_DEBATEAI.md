@@ -60,6 +60,18 @@ python source/backend/scripts/video_eval_evaluate.py \
   --out ./artifacts/evaluation-manifest.json
 ```
 
+
+Für den kompletten, aber review-gesteuerten Lauf reicht anschließend dieselbe Videoliste. Der Runner erzeugt zuerst alle Video-/Quellen-/Rhetorikartefakte, den leakage-sicheren Split, blinde Vergleichspaare und einen AI-Web-Review mit Prompt-/Routing-Vorschlägen:
+
+```bash
+python source/backend/scripts/video_eval_autotune.py \
+  --video-list videos.json \
+  --out-dir ./artifacts/autotune \
+  --style-profile ./artifacts/rhetoric-profile.json \
+  --repo-root .
+```
+
+Der Lauf kann Tests im angegebenen Repository ausführen und schreibt `autotune-report.json` mit einer expliziten Freigabe- und Fine-Tuning-Sperre. Er ändert keine Produktionsprompts, Providerprofile oder `master`; ein Vorschlag wird erst nach blinder Auswertung und einer bewusst freigegebenen isolierten Änderung übernommen.
 Der Evaluator hält ein Video und dieselbe Claim-Familie immer in demselben Split und erzeugt Test-Paare mit den neutralen Labels A/B. Erst nach der Bewertung werden die Baseline-/Kandidatenlabels aufgelöst. Er verändert keine Prompts, Modelle oder Produktionszweige automatisch.
 
 Das lokale Sprachprofil wird mit jeder geprüften Videorunde versioniert. Zusätzlich bewertet ChatGPT Web die beobachteten Muster, Stärken und Verbesserungsmöglichkeiten; diese Bewertung wird im Artefakt als `ai_review` gespeichert. Beides dient als Evaluationsinput für spätere Prompt-/Modellvergleiche; eine Änderung wird erst nach Review übernommen.
