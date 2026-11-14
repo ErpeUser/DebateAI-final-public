@@ -202,8 +202,28 @@ def research_query_pii_categories(query: str) -> tuple[str, ...]:
     return _minimize_research_query(query)[1]
 
 
+def _minimize_research_text(value: object) -> tuple[str, tuple[str, ...]]:
+    """Normalize and redact PII in text before it can enter an external prompt."""
+    return _minimize_research_query(str(value or ""))
+
+
+def minimize_research_claim(claim: str) -> str:
+    """Return a provider-safe diagnostic form of a claim."""
+    return _minimize_research_text(claim)[0]
+
+
+def research_claim_pii_categories(claim: str) -> tuple[str, ...]:
+    """Return claim PII categories without exposing matched values."""
+    return _minimize_research_text(claim)[1]
+
+
+def is_safe_research_claim(claim: str) -> bool:
+    text, categories = _minimize_research_text(claim)
+    return bool(text) and not categories
+
+
 def is_safe_research_query(query: str) -> bool:
-    text, categories = _minimize_research_query(query)
+    text, categories = _minimize_research_text(query)
     return bool(text) and len(text) <= 300 and not categories
 
 
@@ -708,7 +728,7 @@ async def _ai_web_sources(
     research_mode: ResearchMode = "deep",
 ) -> list[ResearchSource]:
     """Fail over through every enabled AI-web provider in configured order."""
-    if not is_safe_research_query(query):
+    if not is_safe_research_query(query) or not is_safe_research_claim(claim):
         return []
     chatgpt_generate = None
     generate_text = None
@@ -815,12 +835,12 @@ async def _research_with_client(
     *,
     research_mode: ResearchMode = "deep",
 ) -> ResearchResult:
-    if not is_safe_research_query(query):
+    if not is_safe_research_query(query) or not is_safe_research_claim(claim):
         return ResearchResult(
-            claim=claim,
+            claim=_clean_text(claim),
             query=_clean_text(query),
             status="refused",
-            error="Research query was empty or contained private data",
+            error="Research claim or query was empty or contained private data",
         )
     configured = research_settings()
     if not configured["enabled"]:
@@ -958,12 +978,12 @@ async def research_claim(
 ) -> ResearchResult:
     clean_claim = _clean_text(claim)
     clean_query = _clean_text(query)
-    if not is_safe_research_query(clean_query):
+    if not is_safe_research_query(clean_query) or not is_safe_research_claim(clean_claim):
         return ResearchResult(
             claim=clean_claim,
             query=clean_query,
             status="refused",
-            error="Research query was empty or contained private data",
+            error="Research claim or query was empty or contained private data",
         )
     mode: ResearchMode = research_mode if research_mode in {"live", "deep"} else "deep"
     total_timeout = research_settings()["timeout_seconds"]
