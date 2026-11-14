@@ -1,4 +1,5 @@
 import asyncio
+import json
 import os
 import tempfile
 import unittest
@@ -172,6 +173,52 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(answer, "Antwort aus ChatGPT Web")
         self.assertIn(b"Antworte auf Deutsch.", process.prompt)
         self.assertIn(b"Pruefe dieses Argument.", process.prompt)
+
+    async def test_generate_persists_search_mode_status(self):
+        from app.services import chatgpt_web
+
+        class Process:
+            returncode = 0
+
+            async def communicate(self, prompt):
+                del prompt
+                output = Path(command[command.index("--write-output") + 1])
+                output.parent.mkdir(parents=True, exist_ok=True)
+                output.write_text("Rechercheantwort", encoding="utf-8")
+                return b"", b""
+
+        process = Process()
+        command: list[str] = []
+
+        async def create(*args, **kwargs):
+            del kwargs
+            command.extend(str(value) for value in args)
+            return process
+
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
+            os.environ, self._environment(Path(tmp)), clear=False
+        ), mock.patch.object(
+            chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+        ):
+            answer = await chatgpt_web.generate(
+                "Pruefe die Originalquelle.",
+                research="search",
+            )
+            status = chatgpt_web.research_status()
+            persisted = json.loads(
+                (Path(tmp) / "home" / "research-status.json").read_text(
+                    encoding="utf-8"
+                )
+            )
+
+        self.assertEqual("Rechercheantwort", answer)
+        self.assertIn("--browser-research", command)
+        self.assertEqual("search", command[command.index("--browser-research") + 1])
+        self.assertEqual("completed", status["state"])
+        self.assertEqual("search", status["research_mode"])
+        self.assertEqual("completed", persisted["state"])
+        self.assertEqual("search", persisted["research_mode"])
+        self.assertNotIn("Pruefe die Originalquelle.", json.dumps(persisted))
 
     async def test_generate_serializes_the_shared_browser_profile(self):
         from app.services import chatgpt_web
