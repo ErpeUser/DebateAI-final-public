@@ -323,3 +323,17 @@ NÄCHSTER PUNKT: 002/A004
 - **Offener Abnahmeschritt:** Die fokussierten Backendtests in einem ausführbaren Checkout ausführen und zusätzlich ein deterministisches 30–60-Sekunden-Replay mit null Stale-Publishes aufzeichnen.
 
 NÄCHSTER PUNKT: 003/A005
+
+## Masterauftrag – 2026-11-14 – 003/A005
+
+**Status: BLOCKIERT (Implementierung vorhanden, echte Blindbewertung nicht ausführbar).**
+
+- **Aufgabe:** Kurze, verständliche, menschlich sprechbare deutsche Antworten prüfen und anhand echter Blindbewertungen verbessern.
+- **Bereits implementiert:** ObjectionHandlerAgent verwendet den bestehenden LiveDebateResponse-Vertrag, eine kurze deutsche Hauptantwort bzw. Gegenfrage, sprechbare Strukturfelder, die vorhandenen Prompt-/Style-Regeln und das Antwortlabor.
+- **Wiederverwendete Bewertung:** backend/scripts/benchmark_blind_pair.py führt zwei lokale Produktions-Replays in getrennten sequentiellen Prozessen aus, hält timeout/empty/stale/error/abstent im Nenner und exportiert echte Kandidaten für die blinde UI-Bewertung. frontend/calibration-tests/core.test.mjs prüft Identitätsverbergung bis zur Abstimmung, Gegenbalancierung, Tie/Both-Bad ohne erfundenen Sieger und Bewertungsvalidierung.
+- **Warum blockiert:** In dieser Sitzung ist kein ausführbarer Repository-Checkout mit installierten Backend-/Frontend-Abhängigkeiten und kein freigegebener lokaler Modellendpunkt verfügbar. Die aktuellen master-Actions laufen bei steps: null und liefern daher keinen echten Blindlauf.
+- **Eigener neuer Code:** keiner; keine Wortzahl-Heuristik und kein automatischer Sieger eingeführt.
+- **Konkreter nächster Abnahmeschritt:** Mit zwei bereits installierten lokalen Modellen den Produktionsrunner aus source/backend ausführen, das JSON im Labor abstimmen und die menschlichen Blindratings mitsamt Latenz-/Sprechbarkeitskriterien archivieren. Erst danach darf eine Promptvariante übernommen werden.
+- **Commit/Push:** Dieser Blocker- und Nachweisstatus wird dauerhaft in diesem Commit auf master dokumentiert.
+
+NÄCHSTER PUNKT: 004/A006
