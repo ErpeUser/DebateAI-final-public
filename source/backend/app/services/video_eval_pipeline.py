@@ -474,8 +474,32 @@ def attach_media_metadata(
         for chunk in iter(lambda: handle.read(1024 * 1024), b""):
             digest.update(chunk)
     suffix = path.suffix.casefold()
-    if suffix in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}:
+    video_suffix = suffix in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
+    if video_suffix:
         artifact.video_hash = digest.hexdigest()
+        # Keep the media identity and the transcribed audio identity separate.
+        # A video-list artifact must remain reproducible even when the container
+        # is replaced with another export carrying the same soundtrack.
+        try:
+            with tempfile.TemporaryDirectory(prefix="debateai-audio-hash-") as temp_dir:
+                extracted = Path(temp_dir) / "audio.wav"
+                subprocess.run(
+                    [
+                        "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
+                        "-ac", "1", "-ar", "16000", "-f", "wav", str(extracted),
+                    ],
+                    check=True,
+                    capture_output=True,
+                    timeout=900,
+                )
+                audio_digest = hashlib.sha256()
+                with extracted.open("rb") as handle:
+                    for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                        audio_digest.update(chunk)
+                artifact.audio_hash = audio_digest.hexdigest()
+        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            artifact.ingestion_checks["audio_hash_available"] = False
+            artifact.ingestion_checks["audio_hash_error"] = str(exc)[:240]
     else:
         artifact.audio_hash = digest.hexdigest()
     if subtitle_path:
