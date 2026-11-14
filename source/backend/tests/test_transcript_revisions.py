@@ -105,14 +105,16 @@ class TranscriptRevisionServiceTests(unittest.IsolatedAsyncioTestCase):
             reason="manual wording correction",
         )
 
-        original, manual = [call.args[0] for call in db.add.call_args_list]
+        original, refiner, manual = [call.args[0] for call in db.add.call_args_list]
         self.assertEqual("ASR text", original.text)
         self.assertEqual("original", original.source)
-        self.assertEqual("refiner", manual.source)
-        self.assertEqual("ASR text, refined.", manual.text)
+        self.assertEqual("ASR text, refined.", refiner.text)
+        self.assertEqual("refiner", refiner.source)
+        self.assertEqual("Manually corrected text.", manual.text)
+        self.assertEqual("manual", manual.source)
         self.assertEqual("Manually corrected text.", entry.text)
         self.assertEqual("ASR text", entry.raw_text)
-        self.assertEqual(2, result.revision.revision)
+        self.assertEqual(3, result.revision.revision)
 
 
 if __name__ == "__main__":
