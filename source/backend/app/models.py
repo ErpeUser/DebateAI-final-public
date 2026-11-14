@@ -319,7 +319,7 @@ class Question(Base):
 
 
 class TranscriptEntryRevision(Base):
-    """Append-only history for manual text and speaker corrections."""
+    """Append-only history for original, refiner and manual corrections."""
 
     __tablename__ = "transcript_entry_revisions"
     __table_args__ = (
