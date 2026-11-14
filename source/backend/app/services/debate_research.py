@@ -19,7 +19,8 @@ import httpx
 from pydantic import BaseModel, Field
 
 from app.config import settings
-from app.services.ai_config import research_settings
+from app.services.ai_config import research_settings, unavailable_cooldown_seconds
+from app.services.provider_capabilities import classify_provider_failure
 
 
 _USER_AGENT = "DebateAI/0.6.6 (https://github.com/ErpeUser/DebateAI)"
@@ -58,6 +59,8 @@ _search_cache: dict[str, tuple[float, ResearchResult]] = {}
 _document_cache: dict[str, tuple[float, bytes, str]] = {}
 _passage_cache: dict[tuple[str, str], tuple[float, str]] = {}
 _research_inflight: dict[str, asyncio.Task[ResearchResult]] = {}
+_research_provider_cooldown_until: dict[str, float] = {}
+_research_provider_health: dict[str, dict[str, object]] = {}
 _shared_http_client: httpx.AsyncClient | None = None
 
 
@@ -450,6 +453,112 @@ async def _read_trusted_original(
     })
 
 
+def _research_provider_status(provider: str) -> dict[str, object]:
+    """Return redacted health metadata for one research lane."""
+    status = dict(_research_provider_health.get(provider, {}))
+    status.setdefault("provider", provider)
+    status.setdefault("state", "ready")
+    status["cooldown_until"] = _research_provider_cooldown_until.get(provider, 0.0)
+    return status
+
+
+def research_provider_health() -> dict[str, dict[str, object]]:
+    """Expose provider-selection state without prompts, keys, or model output."""
+    return {
+        provider: _research_provider_status(provider)
+        for provider in sorted(_research_provider_health)
+    }
+
+
+def reset_research_provider_health(provider: str | None = None) -> None:
+    """Clear a lane after credentials/session health has changed."""
+    providers = [provider] if provider else list(_research_provider_health)
+    for item in providers:
+        _research_provider_health.pop(item, None)
+        _research_provider_cooldown_until.pop(item, None)
+
+
+def _research_provider_ready(provider: str) -> bool:
+    """Gate a lane on cooldown and the login/session readiness it needs."""
+    now = time.monotonic()
+    blocked_until = _research_provider_cooldown_until.get(provider, 0.0)
+    if blocked_until > now:
+        return False
+    if blocked_until:
+        _research_provider_cooldown_until.pop(provider, None)
+
+    reason = ""
+    if provider == "chatgpt_web":
+        try:
+            from app.services import chatgpt_web
+            if not chatgpt_web.runtime_available():
+                reason = "runtime_unavailable"
+            elif not chatgpt_web.configured():
+                reason = "login_required"
+            elif chatgpt_web.browser_busy():
+                reason = "browser_busy"
+        except Exception:
+            reason = "runtime_unavailable"
+    elif provider == "gemini_web":
+        try:
+            from app.services.subscription_bridge import (
+                gemini_web_cookie_configured,
+                gemini_web_models,
+            )
+            if not gemini_web_cookie_configured():
+                reason = "login_required"
+            elif not gemini_web_models():
+                reason = "no_served_model"
+        except Exception:
+            reason = "session_unavailable"
+
+    if reason:
+        _research_provider_health[provider] = {
+            "provider": provider,
+            "state": "blocked",
+            "failure_kind": "authentication" if "login" in reason or "session" in reason else "transport",
+            "retryable": False,
+            "reason": reason,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+        return False
+    _research_provider_health[provider] = {
+        "provider": provider,
+        "state": "ready",
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+    return True
+
+
+def _record_research_provider_success(provider: str) -> None:
+    _research_provider_cooldown_until.pop(provider, None)
+    _research_provider_health[provider] = {
+        "provider": provider,
+        "state": "ready",
+        "last_success_at": datetime.now(UTC).isoformat(),
+    }
+
+
+def _record_research_provider_failure(provider: str, exc: Exception) -> None:
+    failure = classify_provider_failure(exc)
+    cooldown = (
+        failure.retry_after_seconds
+        if failure.retry_after_seconds is not None
+        else unavailable_cooldown_seconds()
+    )
+    cooldown = max(1, int(cooldown))
+    blocked_until = time.monotonic() + cooldown
+    _research_provider_cooldown_until[provider] = blocked_until
+    _research_provider_health[provider] = {
+        "provider": provider,
+        "state": "cooldown",
+        "failure_kind": failure.kind,
+        "retryable": failure.retryable,
+        "cooldown_seconds": cooldown,
+        "updated_at": datetime.now(UTC).isoformat(),
+    }
+
+
 async def _ai_web_sources(
     claim: str,
     query: str,
@@ -478,8 +587,11 @@ async def _ai_web_sources(
         "cliproxyapi": "endpoint:subscription-ai:gpt-6-sol",
     }
     answers: list[tuple[str, str]] = []
-    for provider in providers:
+    provider_order = list(providers) if isinstance(providers, list) else sorted(providers)
+    for provider in provider_order:
         if provider not in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}:
+            continue
+        if not _research_provider_ready(provider):
             continue
         try:
             if provider == "chatgpt_web":
@@ -500,9 +612,11 @@ async def _ai_web_sources(
                     system="Du bist die Quellenrecherche. Arbeite faktenorientiert und nenne nur nachprüfbare Originalquellen.",
                     source="debate_research",
                 )
-        except Exception:
+        except Exception as exc:
+            _record_research_provider_failure(provider, exc)
             continue
         if answer:
+            _record_research_provider_success(provider)
             answers.append((provider, answer))
     if not answers:
         return []
@@ -556,11 +670,14 @@ async def _research_with_client(
             status="unavailable",
             error="Research is disabled in AI settings",
         )
-    providers = [
-        provider
-        for provider in configured["providers"]
-        if provider not in {"wikipedia", "duckduckgo"}
-    ]
+    providers: list[str] = []
+    for provider in [
+        *configured["providers"],
+        *configured.get("fallback_providers", []),
+    ]:
+        if provider in {"wikipedia", "duckduckgo"} or provider in providers:
+            continue
+        providers.append(provider)
     tasks = []
     if any(
         provider in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}
