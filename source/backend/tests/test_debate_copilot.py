@@ -788,7 +788,8 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             async def run_cycle(self, **kwargs):
                 window = kwargs["transcript_window"]
                 self.windows.append(window)
-                changed = any(token in window for token in ("15 Prozent", "Berta", "falls"))
+                folded_window = window.casefold()
+                changed = any(token.casefold() in folded_window for token in ("15 Prozent", "Berta", "falls"))
                 self.latest_recommendation = DebateRecommendation(
                     answer_now=(
                         "Die neue Revision aendert die Antwort."
