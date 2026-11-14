@@ -447,3 +447,17 @@ NÄCHSTER PUNKT: 011/A015
 - **Commit/Push:** Der Nachweis wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 012/A026
+## Masterauftrag – 2026-11-14 – 012/A026
+
+**Status: BLOCKIERT (Interim-Kette implementiert, vollständige reale Audio-zu-Antwort-Abnahme offen).**
+
+- **Aufgabe:** Interim-Transkripte während eines langen Redebeitrags sofort analysieren, ohne auf das Ende zu warten, und die vollständige Audio-zu-Antwort-Kette testen.
+- **Nachweis der bestehenden Lösung:** `local_live_captioner.py` arbeitet mit einem begrenzten Rolling Window, ersetzt Hypothesen über `segment_id`/`segment_revision` und emittiert lokale Interim-Transkripte. `orchestrator._handle_gateway_responses()` sendet `interim_transcript` an den Client und ruft sofort `feed_interim_transcript()` auf. Diese Methode aktualisiert Claim-/Transcriptrevision und startet direkt `_schedule_debate_revision()`; finale ASR läuft getrennt über `feed_transcript()` mit Persistenz. Nach sichtbarem Partial wird Coalescing bewusst beibehalten.
+- **Vorhandene Regressionen:** `test_local_live_captioner.py` prüft erste Caption, replace-Hypothesen, begrenztes Fenster, deutsche Filterung und `COMMIT_SECONDS < 3`. `test_debate_copilot.py` prüft Interim-Copilot ohne doppelte Persistenz, Negationsersetzung durch das Final, stale Worker-Abbruch, sichtbares Model-Partial vor Vollantwort und `latency_ms <= 3000`; `test_audio_handler.py` prüft Transcript-Emitter, Gateway-/Audio-Übertragung und Persistenzgrenzen.
+- **Nicht nachgewiesen:** Ein frischer End-to-End-Lauf mit echter Windows-/Mikrofon- oder WASAPI-Aufnahme, echter lokaler ASR, echtem Ollama-/Qwen-Modell, WebSocket-Frontend und gemessener Erstreaktion in einem 30–60-Sekunden-Deutsch-Replay. Die Tests verwenden Fake-Transcriber/Mock-Agenten; GitHub-Actions liefern aktuell `steps: null`.
+- **Eigener neuer Code:** keiner; die geforderte Interim-Architektur und ihre Unit-/Integrationsregressionen sind bereits im Quellstand vorhanden.
+- **Konkreter nächster Abnahmeschritt:** Im ausführbaren Checkout einen 30–60-Sekunden-Deutsch-Replay mit echter Audioquelle starten, lokale ASR-Events und `interim_transcript`-Zeitstempel aufzeichnen, die erste sichtbare Copilot-Antwort sowie finale Revision messen, Persistenz/keine Duplikate prüfen und alle Stale-/Negationsfälle dokumentieren. Keine Cloudroute als Ersatz verwenden.
+- **Fresh-Test-Ergebnis:** In der aktuellen Linux-/GitHub-API-Arbeitsumgebung kein echter Audio-/Modelllauf möglich; dieser Punkt bleibt deshalb offen.
+- **Commit/Push:** Der Blockierungsnachweis wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 013/A027
