@@ -1029,6 +1029,7 @@ export interface ExperimentalLaneUpdate {
   completed_at?: string;
   latency_ms?: number;
   error?: string;
+  external_insights?: ExternalLaneInsight[];
 }
 
 export interface DebateRecommendation {
