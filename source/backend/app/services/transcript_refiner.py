@@ -29,6 +29,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Speaker, TranscriptEntry
+from app.services.transcript_revisions import append_refiner_revision
 from app.services.pii.vault import TOKEN_PATTERN
 
 logger = logging.getLogger(__name__)
@@ -214,10 +215,17 @@ async def refine_batch(
             or not accept_refinement(entry.text, item.text)
         ):
             continue
+        original_text = entry.raw_text or entry.text
         if entry.raw_text is None:
             entry.raw_text = entry.text
         entry.text = item.text.strip()
         entry.refined_at = now
+        await append_refiner_revision(
+            db,
+            session_id,
+            entry,
+            original_text=original_text,
+        )
         changed.append(entry)
     return changed
 
