@@ -1135,13 +1135,16 @@ class AgentOrchestrator:
                 ),
                 "",
             )
-        selected_text = next((item.get("text", "") for item in options if item.get("id") == selected), "")
+        selected_item = next((item for item in options if item.get("id") == selected), None)
+        selected_text = str((selected_item or {}).get("text") or "")
+        selected_kind = str((selected_item or {}).get("kind") or "")
         # The chosen move is the only large visible answer; alternatives remain
         # available as compact blobs for deliberate selection in the UI.
         return recommendation.model_copy(update={
             "strategy_options": options,
             "selected_strategy_id": selected,
             "answer_now": selected_text or recommendation.answer_now,
+            "primary_move": "question" if selected_kind == "counter_question" else "answer",
             "selection_reason": recommendation.selection_reason or "Sofort passendster Zug mit konkretem Beispiel.",
         })
     def briefing_enabled(self) -> bool:
@@ -3658,6 +3661,17 @@ class AgentOrchestrator:
         # Replay/import tests and older in-process callers may construct a
         # lightweight orchestrator without running the full constructor. Keep
         # the background-only controls lazy so that path stays compatible.
+        if (
+            getattr(self, "_experimental_mode", False)
+            and getattr(self, "_active_claim_is_interim", False)
+            and not manual
+        ):
+            # Interim hypotheses only use the local fast path. External lanes
+            # start after a final segment or an explicit manual request.
+            return
+        if not manual and getattr(self, "debate_settings", None) is not None:
+            if getattr(self.debate_settings, "research_frequency", "normal") == "never":
+                return
         if not hasattr(self, "_external_analysis_waiters"):
             self._external_analysis_waiters = 0
         if not hasattr(self, "_external_analysis_lock"):
@@ -3699,7 +3713,6 @@ class AgentOrchestrator:
                 sources = [
                     DebateSource(**source.model_dump())
                     for source in result.sources
-                    if source.passage.strip()
                 ]
 
         # A slow answer from an older utterance may still be useful in the cache,
@@ -3863,7 +3876,13 @@ class AgentOrchestrator:
                 "analysis_status": "completed",
                 "analyst_model": used_model,
                 "analyst_prompt": prompt,
-                "sources": sources,
+                "sources": [
+                    *recommendation.sources,
+                    *[
+                        source for source in sources
+                        if source.url and source.url not in {existing.url for existing in recommendation.sources}
+                    ],
+                ],
             })
             candidate = self._experimentalize_recommendation(candidate)
         else:
