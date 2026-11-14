@@ -12,7 +12,7 @@ import unicodedata
 
 import jiwer
 
-_TOKEN = re.compile(r"[+\-\u2212]?\d+(?:[.,]\d+)*|[%\u2030\u20ac$]|[^\W\d_]+(?:['\u2019-][^\W\d_]+)*", re.UNICODE)
+_TOKEN = re.compile(r"[+\-−]?\d+(?:[.,]\d+)*|[%‰€$]|[^\W\d_]+(?:['’\-][^\W\d_]+)*", re.UNICODE)
 _NEGATIONS = {'nicht', 'nein', 'nie', 'niemals', 'kein', 'keine', 'keinen', 'keinem', 'keiner', 'ohne'}
 
 
@@ -21,7 +21,20 @@ def normalized_tokens(text: str) -> list[str]:
 
 
 def _critical_token(token: str) -> bool:
-    return token in _NEGATIONS or any(char.isdigit() for char in token) or token in {'%', '\u2030', '\u20ac', '    if not isinstance(reference, str) or not isinstance(hypothesis, str):
+    return token in _NEGATIONS or any(char.isdigit() for char in token) or token in {'%', '‰', '€', '$'}
+
+
+def _deleted_reference_tokens(word_output, reference_tokens: list[str]) -> list[str]:
+    deleted: list[str] = []
+    for alignment in getattr(word_output, 'alignments', []) or []:
+        for chunk in alignment:
+            if getattr(chunk, 'type', '') == 'delete':
+                deleted.extend(reference_tokens[chunk.ref_start_idx:chunk.ref_end_idx])
+    return deleted
+
+
+def score_transcript(reference: str, hypothesis: str) -> dict:
+    if not isinstance(reference, str) or not isinstance(hypothesis, str):
         raise ValueError('Reference and hypothesis must be strings.')
     if len(reference) > 2000 or len(hypothesis) > 4000:
         raise ValueError('Transcript exceeds the calibration scoring limit.')
@@ -30,12 +43,10 @@ def _critical_token(token: str) -> bool:
     # separators, signs, percent symbols or currency units.
     word_output = jiwer.process_words(' '.join(ref), ' '.join(hyp))
     char_output = jiwer.process_characters(''.join(ref), ''.join(hyp))
-    s, d, i = (
-        int(word_output.substitutions),
-        int(word_output.deletions),
-        int(word_output.insertions),
-    )
-    ref_chars, hyp_chars = ''.join(ref), ''.join(hyp)
+    substitutions = int(word_output.substitutions)
+    deletions = int(word_output.deletions)
+    insertions = int(word_output.insertions)
+    ref_chars = ''.join(ref)
     char_errors = (
         int(char_output.substitutions)
         + int(char_output.deletions)
@@ -48,7 +59,7 @@ def _critical_token(token: str) -> bool:
     return {
         'normalization': 'NFC+casefold; punctuation ignored; decimal separators retained; CER excludes spaces',
         'reference_words': len(ref), 'hypothesis_words': len(hyp),
-        'substitutions': s, 'deletions': d, 'insertions': i,
+        'substitutions': substitutions, 'deletions': deletions, 'insertions': insertions,
         'wer': float(word_output.wer) if ref else None,
         'cer': char_errors / len(ref_chars) if ref_chars else None,
         'hallucinated_words': len(hyp) if not ref else None,
@@ -57,60 +68,6 @@ def _critical_token(token: str) -> bool:
         'deleted_reference_tokens': deleted_reference_tokens,
         'false_deletions': len(false_deletion_tokens),
         'false_deletion_tokens': false_deletion_tokens,
-        'factual_status': 'unverified',
-    }
-
-
-def percentile(values: list[float], fraction: float) -> float | None:
-    if not 0 <= fraction <= 1 or any(not math.isfinite(x) or x < 0 for x in values):
-        raise ValueError('Percentiles require finite nonnegative durations.')
-    if not values:
-        return None
-    ordered = sorted(values)
-    position = (len(ordered) - 1) * fraction
-    lo, hi = math.floor(position), math.ceil(position)
-    return ordered[lo] + (ordered[hi] - ordered[lo]) * (position - lo)
-}
-
-
-def _deleted_reference_tokens(word_output, reference_tokens: list[str]) -> list[str]:
-    deleted: list[str] = []
-    for alignment in getattr(word_output, "alignments", []) or []:
-        for chunk in alignment:
-            if getattr(chunk, "type", "") == "delete":
-                deleted.extend(reference_tokens[chunk.ref_start_idx:chunk.ref_end_idx])
-    return deleted
-
-def score_transcript(reference: str, hypothesis: str) -> dict:
-    if not isinstance(reference, str) or not isinstance(hypothesis, str):
-        raise ValueError('Reference and hypothesis must be strings.')
-    if len(reference) > 2000 or len(hypothesis) > 4000:
-        raise ValueError('Transcript exceeds the calibration scoring limit.')
-    ref, hyp = normalized_tokens(reference), normalized_tokens(hypothesis)
-    # Join product tokens explicitly so JiWER does not discard decimal
-    # separators, signs, percent symbols or currency units.
-    word_output = jiwer.process_words(' '.join(ref), ' '.join(hyp))
-    char_output = jiwer.process_characters(''.join(ref), ''.join(hyp))
-    s, d, i = (
-        int(word_output.substitutions),
-        int(word_output.deletions),
-        int(word_output.insertions),
-    )
-    ref_chars, hyp_chars = ''.join(ref), ''.join(hyp)
-    char_errors = (
-        int(char_output.substitutions)
-        + int(char_output.deletions)
-        + int(char_output.insertions)
-    )
-    return {
-        'normalization': 'NFC+casefold; punctuation ignored; decimal separators retained; CER excludes spaces',
-        'reference_words': len(ref), 'hypothesis_words': len(hyp),
-        'substitutions': s, 'deletions': d, 'insertions': i,
-        'wer': float(word_output.wer) if ref else None,
-        'cer': char_errors / len(ref_chars) if ref_chars else None,
-        'hallucinated_words': len(hyp) if not ref else None,
-        'critical_reference_tokens': [t for t in ref if t in _NEGATIONS or any(c.isdigit() for c in t) or t in {'%', '\u2030', '\u20ac', '$'}],
-        'critical_hypothesis_tokens': [t for t in hyp if t in _NEGATIONS or any(c.isdigit() for c in t) or t in {'%', '\u2030', '\u20ac', '$'}],
         'factual_status': 'unverified',
     }
 
