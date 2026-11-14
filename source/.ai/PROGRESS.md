@@ -790,3 +790,17 @@ NÄCHSTER PUNKT: 036/A066
 - **Commit/Push:** `51f5305bfcb2673caebeb2efb7d2cba53bc47d72` (Passagenachweis), `95520464d73cb97d7862b48f0d9e97f1676feb2b` (Fehlerverhalten).
 
 NÄCHSTER PUNKT: 037/A067
+
+
+## Masterauftrag – 2026-11-14 – 037/A068
+**Status: ERLEDIGT.**
+
+- **Beleg-Gate verschärft:** `_contains_unsupported_numeric_assertion()` akzeptiert eine Quelle nur noch, wenn `retrieval_status == "read"`, eine nichtleere konkrete Passage vorhanden ist und die Relation `supports` bestätigt. Die Evidenz wird ausschließlich aus Claim und gelesener Passage gebildet; ein Suchsnippet kann keine Zahl mehr validieren.
+- **Bestehende Gates bestätigt:** `_contains_unsupported_evidence_claim()`, `_annotate_experimental_sources()` und die Recherche-Prompt-/Refinement-Pipeline verlangen bereits gelesene Passagen für quellengetragene Aussagen. Ungelesene Treffer bleiben als Treffer sichtbar, werden aber nicht als Beleg gewertet.
+- **Manuelle Zuordnung geschützt:** `argument_graph.correct_source_assignment()` weist `supports`/ `contradicts` für ungelesene oder passagenlose Quellen zurück. `AgentOrchestrator.apply_source_correction()` verweigert dieselbe Mutation im Live-Card-Pfad; eine `unclear`-Zuordnung bleibt möglich.
+- **Regressionen:** `test_unread_supporting_snippet_does_not_validate_a_number` prüft Snippet-only-Unterstützung mit `retrieval_status="found"`. `test_live_source_correction_rejects_unread_evidence` prüft die Live-Korrektur. Die bestehende Scope-Regression bestätigt weiterhin, dass eine gelesene Passage mit unpassendem Zeitraum/Population keine Zahl freigibt; die gelesene, passende Quelle bleibt zulässig.
+- **Refinement-Härtung:** `ObjectionHandlerAgent.refine_with_sources()` übergibt nur Quellen mit `retrieval_status="read"` und Passage an den Bewertungsaufruf; ein passagengefüllter, aber nicht gelesener Treffer wird nicht als Evidenz behandelt.
+- **Validierung:** Orchestrator-, Objection-, Argumentgraph- und Copilot-Testdateien wurden in den geänderten Ausschnitten syntaktisch geprüft. Ein vollständiger Async-/DB-/Providerlauf bleibt wegen privatem Checkout und fehlenden Backend-Abhängigkeiten blockiert.
+- **Commit/Push:** `b79005febb52cd91af7ee5ecc50bdec10ec62b91` und `1800b3de344f02188ae62425d0dfe9e032d36b83` (Evidenz-Gate), `31d22394ef8d791698425f38b05d112c48f7b6d6` (Argumentgraph), `a25ad20a0062682466734e91e52da0dd52d471b8` (Live-Korrektur), `b1ebead4be65949a8f67a7f310732be63c2d0090` (Refinement), `c5b0020e891e48a221b6792a047d4043d5815a84` und `0768d532aac26f2b86afa4d46917c27fe93be22e` (Regressionen), `8b164e3b44141993ef54d48fd75104ccf0b64cc2` (Live-Test).
+
+NÄCHSTER PUNKT: 038/A073
