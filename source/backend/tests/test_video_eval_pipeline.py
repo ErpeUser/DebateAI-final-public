@@ -1,3 +1,5 @@
+import asyncio
+
 from app.services.video_eval_pipeline import (
     attach_media_metadata,
     SourceCandidate,
@@ -13,6 +15,31 @@ def test_extract_source_candidates_keeps_urls_dois_and_study_years():
     rows = extract_source_candidates(text)
     assert {row.kind for row in rows} == {"url", "doi", "study_reference"}
     assert any(row.value == "https://example.org/report" for row in rows)
+
+
+def test_video_source_extraction_redacts_pii_before_external_call(monkeypatch):
+    from app.services import chatgpt_web
+    from app.services.video_eval_pipeline import extract_source_candidates_with_ai
+
+    prompts = []
+
+    async def fake_generate(prompt, **_kwargs):
+        prompts.append(prompt)
+        return "[]"
+
+    monkeypatch.setattr(chatgpt_web, "configured", lambda: True)
+    monkeypatch.setattr(chatgpt_web, "runtime_available", lambda: True)
+    monkeypatch.setattr(chatgpt_web, "generate", fake_generate)
+
+    asyncio.run(
+        extract_source_candidates_with_ai(
+            "Kontakt +49 30 12345678; Quelle https://example.org/report"
+        )
+    )
+
+    assert prompts
+    assert "+49 30 12345678" not in prompts[0]
+    assert "[REDACTED_PHONE]" in prompts[0]
 
 
 def test_rhetorical_profile_counts_debate_moves():
