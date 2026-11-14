@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import ProvisionalTranscriptRevision, Session
+from app.models import ProvisionalTranscriptRevision, Session, TranscriptDiscardAudit
 from app.services.pii import shield
 
 
@@ -29,6 +29,36 @@ _PROVISIONAL_MODES = frozenset({"replace", "append"})
 class PersistedProvisionalRevision:
     row: ProvisionalTranscriptRevision | None
     created: bool
+
+
+async def record_discarded_segment(
+    db: AsyncSession,
+    session_id: uuid.UUID,
+    data: dict,
+    *,
+    reason: str,
+    producer: str = "provisional_transcript",
+) -> None:
+    """Persist a bounded, privacy-shielded audit row for rejected ASR input."""
+    raw_text = str(data.get("text") or "")
+    row = TranscriptDiscardAudit(
+        session_id=session_id,
+        raw_text=raw_text[:MAX_PROVISIONAL_SEGMENT_CHARS],
+        speaker_id=None,
+        audio_start_sample=_bounded_optional_int(
+            data.get("audio_start_sample"), minimum=0, maximum=2_147_483_647
+        ),
+        audio_end_sample=_bounded_optional_int(
+            data.get("audio_end_sample"), minimum=0, maximum=2_147_483_647
+        ),
+        discard_reason=str(reason)[:160],
+        producer=str(data.get("producer") or producer)[:80],
+        segment_revision=_bounded_optional_int(
+            data.get("segment_revision"), minimum=0, maximum=2_147_483_647
+        ),
+    )
+    db.add(row)
+    await db.flush()
 
 
 def _bounded_optional_int(value: object, *, minimum: int, maximum: int) -> int | None:
