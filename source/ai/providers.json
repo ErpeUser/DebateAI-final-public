@@ -74,11 +74,35 @@
   "research": {
     "enabled": true,
     "providers": [
-      {"id": "duckduckgo", "label": "DuckDuckGo", "enabled": true},
-      {"id": "wikipedia", "label": "Wikipedia", "enabled": true}
+      {
+        "id": "chatgpt_web",
+        "label": "ChatGPT Web / Oracle",
+        "enabled": true
+      },
+      {
+        "id": "gemini_web",
+        "label": "Gemini Web",
+        "enabled": true
+      },
+      {
+        "id": "gemini_api",
+        "label": "Gemini API",
+        "enabled": false
+      }
     ],
     "steps": 2,
     "original_sources_required": true,
-    "timeout_seconds": 20
+    "timeout_seconds": 180,
+    "legacy_providers_disabled": [
+      "duckduckgo",
+      "wikipedia"
+    ],
+    "primary_provider": "chatgpt_web",
+    "fallback_providers": [
+      "gemini_web",
+      "gemini_api",
+      "cliproxyapi"
+    ],
+    "experimental_external_parallelism": 3
   }
 }
