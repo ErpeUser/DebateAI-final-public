@@ -404,11 +404,51 @@ class _CaptureWebSocket:
         self.messages: list[dict] = []
         self.timeline: list[tuple[float, dict]] = []
         self.events: asyncio.Queue[tuple[float, dict]] = asyncio.Queue()
+        self.head_provider: Callable[[], dict] | None = None
+        self.stale_publishes = 0
+        self.stale_publish_events: list[dict] = []
+
+    def set_head_provider(self, provider: Callable[[], dict]) -> None:
+        self.head_provider = provider
+
+    def _record_stale_publish(self, captured_at: float, message: dict) -> None:
+        if message.get("type") != "debate_update":
+            return
+        data = message.get("data") or {}
+        if data.get("origin") not in {"model", "model_stream"}:
+            return
+        head = self.head_provider() if self.head_provider is not None else {}
+        if not isinstance(head, dict):
+            return
+        current_claim_id = str(head.get("claim_id") or "")
+        published_claim_id = str(data.get("claim_id") or "")
+        if current_claim_id and published_claim_id and current_claim_id != published_claim_id:
+            stale = True
+        else:
+            current_revision = int(head.get("transcript_revision") or 0)
+            published_revision = max(
+                int(data.get("transcript_revision") or 0),
+                int(data.get("claim_revision") or 0),
+            )
+            stale = bool(
+                current_revision
+                and published_revision
+                and published_revision < current_revision
+                and not bool(head.get("claim_is_interim"))
+            )
+        if stale:
+            self.stale_publishes += 1
+            self.stale_publish_events.append({
+                "captured_at": captured_at,
+                "data": dict(data),
+                "head": dict(head),
+            })
 
     async def send_json(self, message: dict) -> None:
         if message.get("type") != "debate_update":
             return
         captured_at = self.clock()
+        self._record_stale_publish(captured_at, message)
         self.messages.append(message)
         self.timeline.append((captured_at, message))
         await self.events.put((captured_at, message))
