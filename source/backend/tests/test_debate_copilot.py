@@ -125,6 +125,15 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             "xhigh",
             AgentOrchestrator._experimental_lane_effort(orchestrator, "new_topic"),
         )
+        self.assertEqual(
+            "medium",
+            AgentOrchestrator._experimental_lane_effort(
+                orchestrator,
+                "new_topic",
+                lane_label="rhetoric",
+                base_effort="medium",
+            ),
+        )
         controller.observe(latency_ms=1500, queue_depth=0)
         self.assertEqual(
             "high",
