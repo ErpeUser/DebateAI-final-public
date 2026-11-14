@@ -30,6 +30,7 @@ from app.services.agents.orchestrator import (
     _external_analysis_deadline,
 )
 from app.services.debate_research import ResearchResult, ResearchSource
+from app.services.external_reasoning import AdaptiveReasoningEffort
 from app.services.debate_settings import DebateSettings
 
 
@@ -106,6 +107,46 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
                 180,
                 _external_analysis_deadline(ExternalAnalysisPriority.MANUAL),
             )
+    def test_experimental_lanes_use_the_shared_adaptive_controller(self):
+        controller = AdaptiveReasoningEffort(
+            latency_threshold_ms=1000,
+            queue_threshold=1,
+            stable_calls_to_restore=2,
+            new_topic_effort="xhigh",
+            follow_up_effort="high",
+            deep_reanalysis_effort="xhigh",
+        )
+        orchestrator = SimpleNamespace(
+            _adaptive_reasoning_enabled=True,
+            _adaptive_external_reasoning=controller,
+        )
+
+        self.assertEqual(
+            "xhigh",
+            AgentOrchestrator._experimental_lane_effort(orchestrator, "new_topic"),
+        )
+        controller.observe(latency_ms=1500, queue_depth=0)
+        self.assertEqual(
+            "high",
+            AgentOrchestrator._experimental_lane_effort(orchestrator, "new_topic"),
+        )
+        controller.observe(latency_ms=400, queue_depth=0)
+        controller.observe(latency_ms=400, queue_depth=0)
+        self.assertEqual(
+            "xhigh",
+            AgentOrchestrator._experimental_lane_effort(orchestrator, "new_topic"),
+        )
+
+    def test_experimental_lane_effort_is_high_when_automation_is_disabled(self):
+        orchestrator = SimpleNamespace(
+            _adaptive_reasoning_enabled=False,
+            _adaptive_external_reasoning=MagicMock(),
+        )
+        self.assertEqual(
+            "high",
+            AgentOrchestrator._experimental_lane_effort(orchestrator, "new_topic"),
+        )
+
     def test_deep_analysis_prompt_is_compact_and_claim_specific(self):
         prompt = build_deep_analysis_prompt(
             claim="Wenn Freiheit wichtig ist, darf es keinerlei Regeln geben.",
