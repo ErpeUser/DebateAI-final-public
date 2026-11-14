@@ -900,3 +900,18 @@ NÄCHSTER PUNKT: 044/A082
 - **Commit/Push:** be9d90f1a9eb059e0cf2855c6157394dc7a0f786 (Ranking und Begründungen), db63b29b90091b7fcb18a8435550fa6039d47375 (Regression).
 
 NÄCHSTER PUNKT: 045/A083
+
+
+## Masterauftrag – 2026-11-14 – 045/A083
+**Status: QUELLCODE ERLEDIGT; externe Providerabnahme offen.**
+
+- **Zentrale Query-Grenze:** `debate_research` verwendet jetzt die vorhandenen, stateless PII-Recognizer für E-Mail, Telefon, Adresse, SSN, Kartennummer, IP-Adresse und erkannte Einleitungsnamen sowie die bestehenden Shield-Token. `is_safe_research_query()` verweigert eine Recherchefrage mit einem dieser Signale oder mit leerem/zu langem Inhalt, bevor ein Provider ausgewählt wird.
+- **Minimierung ohne Leck:** `minimize_research_query()` und `research_query_pii_categories()` liefern für Diagnose und Audit ausschließlich eine redigierte Form mit Kategorien wie `[REDACTED_PHONE]`; erkannte Originalwerte werden nicht zurückgegeben oder an einen Provider übergeben.
+- **Alle Research-Lanes:** Die Prüfung liegt sowohl am öffentlichen `research_claim()`-Eintritt als auch defensiv in `_research_with_client()` und `_ai_web_sources()`. Damit bleiben Orchestrator-Automatik, manuelle Recherche, Video-`research_source_candidates()` und das Deep-Debate-Benchmark über denselben sicheren Eintritt geschützt; ein direkter interner Lane-Aufruf kann die Prüfung nicht umgehen.
+- **Fail-closed-Verhalten:** Bei PII in der Frage wird `refused` beziehungsweise eine leere Quellenliste geliefert; `_ai_web_sources()` ruft weder ChatGPT Web noch Gemini/API/CLIProxy auf.
+- **Regressionen:** `test_query_minimization_covers_structured_pii` deckt Telefon, Adresse, SSN, Luhn-Kartennummer, IP, Einleitungsname und E-Mail ab und prüft die redigierte Diagnoseform. `test_direct_ai_web_lane_refuses_pii_before_provider_call` bestätigt, dass die Providerfunktion nicht aufgerufen wird. `test_research_with_client_refuses_pii_before_ai_lane` bestätigt das gleiche am tieferen Orchestrierungseintritt; die bestehende Token-/Leerquery-Regression bleibt erhalten.
+- **Wiederverwendet:** `app.services.pii.recognizers.find_patterns()` und die bestehende Query-Normalisierung; keine neue PII-Bibliothek und keine Änderung am separaten Claim- oder Transkript-Scope von A084/A085.
+- **Validierung:** `source/backend/app/services/debate_research.py` und `source/backend/tests/test_debate_research.py` wurden vollständig per Python-AST geparst (jeweils ohne Syntaxfehler). Ein frischer Async-/DB-/Providerlauf sowie echte Browser-/Oracle-Abnahme sind wegen fehlendem ausführbarem privatem Checkout, fehlenden Backend-Abhängigkeiten und nicht verfügbarer Provider-/Login-Sitzungen nicht durchführbar.
+- **Commit/Push:** `df3d2f857257bd37abe95ffaa1552679a9da7ee4` (Query-Erkennung, Minimierung und Gates), `b6314250475ea0361a5b75c7ac2082501ac5878a` (E-Mail-Erkennung in der statelessen Span-Auswahl), `0843176eae90cf09b0751630bddf1973e7ae9047` (Regressionen).
+
+NÄCHSTER PUNKT: 046/A084
