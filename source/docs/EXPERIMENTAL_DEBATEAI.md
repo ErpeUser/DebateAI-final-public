@@ -35,7 +35,7 @@ Die Quellenkandidaten werden anschließend durch die KI-Webrecherche verifiziert
 Beispiel:
 
 ```bash
-python source/backend/scripts/video_eval_pipeline.py --audio ./debate.wav --video-id debate-001 --out ./artifacts/debate-001.json --speaker-diarization
+python source/backend/scripts/video_eval_pipeline.py --audio ./debate.wav --video-id debate-001 --out ./artifacts/debate-001.json --speaker-diarization --style-profile ./artifacts/rhetoric-profile.json
 ```
 
 Für sehr lange Dateien sollte der Audioexport in Abschnitte geteilt oder vorab in Cloud Storage gelegt und über die Google-Batch-Variante verarbeitet werden. Die Live-Pipeline wartet nicht auf diese Batchauswertung.
@@ -51,3 +51,5 @@ Für mehrere Videos kann eine JSON-Liste verarbeitet werden:
 ```bash
 python source/backend/scripts/video_eval_batch.py --video-list videos.json --out-dir ./artifacts --speaker-diarization
 ```
+
+Das lokale Sprachprofil wird mit jeder geprüften Videorunde versioniert. Es dient als Evaluationsinput für spätere Prompt-/Modellvergleiche; eine Änderung wird erst nach Review übernommen.
