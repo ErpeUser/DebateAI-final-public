@@ -818,3 +818,17 @@ NÄCHSTER PUNKT: 038/A073
 - **Commit/Push:** `86b2274441f4c4b86d12e2be7b3c44075393a9a9`, `7cd4b554971a546e127b54a67a71186a21e840a6`, `a33e6585f2f0581c5d082cea0a5b0f8082ec8fab`, `9f051ad9e5b8f85ef1038df08f7fe747918776b8` (Runtime), `6af4f9c099cc0dfdb251ac238509972845671ac0` (Regression).
 
 NÄCHSTER PUNKT: 039/A076
+
+
+## Masterauftrag – 2026-11-14 – 039/A076
+**Status: QUELLCODE ERLEDIGT; externe Providerabnahme offen.**
+
+- **Providerwahl je Research-Lane:** debate_research._ai_web_sources() prüft vor jedem Aufruf den lane-spezifischen Cooldown und die bekannte Session-/Login-Readiness. ChatGPT Web wird nur bei verfügbarem Oracle-Runtime, bestätigtem Login und freiem Browser verwendet; Gemini Web nur bei aktivem Cookie/Sessionstatus und mindestens einem gemeldeten Servicemodell. Nicht bereite Browser-Lanes werden übersprungen, damit eine nicht angemeldete Sitzung nicht wiederholt Fehler erzeugt.
+- **Health, Fehlerklasse und Rate-Limit:** Erfolgreiche und fehlgeschlagene Lanes führen einen redigierten Health-Status. Fehler werden über classify_provider_failure() in Authentifizierung, Subscription, Modell, Rate-Limit, Timeout/Transport oder unbekannt klassifiziert. Retry-After wird als Cooldown übernommen; sonst greift der konfigurierte Provider-Cooldown. Während des Cooldowns wird die Lane nicht erneut aufgerufen, andere konfigurierte Fallbacks laufen weiter.
+- **Fallback-Konfiguration:** Die effektive Reihenfolge vereinigt research.providers und research.fallback_providers dedupliziert und in Konfigurationsreihenfolge. Dadurch kann beispielsweise CLIProxy als Fallback laufen, obwohl es nicht als primäre Research-Lane aktiviert ist; Wikipedia/DuckDuckGo bleiben ausgeschlossen.
+- **Statusoberfläche:** research_provider_health() liefert ausschließlich Provider, Zustand, Fehlerklasse, Retrybarkeit, Cooldown und Zeitstempel; Prompts, Cookies, API-Schlüssel und Modellantworten werden nicht gespeichert. reset_research_provider_health() erlaubt das sofortige Freigeben einer Lane nach erneuter Anmeldung oder Konfigurationsänderung.
+- **Regressionen:** test_provider_readiness_skips_unlogged_browser_lanes prüft Login-/Runtime-Gates. test_rate_limit_sets_provider_cooldown_and_skips_next_lane prüft Retry-After=120 und dass der zweite Aufruf ausbleibt. test_authentication_failure_is_classified_and_cooled_down prüft die Fehlerklasse. test_configured_fallbacks_are_added_to_effective_research_order prüft die zusammengeführte Fallbackliste; die A073-Tests bleiben mit deterministischem Readiness-Fake aktiv.
+- **Validierung:** debate_research.py und test_debate_research.py wurden per Python-AST geprüft. Ein frischer Async-/DB-/Provider-/Browserlauf bleibt wegen fehlendem ausführbarem privatem Checkout, fehlenden Backend-Abhängigkeiten und nicht vorhandener realer Provider-/Login-Sitzung blockiert.
+- **Commit/Push:** 47464cb1681e9d1ac9c9099adfce950290d68d52 (Lane-Health, Readiness, Cooldown, Fallback-Merge), 7b15eafef3f2e5dfe9d10e6159a88c74b919ddaa (Regressionen).
+
+NÄCHSTER PUNKT: 040/A077
