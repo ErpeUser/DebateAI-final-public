@@ -33,7 +33,10 @@ class RepetitionTests(unittest.TestCase):
         joined = "\n".join(captured.output)
         self.assertNotIn("God", joined)
         self.assertIn("chars", joined)
-
+    def test_meaningful_short_interjections_and_number_corrections_survive(self):
+        for text in ("Nein", "Doch", "Warum", "Nicht", "42", "2,2", "8%", "acht", "fünf"):
+            with self.subTest(text=text):
+                self.assertEqual(filter_transcript_text(text), text)
 
 if __name__ == "__main__":
     unittest.main()
