@@ -22,9 +22,6 @@ from app.config import settings
 from app.services.ai_config import research_settings
 
 
-WIKIPEDIA_API = "https://de.wikipedia.org/w/api.php"
-DUCKDUCKGO_API = "https://api.duckduckgo.com/"
-DUCKDUCKGO_HTML = "https://html.duckduckgo.com/html/"
 _USER_AGENT = "DebateAI/0.6.6 (https://github.com/ErpeUser/DebateAI)"
 _HEADERS = {"User-Agent": _USER_AGENT, "Api-User-Agent": _USER_AGENT}
 # Any tokenized placeholder is treated as sensitive at the public-search boundary.
@@ -337,53 +334,6 @@ def _source(
     )
 
 
-class _DuckDuckGoHTMLParser(HTMLParser):
-    def __init__(self):
-        super().__init__(convert_charrefs=True)
-        self.rows: list[dict[str, str]] = []
-        self._current: dict[str, str] | None = None
-        self._capture = ""
-        self._parts: list[str] = []
-
-    @staticmethod
-    def _classes(attrs: list[tuple[str, str | None]]) -> set[str]:
-        value = next((value or "" for key, value in attrs if key == "class"), "")
-        return set(value.split())
-
-    def _finish(self) -> None:
-        if self._current and self._current.get("url"):
-            self.rows.append(self._current)
-        self._current = None
-
-    def handle_starttag(self, tag, attrs):
-        classes = self._classes(attrs)
-        if tag == "a" and "result__a" in classes:
-            self._finish()
-            href = next((value or "" for key, value in attrs if key == "href"), "")
-            self._current = {"title": "", "url": href, "snippet": ""}
-            self._capture = "title"
-            self._parts = []
-        elif self._current is not None and "result__snippet" in classes:
-            self._capture = "snippet"
-            self._parts = []
-
-    def handle_data(self, data):
-        if self._capture:
-            self._parts.append(data)
-
-    def handle_endtag(self, tag):
-        if self._current is None or not self._capture:
-            return
-        if tag in {"a", "div", "span"}:
-            self._current[self._capture] = _clean_text(" ".join(self._parts))
-            self._capture = ""
-            self._parts = []
-
-    def close(self):
-        super().close()
-        self._finish()
-
-
 class _OriginalTextParser(HTMLParser):
     def __init__(self):
         super().__init__(convert_charrefs=True)
@@ -500,111 +450,6 @@ async def _read_trusted_original(
     })
 
 
-def _parse_duckduckgo_html(value: str) -> list[dict[str, str]]:
-    parser = _DuckDuckGoHTMLParser()
-    parser.feed(value or "")
-    parser.close()
-    rows = []
-    for row in parser.rows:
-        canonical = _canonical_url(row.get("url"))
-        if canonical:
-            rows.append({**row, "url": canonical})
-    return rows
-
-
-async def _wikipedia_sources(
-    client: httpx.AsyncClient,
-    claim: str,
-    query: str,
-) -> list[ResearchSource]:
-    raise RuntimeError("Legacy research provider disabled")
-    content, _content_type = await _bounded_get(
-        client,
-        WIKIPEDIA_API,
-        params={
-            "action": "query",
-            "generator": "search",
-            "gsrsearch": query,
-            "gsrlimit": settings.DEBATE_RESEARCH_MAX_SOURCES,
-            "prop": "extracts|info",
-            "exintro": 1,
-            "explaintext": 1,
-            "inprop": "url",
-            "format": "json",
-            "utf8": 1,
-        },
-    )
-    pages = ((json.loads(content) or {}).get("query") or {}).get("pages") or {}
-    sources = []
-    for page in sorted(pages.values(), key=lambda item: item.get("index", 10_000)):
-        item = _source(
-            title=page.get("title"),
-            url=page.get("fullurl"),
-            snippet=page.get("extract"),
-            provider="wikipedia",
-            claim=claim,
-            verification_status="read",
-        )
-        if item is not None:
-            sources.append(item)
-    return sources
-
-
-def _related_topics(items: list[dict]) -> list[dict]:
-    flattened = []
-    for item in items:
-        if isinstance(item.get("Topics"), list):
-            flattened.extend(_related_topics(item["Topics"]))
-        else:
-            flattened.append(item)
-    return flattened
-
-
-async def _duckduckgo_sources(
-    client: httpx.AsyncClient,
-    claim: str,
-    query: str,
-) -> list[ResearchSource]:
-    raise RuntimeError("Legacy research provider disabled")
-    content, _content_type = await _bounded_get(
-        client,
-        DUCKDUCKGO_API,
-        params={
-            "q": query,
-            "format": "json",
-            "no_html": 1,
-            "no_redirect": 1,
-            "skip_disambig": 1,
-        },
-    )
-    payload = json.loads(content) or {}
-    candidates = [
-        {
-            "title": payload.get("Heading") or payload.get("AbstractSource"),
-            "url": payload.get("AbstractURL"),
-            "snippet": payload.get("AbstractText"),
-        }
-    ]
-    candidates.extend(
-        {
-            "title": topic.get("Text", "").split(" - ", 1)[0],
-            "url": topic.get("FirstURL"),
-            "snippet": topic.get("Text"),
-        }
-        for topic in _related_topics(payload.get("RelatedTopics") or [])
-    )
-    sources = []
-    for candidate in candidates:
-        item = _source(
-            **candidate,
-            provider="duckduckgo",
-            claim=claim,
-        )
-        if item is not None:
-            sources.append(item)
-    return sources
-
-
 async def _ai_web_sources(
     claim: str,
     query: str,
@@ -717,32 +562,6 @@ async def _ai_web_sources(
         )
         for url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
     ]
-
-async def _duckduckgo_html_sources(
-    client: httpx.AsyncClient,
-    claim: str,
-    query: str,
-) -> list[ResearchSource]:
-    raise RuntimeError("Legacy research provider disabled")
-    content, _content_type = await _bounded_get(
-        client,
-        DUCKDUCKGO_HTML,
-        params={"q": query},
-        accepted_types=("application/xhtml+xml", "text/html", "text/plain"),
-    )
-    sources = []
-    for candidate in _parse_duckduckgo_html(content.decode("utf-8", errors="replace")):
-        item = _source(
-            **candidate,
-            provider="duckduckgo-search",
-            claim=claim,
-        )
-        if item is not None:
-            sources.append(item)
-        if len(sources) >= settings.DEBATE_RESEARCH_MAX_SOURCES:
-            break
-    return sources
-
 
 async def _research_with_client(
     client: httpx.AsyncClient,
