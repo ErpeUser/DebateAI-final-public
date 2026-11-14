@@ -329,6 +329,101 @@ def transcribe_with_google_cloud(
         return segments
 
 
+async def extract_source_candidates_with_ai(
+    transcript: str,
+    segments: Iterable[TranscriptSegment] = (),
+    *,
+    max_candidates: int = 64,
+) -> list[SourceCandidate]:
+    """Find transcript references missed by deterministic patterns.
+
+    The model returns candidate names/URLs only; each candidate still goes
+    through the bounded AI research path before it can become evidence.
+    """
+    text = _clean(transcript)[:36_000]
+    if not text:
+        return []
+    prompt = (
+        "Extract every source mentioned in this transcript (study, author, "
+        "institution, law, dataset, report, URL or DOI). Return only JSON "
+        "array objects with value, kind and context. Do not invent sources "
+        "and do not use Wikipedia or DuckDuckGo.\\n\\nTRANSCRIPT:\\n" + text
+    )
+    answer = ""
+    try:
+        from app.services.chatgpt_web import configured, generate, runtime_available
+        if configured() and runtime_available():
+            answer = await generate(
+                prompt,
+                system="You are the video source extraction lane. Return strict JSON only.",
+                reasoning_effort="high",
+                research="search",
+            )
+    except Exception:
+        answer = ""
+    if not answer:
+        try:
+            from app.services.ai_config import research_settings
+            from app.services.llm import generate_text
+            providers = set(research_settings().get("providers") or [])
+            fallback = next((
+                model for provider, model in (
+                    ("gemini_web", "endpoint:gemini-web:gemini-3.1-pro"),
+                    ("gemini_api", "gemini-3.1-pro-preview"),
+                    ("cliproxyapi", "endpoint:subscription-ai:gpt-6-sol"),
+                ) if provider in providers
+            ), "")
+            if fallback:
+                answer = await generate_text(
+                    fallback, prompt,
+                    system="Return only JSON source candidates; exclude Wikipedia and DuckDuckGo.",
+                    source="video_source_extraction",
+                )
+        except Exception:
+            answer = ""
+    if not answer:
+        return []
+    raw = str(answer).strip()
+    fence = chr(96) * 3
+    if raw.startswith(fence):
+        raw = raw.split("\\n", 1)[1] if "\\n" in raw else raw
+        raw = raw.rsplit(fence, 1)[0].strip()
+    try:
+        payload = json.loads(raw)
+    except (TypeError, ValueError):
+        match = re.search(r"\\[[\\s\\S]*\\]", raw)
+        if not match:
+            return []
+        try:
+            payload = json.loads(match.group(0))
+        except ValueError:
+            return []
+    if not isinstance(payload, list):
+        return []
+    rows = list(segments)
+    found: list[SourceCandidate] = []
+    seen: set[str] = set()
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        value = _clean(item.get("value") or item.get("source") or item.get("name"))
+        if not value or value.casefold() in seen:
+            continue
+        seen.add(value.casefold())
+        segment_index = next((
+            index for index, segment in enumerate(rows)
+            if value.casefold() in _clean(segment.text).casefold()
+        ), 0)
+        found.append(SourceCandidate(
+            value=value[:500],
+            kind=_clean(item.get("kind") or "ai_reference")[:80] or "ai_reference",
+            context=_clean(item.get("context") or value)[:420],
+            segment_index=segment_index,
+        ))
+        if len(found) >= max(1, max_candidates):
+            break
+    return found
+
 def build_video_artifact(
     *,
     video_id: str,
