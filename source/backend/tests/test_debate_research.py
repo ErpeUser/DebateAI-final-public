@@ -330,6 +330,110 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(["gemini-3.1-pro-preview"], calls)
         self.assertEqual(["https://api.example/fallback"], [source.url for source in sources])
 
+    async def test_original_read_budget_is_balanced_across_provider_routes(self):
+        providers = ["chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"]
+        candidates = [
+            debate_research.ResearchSource(
+                title=provider,
+                url=f"https://{provider}.example/source",
+                snippet="Treffer",
+                provider=provider,
+                claim="Claim",
+                source_type="ai_web",
+            )
+            for provider in providers
+        ]
+
+        async def read(_client, source, _query):
+            return source.model_copy(update={
+                "verification_status": "read",
+                "retrieval_status": "read",
+                "passage": "Originalpassage zum Claim.",
+                "source_type": "original",
+            })
+
+        settings = {
+            "enabled": True,
+            "providers": providers,
+            "fallback_providers": [],
+            "timeout_seconds": 3,
+            "steps": 2,
+            "original_sources_required": True,
+        }
+        client = httpx.AsyncClient()
+        try:
+            with mock.patch.object(
+                debate_research,
+                "research_settings",
+                return_value=settings,
+            ), mock.patch.object(
+                debate_research,
+                "_ai_web_sources",
+                new=mock.AsyncMock(return_value=candidates),
+            ), mock.patch.object(
+                debate_research,
+                "_read_trusted_original",
+                side_effect=read,
+            ) as reader:
+                result = await debate_research._research_with_client(
+                    client,
+                    "Claim",
+                    "Claim pruefen",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertEqual("completed", result.status)
+        self.assertEqual(
+            set(providers),
+            {call.args[1].provider for call in reader.await_args_list},
+        )
+        self.assertTrue(all(source.retrieval_status == "read" for source in result.sources))
+
+    async def test_all_unread_ai_sources_remain_unavailable(self):
+        source = debate_research.ResearchSource(
+            title="Treffer",
+            url="https://example.org/source",
+            snippet="Snippet",
+            provider="gemini_api",
+            claim="Claim",
+            source_type="ai_web",
+        )
+        settings = {
+            "enabled": True,
+            "providers": ["gemini_api"],
+            "fallback_providers": [],
+            "timeout_seconds": 3,
+            "steps": 1,
+            "original_sources_required": True,
+        }
+        client = httpx.AsyncClient()
+        try:
+            with mock.patch.object(
+                debate_research,
+                "research_settings",
+                return_value=settings,
+            ), mock.patch.object(
+                debate_research,
+                "_ai_web_sources",
+                new=mock.AsyncMock(return_value=[source]),
+            ), mock.patch.object(
+                debate_research,
+                "_read_trusted_original",
+                new=mock.AsyncMock(return_value=source),
+            ):
+                result = await debate_research._research_with_client(
+                    client,
+                    "Claim",
+                    "Claim pruefen",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertEqual("unavailable", result.status)
+        self.assertEqual("found", result.sources[0].retrieval_status)
+        self.assertEqual("", result.sources[0].passage)
+
     async def test_provider_readiness_skips_unlogged_browser_lanes(self):
         async def fake_generate_text(model, *_args, **_kwargs):
             self.assertEqual("gemini-3.1-pro-preview", model)
