@@ -191,6 +191,33 @@ async def _resolve_media_path(
     )
 
 
+def _normalize_video_item(item: object, index: int) -> dict:
+    """Accept a plain URL list as well as richly described video objects."""
+    if isinstance(item, str):
+        value = item.strip()
+        if not value:
+            raise ValueError(f"video-list item {index + 1} is empty")
+        return {
+            "video_id": f"video-{index + 1:04d}",
+            "video_page_url": value,
+        }
+    if not isinstance(item, dict):
+        raise ValueError(f"video-list item {index + 1} must be an object or URL string")
+    normalized = dict(item)
+    if not str(normalized.get("video_id") or normalized.get("id") or "").strip():
+        normalized["video_id"] = f"video-{index + 1:04d}"
+    if not any(
+        str(normalized.get(key) or "").strip()
+        for key in (
+            "audio", "video", "media_path",
+            "media_url", "video_url", "audio_url",
+            "video_page_url", "video_page", "page_url", "source_url",
+        )
+    ) and str(normalized.get("url") or "").strip():
+        normalized["video_page_url"] = str(normalized["url"]).strip()
+    return normalized
+
+
 async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
     video_id = str(item.get("video_id") or item.get("id") or "").strip()
     if not video_id:
@@ -244,9 +271,10 @@ async def main() -> int:
     parser.add_argument("--speaker-diarization", action="store_true")
     parser.add_argument("--style-profile", default="")
     args = parser.parse_args()
-    items = json.loads(Path(args.video_list).read_text(encoding="utf-8"))
-    if not isinstance(items, list):
+    raw_items = json.loads(Path(args.video_list).read_text(encoding="utf-8"))
+    if not isinstance(raw_items, list):
         raise SystemExit("video-list must be a JSON array")
+    items = [_normalize_video_item(item, index) for index, item in enumerate(raw_items)]
     output_dir = Path(args.out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     for item in items:
