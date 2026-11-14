@@ -1137,8 +1137,15 @@ class AgentOrchestrator:
                 "",
             )
         selected_item = next((item for item in options if item.get("id") == selected), None)
+        if selected_item is None:
+            selected_item = next((item for item in options if item.get("text")), None)
+            selected = str((selected_item or {}).get("id") or "")
         selected_text = str((selected_item or {}).get("text") or "")
         selected_kind = str((selected_item or {}).get("kind") or "")
+        options = [
+            {**item, "selected": str(item.get("id") or "") == selected}
+            for item in options
+        ]
         # The chosen move is the only large visible answer; alternatives remain
         # available as compact blobs for deliberate selection in the UI.
         return recommendation.model_copy(update={
