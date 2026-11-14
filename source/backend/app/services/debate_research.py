@@ -752,17 +752,29 @@ async def _research_with_client(
             sources.append(source)
 
     if sources:
-        original_indexes = [
-            index for index, source in enumerate(sources)
-            if source.verification_status != "read"
-            and (
-                _trusted_original_url(source.url)
-                or (
-                    source.source_type == "ai_web"
-                    and isinstance(client, httpx.AsyncClient)
+        original_limit = min(
+            settings.DEBATE_RESEARCH_MAX_SOURCES,
+            configured["steps"] * 2,
+        )
+        original_indexes: list[int] = []
+        read_providers: set[str] = set()
+        for index, source in enumerate(sources):
+            if (
+                source.verification_status == "read"
+                or source.provider in read_providers
+                or not (
+                    _trusted_original_url(source.url)
+                    or (
+                        source.source_type == "ai_web"
+                        and isinstance(client, httpx.AsyncClient)
+                    )
                 )
-            )
-        ][:2]
+            ):
+                continue
+            original_indexes.append(index)
+            read_providers.add(source.provider)
+            if len(original_indexes) >= original_limit:
+                break
         if original_indexes and configured["original_sources_required"]:
             read_results = await asyncio.gather(*(
                 _read_trusted_original(client, sources[index], query)
@@ -779,6 +791,21 @@ async def _research_with_client(
             else 3
         ))
         sources = sources[: min(settings.DEBATE_RESEARCH_MAX_SOURCES, configured["steps"] * 2)]
+        if (
+            configured["original_sources_required"]
+            and any(source.source_type == "ai_web" for source in sources)
+            and not any(
+                source.retrieval_status == "read" and source.passage.strip()
+                for source in sources
+            )
+        ):
+            return ResearchResult(
+                claim=claim,
+                query=query,
+                status="unavailable",
+                sources=sources,
+                error="No AI research source could be read as an original passage",
+            )
         return ResearchResult(
             claim=claim,
             query=query,
