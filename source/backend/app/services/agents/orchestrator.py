@@ -74,6 +74,7 @@ from app.services.briefing_synthesis import (
 from app.services.gemini_live import GeminiLiveSession
 from app.services.llm import provider_for, registry_entry
 from app.services.privacy import allows_local_only
+from app.services import external_audit
 from app.services.speaker_name_rewriter import replace_speaker_labels
 from app.services.local_live_captioner import LocalLiveCaptioner, is_local_live_model
 from app.services.openai_realtime import OpenAIRealtimeSession
@@ -4402,11 +4403,15 @@ class AgentOrchestrator:
             if result is not None and cache_modes.get(query, "deep") != research_mode:
                 result = None
             if result is None:
-                result = await research_claim(
-                    recommendation.target_claim,
-                    query,
-                    research_mode=research_mode,
-                )
+                with external_audit.audit_context(
+                    claim=recommendation.target_claim,
+                    data_category="research_claim",
+                ):
+                    result = await research_claim(
+                        recommendation.target_claim,
+                        query,
+                        research_mode=research_mode,
+                    )
                 self._research_cache[query] = result
                 cache_modes[query] = research_mode
             result = _bind_research_result(
