@@ -126,6 +126,7 @@ class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
                 "simple_1to1_audio_mode": False,
                 "profile_id": "",
                 "profile_directive": "",
+                "pipeline_mode": "standard",
             },
         )
 
