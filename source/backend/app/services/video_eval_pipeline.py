@@ -384,6 +384,16 @@ async def extract_source_candidates_with_ai(
         return []
 
     async def request_chunk(chunk_text: str) -> str:
+        from app.services.debate_research import (
+            minimize_research_query,
+            research_query_pii_categories,
+        )
+
+        if research_query_pii_categories(chunk_text):
+            # Source extraction is a separate external lane from claim
+            # verification. Keep its context useful while removing structured
+            # PII before ChatGPT Web or a fallback provider sees it.
+            chunk_text = minimize_research_query(chunk_text)
         prompt = (
             "Extract every source mentioned in this transcript (study, author, "
             "institution, law, dataset, report, URL or DOI). Return only JSON "
