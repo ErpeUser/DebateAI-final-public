@@ -223,6 +223,25 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
 
+    def test_unread_supporting_snippet_does_not_validate_a_number(self):
+        recommendation = DebateRecommendation(
+            answer_now="Die Quote liegt bei exakt 73 Prozent.",
+            counterargument="Das ist die klare Mehrheit.",
+            target_claim="73 Prozent stimmen zu.",
+            confidence="high",
+            sources=[DebateSource(
+                title="Treffer",
+                url="https://example.test/treffer",
+                claim="73 Prozent stimmen zu.",
+                snippet="73 Prozent stimmen zu.",
+                claim_relation="supports",
+                verification_status="supports",
+                retrieval_status="found",
+            )],
+        )
+
+        self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
+
     def test_source_id_and_number_do_not_validate_mismatched_scope_metadata(self):
         recommendation = DebateRecommendation(
             answer_now="73 Prozent im Jahr 2023 unter allen Einwohnern stimmen zu.",
