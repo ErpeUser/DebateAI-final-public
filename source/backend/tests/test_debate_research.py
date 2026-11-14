@@ -1,5 +1,7 @@
 import asyncio
 import unittest
+
+import httpx
 from unittest import mock
 
 from app.services import debate_research
@@ -11,6 +13,8 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         debate_research._document_cache.clear()
         debate_research._passage_cache.clear()
         debate_research._research_inflight.clear()
+        debate_research._research_provider_cooldown_until.clear()
+        debate_research._research_provider_health.clear()
 
     async def test_identical_live_queries_share_one_inflight_research(self):
         calls = 0
@@ -138,7 +142,11 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
                 return "https://api.example/gemini https://shared.example/source"
             return "https://cli.example/source"
 
-        with mock.patch(
+        with mock.patch.object(
+            debate_research,
+            "_research_provider_ready",
+            return_value=True,
+        ), mock.patch(
             "app.services.chatgpt_web.generate",
             new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
         ), mock.patch(
@@ -172,7 +180,11 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         async def fake_generate_text(*_args, **_kwargs):
             raise RuntimeError("provider unavailable")
 
-        with mock.patch(
+        with mock.patch.object(
+            debate_research,
+            "_research_provider_ready",
+            return_value=True,
+        ), mock.patch(
             "app.services.chatgpt_web.generate",
             new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
         ), mock.patch(
@@ -234,6 +246,115 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0)
 
         self.assertNotIn("abgebrochene suche", debate_research._research_inflight)
+
+    async def test_provider_readiness_skips_unlogged_browser_lanes(self):
+        async def fake_generate_text(model, *_args, **_kwargs):
+            self.assertEqual("gemini-3.1-pro-preview", model)
+            return "https://api.example/research"
+
+        with mock.patch(
+            "app.services.chatgpt_web.runtime_available",
+            return_value=False,
+        ), mock.patch(
+            "app.services.subscription_bridge.gemini_web_cookie_configured",
+            return_value=False,
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["chatgpt_web", "gemini_web", "gemini_api"],
+            )
+
+        self.assertEqual(["https://api.example/research"], [source.url for source in sources])
+        health = debate_research.research_provider_health()
+        self.assertEqual("blocked", health["chatgpt_web"]["state"])
+        self.assertEqual("authentication", health["chatgpt_web"]["failure_kind"])
+        self.assertEqual("blocked", health["gemini_web"]["state"])
+
+    async def test_rate_limit_sets_provider_cooldown_and_skips_next_lane(self):
+        request = httpx.Request("POST", "https://provider.example/v1/chat/completions")
+        error = httpx.HTTPStatusError(
+            "rate limited",
+            request=request,
+            response=httpx.Response(
+                429,
+                headers={"Retry-After": "120"},
+                request=request,
+            ),
+        )
+        with mock.patch(
+            "app.services.llm.generate_text",
+            new=mock.AsyncMock(side_effect=error),
+        ) as generate:
+            first = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["gemini_api"],
+            )
+            second = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["gemini_api"],
+            )
+
+        self.assertEqual([], first)
+        self.assertEqual([], second)
+        generate.assert_awaited_once()
+        health = debate_research.research_provider_health()["gemini_api"]
+        self.assertEqual("cooldown", health["state"])
+        self.assertEqual("rate_limit", health["failure_kind"])
+        self.assertEqual(120, health["cooldown_seconds"])
+
+    async def test_authentication_failure_is_classified_and_cooled_down(self):
+        with mock.patch(
+            "app.services.llm.generate_text",
+            new=mock.AsyncMock(side_effect=RuntimeError("not logged in")),
+        ) as generate:
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["gemini_api"],
+            )
+
+        self.assertEqual([], sources)
+        generate.assert_awaited_once()
+        health = debate_research.research_provider_health()["gemini_api"]
+        self.assertEqual("cooldown", health["state"])
+        self.assertEqual("authentication", health["failure_kind"])
+        self.assertFalse(health["retryable"])
+
+    async def test_configured_fallbacks_are_added_to_effective_research_order(self):
+        settings = {
+            "enabled": True,
+            "providers": ["chatgpt_web"],
+            "fallback_providers": ["cliproxyapi"],
+            "timeout_seconds": 3,
+            "steps": 2,
+            "original_sources_required": False,
+        }
+        with mock.patch.object(
+            debate_research,
+            "research_settings",
+            return_value=settings,
+        ), mock.patch.object(
+            debate_research,
+            "_ai_web_sources",
+            new=mock.AsyncMock(return_value=[]),
+        ) as ai_lane:
+            result = await debate_research._research_with_client(
+                mock.AsyncMock(),
+                "Claim",
+                "Claim pruefen",
+            )
+
+        self.assertEqual("unavailable", result.status)
+        self.assertEqual(
+            ["chatgpt_web", "cliproxyapi"],
+            ai_lane.await_args.args[2],
+        )
 
 
 if __name__ == "__main__":
