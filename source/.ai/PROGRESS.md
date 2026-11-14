@@ -554,4 +554,17 @@ NÄCHSTER PUNKT: 018/A033
 - **Fresh-Test-Ergebnis:** Ein vollständiger Backend-/Frontend-Lauf und GitHub-Actions-Neulauf bleiben offen: der private Checkout ist in dieser Umgebung nicht ausführbar, und die letzten Actions-Runs liefern weiterhin `steps: null`.
 - **Commit/Push:** Die Änderungen wurden direkt auf `master` gepusht; letzter A036-Commit `7bbb61c276083cd8adad4dd9e26c8d39c169635a`.
 
-NÄCHSTER PUNKT: 020/A037
+## Masterauftrag – 2026-11-14 – 020/A037
+
+**Status: ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch Runner.**
+
+- **Aufgabe:** Refiner-Korrekturen von ursprünglichen Transcript-/Claim-Revisionen trennen und verhindern, dass eine rein orthografische Änderung alte Antworten reaktiviert.
+- **Laufzeitvertrag:** Der Refiner schreibt weiterhin nur `transcript_updated`, ruft weder `feed_transcript()` noch `apply_manual_transcript_correction()` auf, erhöht daher `_transcript_revision`/`claim_revision` nicht und erzeugt keinen neuen `DebateClaimRecord`. Die bestehende Stale-/Generation-Prüfung bleibt für echte Speech- und manuelle Revisionen zuständig.
+- **Historienfix:** `append_refiner_revision()` schreibt akzeptierte Refinements als `TranscriptEntryRevision(source="refiner")`. Fehlt bei älteren Daten die Historie, wird `TranscriptEntry.raw_text` als `source="original"` angelegt; der verfeinerte Stand erhält die eigene Refiner-Stufe. Eine anschließende manuelle Korrektur erhält danach eine getrennte `source="manual"`-Stufe und lässt `raw_text` unverändert.
+- **Regressionen:** `test_transcript_refiner.py` prüft Original-/Refiner-Historie bei akzeptierter Korrektur. `test_transcript_revisions.py` deckt den konkreten Ablauf Refiner → manuelle Korrektur ab und verlangt ASR-Original, `source="refiner"` und `source="manual"` in separaten Revisionen. `test_debate_copilot.py` prüft, dass der Refiner-Payload weder `_transcript_revision` noch `_debate_revision` verändert und nur `transcript_updated` sendet.
+- **Lokale Verifikation:** Die aktuellen Produktions- und Testdateien für `transcript_revisions`, `transcript_refiner`, `models` und die fokussierten Revisionstests kompilieren mit `python -m py_compile`.
+- **Fresh-Test-Ergebnis:** Ein ausführbarer Backend-/Frontend-Lauf bleibt offen: Python-Abhängigkeiten und privater Checkout sind in dieser Umgebung nicht vorhanden; GitHub Actions liefert weiterhin keine ausführbaren Steps (`steps: null`).
+- **Commit/Push:** A037-Änderungen wurden direkt auf `master` gepusht; maßgebliche Commits `e58ba5015a31a6fdc89c2cfb5dd82ccd6beb05b4`, `8fb5a3d9f82d117289f88c8012c3aa9da1fdece1` und `eb3b87e2001773a78b1eef0c050324b009b79160`.
+
+NÄCHSTER PUNKT: 021/A039
+
