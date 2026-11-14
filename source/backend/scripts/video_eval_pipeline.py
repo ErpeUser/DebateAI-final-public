@@ -14,6 +14,7 @@ import asyncio
 
 from app.services.video_eval_pipeline import (
     build_video_artifact,
+    evaluate_rhetoric_profile,
     research_source_candidates,
     save_artifact,
     update_style_profile,
@@ -45,6 +46,7 @@ def main() -> int:
         language_code=args.language,
     )
     artifact = asyncio.run(research_source_candidates(artifact))
+    artifact = asyncio.run(evaluate_rhetoric_profile(artifact))
     save_artifact(artifact, args.out)
     if args.style_profile:
         update_style_profile(args.style_profile, artifact.rhetorical_profile)
