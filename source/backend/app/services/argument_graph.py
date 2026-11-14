@@ -439,6 +439,14 @@ async def correct_source_assignment(
     for source in sources:
         if str(source.get("url") or "").rstrip("/") != source_url.rstrip("/"):
             continue
+        if (
+            relation in {"supports", "contradicts"}
+            and (
+                str(source.get("retrieval_status") or "") != "read"
+                or not str(source.get("passage") or "").strip()
+            )
+        ):
+            raise ValueError("source must be read before assigning an evidence relation")
         source.update({
             "claim_id": claim_id,
             "claim_revision": record.revision,
