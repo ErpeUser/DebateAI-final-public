@@ -3549,6 +3549,87 @@ class AgentOrchestrator:
                 })
                 await self._send_debate_update(revision, unavailable, origin="research")
 
+    async def _run_experimental_external_lanes(
+        self,
+        recommendation: DebateRecommendation,
+        *,
+        model_id: str,
+        relevant_context: str,
+        sources: list[DebateSource],
+        analysis_phase: str,
+    ) -> tuple[DeepDebateAnalysis | None, str, str]:
+        """Run logical research, adversarial and rhetoric lanes in parallel.
+
+        ChatGPT Web still owns its dedicated-profile lock, so the scheduler
+        permits overlap without cloning cookies or bypassing the existing lock.
+        Each lane has a separate prompt and result, then local integration
+        merges the findings into one recommendation.
+        """
+        lane_directives = (
+            ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu."),
+            ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe."),
+            ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel."),
+        )
+
+        async def run_lane(label: str, directive: str):
+            return label, await self.objection_agent.analyze_deep(
+                recommendation,
+                model_id=model_id,
+                own_position=self.meeting_context,
+                relevant_context=(
+                    relevant_context
+                    + "\n[EXPERIMENTELLE LANE: "
+                    + label
+                    + "]\n"
+                    + directive
+                ),
+                sources=sources,
+                reasoning_effort_override="high",
+                analysis_phase=analysis_phase,
+            )
+
+        results = await asyncio.gather(
+            *(run_lane(label, directive) for label, directive in lane_directives),
+            return_exceptions=True,
+        )
+        successful = [item for item in results if not isinstance(item, BaseException)]
+        if not successful:
+            return None, "", ""
+        analyses = [item[1][0] for item in successful]
+        prompts = [item[1][1] for item in successful]
+
+        def unique(values: list[str], limit: int) -> list[str]:
+            result: list[str] = []
+            for value in values:
+                clean = " ".join(str(value or "").split())
+                if clean and clean not in result:
+                    result.append(clean)
+                if len(result) >= limit:
+                    break
+            return result
+
+        merged = analyses[0].model_copy(update={
+            "counterarguments": unique(
+                [value for item in analyses for value in item.counterarguments], 3
+            ),
+            "followups": unique(
+                [value for item in analyses for value in item.followups], 2
+            ),
+            "evidence": unique(
+                [value for item in analyses for value in item.evidence], 4
+            ),
+            "rebuttal": next(
+                (item.rebuttal for item in analyses if item.rebuttal),
+                analyses[0].rebuttal,
+            ),
+            "interpretation": next(
+                (item.interpretation for item in analyses if item.interpretation),
+                analyses[0].interpretation,
+            ),
+        })
+        return merged, "\n\n".join(prompts), model_id
+
+
     async def _execute_debate_research(
         self,
         revision: int,
@@ -3631,7 +3712,7 @@ class AgentOrchestrator:
                 if not self._analysis_context_is_current(context):
                     return
                 queue_depth = max(0, self._external_analysis_waiters - 1)
-                for model_id in model_ids:
+                for model_id in (() if getattr(self, "_experimental_mode", False) else model_ids):
                     if not self._analysis_context_is_current(context):
                         return
                     adaptive = (
@@ -3719,6 +3800,20 @@ class AgentOrchestrator:
         finally:
             self._external_analysis_waiters = max(
                 0, self._external_analysis_waiters - 1
+            )
+
+        if getattr(self, "_experimental_mode", False):
+            lane_model = (model_ids or self._external_analysis_models() or ["chatgpt-web:gpt-6"])[0]
+            analysis, prompt, used_model = await self._run_experimental_external_lanes(
+                recommendation,
+                model_id=lane_model,
+                relevant_context=relevant_context,
+                sources=sources,
+                analysis_phase=(
+                    "new_topic" if is_new_topic
+                    else "deep_reanalysis" if needs_deep_reanalysis
+                    else "follow_up"
+                ),
             )
 
         self._remember_topic_knowledge(
