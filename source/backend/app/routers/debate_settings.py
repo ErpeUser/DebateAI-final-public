@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.services.debate_settings import (
     DebateMode,
+    PipelineMode,
     DebateSettings,
     PerformanceProfile,
     ResearchFrequency,
@@ -26,6 +27,7 @@ router = APIRouter(prefix="/api/debate-settings", tags=["debate-settings"])
 
 class DebateSettingsUpdate(BaseModel):
     mode: DebateMode | None = None
+    pipeline_mode: PipelineMode | None = None
     research_enabled: bool | None = None
     research_frequency: ResearchFrequency | None = None
     always_analogy: bool | None = None
