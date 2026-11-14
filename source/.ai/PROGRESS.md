@@ -625,3 +625,17 @@ NÄCHSTER PUNKT: 024/A048
 
 NÄCHSTER PUNKT: 025/A050
 
+## Masterauftrag – 2026-11-14 – 025/A050
+
+**Status: BLOCKIERT (Einzelprozess-Cleanup verbessert; Prozessbaum-/realer Provider-Nachweis offen).**
+
+- **Aufgabe:** Externe Providerprozesse nach Timeout oder Cancellation zuverlässig beenden und Unterprozesse sowie Ressourcen aller Bridges prüfen.
+- **Laufzeitfix:** 'NemotronStreamingASRBackend._check_readiness()' stoppt den eigenen verwalteten NeMo-Server jetzt sofort, wenn Start/Readiness fehlschlägt oder die Prüfung gecancelt wird. 'asyncio.shield()' lässt den Cleanup trotz äußerer Cancellation laufen; der bestehende 'ManagedNemoSpeechServer.stop()'-Pfad trennt den Popen-Besitz atomar und führt Terminate, Wait, Kill und Wait aus.
+- **Bestehende Cleanup-Verträge:** ChatGPT Web nutzt Terminate→Wait→Kill→Wait und schützt den Cancellation-Pfad; NeMo, Gemini Web und Subscription Bridge besitzen jeweils nur ihre eigenen Kinder und haben denselben Graceful-/Hard-Kill-Aufbau. ASR-Sockets, Receiver-Tasks und der optionale NeMo-Server werden bei Backend-Close geschlossen.
+- **Regressionen:** 'test_readiness_timeout_stops_owned_server_immediately' verlangt den sofortigen Stop nach fehlender Readiness. 'test_terminate_child_reaps_after_graceful_exit' und 'test_terminate_child_kills_after_wait_timeout' decken die ChatGPT-Web-Wartepfade ab. Vorhandene Bridge-/ASR-Tests prüfen exakten Kindbesitz, Reconnect, Sessionwechsel und Close.
+- **Lokale Verifikation:** Die aktuellen ASR- und Testdateien kompilieren mit 'python -m py_compile'. Vollständige Provider-/Bridge-Tests waren wegen fehlendem ausführbarem Checkout und Dependencies nicht möglich.
+- **Offene Abnahme:** Es gibt weiterhin keinen Nachweis für Prozessgruppen-/Windows-Job-Object-Bindung oder die Beendigung möglicher Oracle-/Chrome-, NeMo-, Gemini- und CLIProxyAPI-Nachkommen. Ein realer Timeout-/Cancellation-Lauf auf Windows mit Prozessbauminspektion, Handles/Sockets, temporären Dateien und sauberem Bridge-Neustart fehlt; deshalb bleibt A050 blockiert.
+- **Commit/Push:** '9d6274ba0c371baa0079c5e1a1aa6bb35c369908' (Readiness-Regression), '89292296679768b84047b4b744789fa575a63190' (Readiness-Cleanup), '3a993f7f1eb9bd7438f7230bab204d46cfa4620e' (ChatGPT-Cleanup-Regression).
+
+NÄCHSTER PUNKT: 026/A052
+
