@@ -804,3 +804,17 @@ NÄCHSTER PUNKT: 037/A067
 - **Commit/Push:** `b79005febb52cd91af7ee5ecc50bdec10ec62b91` und `1800b3de344f02188ae62425d0dfe9e032d36b83` (Evidenz-Gate), `31d22394ef8d791698425f38b05d112c48f7b6d6` (Argumentgraph), `a25ad20a0062682466734e91e52da0dd52d471b8` (Live-Korrektur), `b1ebead4be65949a8f67a7f310732be63c2d0090` (Refinement), `c5b0020e891e48a221b6792a047d4043d5815a84` und `0768d532aac26f2b86afa4d46917c27fe93be22e` (Regressionen), `8b164e3b44141993ef54d48fd75104ccf0b64cc2` (Live-Test).
 
 NÄCHSTER PUNKT: 038/A073
+
+
+## Masterauftrag – 2026-11-14 – 038/A073
+**Status: ERLEDIGT.**
+
+- **Vollständige Providerkette:** `debate_research._ai_web_sources()` verarbeitet jetzt die geordnete aktivierte Providerliste und versucht jeden zulässigen AI-Web-/Gemini-/CLIProxy-Provider. Eine Ausnahme oder leere Antwort springt zum nächsten aktiven Provider; die Kette endet erst nach allen aktivierten Routen.
+- **Aktive Routen:** ChatGPT Web verwendet weiterhin den Oracle-`search`-Modus. Gemini Web, Gemini API und CLIProxy verwenden die bestehenden Modell-IDs `endpoint:gemini-web:gemini-3.1-pro`, `gemini-3.1-pro-preview` und `endpoint:subscription-ai:gpt-6-sol`.
+- **Ergebniszusammenführung:** Explizite URLs aus erfolgreichen Antworten werden providerbezogen gesammelt, dedupliziert und auf `DEBATE_RESEARCH_MAX_SOURCES` begrenzt. Wikipedia-/DuckDuckGo-URLs bleiben blockiert; die URLs bleiben bis zum bounded Original-Reader unverified.
+- **Konfiguration:** `_research_with_client()` reicht die aktivierte Providerreihenfolge aus `research_settings()` als Liste weiter. Historische Legacy-IDs bleiben herausgefiltert; bei ausschließlich deaktivierten/unerlaubten Routen bleibt der Status `unavailable`.
+- **Regressionen:** `test_ai_web_failover_tries_all_enabled_routes` lässt ChatGPT Web und Gemini Web fehlschlagen, bestätigt die Aufrufe von Gemini API und CLIProxy in Reihenfolge und prüft beide erfolgreichen URL-Mengen samt Providerlabels. `test_ai_web_failover_returns_empty_when_all_enabled_routes_fail` prüft den leeren All-Fail-Fall.
+- **Validierung:** `debate_research.py` und `test_debate_research.py` wurden per Python-AST geprüft. Ein frischer Provider-/Browserlauf bleibt wegen fehlendem ausführbarem privaten Checkout und Backend-Abhängigkeiten blockiert; die Failover-Kette ist durch deterministische Fakes abgedeckt.
+- **Commit/Push:** `86b2274441f4c4b86d12e2be7b3c44075393a9a9`, `7cd4b554971a546e127b54a67a71186a21e840a6`, `a33e6585f2f0581c5d082cea0a5b0f8082ec8fab`, `9f051ad9e5b8f85ef1038df08f7fe747918776b8` (Runtime), `6af4f9c099cc0dfdb251ac238509972845671ac0` (Regression).
+
+NÄCHSTER PUNKT: 039/A076
