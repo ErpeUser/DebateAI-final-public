@@ -582,3 +582,18 @@ NÄCHSTER PUNKT: 018/A033
 NÄCHSTER PUNKT: 022/A040
 
 
+## Masterauftrag – 2026-11-14 – 022/A040
+
+**Status: BLOCKIERT (Windows-/Evidenzvertrag erweitert; reale Hardware- und Ausfallabnahme offen).**
+
+- **Aufgabe:** Sprecherwechsel, Gerätewechsel, Mikrofon- und Systemaudio, ASR-Ausfälle und Wiederverbindungen unter Windows testen und reproduzierbare Resultate festhalten.
+- **Laufzeitfix:** 'NativeWindowsAudioCapture._restart_needed_sync()' vergleicht neben Geräteindex, Samplingrate und Kanalzahl jetzt auch 'endpoint_id' und 'stable_id'. Ein Windows-Endpunktwechsel mit gleicher Portform wird dadurch als kontrollierter Capture-Neustart erkannt; der bestehende Generation-Schutz verhindert, dass ein gestoppter Reconnect eine alte Sitzung wiederbelebt.
+- **Regression:** 'test_device_endpoint_swap_with_same_stream_shape_is_restart' simuliert zwei aktive Tracks mit identischer Index-/Rate-/Kanalform und geänderter Mikrofon-/Loopback-Endpoint-ID und erwartet einen Neustart. Die vorhandenen Stall-, Ratewechsel-, getrennte-Mikrofon-/Loopback- und ASR-/Gateway-Reconnect-Tests bleiben synthetische Vertragsprüfungen.
+- **Evidenzvertrag:** Der A06-Validator verlangt nun eine geordnete 'events'-Liste mit mindestens 'speaker_switch', 'device_switch', 'asr_failure' und 'reconnect'. Die Ereignisse tragen Zeitstempel, Sprecher-IDs, Vorher-/Nachher-Endpoint-IDs, betroffenen Track, absichtlichen Ausfallstatus, Vorher-/Nachher-'capture_id' und 'sequence_continuous: true'; das Runbook fordert zusätzlich Track-WAV-/Samplebereiche sowie 'track_state', 'transcription_error' und Gateway-Reconnect im Statusprotokoll.
+- **Regression des Validators:** 'test_a06_requires_reproducible_recovery_events' weist einen Beleg ohne Reconnect-Ereignis als 'incomplete' zurück; die bestehenden 7 Validator-Tests bleiben grün. Ein isolierter Lauf der neuen Windows-Endpoint-Regression ist grün.
+- **Fresh-Test-Ergebnis:** 'py_compile' für Capture-, Test- und Validator-Dateien sowie 'python -m unittest tests.test_v3_acceptance_evidence' (8 Tests) liefen lokal erfolgreich. Der vollständige Native-Windows-Testlauf ist hier nicht ausführbar, weil der private Checkout, die vollständige Backend-Abhängigkeitsumgebung und echte WASAPI-Hardware fehlen; der aktuelle Commit-Status liefert keine ausführbaren CI-Statuszeilen.
+- **Offene Abnahme:** Für BESTANDEN fehlen ein unveränderter deutscher >=120-Sekunden-Run auf realem Windows mit Mikrofon plus WASAPI-/Discord-Loopback, echtem Sprecherhandoff, physischem/default-device Wechsel, absichtlichem ASR-/Gateway-Ausfall, Reconnect-Status, Roh-WAV-/Log-/Hardware-/Commit-Hashes und manueller Transkriptprüfung. Mocks, Linux-Tests oder ein Validator-'ready_for_manual_review' ersetzen diesen Nachweis nicht.
+- **Commit/Push:** '51df664265590146104bbd8de2551608799c95bb' (Endpoint-Regression), 'ff501e664333a1b414911ea2cb4b4d626ef5c39e' (Laufzeitfix), 'b8efff63e1820dcd0b4e1e4a22a7333788dc74df' (Validator-Regression), '0bb9698b751cfa0533d3d729d80d8e18da648566' (Validator), 'adcbbc769c52ea323fe731c446294727d3d86b5b' (Runbook).
+
+NÄCHSTER PUNKT: 023/A047
+
