@@ -710,3 +710,18 @@ NÄCHSTER PUNKT: 030/A056
 - **Commit/Push:** Der Status wird mit diesem Fortschrittscommit auf `master` dokumentiert.
 
 NÄCHSTER PUNKT: 031/A057
+
+## Masterauftrag – 2026-11-14 – 031/A057
+
+**Status: BEREITS ERLEDIGT (Recherchegruppen und identische Inflight-Aufträge begrenzt); Fresh-Test BLOCKIERT durch Runner/Checkout.**
+
+- **Aufgabe:** Externe Recherchegruppen pro Claim-Revision sinnvoll begrenzen. Verschiedene Analyse-Lanes dürfen parallel laufen, identische externe Rechercheaufträge jedoch nicht.
+- **Recherche-Deduplizierung:** `debate_research.research_claim()` normalisiert den Query-Schlüssel und teilt parallele identische Queries über `_research_inflight` mit genau einem gemeinsamen Task. Das Ergebnis wird anschließend an den jeweiligen Claim und die jeweilige `claim_revision` zurückgebunden, sodass gemeinsame Fakten nicht zu einer gemeinsamen sichtbaren Antwort werden.
+- **Gruppen-/Queue-Grenzen:** `ExternalAnalysisScheduler` begrenzt die globale Parallelität, ersetzt wartende automatische Jobs je Sitzung durch den neuesten Auftrag und lässt höchstens zwei wartende manuelle Analysen pro Sitzung zu. Jeder Auftrag trägt Session-, Claim-, Claim-Revision-, Directive-, Config- und Generation-Identität; Current-/Stale-Gates verhindern eine Auslieferung nach einem Revisionswechsel.
+- **Erlaubte verschiedene Lanes:** Der experimentelle Pfad verwendet genau die getrennten Prompts `research`, `adversarial` und `rhetoric` mit jeweils eigener Lane-ID. Diese drei fachlich verschiedenen Lanes dürfen für dieselbe Claim-Revision parallel laufen; ihre Ergebnisse werden erst lokal zusammengeführt. Identische Recherche bleibt über Query-/Inflight-Deduplizierung geteilt.
+- **Regressionen:** `test_identical_live_queries_share_one_inflight_research` erwartet bei zwei parallelen gleichen Queries genau einen Provideraufruf und bindet beide Claims korrekt. `test_new_automatic_job_replaces_only_the_waiting_job_for_its_session` weist nach, dass ein veralteter wartender automatischer Auftrag nie ausgeführt wird. Die Scheduler-Tests prüfen zusätzlich Priorität, Deadline und Einzel-Cancellation.
+- **Fresh-Test-Ergebnis:** Quell- und Regressionstraces sind auf `master` vorhanden. Ein aktueller fokussierter Async-/Providerlauf bleibt wegen fehlendem ausführbarem privatem Checkout, Backend-Abhängigkeiten und GitHub-Actions-Runs mit `steps: null` blockiert.
+- **Eigener neuer Code:** keiner; die bestehende Query-/Inflight-/Scheduler-/Lane-Strecke erfüllt den Quellcode-Teil.
+- **Commit/Push:** Der Status wird mit diesem Fortschrittscommit auf `master` dokumentiert.
+
+NÄCHSTER PUNKT: 032/A058
