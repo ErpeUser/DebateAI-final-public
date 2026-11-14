@@ -233,49 +233,100 @@ class DebateRecommendation(BaseModel):
 
 
 
+def _experimental_option_title(kind: str, claim: str, text: str) -> str:
+    """Create a compact claim-aware title when the model omitted one."""
+    normalized_claim = " ".join((claim or "").split()).strip(" .!?")
+    if kind == "example" and normalized_claim:
+        return (normalized_claim[:42] + " …") if len(normalized_claim) > 42 else normalized_claim
+    labels = {
+        "contradiction": "Nicht pauschal",
+        "example": "Konkretes Gegenbeispiel",
+        "counter_question": "Gilt das auch im Gegenfall?",
+        "refutation": "Das folgt daraus nicht",
+    }
+    return labels.get(kind, "Weitere Reaktion")
+
+
+def _experimental_fallback_text(kind: str, recommendation: DebateRecommendation) -> tuple[str, str]:
+    """Always provide a safe speakable text and an explicit example."""
+    claim = " ".join(recommendation.target_claim.split()).strip()
+    if kind == "contradiction":
+        text = recommendation.counterargument or recommendation.answer_now
+        example = "Beispiel: Ein Ausnahmefall kann dieselbe Pauschalaussage widerlegen."
+    elif kind == "example":
+        text = recommendation.analogy or recommendation.counterargument
+        example = text or "Beispiel: Prüfe dieselbe Aussage an einem konkreten Gegenfall."
+    elif kind == "counter_question":
+        text = recommendation.counter_question or "Gilt derselbe Maßstab auch für den Gegenfall?"
+        example = "Beispiel: Vergleiche den behaupteten Fall mit einer klaren Ausnahme."
+    else:
+        text = recommendation.answer_now or recommendation.counterargument
+        example = "Beispiel: Aus einer allgemeinen Behauptung folgt noch kein Beleg für jeden Einzelfall."
+    if not text:
+        text = (
+            "Die Aussage ist zu pauschal; der konkrete Kontext entscheidet."
+            if kind != "counter_question"
+            else "Gilt derselbe Maßstab auch für den Gegenfall?"
+        )
+    return " ".join(text.split()), example if claim or example else example
+
+
 def normalize_experimental_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
-    """Return the four visible moves without exposing provider provenance."""
+    """Return exactly four versioned moves with a safe example contract."""
     existing = recommendation.strategy_options or []
     by_kind: dict[str, dict[str, Any]] = {}
+    order = ("contradiction", "example", "counter_question", "refutation")
     for item in existing:
         if not isinstance(item, dict):
             continue
         kind = str(item.get("kind") or "").strip()
+        if kind not in order or kind in by_kind:
+            continue
         text = " ".join(str(item.get("text") or "").split())
-        if kind and text and kind not in by_kind:
-            by_kind[kind] = {
-                "id": str(item.get("id") or kind),
-                "kind": kind,
-                "title": str(item.get("title") or kind.replace("_", " ").title()),
-                "text": text,
-                "source_ids": list(item.get("source_ids") or []),
-                "confidence": str(item.get("confidence") or recommendation.confidence),
-            }
-    fallback = {
-        "contradiction": recommendation.counterargument,
-        "example": recommendation.analogy,
-        "counter_question": recommendation.counter_question,
-        "refutation": recommendation.answer_now,
-    }
-    titles = {
-        "contradiction": "Widersprechende Antwort",
-        "example": "Beispiel oder Analogie",
-        "counter_question": "Gegenfrage",
-        "refutation": "Widerlegung",
-    }
-    for kind, text in fallback.items():
-        normalized = " ".join(str(text or "").split())
-        if normalized and kind not in by_kind:
-            by_kind[kind] = {
+        if not text:
+            continue
+        by_kind[kind] = {
+            "id": str(item.get("id") or kind),
+            "kind": kind,
+            "title": str(item.get("title") or _experimental_option_title(kind, recommendation.target_claim, text)),
+            "text": text,
+            "example": " ".join(str(item.get("example") or "").split()),
+            "rationale": " ".join(str(item.get("rationale") or "").split()),
+            "source_ids": list(item.get("source_ids") or []),
+            "confidence": str(item.get("confidence") or recommendation.confidence),
+        }
+    for kind in order:
+        text, example = _experimental_fallback_text(kind, recommendation)
+        current = by_kind.get(kind)
+        if current is None:
+            current = {
                 "id": f"{kind}_fallback",
                 "kind": kind,
-                "title": titles[kind],
-                "text": normalized,
+                "title": _experimental_option_title(kind, recommendation.target_claim, text),
+                "text": text,
+                "example": example,
+                "rationale": "Sichere lokale Fallback-Formulierung, weil der Modellzug unvollständig war.",
                 "source_ids": [],
                 "confidence": recommendation.confidence,
             }
-    order = ("contradiction", "example", "counter_question", "refutation")
-    return [by_kind[kind] for kind in order if kind in by_kind]
+            by_kind[kind] = current
+        else:
+            current["example"] = current.get("example") or example
+            current["rationale"] = current.get("rationale") or "Aus dem aktuellen Claim und Kontext abgeleitet."
+    options = []
+    for rank, kind in enumerate(order, start=1):
+        item = dict(by_kind[kind])
+        item.update({
+            "selected": False,
+            "rank": rank,
+            "claim_id": recommendation.claim_id,
+            "claim_revision": recommendation.claim_revision,
+            "transcript_revision": recommendation.transcript_revision,
+            "generation_id": recommendation.generation_id,
+            "provisional": recommendation.provisional,
+        })
+        options.append(item)
+    return options
 
 
 def build_atomic_claims(
