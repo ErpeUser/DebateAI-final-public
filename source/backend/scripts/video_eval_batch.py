@@ -17,6 +17,7 @@ from pathlib import Path
 
 from app.services.video_eval_pipeline import (
     build_video_artifact,
+    evaluate_rhetoric_profile,
     research_source_candidates,
     save_artifact,
     update_style_profile,
@@ -39,6 +40,7 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
         language_code=language,
     )
     artifact = await research_source_candidates(artifact)
+    artifact = await evaluate_rhetoric_profile(artifact)
     artifact_path = save_artifact(artifact, output_dir / f"{video_id}.json")
     if style_profile:
         update_style_profile(style_profile, artifact.rhetorical_profile)
