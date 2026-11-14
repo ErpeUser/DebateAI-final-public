@@ -3,6 +3,8 @@ import hashlib
 import sys
 import pathlib
 import unittest
+from unittest.mock import patch
+from types import SimpleNamespace
 
 from app.services.calibration_metrics import score_transcript, percentile
 from app.services.calibration_runner import compare_asr, SingleFlight, CalibrationBusy
@@ -10,6 +12,26 @@ from app.services.diagnostic_audio import read_audio_clip, MAX_UPLOAD_BYTES, Aud
 
 
 class MetricsTests(unittest.TestCase):
+    def test_edit_distance_delegates_to_jiwer(self):
+        word_output = SimpleNamespace(substitutions=0, deletions=1, insertions=0, wer=0.5)
+        char_output = SimpleNamespace(cer=0.25)
+        with (
+            patch(
+                "app.services.calibration_metrics.jiwer.process_words",
+                return_value=word_output,
+            ) as process_words,
+            patch(
+                "app.services.calibration_metrics.jiwer.process_characters",
+                return_value=char_output,
+            ) as process_characters,
+        ):
+            result = score_transcript("Nein wirklich", "Nein")
+
+        process_words.assert_called_once()
+        process_characters.assert_called_once()
+        self.assertEqual(1, result["deletions"])
+        self.assertEqual(0.5, result["wer"])
+        self.assertEqual(0.25, result["cer"])
     def test_perfect_unicode_and_punctuation(self):
         x = score_transcript('Gr\u00fc\u00dfe, Herr M\u00fcller!', 'GR\u00dcSSE Herr Mu\u0308ller')
         self.assertEqual(x['wer'], 0)
