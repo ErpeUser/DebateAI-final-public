@@ -738,3 +738,15 @@ NÄCHSTER PUNKT: 032/A058
 - **Commit/Push:** '89c70911027fee39060a8c380184105e9049ca39' (Konfigurationsfunktion), '9f96508a60b70deefcf95e20b113f0d946317f9b' (Priority-Resolver), '4ab742656446d594aaf0311802f113373c10199c' (Scheduler-Aufruf), '350cac9655b4391500d3c0900ffe914f0ecfda54' und 'e678118af59733b8ef6bacbbdf3263e8f22b88e3' (Konfiguration), '84cee7051b3d043a322a6cc88f7bf422def74ee2' und 'a86b87eb9658b6c5ff489820db4ab41406f6a8b4' (Regressionen).
 
 NÄCHSTER PUNKT: 033/A060
+
+## Masterauftrag – 2026-11-14 – 033/A060
+**Status: ERLEDIGT (deterministischer Replay-Nachweis im Harness; frischer Provider-/30–60-Sekunden-Lauf umgebungsbedingt blockiert).**
+
+- **Schutzvertrag bestätigt:** `AgentOrchestrator._schedule_debate_revision()` bricht veraltete Worker vor sichtbarem Partial ab und coalesct neue Interims nach einem bereits sichtbaren Partial. `_analysis_context_is_current()` und `_send_debate_update()` binden Resultate an Session, Claim, Transcript-/Claim-Revision, Directive-Revision und Config-Generation; fremde Claims und ältere Transcript-Stände werden verworfen.
+- **Replay-Lücke geschlossen:** `scripts/benchmark_debate_copilot.py` erfasst bei jeder sichtbaren `debate_update` die aktuelle Claim-/Transcript-Lineage über einen Head-Snapshot. Fremde Claims oder unzulässige ältere Revisionen erhöhen `stale_publishes`; der Zähler wird in Einzelturns, Supersession-, Interim- und Playbook-Probes sowie im Benchmark-`summary` ausgegeben.
+- **Deterministischer Assert:** `tests/test_debate_benchmark.py::test_deterministic_supersession_replay_has_zero_stale_publishes` verwendet die feste `DEFAULT_TURNS`-Fixture und den deterministischen `ApplicationFixtureAgent`; es fordert `failure_count == 0`, `result["stale_publishes"] == 0` und `replay.websocket.stale_publishes == 0`. Damit wird der Zielwert null stale sichtbarer Veröffentlichungen im instrumentierten Replay explizit geprüft.
+- **Keine stille Queue-Lücke:** Der bestehende Queue-Drain vor einem Turn kann verspätete alte Events aus der Beobachtungswarteschlange entfernen; die Stale-Zählung erfolgt deshalb direkt bei `send_json()`, bevor ein Event in die Queue gelangt.
+- **Validierung:** Die geänderten Benchmark- und Testdateien wurden vollständig per Python-AST syntaktisch geprüft. Ein frischer Async-/Providerlauf und das geforderte 30–60-Sekunden-Artefakt sind wegen fehlendem ausführbarem privatem Checkout, fehlenden Backend-Abhängigkeiten und GitHub-Actions-Runs `43632783683`/`43632783688` mit `steps: null` nicht ausführbar; der Code enthält dafür den messbaren Export und den deterministischen Zero-Assert.
+- **Commits/Push:** `5080e565216dbb21b6589539e159fd21012f8765` (Capture-Instrumentierung), `68649255d1d16348654bc0da1f088058fa198914` (Replay-Metriken), `e00685fcfcb5080098d488fa5ef1c74ddfee0e44` (Zero-Assert), `bceed6dbb3f1cae6aab557134ea19fb0b692b273` (Benchmark wiederhergestellt und Ergebnisexport).
+
+NÄCHSTER PUNKT: 034/A063
