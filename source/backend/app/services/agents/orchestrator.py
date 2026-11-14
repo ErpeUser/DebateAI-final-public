@@ -3940,19 +3940,40 @@ class AgentOrchestrator:
                 })
                 await self._send_debate_update(revision, unavailable, origin="research")
 
-    def _experimental_lane_effort(self, analysis_phase: str) -> str:
-        """Choose one effort for an experimental lane from the shared controller."""
+    def _experimental_lane_effort(
+        self,
+        analysis_phase: str,
+        *,
+        lane_label: str = "research",
+        base_effort: str = "high",
+        model_id: str = "",
+    ) -> str:
+        """Choose and capability-clamp one effort from the shared controller."""
         controller = getattr(self, "_adaptive_external_reasoning", None)
         if (
             not getattr(self, "_adaptive_reasoning_enabled", True)
             or controller is None
         ):
-            return "high"
-        return controller.effort_for_next(
-            queue_depth=0,
-            is_new_topic=analysis_phase == "new_topic",
-            needs_deep_reanalysis=analysis_phase == "deep_reanalysis",
+            requested = base_effort
+        else:
+            requested = controller.effort_for_next(
+                queue_depth=0,
+                is_new_topic=analysis_phase == "new_topic",
+                needs_deep_reanalysis=analysis_phase == "deep_reanalysis",
+            )
+            # Rhetoric remains a medium-effort lane for providers that support
+            # it; under overload the shared controller can still raise it.
+            if lane_label == "rhetoric" and requested == "xhigh":
+                requested = base_effort
+        if not model_id:
+            return requested or base_effort
+        clamped = effective_reasoning_effort(
+            provider_route(model_id),
+            requested,
+            complex_request=analysis_phase in {"new_topic", "deep_reanalysis"},
+            remaining_seconds=model_timeout_seconds(model_id),
         )
+        return clamped or requested or base_effort
 
     async def _run_experimental_external_lanes(
         self,
@@ -3972,11 +3993,11 @@ class AgentOrchestrator:
         """
         lane_specs = (
             ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu.",
-             "experimental_research_v1"),
+             "experimental_research_v1", "high"),
             ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe.",
-             "experimental_adversarial_v1"),
+             "experimental_adversarial_v1", "high"),
             ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
-             "experimental_strategist_v1"),
+             "experimental_strategist_v1", "medium"),
         )
         try:
             complete_transcript = await self._get_complete_transcript()
@@ -3988,8 +4009,14 @@ class AgentOrchestrator:
             label: str,
             directive: str,
             prompt_resource: str,
+            base_effort: str,
         ):
-            effort = self._experimental_lane_effort(analysis_phase)
+            effort = self._experimental_lane_effort(
+                analysis_phase,
+                lane_label=label,
+                base_effort=base_effort,
+                model_id=model_id,
+            )
             started_at = time.perf_counter()
             started_at_iso = datetime.now(UTC).isoformat()
             lane_id = (
