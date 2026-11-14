@@ -167,7 +167,7 @@ def _annotate_experimental_sources(
                 conflict_ids[index] = conflict_id
     annotated: list[DebateSource] = []
     claim_terms = {
-        token for token in re.findall(r"[\\wäöüß]+", str(target_claim).casefold())
+        token for token in re.findall(r"[\wäöüß]+", str(target_claim).casefold())
         if len(token) >= 5
     }
     for index, source in enumerate(sources):
@@ -180,7 +180,7 @@ def _annotate_experimental_sources(
             and claim_terms
         ):
             passage_terms = set(
-                re.findall(r"[\\wäöüß]+", str(source.passage).casefold())
+                re.findall(r"[\wäöüß]+", str(source.passage).casefold())
             )
             overlap = len(claim_terms.intersection(passage_terms))
             if overlap >= min(2, len(claim_terms)):
