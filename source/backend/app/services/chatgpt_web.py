@@ -327,7 +327,7 @@ async def generate(
         )
         audit_id = external_audit.start_external_request(
             provider_route="chatgpt-web:gpt-6",
-            approval=True,
+            approval=external_audit.current_approval(),
             data_category=audit_category,
             claim_id=external_audit.current_claim_id(),
             model_id=MODEL_ID,
@@ -377,7 +377,7 @@ async def generate(
             )
             external_audit.finish_external_request(
                 audit_id,
-                approval=True,
+                approval=external_audit.current_approval(),
                 status="completed",
                 provider_route="chatgpt-web:gpt-6",
                 data_category=audit_category,
@@ -394,7 +394,7 @@ async def generate(
             )
             external_audit.finish_external_request(
                 audit_id,
-                approval=True,
+                approval=external_audit.current_approval(),
                 status="cancelled",
                 provider_route="chatgpt-web:gpt-6",
                 data_category=audit_category,
@@ -411,7 +411,7 @@ async def generate(
             )
             external_audit.finish_external_request(
                 audit_id,
-                approval=True,
+                approval=external_audit.current_approval(),
                 status="failed",
                 provider_route="chatgpt-web:gpt-6",
                 data_category=audit_category,
