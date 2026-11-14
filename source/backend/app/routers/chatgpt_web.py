@@ -76,15 +76,23 @@ def _evidence() -> dict[str, object]:
 
 
 def _status(*, state: str = "idle", message: str = "") -> dict[str, object]:
-    evidence = _evidence()
-    ready = chatgpt_web.runtime_available() and chatgpt_web.configured() and bool(evidence)
+    evidence = chatgpt_web.verification_evidence()
+    selection = chatgpt_web.verified_selection()
+    ready = (
+        chatgpt_web.runtime_available()
+        and chatgpt_web.configured()
+        and selection["model_confirmed"]
+        and selection["thinking_confirmed"]
+    )
     verification_failure = chatgpt_web.verification_failure()
     return {
         "available": chatgpt_web.runtime_available(),
         "configured": chatgpt_web.configured(),
         "ready": ready,
         "model": evidence.get("actual_model", ""),
+        "model_confirmed": selection["model_confirmed"],
         "thinking": evidence.get("thinking", ""),
+        "thinking_confirmed": selection["thinking_confirmed"],
         "latency_ms": evidence.get("latency_ms"),
         "verified_at": evidence.get("verified_at", ""),
         "verification": evidence.get("verification", ""),
