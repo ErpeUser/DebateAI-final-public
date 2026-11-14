@@ -776,3 +776,17 @@ NÄCHSTER PUNKT: 035/A065
 - **Commit/Push:** `bb30a5cd515d952f4c8be8f49527f68e210f8a26` (Status-API), `b31aab8d5eab82c91b4703b560d2360e4fe22401` (Request-Status), `7fcb3b0517c82623ce43bbf9158b455cfdcb602e` (Router), `54dc8e69bfb3e9d034c9f489bd79e5d6f1e9a059` (Regression), `9b0d7851a1445371f7c7cc87c07c66fc2c299fcf` (Timestamp-Korrektur).
 
 NÄCHSTER PUNKT: 036/A066
+
+
+## Masterauftrag – 2026-11-14 – 036/A066
+**Status: ERLEDIGT (begrenzter Originalquellen-Reader und direkte Regressionen vorhanden; externer HTTP-Lauf blockiert).**
+
+- **Reader-Vertrag:** `_research_with_client()` wählt bei `original_sources_required` bis zu zwei noch ungelesene vertrauenswürdige Originalquellen aus und ruft `_read_trusted_original()` auf. AI-Web-URLs dürfen nur über einen echten `httpx.AsyncClient` in diesen Lesepfad gelangen.
+- **Begrenzter Abruf:** `_bounded_get()` erzwingt HTTPS-/öffentliche-DNS-Prüfung, entfernt Auth-/Cookie-/Proxy-Credentials, erlaubt nur sichere Texttypen, begrenzt Redirects auf sechs Hops und prüft sowohl `Content-Length` als auch die tatsächlich gestreamte Größe (Originale maximal 800 KB).
+- **Passagenachweis:** `_OriginalTextParser` liest relevante HTML-Abschnitte; `_relevant_passage()` rankt bis zu fünf querybezogene Sätze und begrenzt die Passage auf 2.400 Zeichen. Erfolgreiche Quellen erhalten `verification_status="read"`, `retrieval_status="read"`, `source_type="original"`, Passage, Veröffentlichungsdatum sofern vorhanden und Content-Hash.
+- **Fehlerverhalten:** Nicht lesbare, unzulässige oder nicht vertrauenswürdige Quellen bleiben `found` und werden nicht als gelesener Beleg ausgegeben.
+- **Regressionen:** `test_trusted_original_is_opened_and_relevant_passage_is_read` prüft den Reader-Aufruf, die relevante Passage, HTML-Noise-Filter, `read`-Markierungen und das 800-KB-Limit. `test_original_reader_keeps_unreadable_source_unverified` prüft, dass ein Readerfehler keine gefälschte Lesebestätigung erzeugt.
+- **Validierung:** `debate_research.py` und `test_debate_research.py` wurden per Python-AST geprüft. Ein echter externer HTTP-/Browserlauf ist in dieser Umgebung nicht verfügbar; die deterministischen Reader-Regressionen und die bestehenden HTTPS-/DNS-/Größenlimits sind im Quellstand prüfbar.
+- **Commit/Push:** `51f5305bfcb2673caebeb2efb7d2cba53bc47d72` (Passagenachweis), `95520464d73cb97d7862b48f0d9e97f1676feb2b` (Fehlerverhalten).
+
+NÄCHSTER PUNKT: 037/A067
