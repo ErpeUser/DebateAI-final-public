@@ -39,7 +39,10 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
         language_code=language,
     )
     artifact = await research_source_candidates(artifact)
-    return save_artifact(artifact, output_dir / f"{video_id}.json")
+    artifact_path = save_artifact(artifact, output_dir / f"{video_id}.json")
+    if style_profile:
+        update_style_profile(style_profile, artifact.rhetorical_profile)
+    return artifact_path
 
 
 async def main() -> int:
