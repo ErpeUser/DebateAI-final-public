@@ -609,5 +609,5 @@ NÄCHSTER PUNKT: 023/A047
 - **Eigener neuer Code:** Nur die gezielte Regression; kein zweiter semantischer Erkennungsweg und keine zusätzliche Antwortpipeline.
 - **Commit/Push:** '15c6ba0fa1cb038deeb906fe8f47127d59b81ffe' (Regression), '2eec10eca79750d8733216c5964f9e76cc7ad7b6' (case-insensitive semantic cases).
 
-NÄCHSTER PUNKT: 024/A049
+NÄCHSTER PUNKT: 024/A048
 
