@@ -39,6 +39,19 @@ transcript. A06 is accepted only when the comparison is complete, unexplained
 loss is absent, and the session ends cleanly. An intentional overflow must be
 visible as `diarization_overflow`; an unexplained loss is a failure.
 
+Add an ordered `events` array to the A06 JSON so the recovery run can be
+replayed from the evidence rather than inferred from prose. It must contain at
+least one event of each type `speaker_switch`, `device_switch`,
+`asr_failure`, and `reconnect`. Each event records `at_seconds`; speaker
+handoffs record the before/after speaker IDs, device switches record the
+track and before/after endpoint IDs, ASR failures record the affected track,
+`injected: true`, and the visible error/reconnecting status, and reconnects
+record the before/after `capture_id` plus
+`sequence_continuous: true`. Keep the track WAV/sample ranges and the status
+timeline (`track_state`, `transcription_error`, gateway reconnect) as
+artifacts. The validator remains a completeness gate and still requires a real
+Windows run and human review.
+
 ## 3. A21: same-reference ASR A/B
 
 Use the exact same untouched German reference WAV twice on the same machine,
