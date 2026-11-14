@@ -165,6 +165,28 @@ class V3AcceptanceEvidenceTests(unittest.TestCase):
         self.assertEqual("incomplete", result["status"])
         self.assertTrue(any("wer" in item or "latency_ms" in item for item in result["errors"]))
 
+    def test_a06_requires_reproducible_recovery_events(self):
+        payload = _common("A06")
+        payload["scenario_flags"] = {
+            "microphone": True,
+            "system_audio": True,
+            "overlap": True,
+            "device_switch": True,
+            "backlog": True,
+        }
+        payload["transcript_complete"] = True
+        payload["terminal_state"] = "clean"
+        payload["events"] = [
+            {"type": "speaker_switch", "at_seconds": 12.5, "speaker_before": "spk-a", "speaker_after": "spk-b"},
+            {"type": "device_switch", "at_seconds": 30, "track": "microphone", "before_endpoint_id": "old", "after_endpoint_id": "new"},
+            {"type": "asr_failure", "at_seconds": 45, "track": "microphone", "injected": True, "visible_status": "reconnecting"},
+        ]
+
+        result = validate_evidence_package(payload)
+
+        self.assertEqual("incomplete", result["status"])
+        self.assertTrue(any("reconnect" in item for item in result["missing"] + result["errors"]))
+
     def test_a18_requires_both_modes_and_ten_cases(self):
         payload = _common("A18")
         payload["modes"] = ["persuasive"]
