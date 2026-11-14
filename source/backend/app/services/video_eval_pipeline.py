@@ -360,7 +360,7 @@ async def extract_source_candidates_with_ai(
         "Extract every source mentioned in this transcript (study, author, "
         "institution, law, dataset, report, URL or DOI). Return only JSON "
         "array objects with value, kind and context. Do not invent sources "
-        "and do not use Wikipedia or DuckDuckGo.\\n\\nTRANSCRIPT:\\n" + text
+        "and do not use Wikipedia or DuckDuckGo.\n\nTRANSCRIPT:\n" + text
     )
     answer = ""
     try:
@@ -399,7 +399,7 @@ async def extract_source_candidates_with_ai(
     raw = str(answer).strip()
     fence = chr(96) * 3
     if raw.startswith(fence):
-        raw = raw.split("\\n", 1)[1] if "\\n" in raw else raw
+        raw = raw.split("\n", 1)[1] if "\n" in raw else raw
         raw = raw.rsplit(fence, 1)[0].strip()
     try:
         payload = json.loads(raw)
