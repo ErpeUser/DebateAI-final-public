@@ -294,3 +294,18 @@ Behauptungen, bezahlte API ohne Freigabe oder ein Build vor Abschluss von P07–
 - **Offen, nicht ueberclaimt:** keine neue echte Web-Modellantwort, kein neues
   gesprochenes End-to-End-Gespraech mit beiden Pegeln und keine Umsetzung der
   sitzungsspezifischen Recherchefrequenz.
+
+
+## Masterauftrag – 2026-11-14 – 001/A002
+
+**Status: BEREITS ERLEDIGT (Quellcode); Fresh-Test BLOCKIERT durch GitHub-Runner.**
+
+- **Aufgabe:** Nützliche lokale Sofortantwort während eines langen, noch laufenden Redebeitrags.
+- **Nachweis der bestehenden Lösung:** backend/app/services/local_live_captioner.py dekodiert ein begrenztes rollierendes Fenster lokal und liefert ersetzbare Interim-Hypothesen (mode=replace) mit Segment-/Revisions-IDs. backend/app/services/agents/orchestrator.py übernimmt diese Hypothesen über feed_interim_transcript() in den lokalen Debate-Copilot und startet die Debattenrevision, ohne auf das finale Transkript zu warten.
+- **Vorhandene Regressionen:** backend/tests/test_local_live_captioner.py prüft das rollierende Ersetzen und die Latenzgrenze; backend/tests/test_debate_copilot.py prüft test_live_partial_triggers_copilot_without_saving_duplicate_transcript, die 3-Sekunden-Latenzgrenze für kurze Interim-Texte und die laufende Revision während längerer Rede.
+- **Fresh-Test-Ergebnis:** Die beiden aktuellen GitHub-Actions-Läufe für master bei f3321922e4c7ccdd47df253f4129162e6d3f6cd7 (Tests-Lauf 43632783683, Security-Lauf 43632783688) endeten mit failure; alle Jobs melden steps: null. Das ist laut Repository-Vertrag ein Runner-/Infrastrukturfehler und kein Testpass. Ein ausführbarer lokaler Windows-/Linux-Checkout steht in dieser Sitzung nicht zur Verfügung.
+- **Eigener neuer Code:** keiner; der bestehende lokale Interim-Pfad erfüllt den Vertrag bereits.
+- **Commit/Push:** Fortschrittsnachweis in diesem Commit auf master; kein Produktcode geändert.
+- **Offener Abnahmeschritt:** Einen ausführbaren Checkout oder einen reparierten GitHub-Runner bereitstellen und mindestens python -m unittest backend/tests/test_local_live_captioner.py backend/tests/test_debate_copilot.py ausführen; danach den realen 30–60-Sekunden-Replay messen.
+
+NÄCHSTER PUNKT: 002/A004
