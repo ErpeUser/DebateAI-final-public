@@ -284,13 +284,14 @@ def build_video_artifact(
 async def research_source_candidates(
     artifact: VideoEvalArtifact,
     *,
-    max_candidates: int = 24,
+    max_candidates: int | None = None,
 ) -> VideoEvalArtifact:
     """Verify transcript references through the AI-only research service."""
     from app.services.debate_research import research_claim
 
     verified: list[dict[str, Any]] = []
-    for candidate in artifact.source_candidates[:max_candidates]:
+    candidates = artifact.source_candidates if max_candidates is None else artifact.source_candidates[:max_candidates]
+    for candidate in candidates:
         value = str(candidate.get("value") or "")
         context = str(candidate.get("context") or value)
         if not value:
