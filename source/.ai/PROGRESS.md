@@ -724,3 +724,17 @@ NÄCHSTER PUNKT: 031/A057
 - **Commit/Push:** `1d72452b23fa07c514e721dddd9ecc27ac2650f6` (Group-Coalescing), `aa793b43058d0c4bf9a9098a50229f82df7f3174` (Context-Schlüssel), `2950c712bb9ee0de161a86a0c9b9b2a15ef717a5` (Regression).
 
 NÄCHSTER PUNKT: 032/A058
+
+## Masterauftrag – 2026-11-14 – 032/A058
+
+**Status: ERLEDIGT (Live-/Deep-Budget getrennt); Fresh-Provider-Test BLOCKIERT durch Runner/Checkout.**
+
+- **Aufgabe:** Ein kurzes Live-Recherchebudget von der lang laufenden Tiefenanalyse trennen und langsame Browserrecherche für den Deep-Pfad erhalten.
+- **Laufzeitfix:** 'live_research_deadline_seconds()' liest jetzt den konfigurierbaren Wert 'live_research_deadline_seconds', begrenzt ihn auf 8–15 Sekunden und verwendet standardmäßig 12 Sekunden. 'analysis_deadline_seconds()' bleibt das lange 5–900-Sekunden-Budget für Queue, Tiefenanalyse, Retries und Fallbacks.
+- **Priority-Split:** 'AgentOrchestrator._run_debate_research()' übergibt für 'ExternalAnalysisPriority.AUTOMATIC' das kurze Livebudget und für 'MANUAL' das lange Analysebudget an 'ExternalAnalysisScheduler.run()'. Die Scheduler-Frist umfasst weiterhin die Wartezeit vor Kapazität und den laufenden Auftrag; ein langsamer manueller Browserlauf wird daher nicht durch das Livebudget abgeschnitten.
+- **Konfiguration:** 'source/ai/providers.json' und 'source/ai/providers.default.json' enthalten den neuen Wert mit 12 Sekunden. Bestehende Routen-Timeouts für Provider bleiben unverändert und können die lange manuelle Analyse weiter begrenzen.
+- **Regressionen:** 'test_live_research_deadline_is_bounded_to_short_budget' prüft den Wert 10 sowie die Unter- und Obergrenze 8/15. 'test_automatic_and_manual_research_use_separate_deadlines' prüft 12 Sekunden für automatische Jobs und 180 Sekunden für manuelle Jobs über den zentralen Priority-Resolver. Die vorhandenen Scheduler-Tests prüfen zusätzlich Deadline ab Queue-Eintritt und Cancellation.
+- **Fresh-Test-Ergebnis:** Die geänderten Python-Dateien und die neuen Regressionen wurden in den relevanten Ausschnitten syntaktisch geprüft. Ein vollständiger Async-/Provider-/Browserlauf bleibt wegen fehlendem ausführbarem privatem Checkout, Backend-Abhängigkeiten und GitHub-Actions-Runs mit 'steps: null' blockiert.
+- **Commit/Push:** '89c70911027fee39060a8c380184105e9049ca39' (Konfigurationsfunktion), '9f96508a60b70deefcf95e20b113f0d946317f9b' (Priority-Resolver), '4ab742656446d594aaf0311802f113373c10199c' (Scheduler-Aufruf), '350cac9655b4391500d3c0900ffe914f0ecfda54' und 'e678118af59733b8ef6bacbbdf3263e8f22b88e3' (Konfiguration), '84cee7051b3d043a322a6cc88f7bf422def74ee2' und 'a86b87eb9658b6c5ff489820db4ab41406f6a8b4' (Regressionen).
+
+NÄCHSTER PUNKT: 033/A060
