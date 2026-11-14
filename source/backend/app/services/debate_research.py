@@ -488,11 +488,13 @@ async def _read_trusted_original(
         passage = cached_passage[0]
     if not passage:
         return source
+    published_at = _extract_published_at(content) or source.published_at
     return source.model_copy(update={
         "verification_status": "read",
         "retrieval_status": "read",
         "source_type": "original",
         "passage": passage,
+        "published_at": published_at,
         "content_hash": hashlib.sha256(passage.encode("utf-8")).hexdigest(),
     })
 
