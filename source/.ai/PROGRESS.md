@@ -888,3 +888,15 @@ NÄCHSTER PUNKT: 043/A081
 - **Commit/Push:** 3d5fd7ad3f9708426cd4e371b4a4322ad1be4674 (providerneutrale Leseauswahl und Unread-Gate), 2fed19af64e7232176b200d114aa4d1955bb93df (Regressionen).
 
 NÄCHSTER PUNKT: 044/A082
+
+
+## Masterauftrag – 2026-11-14 – 044/A082
+**Status: QUELLCODE ERLEDIGT; reale Quellenqualität weiterhin extern abzunehmen.**
+
+- **Transparenter Quellenrang:** Die Recherche sortiert jetzt providerneutral nach konkreten Evidenzsignalen: gelesene Passage, Originaldokument, Primärquellenstatus, wissenschaftliche Publikationsmetadaten, amtliche Statistikmetadaten, explizite Claimrelation, Herausgeber und Veröffentlichungsdatum. Snippets ohne gelesene Passage werden deutlich nach hinten sortiert.
+- **Keine URL-Abkürzung:** Amtliche oder wissenschaftliche Domain-Endungen dienen weiterhin nur der sicheren Originalquellen-Zulassung des bounded Readers. Die Rangfolge entsteht aus Quelleigenschaften und wird über source_priority_reasons() nachvollziehbar gemacht.
+- **Regression:** test_source_ranking_exposes_primary_scientific_and_statistics_signals prüft die sichtbaren Rankinggründe und stellt sicher, dass eine gelesene wissenschaftliche Primärquelle vor einem ungeprüften Suchtreffer liegt.
+- **Validierung:** debate_research.py und test_debate_research.py wurden per Python-AST geprüft. Eine echte Qualitätsabnahme wissenschaftlicher/amtlicher Dokumente bleibt wegen fehlendem Providerzugang und nicht vorhandener Live-Originalquellen offen.
+- **Commit/Push:** be9d90f1a9eb059e0cf2855c6157394dc7a0f786 (Ranking und Begründungen), db63b29b90091b7fcb18a8435550fa6039d47375 (Regression).
+
+NÄCHSTER PUNKT: 045/A083
