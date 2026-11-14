@@ -45,15 +45,14 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
                 "original_sources_required": True,
             },
         ):
-            with mock.patch.object(debate_research, "_wikipedia_sources") as wiki, mock.patch.object(
-                debate_research, "_duckduckgo_sources"
-            ) as ddg:
+            with mock.patch.object(debate_research, "_ai_web_sources") as ai_lane:
                 result = await debate_research.research_claim(
                     "Eine Behauptung", "diese Behauptung pruefen"
                 )
         self.assertEqual("unavailable", result.status)
-        self.assertFalse(wiki.called)
-        self.assertFalse(ddg.called)
+        self.assertFalse(hasattr(debate_research, "_wikipedia_sources"))
+        self.assertFalse(hasattr(debate_research, "_duckduckgo_sources"))
+        ai_lane.assert_not_awaited()
 
     async def test_ai_web_provider_is_the_only_research_path(self):
         source = debate_research.ResearchSource(
