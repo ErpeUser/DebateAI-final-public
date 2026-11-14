@@ -33,15 +33,25 @@ export default function DebateOverlay() {
   }, []);
 
   const recommendation = snapshot.recommendation;
-  const primaryIsQuestion = recommendation?.primary_move === "question"
+  const experimentalSelected = recommendation?.pipeline_mode === "experimental_debateai"
+    ? recommendation.strategy_options?.find((option) => option.id === recommendation.selected_strategy_id)
+    : undefined;
+  const primaryIsQuestion = recommendation?.pipeline_mode !== "experimental_debateai"
+    && recommendation?.primary_move === "question"
     && Boolean(recommendation?.counter_question?.trim());
-  const answer = primaryIsQuestion
-    ? recommendation?.counter_question || ""
-    : recommendation?.answer_now || recommendation?.counterargument || "";
-  const secondary = primaryIsQuestion
-    ? recommendation?.answer_now || recommendation?.counterargument || ""
-    : recommendation?.counter_question || "";
-  const primaryLabel = primaryIsQuestion ? "Gegenfrage" : "Sofortantwort";
+  const answer = recommendation?.pipeline_mode === "experimental_debateai"
+    ? recommendation?.answer_now || ""
+    : primaryIsQuestion
+      ? recommendation?.counter_question || ""
+      : recommendation?.answer_now || recommendation?.counterargument || "";
+  const secondary = recommendation?.pipeline_mode === "experimental_debateai"
+    ? ""
+    : primaryIsQuestion
+      ? recommendation?.answer_now || recommendation?.counterargument || ""
+      : recommendation?.counter_question || "";
+  const primaryLabel = recommendation?.pipeline_mode === "experimental_debateai"
+    ? experimentalSelected?.title || "Sofortantwort"
+    : primaryIsQuestion ? "Gegenfrage" : "Sofortantwort";
   const copyAnswer = async () => {
     if (!answer) return;
     await navigator.clipboard.writeText(answer);
