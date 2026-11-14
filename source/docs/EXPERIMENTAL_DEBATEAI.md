@@ -28,7 +28,8 @@ Das erzeugte JSON-Artefakt enthält:
 - Quellenkandidaten aus URLs, DOIs und Studienverweisen sowie eine AI-Extraktion jeder im vollständigen Transkript erwähnten Quelle,
 - Rhetorikprofil mit Frage-, Widerlegungs- und Analogie-Raten,
 - reproduzierbare Evaluationsfälle pro Segment,
-- Provenienz (`original_url`, Plattform, Abrufzeitpunkt), Video-/Audio-/Untertitel-Hashes und Aufnahmeprüfungen für Zeitstempel, Sprecher und Kapitel,\n- einen Hinweis, dass das Rohtranskript nicht automatisch als Referenzantwort gilt.
+- Provenienz (`original_url`, Plattform, Abrufzeitpunkt), Video-/Audio-/Untertitel-Hashes und Aufnahmeprüfungen für Zeitstempel, Sprecher und Kapitel,
+- einen Hinweis, dass das Rohtranskript nicht automatisch als Referenzantwort gilt.
 
 Die Quellenkandidaten werden anschließend durch die KI-Webrecherche verifiziert und im Artefakt ergänzt. Die Recherche verwendet ausschließlich ChatGPT Web/Oracle sowie die konfigurierten Gemini-Web/API- oder CLIProxy-Fallbacks; die genannten alten Suchanbieter werden weder aufgerufen noch gespeichert. Prompt-, Modell- oder Stiländerungen werden nicht automatisch in Produktion übernommen. Ein Review-/Eval-Lauf muss zuerst eine Verbesserung nachweisen; erst danach wird eine Änderung bewusst aktiviert.
 
