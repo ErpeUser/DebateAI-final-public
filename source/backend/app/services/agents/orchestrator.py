@@ -487,7 +487,14 @@ def _contains_unsupported_numeric_assertion(
     target_terms = _claim_terms(recommendation.target_claim)
     context = " ".join((recommendation.target_claim, spoken))
     for source in recommendation.sources:
-        if source.claim_relation != "supports" and source.verification_status != "supports":
+        if (
+            source.retrieval_status != "read"
+            or not source.passage.strip()
+            or (
+                source.claim_relation != "supports"
+                and source.verification_status != "supports"
+            )
+        ):
             continue
         evidence = " ".join((source.claim, source.passage, source.snippet)).casefold()
         evidence_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", evidence))
