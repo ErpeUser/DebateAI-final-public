@@ -654,3 +654,18 @@ NÄCHSTER PUNKT: 026/A052
 
 NÄCHSTER PUNKT: 027/A053
 
+## Masterauftrag – 2026-11-14 – 027/A053
+
+**Status: BLOCKIERT (Hardwaremessung und Zielkalibrierung offen).**
+
+- **Aufgabe:** Normalen Interim-Debounce auf den vorgesehenen Bereich von ungefähr 250–500 ms messen und kalibrieren, soweit er sich auf getesteter Hardware bewährt.
+- **Aktueller Quellstand:** Der normale/balanced Copilot-Pfad hat keinen festen künstlichen Debounce; jede geänderte Interim-Hypothese wird sofort als neue Revision geplant, danach schützen Coalescing und Stale-Gates vor doppelten sichtbaren Antworten. Der lokale on-device Captioner arbeitet mit 'COMMIT_SECONDS = 1.0' und 'MIN_COMMIT_SECONDS = 1.0', also mit einer Audio-Commitstrecke oberhalb des gewünschten 250–500-ms-Ziels.
+- **Vorhandene Regressionen:** 'test_local_live_captioner' prüft die Commit-Konstante und das begrenzte Rolling Window; 'test_debate_copilot' prüft Interim-Revision, Coalescing, Stale-Abbruch und 'latency_ms <= 3000'. Diese Tests sind keine Messung der 250–500-ms-Hardwarekadenz.
+- **Warum kein Quellfix:** Ohne identifizierte Windows-/Mikrofon-/ASR-Hardware, gemessene Decodezeiten, CPU-Last und Erstreaktionsverteilung wäre ein fester Debouncewert eine unbelegte Produktentscheidung. Die unmittelbare Planung bleibt deshalb unverändert, bis eine Baseline die Zielkadenz und ihre Qualitätskosten belegt.
+- **Offene Abnahme:** Ein 30–60-Sekunden-Deutsch-Replay auf realem Windows muss pro Audio-/Interim-/Copilot-/sichtbarem Antwort-Event monotone Zeitstempel, Decode-/Queue-/CPU-Werte und Antwortqualität erfassen; danach sind 250, 350 und 500 ms gegen Aktualität, Stale-Rate und WER zu vergleichen.
+- **Fresh-Test-Ergebnis:** Die vorhandenen Quellen und Tests sind statisch nachvollziehbar; ein frischer Hardware-/Providerlauf bleibt wegen fehlendem Windows-Checkout, Dependencies, Hardware und Actions mit 'steps: null' offen.
+- **Eigener neuer Code:** keiner; die geforderte Kalibrierung benötigt reale Messdaten.
+- **Commit/Push:** Der Blockierungsnachweis wird im Fortschrittsnachweis auf 'master' dokumentiert.
+
+NÄCHSTER PUNKT: 028/A054
+
