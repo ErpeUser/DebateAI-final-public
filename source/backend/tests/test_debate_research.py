@@ -211,6 +211,60 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
+    def test_query_minimization_covers_structured_pii(self):
+        cases = (
+            ("Kontakt +49 30 12345678", "PHONE"),
+            ("Adresse: 1600 Pennsylvania Avenue", "ADDRESS"),
+            ("Identifikator 123-45-6789", "SSN"),
+            ("Karte 4111 1111 1111 1111", "CARD"),
+            ("Server 192.0.2.10", "IP"),
+            ("My name is Sarah Connor", "PERSON"),
+            ("Mail sarah@example.com", "EMAIL"),
+        )
+        for query, category in cases:
+            with self.subTest(category=category):
+                self.assertFalse(debate_research.is_safe_research_query(query))
+                minimized = debate_research.minimize_research_query(query)
+                self.assertNotIn(query.split(maxsplit=1)[-1], minimized)
+                self.assertIn(
+                    category,
+                    debate_research.research_query_pii_categories(query),
+                )
+
+    async def test_direct_ai_web_lane_refuses_pii_before_provider_call(self):
+        provider_call = mock.AsyncMock(return_value="https://example.org/source")
+        with mock.patch(
+            "app.services.llm.generate_text",
+            new=provider_call,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Eine Aussage",
+                "Kontakt +49 30 12345678",
+                ["gemini_api"],
+            )
+
+        self.assertEqual([], sources)
+        provider_call.assert_not_awaited()
+
+    async def test_research_with_client_refuses_pii_before_ai_lane(self):
+        client = httpx.AsyncClient()
+        try:
+            with mock.patch.object(
+                debate_research,
+                "_ai_web_sources",
+                new=mock.AsyncMock(),
+            ) as ai_lane:
+                result = await debate_research._research_with_client(
+                    client,
+                    "Eine Aussage",
+                    "Adresse: 1600 Pennsylvania Avenue",
+                )
+        finally:
+            await client.aclose()
+
+        self.assertEqual("refused", result.status)
+        ai_lane.assert_not_awaited()
+
     async def test_unsafe_query_makes_no_external_request(self):
         client = mock.AsyncMock()
         result = await debate_research.research_claim(
