@@ -351,3 +351,17 @@ NÄCHSTER PUNKT: 004/A006
 - **Commit/Push:** Dieser genaue Status wird dauerhaft auf master dokumentiert.
 
 NÄCHSTER PUNKT: 005/A009
+
+## Masterauftrag – 2026-11-14 – 005/A009
+
+**Status: BLOCKIERT (Quellcode-Gates vorhanden, reale Providerabnahme offen).**
+
+- **Aufgabe:** Externe Provider nur bei Verfügbarkeit, korrekter Anmeldung, gültiger Konfiguration und Nutzerfreigabe verwenden.
+- **Nachweis der bestehenden Lösung:** provider_health.py bindet die Verwendbarkeit an den tatsächlich getesteten Schlüssel/Session-Fingerprint; provider_capabilities.py beschreibt Adapter-, Login-, Kosten- und Fehlerverträge; classify_provider_failure() unterscheidet Authentifizierung, Subscription, Modell, Rate-Limit, Timeout und Transport. debate_research.py filtert DuckDuckGo/Wikipedia global, verwendet nur konfigurierte AI-Web-/Gemini-/CLIProxy-Routen und behandelt leere/fehlgeschlagene Primärprovider als Anlass für den konfigurierten Fallback.
+- **Vorhandene Regressionen:** test_provider_health.py prüft fehlenden, ungetesteten, erfolgreichen, fehlgeschlagenen und ersetzten Schlüssel; test_briefing_provider_routing.py prüft providerabhängige Dispatches, Modellfehler und actionable Status; test_debate_research.py prüft deaktivierte Altanbieter und leere/PII-geschützte Anfragen.
+- **Nicht nachgewiesen:** Eine frische Windows-/Web-Providerprobe mit realem Login, gültigem Modellkatalog und expliziter Nutzerfreigabe. Unit-Mocks und ein `ready`-Status ersetzen diese externe Abnahme nicht.
+- **Eigener neuer Code:** keiner.
+- **Konkreter nächster Abnahmeschritt:** Im freigegebenen Desktop den vorgesehenen ChatGPT-Web-/Gemini-Web-Loginweg sichtbar testen, Modell und Sessionstatus prüfen, eine einzelne freigegebene Antwort ausführen und die tatsächliche Route samt Kostenstatus protokollieren. Kein CLI-/Work-Fallback darf als Primärnachweis gelten.
+- **Commit/Push:** Der Status wird dauerhaft auf master dokumentiert.
+
+NÄCHSTER PUNKT: 006/A010
