@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Process a JSON video list with Google transcription and AI-only source research.
 
-Input items may provide local audio/video/media_path or a direct HTTPS media_url/video_url/audio_url/source_url. The latter is downloaded to a bounded temporary file before Google transcription.
+Input items may provide local audio/video/media_path, direct HTTPS media_url/video_url/audio_url, or a public page URL. Direct media uses a bounded downloader; page URLs use the optional yt-dlp resolver and can discover subtitles before Google transcription.
 """
 
 from __future__ import annotations
