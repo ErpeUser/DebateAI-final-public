@@ -1131,6 +1131,10 @@ class AgentOrchestrator:
         self._recommendation_revision = 0
         self._debate_revision = 0
         self._research_tasks: set[asyncio.Task] = set()
+        # One external research group may serve several distinct analysis
+        # lanes, but the same claim revision/query must never create duplicate
+        # groups while the first one is still active.
+        self._research_group_tasks: dict[tuple[str, int, str], asyncio.Task] = {}
         self._research_cache: dict[str, ResearchResult] = {}
         self._topic_knowledge: dict[str, dict[str, object]] = {}
         self._experimental_lane_artifacts: list[dict[str, object]] = []
@@ -3556,6 +3560,54 @@ class AgentOrchestrator:
             and context.config_generation == create_configuration_snapshot().generation
         )
 
+    @staticmethod
+    def _research_group_query_key(query: str) -> str:
+        return " ".join(str(query or "").casefold().split())[:500]
+
+    def _research_group_key(
+        self,
+        context: AnalysisJobContext,
+        query: str,
+    ) -> tuple[str, int, str]:
+        return (
+            str(context.claim_id),
+            int(context.claim_revision),
+            self._research_group_query_key(query),
+        )
+
+    def _active_research_group(
+        self,
+        key: tuple[str, int, str],
+    ) -> asyncio.Task | None:
+        groups = getattr(self, "_research_group_tasks", None)
+        if groups is None:
+            groups = {}
+            self._research_group_tasks = groups
+        task = groups.get(key)
+        if task is not None and not task.done():
+            return task
+        if task is not None:
+            groups.pop(key, None)
+        return None
+
+    def _register_research_group(
+        self,
+        key: tuple[str, int, str],
+        task: asyncio.Task,
+    ) -> asyncio.Task:
+        groups = getattr(self, "_research_group_tasks", None)
+        if groups is None:
+            groups = {}
+            self._research_group_tasks = groups
+        groups[key] = task
+
+        def discard(completed: asyncio.Task) -> None:
+            if groups.get(key) is completed:
+                groups.pop(key, None)
+
+        task.add_done_callback(discard)
+        return task
+
     def _register_research_task(
         self,
         task: asyncio.Task,
@@ -3648,6 +3700,10 @@ class AgentOrchestrator:
 
         self._force_deep_analysis_once = False
         context = self._new_analysis_context(revision)
+        group_key = self._research_group_key(context, query)
+        existing = self._active_research_group(group_key)
+        if existing is not None:
+            return existing
         task = asyncio.create_task(
             self._run_debate_research(
                 revision,
@@ -3662,11 +3718,12 @@ class AgentOrchestrator:
             ),
             name=f"debate-research-{self.session_id}-{revision}",
         )
-        return self._register_research_task(
+        self._register_research_task(
             task,
             generation_id=context.generation_id,
             manual=manual,
         )
+        return self._register_research_group(group_key, task)
 
     async def request_debate_research(self, category: str) -> bool:
         """Force one fresh, narrow check of the currently visible claim."""
@@ -3700,6 +3757,9 @@ class AgentOrchestrator:
 
         revision = self._debate_revision
         context = self._new_analysis_context(revision)
+        group_key = self._research_group_key(context, query)
+        if self._active_research_group(group_key) is not None:
+            return True
         pending = recommendation.model_copy(
             update={
                 "needs_research": True,
@@ -3712,7 +3772,6 @@ class AgentOrchestrator:
             }
         )
         self.objection_agent.latest_recommendation = pending
-        await self._send_debate_update(revision, pending, origin="research")
         task = asyncio.create_task(
             self._run_debate_research(
                 revision,
@@ -3729,6 +3788,8 @@ class AgentOrchestrator:
             generation_id=context.generation_id,
             manual=True,
         )
+        self._register_research_group(group_key, task)
+        await self._send_debate_update(revision, pending, origin="research")
         return True
 
     async def cancel_manual_debate_analysis(self) -> bool:
