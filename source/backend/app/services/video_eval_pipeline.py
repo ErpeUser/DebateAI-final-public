@@ -115,6 +115,33 @@ def extract_source_candidates(
     return found
 
 
+def _relevant_source_excerpt(text: str, *, max_chars: int = 3600) -> str:
+    """Keep only source-adjacent transcript context for external extraction."""
+    clean = _clean(text)
+    if len(clean) <= max_chars:
+        return clean
+    excerpts: list[str] = []
+    for candidate in extract_source_candidates(clean, context_chars=320):
+        context = _clean(candidate.context)
+        if context and context not in excerpts:
+            excerpts.append(context)
+    if not excerpts:
+        sentences = [
+            _clean(sentence)
+            for sentence in re.split(r"(?<=[.!?])\s+", clean)
+            if re.search(
+                r"\b(?:quelle|studie|paper|bericht|gesetz|dataset|statistik|doi)\b",
+                sentence,
+                re.IGNORECASE,
+            )
+        ]
+        excerpts = [sentence for sentence in sentences if sentence]
+    if excerpts:
+        return _clean(" ".join(excerpts))[:max_chars]
+    half = max_chars // 2
+    return _clean(f"{clean[:half]} {clean[-half:]}")[:max_chars]
+
+
 def build_rhetorical_profile(
     segments: Iterable[TranscriptSegment],
     *,
@@ -342,6 +369,33 @@ def transcribe_with_google_cloud(
         return segments
 
 
+def _rhetoric_review_excerpt(
+    artifact: VideoEvalArtifact,
+    *,
+    max_chars: int = 6000,
+) -> str:
+    """Send claims and nearby case context, never the complete transcript."""
+    rows: list[str] = []
+    for case in artifact.eval_cases:
+        claim = _clean(str(case.get("claim") or case.get("original_statement") or ""))
+        speaker = _clean(str(case.get("speaker") or ""))
+        context = _clean(str(case.get("context_before") or ""))
+        if claim:
+            rows.append(" ".join(part for part in (
+                f"Sprecher: {speaker}" if speaker else "",
+                f"Behauptung: {claim}",
+                f"Kontext: {context}" if context else "",
+            ) if part))
+    if not rows:
+        rows = [
+            _clean(str(item.get("text") or ""))
+            for item in artifact.transcript_segments[:4]
+            if _clean(str(item.get("text") or ""))
+        ]
+    budget = max(1000, min(int(max_chars), 6000))
+    return _clean(" ".join(rows))[:budget]
+
+
 async def extract_source_candidates_with_ai(
     transcript: str,
     segments: Iterable[TranscriptSegment] = (),
@@ -375,7 +429,7 @@ async def extract_source_candidates_with_ai(
         if current:
             chunks.append("\n".join(current))
     else:
-        clean_transcript = _clean(transcript)
+        clean_transcript = _relevant_source_excerpt(transcript)
         chunks = [
             clean_transcript[offset:offset + chunk_limit]
             for offset in range(0, len(clean_transcript), chunk_limit)
@@ -656,9 +710,10 @@ async def evaluate_rhetoric_profile(
     edits prompts, model routing, or production settings automatically.
     """
     profile_json = json.dumps(artifact.rhetorical_profile, ensure_ascii=False, indent=2)
-    transcript = " ".join(
-        str(item.get("text") or "") for item in artifact.transcript_segments
-    )[:max(1000, sample_chars)]
+    transcript = _rhetoric_review_excerpt(
+        artifact,
+        max_chars=sample_chars,
+    )
     prompt = (
         "Bewerte das Debatten-Sprachprofil anhand der folgenden Messwerte und des "
         "Transkriptauszugs. Nenne konkrete beobachtete Muster, starke rhetorische "
