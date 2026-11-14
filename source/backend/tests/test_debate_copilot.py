@@ -27,6 +27,7 @@ from app.services.agents.orchestrator import (
     _contains_unsupported_numeric_assertion,
     _unicode_words,
     _bind_research_result,
+    _external_analysis_deadline,
 )
 from app.services.debate_research import ResearchResult, ResearchSource
 from app.services.debate_settings import DebateSettings
@@ -84,6 +85,27 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Die Quote liegt nicht bei acht Prozent.", rebound.sources[0].claim)
         self.assertEqual(3, rebound.sources[0].claim_revision)
 
+    def test_automatic_and_manual_research_use_separate_deadlines(self):
+        from app.services.external_analysis_scheduler import ExternalAnalysisPriority
+
+        with (
+            patch(
+                "app.services.agents.orchestrator.live_research_deadline_seconds",
+                return_value=12,
+            ),
+            patch(
+                "app.services.agents.orchestrator.analysis_deadline_seconds",
+                return_value=180,
+            ),
+        ):
+            self.assertEqual(
+                12,
+                _external_analysis_deadline(ExternalAnalysisPriority.AUTOMATIC),
+            )
+            self.assertEqual(
+                180,
+                _external_analysis_deadline(ExternalAnalysisPriority.MANUAL),
+            )
     def test_deep_analysis_prompt_is_compact_and_claim_specific(self):
         prompt = build_deep_analysis_prompt(
             claim="Wenn Freiheit wichtig ist, darf es keinerlei Regeln geben.",
