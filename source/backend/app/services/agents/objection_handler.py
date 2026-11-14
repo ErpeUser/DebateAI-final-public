@@ -600,6 +600,9 @@ class ObjectionHandlerAgent:
         if recommendation_only and built_in_prompt:
             self._prompt_template = DEBATE_RECOMMENDATION_PROMPT
             self._prompt_resource_name = "debate_live_v2"
+        elif prompt_override and prompt_override.startswith("EXPERIMENTELL DEBATEAI"):
+            self._prompt_template = prompt_override
+            self._prompt_resource_name = "experimental_debate_live_v1"
         elif prompt_override and prompt_override != OBJECTION_HANDLER_PROMPT:
             self._prompt_template = prompt_override
             self._prompt_resource_name = "agent.objection_handler"
