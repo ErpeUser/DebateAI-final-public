@@ -220,7 +220,7 @@ class DebateRecommendation(BaseModel):
     recommendation_revision: int = 0
     prompt_version: str = "debate_live_v2"
 
-\n\ndef normalize_experimental_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:\n    """Return the four visible moves without exposing provider provenance."""\n    existing = recommendation.strategy_options or []\n    by_kind: dict[str, dict[str, Any]] = {}\n    for item in existing:\n        if not isinstance(item, dict):\n            continue\n        kind = str(item.get("kind") or "").strip()\n        text = " ".join(str(item.get("text") or "").split())\n        if kind and text and kind not in by_kind:\n            by_kind[kind] = {\n                "id": str(item.get("id") or kind),\n                "kind": kind,\n                "title": str(item.get("title") or kind.replace("_", " ").title()),\n                "text": text,\n                "source_ids": list(item.get("source_ids") or []),\n                "confidence": str(item.get("confidence") or recommendation.confidence),\n            }\n    fallback = {\n        "contradiction": recommendation.counterargument,\n        "example": recommendation.analogy,\n        "counter_question": recommendation.counter_question,\n        "refutation": recommendation.answer_now,\n    }\n    titles = {\n        "contradiction": "Widersprechende Antwort",\n        "example": "Beispiel oder Analogie",\n        "counter_question": "Gegenfrage",\n        "refutation": "Widerlegung",\n    }\n    for kind, text in fallback.items():\n        normalized = " ".join(str(text or "").split())\n        if normalized and kind not in by_kind:\n            by_kind[kind] = {\n                "id": f"{kind}_fallback",\n                "kind": kind,\n                "title": titles[kind],\n                "text": normalized,\n                "source_ids": [],\n                "confidence": recommendation.confidence,\n            }\n    order = ("contradiction", "example", "counter_question", "refutation")\n    return [by_kind[kind] for kind in order if kind in by_kind]\n\n    @field_validator("answer_now")
+    @field_validator("answer_now")
     @classmethod
     def limit_answer_words(cls, value: str) -> str:
         return _limit_spoken_words(value, 25)
@@ -229,6 +229,53 @@ class DebateRecommendation(BaseModel):
     @classmethod
     def limit_counter_question_words(cls, value: str) -> str:
         return _limit_spoken_words(value, 14, question=True)
+
+
+
+
+def normalize_experimental_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
+    """Return the four visible moves without exposing provider provenance."""
+    existing = recommendation.strategy_options or []
+    by_kind: dict[str, dict[str, Any]] = {}
+    for item in existing:
+        if not isinstance(item, dict):
+            continue
+        kind = str(item.get("kind") or "").strip()
+        text = " ".join(str(item.get("text") or "").split())
+        if kind and text and kind not in by_kind:
+            by_kind[kind] = {
+                "id": str(item.get("id") or kind),
+                "kind": kind,
+                "title": str(item.get("title") or kind.replace("_", " ").title()),
+                "text": text,
+                "source_ids": list(item.get("source_ids") or []),
+                "confidence": str(item.get("confidence") or recommendation.confidence),
+            }
+    fallback = {
+        "contradiction": recommendation.counterargument,
+        "example": recommendation.analogy,
+        "counter_question": recommendation.counter_question,
+        "refutation": recommendation.answer_now,
+    }
+    titles = {
+        "contradiction": "Widersprechende Antwort",
+        "example": "Beispiel oder Analogie",
+        "counter_question": "Gegenfrage",
+        "refutation": "Widerlegung",
+    }
+    for kind, text in fallback.items():
+        normalized = " ".join(str(text or "").split())
+        if normalized and kind not in by_kind:
+            by_kind[kind] = {
+                "id": f"{kind}_fallback",
+                "kind": kind,
+                "title": titles[kind],
+                "text": normalized,
+                "source_ids": [],
+                "confidence": recommendation.confidence,
+            }
+    order = ("contradiction", "example", "counter_question", "refutation")
+    return [by_kind[kind] for kind in order if kind in by_kind]
 
 
 def build_atomic_claims(
