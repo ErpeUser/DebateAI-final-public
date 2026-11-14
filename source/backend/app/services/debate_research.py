@@ -642,14 +642,28 @@ async def _ai_web_sources(
     provider_label = "chatgpt_web" if chatgpt_generate is not None and "chatgpt_web" in providers else next((provider for provider in ("gemini_web", "gemini_api", "cliproxyapi") if provider in providers), "ai_web")
     urls = []
     for match in re.findall(r"https?://\S+", answer or ""):
-        url = match.rstrip(".,;:)]}")
-        if url and url not in urls and "wikipedia.org" not in url and "duckduckgo.com" not in url:
-            urls.append(url)
+        raw_url = match.rstrip(".,;:)]}")
+        canonical = _canonical_url(raw_url)
+        if canonical is None:
+            continue
+        hostname = (urlsplit(canonical).hostname or "").casefold().rstrip(".")
+        # Keep the legacy providers disabled even when an AI response returns
+        # mixed-case, subdomain, or redirected-looking links.
+        if (
+            hostname == "wikipedia.org"
+            or hostname.endswith(".wikipedia.org")
+            or hostname == "duckduckgo.com"
+            or hostname.endswith(".duckduckgo.com")
+        ):
+            continue
+        if canonical not in urls:
+            urls.append(canonical)
+    snippet = " ".join((answer or "").split())[:900]
     return [
         ResearchSource(
-            title="KI-Recherche: " + urlsplit(url).netloc,
+            title="KI-Recherche: " + (urlsplit(url).hostname or "Quelle"),
             url=url,
-            snippet=" ".join((answer or "").split())[:900],
+            snippet=snippet,
             # The model's URL list is only a finding. Do not present its
             # surrounding prose as a read source passage until the URL was
             # fetched and parsed by the bounded source reader.
@@ -660,6 +674,8 @@ async def _ai_web_sources(
             retrieval_status="found",
             source_type="ai_web",
             trust_level="unknown",
+            publisher=urlsplit(url).hostname or "",
+            retrieved_at=datetime.now(UTC).isoformat(),
         )
         for url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
     ]
