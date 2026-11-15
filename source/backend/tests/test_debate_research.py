@@ -176,6 +176,34 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             {source.url for source in sources},
         )
 
+    async def test_ai_web_sources_preserves_outer_audit_approval(self):
+        seen = {}
+
+        async def fake_generate_text(*_args, **_kwargs):
+            seen["approval"] = debate_research.external_audit.current_approval()
+            return "https://example.org/source"
+
+        with mock.patch.object(
+            debate_research,
+            "_research_provider_ready",
+            return_value=True,
+        ), mock.patch.object(
+            debate_research.external_audit,
+            "current_approval",
+            return_value=False,
+        ), mock.patch(
+            "app.services.llm.generate_text",
+            new=fake_generate_text,
+        ):
+            sources = await debate_research._ai_web_sources(
+                "Die Aussage",
+                "Quelle pruefen",
+                ["gemini_api"],
+            )
+
+        self.assertEqual(["https://example.org/source"], [source.url for source in sources])
+        self.assertFalse(seen["approval"])
+
     async def test_ai_web_failover_returns_empty_when_all_enabled_routes_fail(self):
         async def fake_generate_text(*_args, **_kwargs):
             raise RuntimeError("provider unavailable")
