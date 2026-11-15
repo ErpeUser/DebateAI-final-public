@@ -63,6 +63,31 @@ class ExternalAuditTests(unittest.TestCase):
         for secret in ("secret", "api_key", "token", "customer claim", "cookie", "prompt"):
             self.assertNotIn(secret, serialized)
 
+    def test_claim_id_remains_stable_across_lifecycle_events(self):
+        claim = "Lifecycle events must share one opaque claim identifier."
+        with external_audit.audit_context(
+            claim=claim,
+            data_category="research_claim",
+            approval=False,
+        ):
+            request_id = external_audit.start_external_request(
+                provider_route="gemini-api:gemini-3.1-pro",
+                approval=external_audit.current_approval(),
+                data_category=external_audit.current_data_category(),
+                claim_id=external_audit.current_claim_id(),
+            )
+            external_audit.finish_external_request(
+                request_id,
+                approval=external_audit.current_approval(),
+                status="cancelled",
+                provider_route="gemini-api:gemini-3.1-pro",
+                data_category=external_audit.current_data_category(),
+            )
+
+        records = self._records()
+        expected = external_audit.claim_id_for(claim)
+        self.assertEqual([item["claim_id"] for item in records], [expected, expected])
+
     def test_context_is_scoped_and_source_categories_are_bounded(self):
         self.assertTrue(external_audit.current_approval())
         self.assertEqual(external_audit.current_data_category(), "unknown")
