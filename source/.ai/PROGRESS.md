@@ -956,3 +956,4 @@ NÄCHSTER PUNKT: 048/A086
 - **Commits:** `62098ef27e9b8b00e15e61ada68fd6b30ca5dfa9` (Approval-Kontext), `82e45e0469e6d7734309903bfb9b73578abfc81d` (Research-Regression), `e2b90f77bd4aa715e51f3162af227ae2b62dd447` (Claim-ID-Lifecycle), `adfd1e9d7db546502acb1c935232489c48bddbaa` (Lifecycle-Regression).
 
 NÄCHSTER PUNKT: 049/A087
+- **CI-Nachtrag:** Für PR-Head `123f6fa2248c3695a71cf8a141e6aab44d2f9f9d` meldeten die GitHub-Actions `security` und `tests` `failure`; die zugehörigen Jobs lieferten `steps: null`, und die Logabrufe endeten mit BlobNotFound/404. Das ist kein ausführbarer Testnachweis und bleibt als CI-/Runner-Blocker offen.
