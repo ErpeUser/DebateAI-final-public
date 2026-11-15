@@ -32,6 +32,7 @@ _CATEGORIES = {
 }
 _STATUSES = {"started", "completed", "failed", "blocked", "refused", "cancelled"}
 _SAFE_IDENTIFIER = re.compile(r"[^A-Za-z0-9_.:@/-]+")
+_CLAIM_DIGEST = re.compile(r"^[0-9a-fA-F]{32}$")
 
 _claim_id: contextvars.ContextVar[str] = contextvars.ContextVar(
     "external_audit_claim_id", default=""
@@ -129,8 +130,10 @@ def _safe_claim_id(value: object | None) -> str:
     text = str(value or "").strip()
     if not text:
         return current_claim_id()
-    # Callers may provide a precomputed digest; hashing again keeps arbitrary
-    # user text out of the record even when a new caller gets this wrong.
+    # Preserve the digest carried from an audit context so start/finish
+    # lifecycle events share one Claim-ID. Raw claim text is still hashed.
+    if _CLAIM_DIGEST.fullmatch(text):
+        return text.lower()
     return claim_id_for(text)
 
 
