@@ -72,6 +72,25 @@ test("unrendered append deltas are folded without losing earlier words", () => {
   assert.equal(staged.events[0].data.mode, "append");
 });
 
+test("an unrendered replacement still replaces after an append is folded into it", () => {
+  const first = { type: "interim_transcript", data: { mode: "replace", text: "Hallo " }, session_sequence: 1 };
+  const next = { type: "interim_transcript", data: { mode: "append", text: "Welt" }, session_sequence: 2 };
+
+  const staged = stageSocketPayload([first], next, 0);
+
+  assert.deepEqual(staged.events[0].data, { mode: "replace", text: "Hallo Welt" });
+});
+
+test("a final transcript clears the pending preview before the next append on the same track", () => {
+  const interim = { type: "interim_transcript", data: { mode: "append", text: "Alt" }, session_sequence: 1 };
+  const final = { type: "transcript", data: { id: "final", text: "Alt." }, session_sequence: 2 };
+  const next = { type: "interim_transcript", data: { mode: "append", text: "Neu" }, session_sequence: 3 };
+  const finalized = stageSocketPayload([interim], final, 0);
+  const staged = stageSocketPayload(finalized.events, next, 0);
+
+  assert.deepEqual(staged.events, [final, next]);
+});
+
 test("append after an acknowledged delta keeps only the new text", () => {
   const first = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "Nicht " }, session_sequence: 1, event_id: 1 };
   const second = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "zustimmen." }, session_sequence: 2, event_id: 2 };

@@ -310,10 +310,12 @@ class LoginLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(self.web.browser_busy())
 
     async def test_result_before_child_exit_does_not_release_browser(self):
-        await self.login.start_login()
+        started = await self.login.start_login()
+        self.assertIn("Funktionsprüfung", started["message"])
         self.result.write_text('{"verified": true}', encoding="utf-8")
         response = await self.login.poll_login()
         self.assertEqual("pending", response["login_state"])
+        self.assertIn("Funktionsprüfung", response["message"])
         self.assertTrue(self.web.browser_busy())
         self.assertIsNone(self.children[0].poll())
 

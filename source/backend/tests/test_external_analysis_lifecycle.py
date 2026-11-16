@@ -119,9 +119,11 @@ class SchedulerLifecycleTests(unittest.IsolatedAsyncioTestCase):
         async def next_job():
             next_started.set()
             return 'next'
-        first=self.start('deadline-cleanup',slow,deadline=.01)
-        await asyncio.wait_for(started.wait(), 1)
-        await asyncio.wait_for(cleanup_started.wait(), 1)
+        # Leave room to actually enter the operation on Windows before testing
+        # the distinct running-deadline path (the queued path has its own test).
+        first=self.start('deadline-cleanup',slow,deadline=.5)
+        await asyncio.wait_for(started.wait(), 2)
+        await asyncio.wait_for(cleanup_started.wait(), 2)
         with self.assertRaises(ExternalAnalysisDeadline):
             await asyncio.wait_for(asyncio.shield(first), 1)
         second=self.start('next-after-cleanup',next_job)

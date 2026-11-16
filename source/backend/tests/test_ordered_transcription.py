@@ -54,12 +54,14 @@ class OrderedTranscriptionQueueTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_batching_flushes_short_utterance_after_max_wait(self):
         emitted = []
+        flushed = asyncio.Event()
 
         async def transcribe(pcm_bytes: bytes):
             return pcm_bytes.decode()
 
         async def emit(speaker_auto_id: str, pcm_bytes: bytes, text: str):
             emitted.append((speaker_auto_id, text))
+            flushed.set()
 
         queue = OrderedTranscriptionQueue(
             transcribe=transcribe,
@@ -68,7 +70,7 @@ class OrderedTranscriptionQueueTests(unittest.IsolatedAsyncioTestCase):
             max_batch_wait_seconds=0.01,
         )
         queue.add("auto_1", b"kurzer Satz")
-        await asyncio.sleep(0.04)
+        await asyncio.wait_for(flushed.wait(), timeout=2)
 
         self.assertEqual([("auto_1", "kurzer Satz")], emitted)
         await queue.drain()

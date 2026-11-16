@@ -129,6 +129,13 @@ export function mergeSocketEvents<T extends SocketEvent>(
     if (typeof event.session_sequence === "number" && sequences.has(event.session_sequence)) {
       continue;
     }
+    if (event.type === "transcript") {
+      // The final transcript clears the displayed preview. Only later
+      // interims may contribute to a new preview, even on the same track.
+      for (let i = result.length - 1; i >= 0; i--) {
+        if (result[i].type === "interim_transcript") result.splice(i, 1);
+      }
+    }
     const key = transientKey(event);
     if (key) {
       const staleIndex = result.findIndex((candidate) => transientKey(candidate) === key);
@@ -148,6 +155,7 @@ export function mergeSocketEvents<T extends SocketEvent>(
             data: {
               ...event.data,
               text: String(stale.data?.text || "") + String(event.data?.text || ""),
+              mode: stale.data?.mode || "replace",
             },
           } as T;
         }

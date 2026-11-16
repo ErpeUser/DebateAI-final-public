@@ -160,7 +160,7 @@ async def start_login():
         observer = asyncio.create_task(_observe_login(_login_process))
         _login_observers.add(observer)
         observer.add_done_callback(_login_observers.discard)
-    return _status(state="pending", message="Melde dich im geoeffneten Chrome-Fenster bei ChatGPT an. Die Pro-Pruefung startet danach automatisch.")
+    return _status(state="pending", message="Melde dich im geöffneten Browserfenster bei ChatGPT an. Danach startet die Funktionsprüfung automatisch.")
 
 
 @router.get("/login")
@@ -173,7 +173,7 @@ async def poll_login():
     with _login_lock:
         process = _login_process
         if process is not None and process.poll() is None:
-            return _status(state="pending", message="Die Anmeldung oder Pro-Pruefung laeuft.")
+            return _status(state="pending", message="Die Anmeldung oder Funktionsprüfung läuft.")
         if result.is_file():
             try:
                 payload = json.loads(result.read_text(encoding="utf-8"))

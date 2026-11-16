@@ -124,6 +124,16 @@ class SessionEventJournalTests(unittest.TestCase):
         events = journal.snapshot(after_sequence=0)["data"]["events"]
         self.assertEqual(["Nicht zustimmen."], [event["data"]["text"] for event in events])
 
+    def test_full_snapshot_drops_interim_text_replaced_by_a_final_transcript(self):
+        journal = SessionEventJournal("reused-track-id")
+        journal.record({"type": "interim_transcript", "data": {"text": "First", "mode": "append"}})
+        journal.record({"type": "transcript", "data": {"id": "final", "text": "First."}})
+        journal.record({"type": "interim_transcript", "data": {"text": "Next", "mode": "append"}})
+
+        events = journal.snapshot()["data"]["events"]
+        self.assertEqual(["transcript", "interim_transcript"], [event["type"] for event in events])
+        self.assertEqual("Next", events[-1]["data"]["text"])
+
     def test_full_snapshot_keeps_transcript_creation_before_its_update(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
         journal.record({"type": "transcript", "data": {"id": "t1", "text": "Original"}})
@@ -158,6 +168,24 @@ class SessionEventJournalTests(unittest.TestCase):
 
 
 class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
+    async def test_status_cursor_cannot_skip_an_unsent_interim_prefix(self):
+        journal = SessionEventJournal("interleaved")
+        buffer = ClientSendBuffer(maxsize=3)
+        await buffer.put(journal.record({
+            "type": "interim_transcript", "data": {"mode": "replace", "text": "Hello "},
+        }))
+        await buffer.put(journal.record({"type": "status", "data": {"state": "ready"}}))
+        await buffer.put(journal.record({
+            "type": "interim_transcript", "data": {"mode": "append", "text": "world"},
+        }))
+
+        [prefix, status] = [await buffer.get(), await buffer.get()]
+        self.assertEqual(["interim_transcript", "status"], [prefix["type"], status["type"]])
+        # If the socket drops after sending the status, the acknowledged
+        # prefix and the delta replay must reconstruct the complete preview.
+        [suffix] = journal.snapshot(after_sequence=status["session_sequence"])["data"]["events"]
+        self.assertEqual("Hello world", prefix["data"]["text"] + suffix["data"]["text"])
+
     async def test_coalescing_preserves_append_dependencies_without_mutating_events(self):
         for wrapped in (False, True):
             for first_mode, next_mode, expected_text, expected_mode in (
