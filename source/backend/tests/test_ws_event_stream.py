@@ -124,6 +124,16 @@ class SessionEventJournalTests(unittest.TestCase):
         events = journal.snapshot(after_sequence=0)["data"]["events"]
         self.assertEqual(["Nicht zustimmen."], [event["data"]["text"] for event in events])
 
+    def test_full_snapshot_drops_interim_text_replaced_by_a_final_transcript(self):
+        journal = SessionEventJournal("reused-track-id")
+        journal.record({"type": "interim_transcript", "data": {"text": "First", "mode": "append"}})
+        journal.record({"type": "transcript", "data": {"id": "final", "text": "First."}})
+        journal.record({"type": "interim_transcript", "data": {"text": "Next", "mode": "append"}})
+
+        events = journal.snapshot()["data"]["events"]
+        self.assertEqual(["transcript", "interim_transcript"], [event["type"] for event in events])
+        self.assertEqual("Next", events[-1]["data"]["text"])
+
     def test_full_snapshot_keeps_transcript_creation_before_its_update(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
         journal.record({"type": "transcript", "data": {"id": "t1", "text": "Original"}})
@@ -158,6 +168,59 @@ class SessionEventJournalTests(unittest.TestCase):
 
 
 class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
+    async def test_status_cursor_cannot_skip_an_unsent_interim_prefix(self):
+        journal = SessionEventJournal("interleaved")
+        buffer = ClientSendBuffer(maxsize=3)
+        await buffer.put(journal.record({
+            "type": "interim_transcript", "data": {"mode": "replace", "text": "Hello "},
+        }))
+        await buffer.put(journal.record({"type": "status", "data": {"state": "ready"}}))
+        await buffer.put(journal.record({
+            "type": "interim_transcript", "data": {"mode": "append", "text": "world"},
+        }))
+
+        [prefix, status] = [await buffer.get(), await buffer.get()]
+        self.assertEqual(["interim_transcript", "status"], [prefix["type"], status["type"]])
+        # If the socket drops after sending the status, the acknowledged
+        # prefix and the delta replay must reconstruct the complete preview.
+        [suffix] = journal.snapshot(after_sequence=status["session_sequence"])["data"]["events"]
+        self.assertEqual("Hello world", prefix["data"]["text"] + suffix["data"]["text"])
+
+    async def test_coalescing_preserves_append_dependencies_without_mutating_events(self):
+        for wrapped in (False, True):
+            for first_mode, next_mode, expected_text, expected_mode in (
+                ("append", "append", "Hello world", "append"),
+                ("replace", "append", "Hello world", "replace"),
+                ("append", "replace", "world", "replace"),
+            ):
+                with self.subTest(wrapped=wrapped, modes=(first_mode, next_mode)):
+                    buffer = ClientSendBuffer(maxsize=2)
+                    first = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": first_mode, "text": "Hello ", "audio_start_sample": 0, "segment_revision": 1}}
+                    latest = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": next_mode, "text": "world", "audio_start_sample": 1600, "segment_revision": 2}}
+                    wrap = (lambda payload: {"payload": payload, "event_id": "newest"}) if wrapped else (lambda payload: payload)
+                    await buffer.put(wrap(first))
+                    await buffer.put(wrap(latest))
+                    result = await buffer.get()
+                    data = result["payload"]["data"] if wrapped else result["data"]
+                    self.assertEqual(expected_text, data["text"])
+                    self.assertEqual(expected_mode, data["mode"])
+                    self.assertEqual(2, data["segment_revision"])
+                    self.assertEqual(0 if next_mode == "append" else 1600, data["audio_start_sample"])
+                    self.assertEqual("Hello ", first["data"]["text"])
+                    self.assertEqual("world", latest["data"]["text"])
+
+    async def test_discarding_an_interim_prefix_requests_a_snapshot(self):
+        buffer = ClientSendBuffer(maxsize=1)
+        await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "replace", "text": "Prefix"}})
+        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s2", "mode": "append", "text": "Other"}}))
+        self.assertTrue(buffer.needs_resync)
+
+    async def test_rejected_append_also_requests_a_snapshot(self):
+        buffer = ClientSendBuffer(maxsize=1)
+        await buffer.put({"type": "transcript", "data": {"id": "final"}})
+        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "append", "text": "Prefix"}}))
+        self.assertTrue(buffer.needs_resync)
+
     async def test_replaces_stale_interim_for_the_same_segment(self):
         buffer = ClientSendBuffer(maxsize=2)
 

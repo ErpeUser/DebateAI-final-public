@@ -162,6 +162,7 @@ class LocalLiveCaptioner:
             if overflow > 0:
                 del self._context[:overflow]
             chunk = bytes(self._context)
+            end_sample = self._audio_samples_seen
             try:
                 text = await self._transcriber.transcribe_segment(chunk)
             except Exception as exc:  # noqa: BLE001 - one bad chunk should not end captions
@@ -196,9 +197,9 @@ class LocalLiveCaptioner:
                     "segment_id": self._segment_id,
                     "segment_revision": self._segment_revision,
                     "audio_start_sample": max(
-                        0, self._audio_samples_seen - len(chunk) // 2
+                        0, end_sample - len(chunk) // 2
                     ),
-                    "audio_end_sample": self._audio_samples_seen,
+                    "audio_end_sample": end_sample,
                 }
 
     async def close(self):

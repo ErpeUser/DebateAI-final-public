@@ -188,8 +188,12 @@ Assert-True ($main.IndexOf("Build-LinuxRelease") -lt $main.IndexOf("run watch"))
     "Local publication must not wait for macOS"
 Assert-True $main.Contains('-Dockerfile (Join-Path $repoRoot "desktop\Dockerfile.release-linux")') `
     "Linux must use controller tooling while building the exact tagged source"
-Assert-True $main.Contains('worktree add --detach $sourceRoot $tag.Commit') `
+Assert-True $main.Contains('worktree add --detach $sourceCheckout $tag.Commit') `
     "Release worktree must use the already-verified peeled commit"
+Assert-True $source.Contains('$sourceRoot = Join-Path $sourceCheckout "source"') `
+    "Local builds must start in the tagged product directory"
+Assert-True $source.Contains('Join-Path $gitRoot ".github\workflows\desktop-release.yml"') `
+    "The workflow must be loaded from the controller repository root"
 Assert-True $source.Contains('Join-Path $PSScriptRoot "..\desktop\scripts\smoke_test.py"') `
     "Windows must use the current controller smoke gate against the tagged bundle"
 Assert-True $main.Contains('Verifying release worktree commit') `

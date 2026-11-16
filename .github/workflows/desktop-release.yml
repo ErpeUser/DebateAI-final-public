@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -77,6 +77,8 @@ jobs:
           [[ "$(git cat-file -t "refs/tags/$RELEASE_REF")" == tag ]]
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
+          [[ -f source/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -92,38 +94,38 @@ jobs:
           echo "published_at=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend
-        working-directory: source/frontend
+        working-directory: source/source/frontend
         run: |
           npm ci
           npm run build
 
       - name: Install Python dependencies
-        run: pip install -r source/backend/requirements.txt -r source/desktop/requirements.txt
+        run: pip install -r source/source/backend/requirements.txt -r source/source/desktop/requirements.txt
 
       - name: Download ONNX models
-        working-directory: source/backend
+        working-directory: source/source/backend
         run: python scripts/download_models.py
 
       - name: Download embedded Postgres
-        run: python source/desktop/scripts/download_pg.py
+        run: python source/source/desktop/scripts/download_pg.py
 
       - name: Build bundle
-        working-directory: source
+        working-directory: source/source
         run: python -m PyInstaller desktop/debateai.spec --distpath dist --workpath build --noconfirm
 
       - name: Smoke test bundle
-        working-directory: source
+        working-directory: source/source
         run: python desktop/scripts/smoke_test.py
 
       - name: Zip macOS bundle
-        working-directory: source
+        working-directory: source/source
         run: |
-          mkdir -p ../controller/release-assets
-          ditto -c -k --keepParent dist/DebateAI.app ../controller/release-assets/DebateAI-macos-arm64.zip
+          mkdir -p ../../controller/release-assets
+          ditto -c -k --keepParent dist/DebateAI.app ../../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Smoke test macOS update archive
-        working-directory: source
-        run: python desktop/scripts/smoke_update_archive.py --platform macos-arm64 --archive ../controller/release-assets/DebateAI-macos-arm64.zip
+        working-directory: source/source
+        run: python desktop/scripts/smoke_update_archive.py --platform macos-arm64 --archive ../../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Prepare macOS cache handoff
         id: handoff
@@ -162,12 +164,12 @@ jobs:
       - name: Checkout release source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_ref }}
+          ref: ${{ inputs.expected_commit }}
           path: source
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -191,7 +193,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-macos-arm64.zip" | shasum -a 256 -c -
 
       - name: Publish verified macOS platform
-        working-directory: source
+        working-directory: source/source
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -205,7 +207,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-macos.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId macos-arm64 -AssetPath ../controller/release-assets/DebateAI-macos-arm64.zip -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId macos-arm64 -AssetPath ../../controller/release-assets/DebateAI-macos-arm64.zip -SigningMode Remote -Confirm:$false
 
   cleanup-macos:
     needs: [build-macos, publish-macos]
@@ -256,7 +258,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -278,6 +280,8 @@ jobs:
           [[ "$(git cat-file -t "refs/tags/$RELEASE_REF")" == tag ]]
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
+          [[ -f source/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -293,7 +297,7 @@ jobs:
           echo "published_at=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend
-        working-directory: source/frontend
+        working-directory: source/source/frontend
         shell: bash
         run: |
           npm ci
@@ -301,32 +305,32 @@ jobs:
 
       - name: Install Python dependencies
         shell: bash
-        run: pip install -r source/backend/requirements.txt -r source/desktop/requirements.txt
+        run: pip install -r source/source/backend/requirements.txt -r source/source/desktop/requirements.txt
 
       - name: Download ONNX models
-        working-directory: source/backend
+        working-directory: source/source/backend
         shell: bash
         run: python scripts/download_models.py
 
       - name: Download embedded Postgres
         shell: bash
-        run: python source/desktop/scripts/download_pg.py
+        run: python source/source/desktop/scripts/download_pg.py
 
       - name: Download ffmpeg
         shell: bash
-        run: python source/desktop/scripts/download_ffmpeg.py
+        run: python source/source/desktop/scripts/download_ffmpeg.py
 
       - name: Download CLIProxyAPI and Gemini plugin
         shell: bash
-        run: python source/desktop/scripts/download_cliproxyapi.py
+        run: python source/source/desktop/scripts/download_cliproxyapi.py
 
       - name: Build Gemini web bridge
-        working-directory: source
+        working-directory: source/source
         shell: pwsh
         run: ./desktop/gemini_web_to_api/build.ps1
 
       - name: Prepare ChatGPT web runtime
-        working-directory: source
+        working-directory: source/source
         shell: pwsh
         run: |
           $oracleRoot = Join-Path (Get-Location) "desktop\chatgpt_oracle"
@@ -335,7 +339,11 @@ jobs:
           $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
           if ($null -eq $nodeCommand) { throw "Node.js 24 is required for the ChatGPT web runtime." }
           $nodeVersion = (& $nodeCommand.Source --version 2>&1 | Out-String).Trim()
-          if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\.") { throw "Node.js 24 is required; found '$nodeVersion'." }
+          $expectedNodeVersion = "v24.21.0"
+          $expectedNodeSha256 = "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32"
+          if ($LASTEXITCODE -ne 0 -or $nodeVersion -cne $expectedNodeVersion) { throw "Node.js $expectedNodeVersion is required; found '$nodeVersion'." }
+          $nodeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $nodeCommand.Source).Hash.ToLowerInvariant()
+          if ($nodeSha256 -cne $expectedNodeSha256) { throw "Node.js $expectedNodeVersion has an unexpected SHA-256: $nodeSha256" }
           Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
           npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { throw "ChatGPT Oracle npm ci failed with exit code $LASTEXITCODE." }
@@ -343,7 +351,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) { throw "ChatGPT Oracle CLI is missing after npm ci." }
 
       - name: Build bundle
-        working-directory: source
+        working-directory: source/source
         shell: pwsh
         run: |
           $env:DEBATEAI_INCLUDE_ORACLE = "true"
@@ -355,21 +363,21 @@ jobs:
           }
 
       - name: Smoke test bundle
-        working-directory: source
+        working-directory: source/source
         shell: bash
         run: python desktop/scripts/smoke_test.py
 
       - name: Zip Windows bundle
-        working-directory: source
+        working-directory: source/source
         shell: pwsh
         run: |
-          New-Item -ItemType Directory -Force -Path ../controller/release-assets | Out-Null
-          Compress-Archive -LiteralPath dist/DebateAI -DestinationPath ../controller/release-assets/DebateAI-windows-x64.zip -Force
+          New-Item -ItemType Directory -Force -Path ../../controller/release-assets | Out-Null
+          Compress-Archive -LiteralPath dist/DebateAI -DestinationPath ../../controller/release-assets/DebateAI-windows-x64.zip -Force
 
       - name: Smoke test Windows update archive
-        working-directory: source
+        working-directory: source/source
         shell: bash
-        run: python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive ../controller/release-assets/DebateAI-windows-x64.zip
+        run: python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive ../../controller/release-assets/DebateAI-windows-x64.zip
 
       - name: Prepare Windows cache handoff
         id: handoff
@@ -408,12 +416,12 @@ jobs:
       - name: Checkout release source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_ref }}
+          ref: ${{ inputs.expected_commit }}
           path: source
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -438,7 +446,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-windows-x64.zip" | sha256sum -c -
 
       - name: Publish verified Windows platform
-        working-directory: source
+        working-directory: source/source
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -452,7 +460,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-windows.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId windows-x64 -AssetPath ../controller/release-assets/DebateAI-windows-x64.zip -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId windows-x64 -AssetPath ../../controller/release-assets/DebateAI-windows-x64.zip -SigningMode Remote -Confirm:$false
 
   cleanup-windows:
     needs: [build-windows, publish-windows]
@@ -521,6 +529,8 @@ jobs:
           [[ "$(git cat-file -t "refs/tags/$RELEASE_REF")" == tag ]]
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
+          [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
+          [[ -f source/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -541,11 +551,11 @@ jobs:
           set -euo pipefail
           mkdir -p linux-output controller/release-assets
           docker build \
-            --file controller/desktop/Dockerfile.release-linux \
-            --build-context controller=controller/desktop/scripts \
+            --file controller/source/desktop/Dockerfile.release-linux \
+            --build-context controller=controller/source/desktop/scripts \
             --target export \
             --output type=local,dest=linux-output \
-            source
+            source/source
           shopt -s dotglob nullglob
           files=(linux-output/*)
           [[ ${#files[@]} -eq 1 ]]
@@ -590,12 +600,12 @@ jobs:
       - name: Checkout release source
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ inputs.release_ref }}
+          ref: ${{ inputs.expected_commit }}
           path: source
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -620,7 +630,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-linux-x64.tar.gz" | sha256sum -c -
 
       - name: Publish verified Linux platform
-        working-directory: source
+        working-directory: source/source
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -634,7 +644,7 @@ jobs:
           EXPECTED_COMMIT: ${{ inputs.expected_commit }}
           PUBLISHED_AT: ${{ needs.build-linux.outputs.published_at }}
         shell: pwsh
-        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId linux-x64 -AssetPath ../controller/release-assets/DebateAI-linux-x64.tar.gz -SigningMode Remote -Confirm:$false
+        run: ./scripts/publish_release_platform.ps1 -Version $env:RELEASE_REF -Commit $env:EXPECTED_COMMIT -PublishedAt $env:PUBLISHED_AT -PlatformId linux-x64 -AssetPath ../../controller/release-assets/DebateAI-linux-x64.tar.gz -SigningMode Remote -Confirm:$false
 
   cleanup-linux:
     needs: [build-linux, publish-linux]

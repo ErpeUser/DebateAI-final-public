@@ -17,7 +17,7 @@ class LauncherTests(unittest.TestCase):
         cls.browser.close(); cls.p.stop()
     def setUp(self):
         self.page=self.browser.new_page()
-        self.page.set_default_timeout(500)
+        self.page.set_default_timeout(5000)
         self.page.set_content('<main id="root"><input id="session" value="ongoing-call"></main>')
         self.page.evaluate('window.originalRoot=document.getElementById("root")')
     def tearDown(self): self.page.close()

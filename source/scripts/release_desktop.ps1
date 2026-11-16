@@ -361,6 +361,7 @@ function Build-WindowsRelease {
     $venvPython = Join-Path $venv "Scripts\python.exe"
     Invoke-Checked "Installing release dependencies" {
         & $venvPython -m pip install `
+            -c (Join-Path $Source "desktop\constraints-windows-py312.txt") `
             -r (Join-Path $Source "backend\requirements.txt") `
             -r (Join-Path $Source "desktop\requirements.txt")
     } | Out-Null
@@ -387,8 +388,13 @@ function Build-WindowsRelease {
         throw "Node.js 24 is required to bundle the ChatGPT web runtime."
     }
     $nodeVersion = (& $nodeCommand.Source --version 2>&1 | Out-String).Trim()
-    if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\.") {
-        throw "Node.js 24 is required to bundle the ChatGPT web runtime; found '$nodeVersion'."
+    $expectedNodeVersion = "v24.21.0"
+    $expectedNodeSha256 = "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32"
+    if ($LASTEXITCODE -ne 0 -or $nodeVersion -cne $expectedNodeVersion) {
+        throw "Node.js $expectedNodeVersion is required to bundle the ChatGPT web runtime; found '$nodeVersion'."
+    }
+    if ((Get-FileHash -Algorithm SHA256 -LiteralPath $nodeCommand.Source).Hash.ToLowerInvariant() -cne $expectedNodeSha256) {
+        throw "Node.js $expectedNodeVersion has an unexpected SHA-256."
     }
     Invoke-Checked "Bundling portable Node runtime for ChatGPT Web" {
         Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
@@ -534,7 +540,8 @@ Push-Location $repoRoot
 $oldPath = $env:PATH
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $temporary = Join-Path $tempRoot ("debateai-desktop-release-" + [guid]::NewGuid().ToString("N"))
-$sourceRoot = Join-Path $temporary "source"
+$sourceCheckout = Join-Path $temporary "checkout"
+$sourceRoot = Join-Path $sourceCheckout "source"
 $worktreeAdded = $false
 $failures = [Collections.Generic.List[string]]::new()
 $runUrls = [Collections.Generic.List[string]]::new()
@@ -568,9 +575,10 @@ try {
         throw "Docker must provide a linux/x86_64 engine"
     }
     $tag = Resolve-ReleaseTag -Version $Version -Git $script:Git
+    $gitRoot = (Invoke-Checked "Finding controller checkout root" { & $script:Git rev-parse --show-toplevel })[-1].Trim()
     $r2Client = Join-Path $repoRoot "scripts\r2-object.mjs"
     $publisher = Join-Path $repoRoot "scripts\publish_release_platform.ps1"
-    foreach ($path in @($r2Client, $publisher, (Join-Path $repoRoot ".github\workflows\desktop-release.yml"))) {
+    foreach ($path in @($r2Client, $publisher, (Join-Path $gitRoot ".github\workflows\desktop-release.yml"))) {
         if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
             throw "Required release file is missing: $path"
         }
@@ -630,14 +638,17 @@ try {
     if ($localPending) {
         New-Item -ItemType Directory -Path $temporary | Out-Null
         Invoke-Checked "Creating release worktree" {
-            & $script:Git worktree add --detach $sourceRoot $tag.Commit
+            & $script:Git worktree add --detach $sourceCheckout $tag.Commit
         } | Out-Null
         $worktreeAdded = $true
         $sourceCommit = (Invoke-Checked "Verifying release worktree commit" {
-            & $script:Git -C $sourceRoot rev-parse HEAD
+            & $script:Git -C $sourceCheckout rev-parse HEAD
         })[-1].Trim()
         if ($sourceCommit -cne $tag.Commit) {
             throw "Release worktree does not match the verified peeled commit"
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $sourceRoot "desktop\debateai.spec") -PathType Leaf)) {
+            throw "The release tag does not contain source/desktop/debateai.spec"
         }
         $assetDirectory = Join-Path $repoRoot "release-assets\$Version"
         New-Item -ItemType Directory -Force -Path $assetDirectory | Out-Null
@@ -756,7 +767,7 @@ try {
     $exitCodeBeforeCleanup = if ($null -eq $LASTEXITCODE) { 0 } else { $LASTEXITCODE }
     try {
         if ($worktreeAdded) {
-            $resolvedSource = [IO.Path]::GetFullPath($sourceRoot)
+            $resolvedSource = [IO.Path]::GetFullPath($sourceCheckout)
             $resolvedTemporary = [IO.Path]::GetFullPath($temporary)
             if (-not $resolvedSource.StartsWith(
                 $resolvedTemporary + [IO.Path]::DirectorySeparatorChar,

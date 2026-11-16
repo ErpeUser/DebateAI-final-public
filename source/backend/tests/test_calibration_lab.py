@@ -12,10 +12,10 @@ from app.services.diagnostic_audio import read_audio_clip, MAX_UPLOAD_BYTES, Aud
 
 
 class MetricsTests(unittest.TestCase):
-    def test_edit_distance_delegates_to_jiwer(self):
+    def test_edit_distance_uses_jiwer_counts_without_reference_spaces(self):
         word_output = SimpleNamespace(substitutions=0, deletions=1, insertions=0, wer=0.5)
         char_output = SimpleNamespace(
-            cer=0.25, substitutions=0, deletions=0, insertions=0
+            cer=0.25, substitutions=0, deletions=3, insertions=0
         )
         with (
             patch(
@@ -30,7 +30,7 @@ class MetricsTests(unittest.TestCase):
             result = score_transcript("Nein wirklich", "Nein")
 
         process_words.assert_called_once()
-        process_characters.assert_called_once()
+        process_characters.assert_called_once_with("neinwirklich", "nein")
         self.assertEqual(1, result["deletions"])
         self.assertEqual(0.5, result["wer"])
         self.assertEqual(0.25, result["cer"])

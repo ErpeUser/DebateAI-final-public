@@ -322,7 +322,7 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
     block_power = (ref.reshape(blocks, block) ** 2).mean(axis=1)
     loud = block_power[block_power > _SILENCE_RMS ** 2]
     if not loud.size:
-        return mic.copy()
+        return whole_mic.copy()
     active_level = float(np.percentile(loud, 75))
     gate = max(active_level * 10 ** (_ACTIVE_LEVEL_DB / 10), _SILENCE_RMS ** 2)
     regularization = _POWER_REGULARIZATION * partitions * nfft * active_level

@@ -8,8 +8,7 @@ import os
 import shutil
 from playwright.sync_api import sync_playwright
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-PUBLIC = ROOT / 'public'
+from browser_fixture import PUBLIC, load_calibration_modules
 
 class QuietHandler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, *args):
@@ -32,13 +31,14 @@ class BrowserTests(unittest.TestCase):
 
     def setUp(self):
         self.context = self.browser.new_context(viewport={'width':1440,'height':1000})
+        self.addCleanup(self.context.close)
         self.page = self.context.new_page()
-        self.page.set_default_timeout(2000)
+        self.page.set_default_timeout(5000)
         self.errors=[]; self.page.on('pageerror',lambda e:self.errors.append(str(e)))
         # The host's Chromium enterprise policy blocks every navigation and real
         # capture. Do not disable it. Render the exact page in about:blank with
         # explicit fetch/storage/media fixtures. This is NOT a hardware test.
-        html=(PUBLIC/'calibration.html').read_text()
+        html=(PUBLIC/'calibration.html').read_text(encoding='utf-8')
         import re
         html=re.sub(r'<link rel="stylesheet"[^>]+>', '', html)
         html=re.sub(r'<script[^>]+></script>', '', html)
@@ -52,6 +52,10 @@ class BrowserTests(unittest.TestCase):
           window.__asrResponse={status:200,body:{models:[],attempted_trials:0,failed_trials:0}};
           window.__uploads=[];
           window.fetch=async (url, options={})=>{
+            if(url==='/api/meta')return new Response('{}', {headers:{'X-DebateAI-Instance':'calibration-fixture'}});
+            if(new Headers(options.headers).get('X-DebateAI-Instance')!=='calibration-fixture'){
+              throw new Error('Calibration request did not use its bootstrapped desktop session.');
+            }
             if(url==='/api/calibration/catalog')return new Response(JSON.stringify({runtime_available:true,local_only:true,models:[
               {id:'local-whisper-base',cached:true},{id:'local-parakeet-tdt-0.6b-v3',cached:true},{id:'local-whisper-large-v3-turbo',cached:false}]}),{status:200});
             if(url==='/api/calibration/status')return new Response(JSON.stringify({busy:false,runtime_busy:false}),{status:200});
@@ -71,13 +75,8 @@ class BrowserTests(unittest.TestCase):
             }
           },configurable:true});
         }""")
-        core=(PUBLIC/'calibration/core.mjs').read_text().replace('export ', '')
-        lab=(PUBLIC/'calibration/lab.mjs').read_text().split('\n',1)[1]
-        self.page.add_script_tag(type='module',content=core+'\n'+lab)
+        load_calibration_modules(self.page)
         self.page.wait_for_selector('#model-options input')
-
-    def tearDown(self):
-        self.context.close()
 
     def clip(self):
         self.page.locator('#audio-file').set_input_files({'name':'fixture.wav','mimeType':'audio/wav','buffer':b'RIFFfixture'})

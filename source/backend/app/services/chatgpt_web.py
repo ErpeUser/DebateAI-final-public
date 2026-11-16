@@ -265,6 +265,20 @@ async def _terminate_child(process: asyncio.subprocess.Process) -> None:
         await asyncio.wait_for(process.wait(), timeout=5)
 
 
+async def _reap_before_release(process: asyncio.subprocess.Process) -> None:
+    """Keep ownership through bounded cleanup, including repeated cancellation."""
+    cleanup = asyncio.create_task(_terminate_child(process))
+    cancelled = False
+    while not cleanup.done():
+        try:
+            await asyncio.shield(cleanup)
+        except asyncio.CancelledError:
+            cancelled = True
+    cleanup.result()
+    if cancelled:
+        raise asyncio.CancelledError
+
+
 def _record_refusal(source: str, research: str | None, error_class: str) -> None:
     category = "research_claim" if research in {"search", "deep"} else external_audit.data_category_for_source(source)
     external_audit.record_external_request(
@@ -278,16 +292,7 @@ def _record_refusal(source: str, research: str | None, error_class: str) -> None
     )
 
 
-async def generate(
-    prompt: str,
-    *,
-    system: str | None = None,
-    reasoning_effort: str | None = "xhigh",
-    research: str | None = None,
-    timeout_seconds: float = 660,
-    source: str = "",
-) -> str:
-    research_mode_value = research if research in {"search", "deep"} else None
+def _require_ready(source: str, research_mode_value: str | None) -> None:
     if not runtime_available():
         _record_refusal(source, research_mode_value, "RuntimeUnavailable")
         raise RuntimeError("ChatGPT Web ist in dieser Installation nicht verfuegbar.")
@@ -298,11 +303,31 @@ async def generate(
         _record_refusal(source, research_mode_value, "LoginBusy")
         raise RuntimeError("Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen.")
 
+
+
+async def generate(
+    prompt: str,
+    *,
+    system: str | None = None,
+    reasoning_effort: str | None = "xhigh",
+    research: str | None = None,
+    timeout_seconds: float = 660,
+    source: str = "",
+) -> str:
+    research_mode_value = research if research in {"search", "deep"} else None
+    deadline = asyncio.get_running_loop().time() + max(1.0, float(timeout_seconds))
+    _require_ready(source, research_mode_value)
+
     # Oracle owns one dedicated Chrome profile. Keep its complete browser
     # lifecycle single-flight so one agent cannot close another agent's window.
-    async with _ORACLE_LOCK:
-        if _LOGIN_RESERVED:
-            raise RuntimeError("Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen.")
+    try:
+        async with asyncio.timeout_at(deadline):
+            await _ORACLE_LOCK.acquire()
+    except TimeoutError:
+        _record_refusal(source, research_mode_value, "TimeoutError")
+        raise
+    try:
+        _require_ready(source, research_mode_value)
         home = _path("DEBATEAI_CHATGPT_WEB_HOME")
         home.mkdir(parents=True, exist_ok=True)
         jobs = home / "jobs"
@@ -342,22 +367,20 @@ async def generate(
         content = f"{system.strip()}\n\n{prompt.strip()}" if system else prompt.strip()
         process = None
         try:
-            process = await asyncio.create_subprocess_exec(
-                *command,
-                stdin=asyncio.subprocess.PIPE,
-                stdout=asyncio.subprocess.PIPE,
-                stderr=asyncio.subprocess.PIPE,
-                env=env,
-                creationflags=flags,
-            )
             try:
-                stdout, stderr = await asyncio.wait_for(
-                    process.communicate(content.encode("utf-8")),
-                    timeout=max(1.0, float(timeout_seconds)),
-                )
+                async with asyncio.timeout_at(deadline):
+                    process = await asyncio.create_subprocess_exec(
+                        *command,
+                        stdin=asyncio.subprocess.PIPE,
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE,
+                        env=env,
+                        creationflags=flags,
+                    )
+                    stdout, stderr = await process.communicate(content.encode("utf-8"))
             except (asyncio.TimeoutError, asyncio.CancelledError):
                 if process is not None:
-                    await asyncio.shield(_terminate_child(process))
+                    await _reap_before_release(process)
                 raise
             if process.returncode:
                 diagnostic = stderr or stdout
@@ -422,3 +445,5 @@ async def generate(
             raise
         finally:
             output.unlink(missing_ok=True)
+    finally:
+        _ORACLE_LOCK.release()

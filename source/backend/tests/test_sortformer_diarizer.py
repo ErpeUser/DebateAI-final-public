@@ -25,6 +25,26 @@ class StubSortformerDiarizer(SortformerDiarizer):
 
 
 class SortformerDiarizerTests(unittest.TestCase):
+    def test_empty_primary_dictionary_fields_keep_their_alias_fallbacks(self):
+        for raw in (
+            {"start": "", "start_time": 0.5, "end": 1.0, "speaker": "s"},
+            {"start": 0.5, "end": "", "end_time": 1.0, "speaker": "s"},
+            {"start": 0.5, "end": 1.0, "speaker": "", "speaker_id": "s"},
+        ):
+            with self.subTest(raw=raw):
+                turns = extract_sortformer_turns([raw])
+                self.assertEqual([(0.5, 1.0, "s")], [(t.start_seconds, t.end_seconds, t.label) for t in turns])
+
+    def test_dictionary_turns_preserve_zero_start_and_speaker(self):
+        for raw in (
+            {"start": 0.0, "end": 1.0, "speaker": 0},
+            {"start_time": 0.0, "end_time": 1.0, "speaker_id": 0},
+            {"start_seconds": 0.0, "duration": 1.0, "label": 0},
+        ):
+            with self.subTest(raw=raw):
+                turns = extract_sortformer_turns([raw])
+                self.assertEqual([(0.0, 1.0, "0")], [(t.start_seconds, t.end_seconds, t.label) for t in turns])
+
     def test_segments_record_absolute_start_across_windows(self):
         diarizer = StubSortformerDiarizer(
             [["0.00 1.00 speaker_0"], ["0.00 1.00 speaker_0"]],

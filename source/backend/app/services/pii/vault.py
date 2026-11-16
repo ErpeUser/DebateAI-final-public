@@ -9,10 +9,9 @@ credentials' root of trust without sharing their key.
 Decode path (``reveal_map``): the session's token-to-value map, decrypted on
 demand. Only ``shield.reveal_text`` calls it.
 
-Both paths go through an in-process cache per session. The application is a
-single process, every write lands in the cache before the transaction ends,
-and the cache is dropped when a session is deleted, so a cached map is never
-stale for longer than one request.
+Both paths cache within the caller's database session and transaction scope.
+Uncommitted values never escape into another transaction's cache, and ending
+an outer transaction or caller savepoint invalidates its cached state.
 """
 
 from __future__ import annotations
@@ -34,6 +33,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models import PiiVaultEntry
 from app.services.redaction import register_secret
 from app.services.pii.recognizers import CATEGORIES, normalize_value
+from app.services.pii.transaction_cache import TransactionCache
 from app.services.secrets import derive_subkey
 
 logger = logging.getLogger(__name__)
@@ -63,7 +63,7 @@ class _SessionVault:
     loaded: bool = False
 
 
-_vaults: dict[uuid.UUID, _SessionVault] = {}
+_vaults = TransactionCache()
 _lock = threading.Lock()
 _fernet: Fernet | None = None
 _lookup_key: bytes | None = None
@@ -137,21 +137,24 @@ def decrypt(ciphertext: str, category: str = "") -> str:
     return ""
 
 
-def _vault(session_id: uuid.UUID) -> _SessionVault:
+def _vault(db: AsyncSession, session_id: uuid.UUID) -> _SessionVault:
     with _lock:
-        vault = _vaults.get(session_id)
+        cache = _vaults.for_session(db)
+        vault = cache.get(session_id)
         if vault is None:
             vault = _SessionVault()
-            _vaults[session_id] = vault
+            cache[session_id] = vault
         return vault
 
 
 async def _ensure_loaded(db: AsyncSession, session_id: uuid.UUID) -> _SessionVault:
-    vault = _vault(session_id)
+    vault = _vault(db, session_id)
     if vault.loaded:
         return vault
     result = await db.execute(select(PiiVaultEntry).where(PiiVaultEntry.session_id == session_id))
     rows = list(result.scalars().all())
+    # The first query may have autobegun the outer transaction.
+    vault = _vault(db, session_id)
     with _lock:
         if not vault.loaded:
             for row in rows:
@@ -257,7 +260,7 @@ async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, valu
             # Another writer may have won either the value or the ordinal.
             # Reload after the savepoint rollback and use/retry its result.
             with _lock:
-                _vaults.pop(session_id, None)
+                _vaults.for_session(db).pop(session_id, None)
             vault = await _ensure_loaded(db, session_id)
             found = vault.by_hmac.get(digest)
             if found:
@@ -290,10 +293,7 @@ async def entry_count(db: AsyncSession, session_id: uuid.UUID) -> int:
 def forget(session_id: uuid.UUID | None = None) -> None:
     """Drop cached state: one session (on delete) or everything (tests)."""
     with _lock:
-        if session_id is None:
-            _vaults.clear()
-        else:
-            _vaults.pop(session_id, None)
+        _vaults.invalidate(session_id)
 
 
 def reset_keys_for_tests() -> None:

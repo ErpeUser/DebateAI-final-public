@@ -10,6 +10,22 @@ def frame(value: int) -> bytes:
 
 
 class TrackMixerTests(unittest.TestCase):
+    def test_idle_partial_tail_is_padded_and_does_not_block_active_audio(self):
+        for active in (0, 1):
+            with self.subTest(active=active):
+                clock = [0.0]
+                mixer = TrackMixer(now=lambda: clock[0])
+                self.assertIsNone(mixer.add(1 - active, frame(200)[:FRAME_BYTES // 2]))
+                clock[0] = 1.0
+                result = mixer.add(active, frame(100))
+                self.assertIsNotNone(result)
+                mixed, mic, system = result
+                np.testing.assert_array_equal(np.frombuffer(mixed, dtype=np.int16), [300] * 800 + [100] * 800)
+                quiet = system if active == 0 else mic
+                np.testing.assert_array_equal(np.frombuffer(quiet, dtype=np.int16), [200] * 800 + [0] * 800)
+                self.assertEqual(frame(100), mixer.add(active, frame(100))[0])
+                self.assertIsNone(mixer.flush())
+
     def setUp(self):
         self.now = 0.0
         self.mixer = TrackMixer(now=lambda: self.now)

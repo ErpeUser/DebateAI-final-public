@@ -48,12 +48,16 @@ def _audit_path() -> Path:
     return data_dir() / "audit" / _AUDIT_FILE_NAME
 
 
+class _ClaimId(str):
+    """A digest created here, distinguishable from arbitrary caller text."""
+
+
 def claim_id_for(value: object) -> str:
     """Return a stable opaque claim id without retaining the claim text."""
     text = " ".join(str(value or "").split()).strip()
     if not text:
         return ""
-    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:32]
+    return _ClaimId(hashlib.sha256(text.encode("utf-8")).hexdigest()[:32])
 
 
 def current_claim_id() -> str:
@@ -126,11 +130,13 @@ def _host(value: object) -> str:
 
 
 def _safe_claim_id(value: object | None) -> str:
+    if isinstance(value, _ClaimId):
+        return str(value)
     text = str(value or "").strip()
     if not text:
         return current_claim_id()
-    # Callers may provide a precomputed digest; hashing again keeps arbitrary
-    # user text out of the record even when a new caller gets this wrong.
+    # Plain strings remain untrusted, even when they look like a digest.
+    # Internal callers preserve the marker returned by claim_id_for().
     return claim_id_for(text)
 
 

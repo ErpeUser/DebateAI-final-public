@@ -316,8 +316,12 @@ class NemotronStreamingASRBackend:
             updated = await asyncio.wait_for(self._event(socket), self._event_timeout)
             if updated["type"] != "session.updated":
                 raise RuntimeError(f"Expected session.updated, got {updated['type']}")
-        except Exception:
-            await socket.close()
+        except (Exception, asyncio.CancelledError):
+            try:
+                await asyncio.shield(socket.close())
+            except Exception:
+                # Cleanup must not replace the original error or cancellation.
+                pass
             raise
         stream = _TrackStream(track=track, socket=socket)
         stream.receiver = asyncio.create_task(

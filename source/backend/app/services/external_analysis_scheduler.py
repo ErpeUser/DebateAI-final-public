@@ -102,23 +102,53 @@ class ExternalAnalysisScheduler:
         )
         self._ensure_workers()
         self._enqueue(job)
+        # Capacity can stay occupied longer than this job's budget. Expire the
+        # waiter independently, but leave a running operation owned by its worker
+        # until cancellation cleanup has actually finished.
+        expiry = loop.call_at(job.expires_at, self._expire_job, job)
         try:
             return await result
         except asyncio.CancelledError:
             self.cancel_generation(context.generation_id)
             raise
+        finally:
+            expiry.cancel()
+            # A deadline/manual error can settle the future in the same turn
+            # that the caller is cancelled. Own that error even if cancellation
+            # wins delivery to the caller.
+            if result.done() and not result.cancelled():
+                result.exception()
+
+    def _expire_job(self, job: _AnalysisJob) -> None:
+        if job.result.done():
+            return
+        self._remove_pending(job.context.generation_id)
+        message = (
+            "Analysis expired while waiting for capacity"
+            if job.inner_task is None
+            else "Analysis exceeded its end-to-end deadline"
+        )
+        job.result.set_exception(ExternalAnalysisDeadline(message))
+        if job.inner_task is not None and not job.inner_task.done():
+            job.inner_task.cancel()
+        self._wake.set()
 
     def cancel_generation(self, generation_id: str) -> bool:
         """Cancel one queued/running request without touching shared bridges."""
         job = self._running.get(generation_id)
         if job is None:
             job = self._remove_pending(generation_id)
-        if job is None or job.result.done():
+        if job is None or job.cancel_requested:
+            return False
+        # Cancelling run() also cancels the future it directly awaits. That
+        # does not mean the worker's provider operation has stopped.
+        if job.result.done() and not job.result.cancelled():
             return False
         job.cancel_requested = True
-        job.result.set_exception(
-            ExternalAnalysisCancelled(f"Analysis {generation_id} was cancelled")
-        )
+        if not job.result.done():
+            job.result.set_exception(
+                ExternalAnalysisCancelled(f"Analysis {generation_id} was cancelled")
+            )
         if job.inner_task is not None and not job.inner_task.done():
             job.inner_task.cancel()
         self._wake.set()
@@ -249,7 +279,9 @@ class ExternalAnalysisScheduler:
         job.inner_task = inner
         self._running[generation_id] = job
         try:
-            value = await asyncio.wait_for(inner, timeout=remaining)
+            # run() owns the deadline and cancels this operation. A second
+            # timeout here could cancel its cleanup a second time.
+            value = await inner
             if job.result.done():
                 return
             if not job.is_current():
@@ -271,6 +303,11 @@ class ExternalAnalysisScheduler:
                     else ExternalAnalysisSuperseded("Analysis worker was cancelled")
                 )
                 job.result.set_exception(error)
+            # Cancelling an inner job is recoverable; cancelling the worker
+            # itself is shutdown and must terminate its loop after cleanup.
+            worker = asyncio.current_task()
+            if worker is not None and worker.cancelling():
+                raise
         except Exception as exc:
             if not job.result.done():
                 job.result.set_exception(exc)

@@ -1876,7 +1876,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             target_claim="Die Rate betrug acht Prozent in Deutschland.",
         )
 
-        with mock.patch(
+        with patch(
             "app.services.agents.orchestrator.time.monotonic",
             return_value=100.5,
         ):
@@ -1890,11 +1890,11 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             return fake_task
 
         with (
-            mock.patch(
+            patch(
                 "app.services.agents.orchestrator.time.monotonic",
                 return_value=101.6,
             ),
-            mock.patch(
+            patch(
                 "app.services.agents.orchestrator.asyncio.create_task",
                 side_effect=capture_task,
             ),
@@ -1904,11 +1904,11 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._active_claim_is_interim = False
         orchestrator._last_research_at = 0.0
         with (
-            mock.patch(
+            patch(
                 "app.services.agents.orchestrator.time.monotonic",
                 return_value=100.5,
             ),
-            mock.patch(
+            patch(
                 "app.services.agents.orchestrator.asyncio.create_task",
                 side_effect=capture_task,
             ),

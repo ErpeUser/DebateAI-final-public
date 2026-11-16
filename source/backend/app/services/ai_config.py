@@ -36,29 +36,30 @@ _REQUIRED_PLACEHOLDERS = {
 # allowlist at the validation boundary prevents an editable prompt from
 # introducing an unexpected field lookup (or a typo that silently renders as
 # an empty/incorrect value) when it is later formatted by an agent.
-_ALLOWED_PROMPT_PLACEHOLDERS = frozenset({
-    "claim",
-    "own_position",
-    "relevant_context",
-    "evidence",
-    "meeting_context_text",
-    "speakers_text",
-    "insights_json",
-    "transcript_text",
-    "transcript_window",
-    "directives_text",
-    "document_summaries",
-    "active_questions",
-    "lens_sections",
-    "item_type_values",
-    "recent_objections",
-    "knowledge_context",
-    "opportunities_json",
-    "insights_text",
-    "discovery_lens_json",
-    "meeting_lens_json",
-    "mode",
-})
+_OBJECTION_FIELDS = {"meeting_context_text", "transcript_window", "directives_text", "speakers_text", "recent_objections"}
+_BRIEF_FIELDS = {"meeting_context_text", "mode", "speakers_text", "directives_text", "document_summaries", "insights_text", "transcript_text"}
+_PYTHON_PROMPT_FIELDS = {
+    "agent.consolidated_analyst": {
+        "meeting_context_text", "transcript_window", "directives_text", "document_summaries",
+        "speakers_text", "active_questions", "lens_sections", "item_type_values",
+    },
+    "agent.objection_handler": _OBJECTION_FIELDS,
+    "debate_live_v2": _OBJECTION_FIELDS,
+    "experimental_debate_live_v1": _OBJECTION_FIELDS,
+    "agent.synthesizer": {"meeting_context_text", "insights_json", "transcript_text"},
+    "agent.opportunity_specialist": {"meeting_context_text", "knowledge_context", "opportunities_json"},
+    "agent.strategic_signals": _BRIEF_FIELDS,
+    "agent.brief_meeting_lens": _BRIEF_FIELDS,
+    "agent.brief_discovery_lens": _BRIEF_FIELDS,
+    "agent.brief_arbiter": {"meeting_context_text", "mode", "meeting_lens_json", "discovery_lens_json"},
+    "speaker_context_enhancement": {"meeting_context_text", "speakers_text", "insights_json", "transcript_text"},
+    "analyze_transcript": {"meeting_context_text", "directives_text", "transcript_text"},
+}
+_LITERAL_PROMPTS = {
+    "debate_deep_v1", "background.oracle", "background.gemini", "background.gpt6",
+    "experimental_research_v1", "experimental_adversarial_v1", "experimental_strategist_v1",
+}
+_DEEP_FIELDS = {"claim", "own_position", "relevant_context", "evidence"}
 _TRUTHY = {"1", "true", "yes", "on"}
 
 
@@ -416,15 +417,28 @@ def _validate_prompt_content(name: str, content: str) -> str:
         raise ValueError("Ein aktiver Prompt darf nicht leer sein.")
     if len(value) > _MAX_PROMPT_CHARACTERS:
         raise ValueError("Der Prompt ist zu gross.")
-    try:
-        placeholders = {
-            field_name.split(".", 1)[0].split("[", 1)[0]
-            for _literal, field_name, _format, _conversion in Formatter().parse(value)
-            if field_name
-        }
-    except ValueError as exc:
-        raise ValueError("Der Prompt enthaelt ungueltige Template-Klammern.") from exc
-    unknown = placeholders - _ALLOWED_PROMPT_PLACEHOLDERS
+    allowed = _PYTHON_PROMPT_FIELDS.get(name)
+    if allowed is not None:
+        try:
+            fields = list(Formatter().parse(value))
+        except ValueError as exc:
+            raise ValueError("Der Prompt enthaelt ungueltige Template-Klammern.") from exc
+        placeholders = set()
+        for _literal, field_name, format_spec, conversion in fields:
+            if field_name is None:
+                continue
+            if not field_name or not field_name.isidentifier() or format_spec or conversion:
+                raise ValueError("Promptplatzhalter muessen einfache benannte Felder sein.")
+            placeholders.add(field_name)
+    elif name in _LITERAL_PROMPTS:
+        # These consumers use exact str.replace(), not Python formatting;
+        # JSON braces in their instructions remain literal.
+        placeholders = set(re.findall(r"\{([A-Za-z_]\w*)\}", value))
+        allowed = _DEEP_FIELDS
+    else:
+        # Raw system instructions are passed to the provider without formatting.
+        return value
+    unknown = placeholders - allowed
     if unknown:
         raise ValueError(
             "Unbekannte Promptplatzhalter: "
@@ -750,6 +764,7 @@ def research_settings() -> dict[str, Any]:
     raw = raw if isinstance(raw, dict) else {}
     providers = raw.get("providers")
     enabled = []
+    disabled = set()
     if isinstance(providers, list):
         enabled = [
             str(item.get("id") or "").strip()
@@ -758,6 +773,11 @@ def research_settings() -> dict[str, Any]:
             and item.get("enabled", True) is True
             and str(item.get("id") or "").strip()
         ]
+        disabled = {
+            str(item.get("id") or "").strip()
+            for item in providers
+            if isinstance(item, dict) and item.get("enabled", True) is not True
+        }
     def bounded(name: str, default: int, minimum: int, maximum: int) -> int:
         try:
             return max(minimum, min(maximum, int(raw.get(name, default))))
@@ -767,7 +787,7 @@ def research_settings() -> dict[str, Any]:
     # configured AI web/API providers so the visible answer can integrate the
     # findings without exposing provider-by-provider output.
     legacy_disabled = {"duckduckgo", "wikipedia"}
-    enabled = [provider for provider in enabled if provider not in legacy_disabled]
+    enabled = [provider for provider in enabled if provider not in legacy_disabled | disabled]
     configured_fallback = raw.get("fallback_providers")
     fallback = (
         [
@@ -778,6 +798,7 @@ def research_settings() -> dict[str, Any]:
         if isinstance(configured_fallback, list)
         else ["gemini_web", "gemini_api", "cliproxyapi"]
     )
+    fallback = [provider for provider in fallback if provider.strip() not in disabled]
     return {
         "enabled": raw.get("enabled", True) is not False,
         "providers": enabled if isinstance(providers, list) else ["chatgpt_web", "gemini_web"],

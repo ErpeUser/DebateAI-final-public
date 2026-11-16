@@ -62,9 +62,13 @@ async def run_async_migrations():
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
-    async with connectable.connect() as connection:
-        await connection.run_sync(do_run_migrations)
-    await connectable.dispose()
+    try:
+        # The PostgreSQL version-table prelude autobegins before Alembic
+        # configures its context. Own and commit that outer transaction.
+        async with connectable.begin() as connection:
+            await connection.run_sync(do_run_migrations)
+    finally:
+        await connectable.dispose()
 
 
 def run_migrations_online():

@@ -1,4 +1,5 @@
 import importlib.util
+import os
 import pathlib
 import subprocess
 import tempfile
@@ -110,11 +111,17 @@ class WorkspaceSafetyTests(unittest.TestCase):
         outside = self.root / 'outside'
         outside.mkdir()
         (outside / 'data.txt').write_text('saved')
-        (self.local / 'private').symlink_to(outside, target_is_directory=True)
+        try:
+            (self.local / 'private').symlink_to(outside, target_is_directory=True)
+        except OSError as exc:
+            if getattr(exc, 'winerror', None) == 1314:
+                self.skipTest('Creating symlinks requires a Windows privilege unavailable to this process')
+            raise
         with self.assertRaises(safety.WorkspaceCollision):
             safety.protect_local_only_files(self.local)
         self.assertEqual((outside / 'data.txt').read_text(), 'saved')
 
+    @unittest.skipIf(os.name == 'nt', 'Win32 filenames cannot contain a newline')
     def test_newline_in_filename_is_preserved(self):
         self.incoming("\nprivate.secret")
         (self.local / "\nprivate.secret").write_text("saved")

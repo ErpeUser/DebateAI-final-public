@@ -598,6 +598,8 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             session_id,
             ANY,
             model_id="model",
+            commit=False,
+            fail_on_transcription_error=True,
         )
 
     async def test_missing_split_file_falls_back_to_complete_mixed_audio(self):
@@ -641,6 +643,8 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             session_id,
             ANY,
             model_id="model",
+            commit=False,
+            fail_on_transcription_error=True,
         )
 
 

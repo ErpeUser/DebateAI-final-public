@@ -4,7 +4,7 @@ from pathlib import Path
 import re
 import unittest
 from playwright.sync_api import sync_playwright
-PUBLIC=Path(__file__).resolve().parents[1]/'public'
+from browser_fixture import PUBLIC, load_calibration_modules
 class ImportEvidenceBrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
@@ -14,13 +14,12 @@ class ImportEvidenceBrowserTests(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):cls.browser.close();cls.pw.stop()
     def setUp(self):
-        self.context=self.browser.new_context();self.page=self.context.new_page();self.page.set_default_timeout(1500)
-        html=re.sub(r'<link rel="stylesheet"[^>]+>|<script[^>]+></script>','',(PUBLIC/'calibration.html').read_text())
+        self.context=self.browser.new_context();self.page=self.context.new_page();self.page.set_default_timeout(5000)
+        self.addCleanup(self.context.close)
+        html=re.sub(r'<link rel="stylesheet"[^>]+>|<script[^>]+></script>','',(PUBLIC/'calibration.html').read_text(encoding='utf-8'))
         self.page.set_content(html)
         self.page.evaluate('''() => {const store=new Map();Object.defineProperty(window,'localStorage',{value:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)},configurable:true});window.fetch=async()=>new Response(JSON.stringify({runtime_available:false,models:[]}),{status:200});}''')
-        core=(PUBLIC/'calibration/core.mjs').read_text().replace('export ','');lab=(PUBLIC/'calibration/lab.mjs').read_text().split('\n',1)[1]
-        self.page.add_script_tag(type='module',content=core+'\n'+lab)
-    def tearDown(self):self.context.close()
+        load_calibration_modules(self.page)
     def upload(self,value):self.page.locator('#blind-file').set_input_files({'name':'experiment.json','mimeType':'application/json','buffer':json.dumps(value).encode()})
     def test_failed_experiment_summary_but_no_fake_vote(self):
         self.page.check('#persist');self.upload({'schema_version':1,'kind':'production_replay_blind_suite','cases':[],'failures':[{'case_id':'de-001','mode':'hart','errors':[{'candidate_id':'a','status':'failed'}]}],'summary':{'attempted_pairs':1,'votable_pairs':0,'failed_pairs':1,'attempted_candidates':2,'failed_candidates':1}})

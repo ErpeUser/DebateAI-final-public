@@ -106,7 +106,7 @@ export default function ChatGPTWebCard({ onChanged }: { onChanged?: () => void }
   return (
     <div className="rounded-xl border border-violet-200 bg-surface p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-base font-bold text-brand-dark-gray">ChatGPT Pro über normalen Webzugang</h3>
+        <h3 className="font-display text-base font-bold text-brand-dark-gray">ChatGPT Web über normalen Zugang</h3>
         <span className={`rounded-full px-2 py-0.5 font-body text-[10px] font-medium text-white ${status?.ready ? "bg-brand-teal" : "bg-violet-500"}`}>
           {badge}
         </span>

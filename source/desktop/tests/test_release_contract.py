@@ -12,6 +12,7 @@ PLATFORM_PUBLISHER_PATH = ROOT / "scripts" / "publish_release_platform.ps1"
 PLATFORM_PUBLISHER = (
     PLATFORM_PUBLISHER_PATH.read_text() if PLATFORM_PUBLISHER_PATH.exists() else ""
 )
+BUILD_SCRIPT = (ROOT / "scripts" / "build_debate_assistant.ps1").read_text()
 LINUX_DOCKERFILE = (ROOT / "desktop" / "Dockerfile.release-linux").read_text()
 COORDINATOR = (ROOT / "scripts" / "release_desktop.ps1").read_text()
 UPDATE_SMOKE = ROOT / "desktop" / "scripts" / "smoke_update_archive.py"
@@ -20,7 +21,7 @@ UPDATE_SMOKE = ROOT / "desktop" / "scripts" / "smoke_update_archive.py"
 # The Linux build runs the same steps inside Dockerfile.release-linux, which
 # test_linux_release_container_builds_smokes_and_exports_one_tarball covers.
 NATIVE_BUILD_STEPS = (
-    "node-version: 24",
+    "node-version: 24.21.0",
     "npm ci",
     "npm run build",
     "download_models.py",
@@ -56,8 +57,8 @@ PLATFORMS = {
         "digest_check": "sha256sum -c -",
         "package": "docker build",
         "build_steps": (
-            "--file controller/desktop/Dockerfile.release-linux",
-            "--build-context controller=controller/desktop/scripts",
+            "--file controller/source/desktop/Dockerfile.release-linux",
+            "--build-context controller=controller/source/desktop/scripts",
             "--target export",
             "[[ ${#files[@]} -eq 1 ]]",
             '[[ "${files[0]}" == "linux-output/DebateAI-linux-x64.tar.gz" ]]',
@@ -122,6 +123,31 @@ def _triggers_and_inputs():
 
 
 class ReleaseContractTests(unittest.TestCase):
+    def test_release_build_uses_pinned_oracle_node_and_correct_linux_checkout_paths(self):
+        for value in (
+            "node-version: 24.21.0",
+            "--file controller/source/desktop/Dockerfile.release-linux",
+            "--build-context controller=controller/source/desktop/scripts",
+        ):
+            self.assertIn(value, WORKFLOW)
+        self.assertNotIn("node-version: 24\n", WORKFLOW)
+        self.assertIn('"v24.21.0"', BUILD_SCRIPT)
+        self.assertIn("ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32", BUILD_SCRIPT)
+
+    def test_current_tag_layout_is_used_for_build_and_verified_asset_handoff(self):
+        for platform in NATIVE_PLATFORMS:
+            build = _job("build", platform)
+            self.assertIn("working-directory: source/source/frontend", build)
+            self.assertIn("-r source/source/backend/requirements.txt", build)
+            self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], build)
+        self.assertIn("--output type=local,dest=linux-output \\\n            source/source\n", _job("build", "linux"))
+        self.assertIn("COPY ai/ ai/", LINUX_DOCKERFILE)
+        for platform in PLATFORMS:
+            publish = _job("publish", platform)
+            self.assertIn("ref: ${{ inputs.expected_commit }}", publish)
+            self.assertIn("working-directory: source/source", publish)
+            self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], publish)
+
     def test_local_coordinator_is_tag_pinned_progressive_and_failure_isolated(self):
         for value in (
             "SupportsShouldProcess", "worktree add --detach", "^{commit}",
@@ -255,7 +281,7 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertNotIn("actions: write", publish)
                 self.assertIn("group: debateai-r2-publish", publish)
                 self.assertIn("cancel-in-progress: false", publish)
-                self.assertIn("ref: ${{ inputs.release_ref }}", publish)
+                self.assertIn("ref: ${{ inputs.expected_commit }}", publish)
                 self.assertRegex(
                     publish,
                     r'pip install "cryptography(?:==44\.0\.2|>=41\.0\.0)"',
@@ -264,7 +290,7 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertIn("-SigningMode Remote", publish)
                 self.assertIn("-PlatformId %s " % spec["id"], publish)
                 self.assertIn(
-                    "-AssetPath ../controller/release-assets/%s " % spec["archive"],
+                    "-AssetPath ../../controller/release-assets/%s " % spec["archive"],
                     publish,
                 )
 
@@ -548,13 +574,13 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertLess(smoke, handoff)
                 self.assertIn(
                     "smoke_update_archive.py --platform %s --archive "
-                    "../controller/release-assets/%s" % (spec["id"], spec["archive"]),
+                    "../../controller/release-assets/%s" % (spec["id"], spec["archive"]),
                     build,
                 )
         linux_build = _job("build", "linux")
         self.assertNotIn("smoke_update_archive.py", linux_build)
         self.assertLess(
-            linux_build.index("--file controller/desktop/Dockerfile.release-linux"),
+            linux_build.index("--file controller/source/desktop/Dockerfile.release-linux"),
             linux_build.index("id: handoff"),
         )
 

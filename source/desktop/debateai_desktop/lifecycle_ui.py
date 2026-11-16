@@ -122,17 +122,28 @@ class LifecycleSplash:
                 self._window = None
         return self._window
 
-    def show_startup(self, detail: str) -> None:
+    def _show(self, title: str, detail: str, progress: int) -> None:
         window = self._ensure_window()
-        if window is not None:
-            window.show("Debate AI wird gestartet", detail)
-            window.set_progress(2)
+        if window is None:
+            return
+        try:
+            window.show(title, detail)
+            window.set_progress(progress)
+        except Exception:
+            # Tk can fail after creating the window (for example while the
+            # display is being torn down). Startup and shutdown must remain
+            # best-effort even in that case.
+            self._window = None
+            try:
+                window.close()
+            except Exception:
+                pass
+
+    def show_startup(self, detail: str) -> None:
+        self._show("Debate AI wird gestartet", detail, 2)
 
     def show_shutdown(self, detail: str) -> None:
-        window = self._ensure_window()
-        if window is not None:
-            window.show("Debate AI wird beendet", detail)
-            window.set_progress(5)
+        self._show("Debate AI wird beendet", detail, 5)
 
     def set_detail(self, detail: str) -> None:
         if self._window is not None:

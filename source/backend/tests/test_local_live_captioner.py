@@ -37,6 +37,37 @@ class IsLocalLiveModelTests(unittest.TestCase):
 
 
 class LocalLiveCaptionerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_audio_arriving_during_decode_does_not_move_the_result_span(self):
+        started = asyncio.Event()
+        release = asyncio.Event()
+
+        class BlockingTranscriber:
+            async def transcribe_segment(self, chunk):
+                started.set()
+                await release.wait()
+                return "original chunk"
+
+        cap = self._captioner()
+        cap._transcriber = BlockingTranscriber()
+        cap.session = True
+        await cap.send_audio(b"\x01\x02" * 20000)
+        gen = cap.receive_responses()
+        pending = asyncio.create_task(anext(gen))
+        try:
+            await asyncio.wait_for(started.wait(), 2)
+            await cap.send_audio(b"\x03\x04" * 16000)
+            release.set()
+            event = await asyncio.wait_for(pending, 2)
+            self.assertEqual(0, event["audio_start_sample"])
+            self.assertEqual(20000, event["audio_end_sample"])
+            self.assertEqual(32000, len(cap._pending))
+        finally:
+            release.set()
+            pending.cancel()
+            await asyncio.gather(pending, return_exceptions=True)
+            await cap.close()
+            await gen.aclose()
+
     def test_default_commit_leaves_inference_headroom_for_three_second_first_text(self):
         self.assertLess(COMMIT_SECONDS, 3.0)
 

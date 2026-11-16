@@ -16,6 +16,7 @@ COPY desktop/requirements.txt desktop/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt -r desktop/requirements.txt
 COPY backend/ backend/
 COPY desktop/ desktop/
+COPY ai/ ai/
 COPY --from=frontend /src/frontend/dist frontend/dist
 RUN python backend/scripts/download_models.py
 RUN rm -rf desktop/pgsql && python desktop/scripts/download_pg.py

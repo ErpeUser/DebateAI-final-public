@@ -90,7 +90,7 @@ def run_chatgpt_web_login(result_path: Path) -> int:
             if "No Chrome installations found" in diagnostic:
                 message = "Kein kompatibler Chrome-/Edge-Browser wurde gefunden."
             elif completed.returncode:
-                message = diagnostic[-600:] or f"Oracle wurde mit Code {completed.returncode} beendet."
+                message = "Die ChatGPT-Web-Prüfung konnte nicht abgeschlossen werden."
             elif not answer:
                 message = "ChatGPT Web hat nach der Anmeldung keine Antwort geliefert."
             else:
@@ -110,7 +110,7 @@ def run_chatgpt_web_login(result_path: Path) -> int:
             "thinking": "xhigh",
             "thinking_label": thinking_selection.get("resolvedLabel"),
             "verification": "Oracle UI-Auswahl fuer Modell und Extra High bestaetigt",
-            "answer": answer[:200],
+            "answer_received": bool(answer),
             "latency_ms": latency_ms,
             "verified_at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         }

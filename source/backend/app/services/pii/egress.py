@@ -13,8 +13,9 @@ Prompt log. When ``prompt_log`` is on in the shield settings, every outbound
 prompt is appended to ``DATA_DIR/prompt-log/outbound.jsonl`` exactly as it
 would be sent, with the source agent, model and session. That file is the
 evidence that tokenization works: it should contain ``[PERSON_1]`` and never
-a name. It is written raw on purpose, bypassing the log scrubber, because a
-scrubbed record could not show a leak. It never leaves the machine.
+a name. Detected leaks are redacted from the diagnostic content, while their
+category and fingerprint remain available for investigation. The file never
+leaves the machine.
 """
 
 from __future__ import annotations
@@ -174,9 +175,16 @@ def clear() -> int:
 def _safe_prompt_for_log(text: str, leaks: list[tuple[str, str]]) -> str:
     """Return diagnostic context without persisting any vault value."""
     safe = text
-    for value, _category in sorted(leaks, key=lambda item: len(item[0]), reverse=True):
+    for value, category in sorted(leaks, key=lambda item: len(item[0]), reverse=True):
         if value:
-            safe = safe.replace(value, "[REDACTED]")
+            digits = _digits(value) if category in _DIGIT_CATEGORIES else ""
+            if len(digits) >= 7:
+                # Match the same digit sequence as find_leaks(), including
+                # respaced/reformatted occurrences and repeated occurrences.
+                pattern = r"\D*".join(re.escape(digit) for digit in digits)
+                safe = re.sub(pattern, "[REDACTED]", safe)
+            else:
+                safe = safe.replace(value, "[REDACTED]")
     return safe
 
 

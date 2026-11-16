@@ -31,7 +31,7 @@ def _stored_audio_path(relative_path: str | None):
     if not relative_path:
         return None
     path = data_dir() / relative_path
-    return path if path.exists() else None
+    return path if path.is_file() else None
 
 
 async def _transcribe_stored_segments(
@@ -52,13 +52,12 @@ async def _transcribe_stored_segments(
         if job:
             job.check_canceled()
         segment_start = total
-        job_kwargs = {}
+        job_kwargs = {"commit": False, "fail_on_transcription_error": True}
         if job:
-            job_kwargs = {
+            job_kwargs.update({
                 "cancel_check": job.check_canceled,
                 "entry_callback": lambda count, start=segment_start: job.update_entries(start + count),
-                "commit": False,
-            }
+            })
         mic_path = _stored_audio_path(segment.mic_audio_path)
         system_path = _stored_audio_path(segment.system_audio_path)
         if mic_path and system_path:
@@ -86,7 +85,7 @@ async def _transcribe_stored_segments(
                     model_id=model_id,
                     **job_kwargs,
                 )
-            elif mic_path:
+            elif mic_path and not segment.system_audio_path:
                 total += await _transcribe_audio_diarized(
                     mic_path.read_bytes(),
                     "wav",
@@ -99,7 +98,7 @@ async def _transcribe_stored_segments(
                     local_track=True,
                     **job_kwargs,
                 )
-            elif system_path:
+            elif system_path and not segment.mic_audio_path:
                 total += await _transcribe_audio_diarized(
                     system_path.read_bytes(),
                     "wav",
@@ -110,6 +109,11 @@ async def _transcribe_stored_segments(
                     auto_speaker_map=remote_speaker_map,
                     runtime_config=runtime_config,
                     **job_kwargs,
+                )
+            else:
+                raise FileNotFoundError(
+                    f"Stored audio is incomplete for segment {segment.segment_number}; "
+                    "the existing transcript was kept."
                 )
         if job:
             job.finish_segment(total)
@@ -135,14 +139,21 @@ async def _stored_segments(session_id: uuid.UUID, db: AsyncSession) -> list[Call
 
 
 def _available_segments(segments: list[CallSegment]) -> list[CallSegment]:
-    return [
-        segment
-        for segment in segments
-        if any(
-            _stored_audio_path(path)
-            for path in (segment.mic_audio_path, segment.system_audio_path, segment.audio_path)
+    for segment in segments:
+        mic = _stored_audio_path(segment.mic_audio_path)
+        system = _stored_audio_path(segment.system_audio_path)
+        mixed = _stored_audio_path(segment.audio_path)
+        if mixed or (mic and system):
+            continue
+        if mic and not segment.system_audio_path:
+            continue
+        if system and not segment.mic_audio_path:
+            continue
+        raise FileNotFoundError(
+            f"Stored audio is incomplete for segment {segment.segment_number}; "
+            "the existing transcript was kept."
         )
-    ]
+    return segments
 
 
 async def _run_retranscription_job(
@@ -227,7 +238,10 @@ async def retranscribe_session(
                 "update the app.",
             )
 
-    segments = _available_segments(await _stored_segments(session_id, db))
+    try:
+        segments = _available_segments(await _stored_segments(session_id, db))
+    except FileNotFoundError as exc:
+        raise HTTPException(409, str(exc)) from exc
     if not segments:
         raise HTTPException(404, "No stored audio for this session")
 

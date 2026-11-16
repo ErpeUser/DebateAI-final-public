@@ -85,7 +85,10 @@ class _EncryptionCase(unittest.IsolatedAsyncioTestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        os.environ["DATA_DIR"] = self.tmp.name
+        self.addCleanup(self.tmp.cleanup)
+        environment = mock.patch.dict(os.environ, {"DATA_DIR": self.tmp.name})
+        environment.start()
+        self.addCleanup(environment.stop)
         os.environ.pop("CREDENTIALS_MASTER_KEY", None)
         from app.services import secrets as secrets_mod
 
@@ -94,7 +97,6 @@ class _EncryptionCase(unittest.IsolatedAsyncioTestCase):
 
     def tearDown(self):
         self.secrets._fernet = None
-        self.tmp.cleanup()
 
 
 class ModelIdTests(unittest.TestCase):
@@ -452,13 +454,41 @@ class RouterTests(_EncryptionCase):
 
 
 class ProbeTests(unittest.IsolatedAsyncioTestCase):
+    async def test_streaming_catalog_limit_stops_before_reading_the_whole_body(self):
+        consumed = []
+        closed = []
+
+        class CatalogStream(ce.httpx.AsyncByteStream):
+            async def __aiter__(self):
+                for index in range(3):
+                    consumed.append(index)
+                    yield b"x" * 600_000
+
+            async def aclose(self):
+                closed.append(True)
+
+        transport = ce.httpx.MockTransport(
+            lambda request: ce.httpx.Response(200, stream=CatalogStream())
+        )
+        client = ce.httpx.AsyncClient(transport=transport)
+        with mock.patch.object(ce.httpx, "AsyncClient", return_value=client):
+            ok, message, served = await ce.probe("http://localhost:1234/v1")
+
+        self.assertFalse(ok)
+        self.assertIn("too large", message)
+        self.assertEqual([], served)
+        self.assertEqual([0, 1], consumed)
+        self.assertTrue(closed)
+
     async def test_served_model_names_come_back_for_the_add_form(self):
         payload = {"data": [{"id": "antares-1b"}, {"id": "qwen3-8b"}, {"no_id": True}]}
         response = mock.Mock(
             headers={"content-length": str(len(str(payload)))},
             raise_for_status=mock.Mock(),
         )
-        response.aread = mock.AsyncMock(return_value=__import__("json").dumps(payload).encode())
+        async def chunks(*, chunk_size):
+            yield __import__("json").dumps(payload).encode()
+        response.aiter_bytes = chunks
         stream = mock.AsyncMock()
         stream.__aenter__.return_value = response
         client = mock.Mock()
@@ -477,7 +507,10 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_an_unreachable_server_reports_the_address_it_tried(self):
         response = mock.Mock(headers={"content-length": "0"}, raise_for_status=mock.Mock())
-        response.aread = mock.AsyncMock(side_effect=ce.httpx.ConnectError("refused"))
+        async def chunks(*, chunk_size):
+            raise ce.httpx.ConnectError("refused")
+            yield  # Async generator with the same interface as httpx.
+        response.aiter_bytes = chunks
         stream = mock.AsyncMock()
         stream.__aenter__.return_value = response
         client = mock.Mock()

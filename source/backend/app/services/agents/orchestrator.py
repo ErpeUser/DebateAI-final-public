@@ -29,6 +29,7 @@ from app.config import settings
 from app.database import async_session
 from app.services.identity import env_value
 from app.models import Directive, Question, TranscriptEntry, Speaker
+from app.schemas import SessionSynthesisOut
 from app.services.transcript_refiner import (
     REFINER_LIVE_WINDOW,
     REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
@@ -130,6 +131,13 @@ from app.services.provider_capabilities import (
 from app.services.agents.prompt_resources import load_prompt_resource
 
 logger = logging.getLogger(__name__)
+
+
+def _synthesis_payload(synthesis) -> dict:
+    """Serialize the live summary; signal rows are delivered as insights."""
+    response = SessionSynthesisOut.model_validate(synthesis)
+    response.signal_history_count = len(synthesis.signal_history or [])
+    return response.model_dump(mode="json", exclude={"signal_history"})
 AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5
 
 

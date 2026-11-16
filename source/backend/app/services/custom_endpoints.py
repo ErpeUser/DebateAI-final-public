@@ -384,9 +384,11 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
                 content_length = int(response.headers.get("content-length", "0") or 0)
                 if content_length > 1_048_576:
                     raise ValueError("Endpoint model catalog is too large")
-                body = await response.aread()
-                if len(body) > 1_048_576:
-                    raise ValueError("Endpoint model catalog is too large")
+                body = bytearray()
+                async for chunk in response.aiter_bytes(chunk_size=65_536):
+                    if len(body) + len(chunk) > 1_048_576:
+                        raise ValueError("Endpoint model catalog is too large")
+                    body.extend(chunk)
                 payload = json.loads(body)
     except httpx.HTTPStatusError as exc:
         return False, f"Server returned HTTP {exc.response.status_code}", []
