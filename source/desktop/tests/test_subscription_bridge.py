@@ -188,6 +188,19 @@ class SubscriptionBridgeTests(unittest.TestCase):
             popen.assert_not_called()
             self.assertTrue(bridge.adopted)
 
+    def test_stop_event_cancels_start_before_spawning_a_child(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "subscription-bridge"
+            root.mkdir()
+            (root / "cli-proxy-api.exe").write_bytes(b"test executable")
+            bridge = SubscriptionBridge(Path(tmp), Mock())
+            def cancel_probe():
+                bridge.stop_event.set()
+                return None
+            with patch.object(bridge, "_probe", side_effect=cancel_probe), patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen:
+                self.assertFalse(bridge.start())
+            popen.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

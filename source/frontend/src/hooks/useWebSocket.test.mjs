@@ -87,3 +87,21 @@ test("the replay cursor advances only after the app processes the delivered batc
   assert.ok(acknowledgement > processingStart, "the batch must be acknowledged after processing");
   assert.ok(acknowledgement < effectEnd, "the acknowledgement must remain inside the message effect");
 });
+
+test("socket sends survive a close between readyState check and send", () => {
+  const hook = readFileSync(new URL("./useWebSocket.ts", import.meta.url), "utf8");
+  assert.match(hook, /export function safeSocketSend/);
+  assert.match(hook, /if \(!safeSocketSend\(socket, framed\.buffer\)\)/);
+  assert.match(hook, /if \(!safeSocketSend\(socket, JSON\.stringify\(payload\)\)/);
+  assert.doesNotMatch(hook, /wsRef\.current\.send\(/);
+});
+
+test("app replay cursor resets when the server epoch changes", () => {
+  const hook = readFileSync(new URL("./useWebSocket.ts", import.meta.url), "utf8");
+  const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+  assert.match(hook, /const \[serverEpoch, setServerEpoch\] = useState\(\"\"\)/);
+  assert.match(hook, /setServerEpoch\(incomingEpoch\)/);
+  assert.match(app, /processedEpochRef/);
+  assert.match(app, /serverEpoch !== processedEpochRef\.current/);
+  assert.match(app, /processedSequenceRef\.current = 0;/);
+});

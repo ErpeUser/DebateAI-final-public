@@ -16,7 +16,13 @@ export function reserveOAuthWindow(
     window.open(url, target, features) as OAuthWindow | null
   ),
 ): OAuthWindow | null {
-  return openWindow("about:blank", "_blank", "popup,width=760,height=820");
+  try {
+    return openWindow("about:blank", "_blank", "popup,width=760,height=820");
+  } catch {
+    // CSP, privacy settings, and embedded browsers can throw instead of
+    // returning null. The caller still renders the manual authentication link.
+    return null;
+  }
 }
 
 export function navigateOAuthWindow(popup: OAuthWindow | null, url: string): boolean {

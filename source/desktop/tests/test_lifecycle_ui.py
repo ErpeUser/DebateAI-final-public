@@ -1,5 +1,8 @@
+import sys
 import unittest
+from unittest import mock
 
+from debateai_desktop import lifecycle_ui
 from debateai_desktop.lifecycle_ui import LifecycleSplash
 
 
@@ -62,6 +65,19 @@ class LifecycleSplashTests(unittest.TestCase):
         self.assertTrue(window.closed)
         self.assertFalse(splash.visible)
 
+    def test_detail_failure_closes_and_releases_the_window(self):
+        class _BrokenDetailWindow(_Window):
+            def set_detail(self, detail):
+                raise RuntimeError("display closed")
+
+        window = _BrokenDetailWindow()
+        splash = LifecycleSplash(window_factory=lambda: window)
+        splash.show_startup("Start")
+        splash.set_detail("Weiter")
+
+        self.assertTrue(window.closed)
+        self.assertFalse(splash.visible)
+
     def test_unavailable_gui_never_blocks_the_launcher(self):
         splash = LifecycleSplash(window_factory=lambda: (_ for _ in ()).throw(RuntimeError("no GUI")))
 
@@ -71,6 +87,34 @@ class LifecycleSplashTests(unittest.TestCase):
         splash.close()
 
         self.assertFalse(splash.visible)
+
+    def test_tk_constructor_destroys_root_when_setup_fails(self):
+        destroyed = []
+
+        class Root:
+            def title(self, _value): pass
+            def configure(self, **_kwargs): pass
+            def resizable(self, *_args): pass
+            def attributes(self, *_args): pass
+            def overrideredirect(self, *_args): pass
+            def winfo_screenwidth(self): return 1000
+            def winfo_screenheight(self): return 800
+            def geometry(self, _value): pass
+            def update_idletasks(self): raise RuntimeError("display vanished")
+            def update(self): pass
+            def destroy(self): destroyed.append(True)
+
+        class Widget:
+            def __init__(self, *_args, **_kwargs): pass
+            def pack(self, **_kwargs): return self
+            def pack_propagate(self, *_args): pass
+            def configure(self, **_kwargs): pass
+
+        fake_tk = type("Tk", (), {"Tk": staticmethod(Root), "Frame": Widget, "Label": Widget})
+        with mock.patch.dict(sys.modules, {"tkinter": fake_tk}):
+            with self.assertRaisesRegex(RuntimeError, "display vanished"):
+                lifecycle_ui._TkLifecycleWindow()
+        self.assertEqual(destroyed, [True])
 
 
 if __name__ == "__main__":

@@ -344,7 +344,9 @@ def _restore_hidden_embedded_windows() -> None:
 def _wait_for_process_window(process: subprocess.Popen, timeout: float = 3.0) -> bool:
     """Wait briefly for a packaged WebView child to expose a real window."""
     if sys.platform != "win32":
-        return True
+        # Other platforms do not expose a portable native-window lookup here,
+        # but an already-exited child is never a successfully opened window.
+        return process.poll() is None
     deadline = time.monotonic() + max(0.0, timeout)
     while process.poll() is None and time.monotonic() < deadline:
         if _focus_process_window(process.pid):
@@ -425,7 +427,7 @@ def open_desktop_window(
             logging.getLogger("launcher").exception("embedded desktop window failed to start")
             return False
         _embedded_windows[slot] = process
-        if sys.platform == "win32" and not _wait_for_process_window(process):
+        if not _wait_for_process_window(process):
             logging.getLogger("launcher").warning(
                 "embedded desktop child created no visible window; opening browser fallback"
             )
@@ -464,7 +466,7 @@ def run_embedded_webview(
     height: int,
     on_top: bool,
 ) -> int:
-    """Run the native WebView2 GUI loop in a small child process."""
+    """Run the native pywebview GUI loop in a small child process."""
     try:
         import webview
 
@@ -483,11 +485,20 @@ def run_embedded_webview(
         # visible child on the next Open request. Keeping a closed form alive
         # via window.hide() left a healthy child process with no dependable
         # visible surface after WebView2 lifecycle events.
-        webview.start(gui="edgechromium", debug=False)
+        webview.start(gui=_webview_gui(), debug=False)
         return 0
     except Exception:
         logging.getLogger("launcher").exception("embedded WebView2 failed")
         return 1
+
+
+def _webview_gui() -> str:
+    """Select the pywebview backend available on the current desktop OS."""
+    if sys.platform == "win32":
+        return "edgechromium"
+    if sys.platform == "darwin":
+        return "cocoa"
+    return "gtk"
 
 
 def open_debate_overlay(port: int) -> bool:
@@ -741,11 +752,13 @@ def _watch_for_update(
         stopped.wait(1)
 
 
-def _update_status(port: int) -> dict:
+def _update_status(port: int, token: str | None = None) -> dict:
     try:
-        with urllib.request.urlopen(
-            f"http://{LOOPBACK_HOST}:{port}/api/updates", timeout=2
-        ) as response:
+        request = urllib.request.Request(
+            f"http://{LOOPBACK_HOST}:{port}/api/updates",
+            headers={INSTANCE_HEADER: token} if token else {},
+        )
+        with urllib.request.urlopen(request, timeout=2) as response:
             body = response.read(65_537)
         if response.status != 200 or len(body) > 65_536:
             return {}
@@ -755,8 +768,8 @@ def _update_status(port: int) -> dict:
         return {}
 
 
-def _update_menu_label(port: int) -> str:
-    status = _update_status(port)
+def _update_menu_label(port: int, token: str | None = None) -> str:
+    status = _update_status(port, token)
     if status.get("state") not in {
         "available",
         "authorizing",
@@ -856,7 +869,7 @@ def _run_tray(
             ),
             pystray.MenuItem(
                 (
-                    lambda _item: _update_menu_label(port)
+                    lambda _item: _update_menu_label(port, instance_token)
                     if instance_token
                     else "Nach Updates suchen"
                 ),

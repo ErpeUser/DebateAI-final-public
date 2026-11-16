@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest.mock import patch
 from http.cookies import SimpleCookie
 from pathlib import Path
 
@@ -8,10 +9,19 @@ from debateai_desktop.gemini_web_login import (
     cookie_header_from_webview,
     wait_for_authenticated_cookie_header,
     write_login_result,
+    _webview_gui,
 )
 
 
 class GeminiWebLoginTests(unittest.TestCase):
+    def test_webview_backend_matches_desktop_platform(self):
+        with patch("debateai_desktop.gemini_web_login.sys.platform", "linux"):
+            self.assertEqual("gtk", _webview_gui())
+        with patch("debateai_desktop.gemini_web_login.sys.platform", "darwin"):
+            self.assertEqual("cocoa", _webview_gui())
+        with patch("debateai_desktop.gemini_web_login.sys.platform", "win32"):
+            self.assertEqual("edgechromium", _webview_gui())
+
     def test_cookie_header_keeps_webview_cookies_without_logging_them(self):
         first = SimpleCookie()
         first["__Secure-1PSID"] = "psid-secret"

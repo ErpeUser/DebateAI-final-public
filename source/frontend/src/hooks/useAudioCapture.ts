@@ -196,7 +196,8 @@ export function useAudioCapture() {
     stream: MediaStream,
     track: AudioTrack,
     onChunk: (chunk: ArrayBuffer, track: AudioTrack) => void,
-  ): Promise<() => void> => {
+    generation: number,
+  ): Promise<(() => void) | null> => {
     const source = ctx.createMediaStreamSource(stream);
     const silentSink = ctx.createGain();
     silentSink.gain.value = 0;
@@ -206,6 +207,13 @@ export function useAudioCapture() {
     analyser.fftSize = 256;
     source.connect(analyser);
     analysersRef.current.push({ analyser, track });
+    const stale = () => generation !== captureGenerationRef.current;
+    const cleanupGraph = () => {
+      source.disconnect();
+      analyser.disconnect();
+      silentSink.disconnect();
+      analysersRef.current = analysersRef.current.filter((item) => item.analyser !== analyser);
+    };
 
     try {
       if (!workletReadyRef.current) {
@@ -214,6 +222,10 @@ export function useAudioCapture() {
         await ctx.audioWorklet.addModule(url);
         URL.revokeObjectURL(url);
         workletReadyRef.current = true;
+      }
+      if (stale()) {
+        cleanupGraph();
+        return null;
       }
       const workletNode = new AudioWorkletNode(ctx, "pcm16-processor", {
         processorOptions: { inputSampleRate: ctx.sampleRate },
@@ -224,8 +236,16 @@ export function useAudioCapture() {
       source.connect(workletNode);
       workletNode.connect(silentSink); // required for processing to run
       nodesRef.current.push(workletNode);
+      if (stale()) {
+        teardown(workletNode, () => { workletNode.port.onmessage = null; });
+        return null;
+      }
       return () => teardown(workletNode, () => { workletNode.port.onmessage = null; });
     } catch {
+      if (stale()) {
+        cleanupGraph();
+        return null;
+      }
       // Fallback: ScriptProcessorNode
       const scriptNode = ctx.createScriptProcessor(4096, 1, 1);
       const samplesPerChunk = 1600; // ~100ms at 16kHz
@@ -254,6 +274,10 @@ export function useAudioCapture() {
       source.connect(scriptNode);
       scriptNode.connect(silentSink);
       nodesRef.current.push(scriptNode);
+      if (stale()) {
+        teardown(scriptNode, () => { scriptNode.onaudioprocess = null; });
+        return null;
+      }
       return () => teardown(scriptNode, () => { scriptNode.onaudioprocess = null; });
     }
 
@@ -325,6 +349,11 @@ export function useAudioCapture() {
             candidate.getTracks().forEach((track) => {
               track.addEventListener("ended", handleEnded, { once: true });
             });
+          } else {
+            // A screen share without system audio still owns a live display
+            // stream. Release every track immediately instead of leaking the
+            // disabled video capture until the browser reclaims it.
+            candidate.getTracks().forEach((track) => track.stop());
           }
         } catch (err) {
           if (generation !== captureGenerationRef.current) return;
@@ -347,9 +376,13 @@ export function useAudioCapture() {
       contextRef.current = ctx;
       workletReadyRef.current = false;
 
-      await attachPipeline(ctx, micStream, 0, onChunk);
+      await attachPipeline(ctx, micStream, 0, onChunk, generation);
       if (displayStream) {
-        const disconnect = await attachPipeline(ctx, displayStream, 1, onChunk);
+        const disconnect = await attachPipeline(ctx, displayStream, 1, onChunk, generation);
+        if (!disconnect) {
+          displayStream.getTracks().forEach((track) => track.stop());
+          return;
+        }
         const stream = displayStream;
         systemStopRef.current = createSystemCaptureStop({
           disconnect,

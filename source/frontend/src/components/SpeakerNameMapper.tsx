@@ -156,6 +156,7 @@ export default function SpeakerNameMapper({
   const [synthesizerModelId, setSynthesizerModelId] = useState("");
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelLoadError, setModelLoadError] = useState("");
+  const enhancementAbortRef = useRef<AbortController | null>(null);
   const { confirm } = useConfirm();
 
   useEffect(() => {
@@ -182,6 +183,20 @@ export default function SpeakerNameMapper({
     };
   }, [session.id]);
 
+  useEffect(() => {
+    enhancementAbortRef.current?.abort();
+    enhancementAbortRef.current = null;
+    setEnhancing(false);
+    setEnhancementMessage("");
+    setEnhancementWarning("");
+    setEnhancementError("");
+    setLastResult(null);
+    return () => {
+      enhancementAbortRef.current?.abort();
+      enhancementAbortRef.current = null;
+    };
+  }, [session.id]);
+
   if (speakers.length === 0) return null;
 
   const runEnhancement = async () => {
@@ -190,13 +205,18 @@ export default function SpeakerNameMapper({
     setEnhancementError("");
     setLastResult(null);
     setEnhancing(true);
+    const controller = new AbortController();
+    enhancementAbortRef.current = controller;
     try {
-      const initial = await api.enhanceInsights(session.id);
+      const initial = await api.enhanceInsights(session.id, controller.signal);
+      if (controller.signal.aborted) return;
       const result = await api.waitForEnhancement(
         session.id,
         initial,
         (progress) => setEnhancementMessage(enhancementProgressLabel(progress)),
+        controller.signal,
       );
+      if (controller.signal.aborted) return;
       await Promise.all([
         onRefreshQuestions(),
         onRefreshSession(),
@@ -215,10 +235,12 @@ export default function SpeakerNameMapper({
         setEnhancementWarning(outcome.message);
       }
     } catch (error) {
+      if (controller.signal.aborted) return;
       setEnhancementMessage("");
       setEnhancementError(error instanceof Error ? error.message : "Verbesserung fehlgeschlagen. Erneut versuchen.");
     } finally {
-      setEnhancing(false);
+      if (!controller.signal.aborted) setEnhancing(false);
+      if (enhancementAbortRef.current === controller) enhancementAbortRef.current = null;
     }
   };
 

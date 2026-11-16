@@ -42,3 +42,7 @@ test("blocked or failed OAuth windows retain the manual fallback safely", () => 
   });
   assert.equal(closed, true);
 });
+
+test("a browser opener exception keeps the manual OAuth fallback available", () => {
+  assert.equal(reserveOAuthWindow(() => { throw new Error("blocked"); }), null);
+});

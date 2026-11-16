@@ -238,7 +238,7 @@ function MainApp() {
   const nativeMicLevelRef = useRef(0);
   const nativeSystemAudioLevelRef = useRef(0);
   const [captureSystemAudio, setCaptureSystemAudio] = useState(true);
-  const { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats } =
+  const { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats, serverEpoch } =
     useWebSocket();
   const { stopListening } = useSpeechRecognition();
 
@@ -339,6 +339,7 @@ function MainApp() {
 
   // Process incoming WebSocket messages — questions and transcripts
   const processedSequenceRef = useRef(0);
+  const processedEpochRef = useRef("");
   const processedLegacyCountRef = useRef(0);
   const processedMessageSessionRef = useRef("");
   const transcriptRefreshInFlightRef = useRef<Promise<void> | null>(null);
@@ -361,6 +362,15 @@ function MainApp() {
       processedMessageSessionRef.current = messageSessionId;
       processedSequenceRef.current = 0;
       processedLegacyCountRef.current = 0;
+      processedEpochRef.current = serverEpoch;
+    } else if (serverEpoch !== processedEpochRef.current) {
+      // Session sequence numbers restart after a backend epoch change. The
+      // WebSocket hook clears its own replay cursor, so the app-level cursor
+      // must be cleared at the same boundary or it would drop the new
+      // epoch's low-numbered events after a prior high sequence.
+      processedSequenceRef.current = 0;
+      processedLegacyCountRef.current = 0;
+      processedEpochRef.current = serverEpoch;
     }
     const sequencedMessages = messages.filter((message) => (
       typeof message.session_sequence === "number"
@@ -570,7 +580,7 @@ function MainApp() {
     }
     processedLegacyCountRef.current += legacyMessages.length;
     acknowledgeMessages(newMessages);
-  }, [messages, activeSessionId, speakers, refreshSpeakers, recoverCurrentTranscripts, stopCapture, disconnect, savedTranscripts.length, refreshSession, acknowledgeMessages]);
+  }, [messages, activeSessionId, serverEpoch, speakers, refreshSpeakers, recoverCurrentTranscripts, stopCapture, disconnect, savedTranscripts.length, refreshSession, acknowledgeMessages]);
 
   // Live Ask is its own explicit choice. Preserve a valid per-session choice,
   // but never borrow an agent row or silently pick the first text model.
@@ -933,6 +943,7 @@ function MainApp() {
           processedSequenceRef.current = 0;
           processedLegacyCountRef.current = 0;
         }
+        processedEpochRef.current = serverEpoch;
 
         // Start capture before the active view exposes Resume and End.
         await startAudioFeed(sessionId, true);
@@ -993,7 +1004,7 @@ function MainApp() {
       (message) => typeof message.session_sequence !== "number",
     ).length;
     await startAudioFeed(activeSessionId, reconnecting);
-  }, [activeSessionId, audioStarting, isCapturing, messages, nativeAudioActive, startAudioFeed, status, stopCapture]);
+  }, [activeSessionId, audioStarting, isCapturing, messages, nativeAudioActive, serverEpoch, startAudioFeed, status, stopCapture]);
 
   const handleProcessTranscript = useCallback(async () => {
     if (!activeSessionId) return;
