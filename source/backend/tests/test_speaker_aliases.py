@@ -183,6 +183,14 @@ class ProseContaminationTests(unittest.TestCase):
             replace_speaker_labels("S2 to schedule a monthly cadence with S1", scrub),
         )
 
+    def test_renames_apply_once_to_original_labels(self):
+        self.assertEqual("Bob Carol", replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Carol"}))
+        self.assertEqual("Bob Alice", replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Alice"}))
+
+    def test_display_names_are_literal_even_with_backslashes(self):
+        self.assertEqual(r"Team\1", replace_speaker_labels("s1", {"S1": r"Team\1"}))
+        self.assertEqual("Dana", replace_speaker_labels("İ", {"i": "Dana"}))
+
     def test_the_scrub_respects_word_boundaries(self):
         # A tag inside another token is not a participant tag.
         self.assertEqual(

@@ -52,11 +52,16 @@ def replace_speaker_labels(text: str, replacements: dict[str, str]) -> str:
     if not text or not replacements:
         return text
 
-    updated = text
-    for source, target in sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True):
-        pattern = re.compile(rf"(?<!\w){re.escape(source)}(?!\w)", re.IGNORECASE)
-        updated = pattern.sub(target, updated)
-    return updated
+    ordered = sorted(replacements.items(), key=lambda item: len(item[0]), reverse=True)
+    groups = {f"label_{index}": target for index, (_, target) in enumerate(ordered)}
+    alternatives = "|".join(
+        rf"(?P<label_{index}>{re.escape(source)})"
+        for index, (source, _) in enumerate(ordered)
+    )
+    pattern = re.compile(rf"(?<!\w)(?:{alternatives})(?!\w)", re.IGNORECASE)
+    # One pass avoids renaming a replacement a second time; the callback also
+    # keeps backslashes in display names literal.
+    return pattern.sub(lambda match: groups[match.lastgroup], text)
 
 
 def rewrite_question_speaker_labels(
