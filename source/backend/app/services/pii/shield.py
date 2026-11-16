@@ -36,6 +36,7 @@ from app.services.pii.recognizers import (
     resolve_spans,
 )
 from app.services.pii.state import SETTINGS_KEY
+from app.services.pii.transaction_cache import TransactionCache
 from app.services.pii.vault import TOKEN_PATTERN, has_tokens
 
 logger = logging.getLogger(__name__)
@@ -123,7 +124,7 @@ async def set_settings(db: AsyncSession, new: ShieldSettings) -> ShieldSettings:
     global _settings_cache
     await set_app_setting(db, SETTINGS_KEY, new.to_json())
     _settings_cache = (time.monotonic(), new)
-    _roster_cache.clear()
+    _roster_cache.invalidate()
     logger.info("PII Shield %s (%s)", "enabled" if new.enabled else "disabled", ", ".join(new.categories))
     return new
 
@@ -131,7 +132,7 @@ async def set_settings(db: AsyncSession, new: ShieldSettings) -> ShieldSettings:
 def invalidate_settings_cache() -> None:
     global _settings_cache
     _settings_cache = None
-    _roster_cache.clear()
+    _roster_cache.invalidate()
 
 
 async def get_settings_standalone() -> ShieldSettings:
@@ -165,14 +166,11 @@ async def is_enabled() -> bool:
 
 # ── Roster: the session's own people plus the user's protected terms ───────
 
-_roster_cache: dict[uuid.UUID, tuple[float, list[RosterEntry]]] = {}
+_roster_cache = TransactionCache()
 
 
 def invalidate_roster(session_id: uuid.UUID | None = None) -> None:
-    if session_id is None:
-        _roster_cache.clear()
-    else:
-        _roster_cache.pop(session_id, None)
+    _roster_cache.invalidate(session_id)
 
 
 def _is_generic_speaker_name(name: str) -> bool:
@@ -199,7 +197,7 @@ async def session_roster(db: AsyncSession, session_id: uuid.UUID, settings: Shie
     the vault does, and a later "Brown agreed" in the transcript must still
     map to the same token whether or not the on-device model is present.
     """
-    cached = _roster_cache.get(session_id)
+    cached = _roster_cache.for_session(db).get(session_id)
     now = time.monotonic()
     if cached and now - cached[0] < ROSTER_TTL_SECONDS:
         return cached[1]
@@ -223,7 +221,8 @@ async def session_roster(db: AsyncSession, session_id: uuid.UUID, settings: Shie
         category = token[1:token.index("_")]
         if category in _ROSTER_CATEGORIES:
             add(value, category)
-    _roster_cache[session_id] = (now, entries)
+    # The queries above may have started the caller's outer transaction.
+    _roster_cache.for_session(db)[session_id] = (now, entries)
     return entries
 
 

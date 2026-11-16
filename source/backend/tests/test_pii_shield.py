@@ -329,10 +329,29 @@ class ShieldTests(unittest.IsolatedAsyncioTestCase):
 class EgressTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         vault.reset_keys_for_tests()
+        self.persisted_rows = []
+
+    def _reader_db(self):
+        # The response opens a separate transaction: model committed rows,
+        # rather than relying on another session's uncommitted cache.
+        db = _fake_db()
+
+        async def execute(statement):
+            sid = statement.compile().params["session_id_1"]
+            result = MagicMock()
+            result.scalars.return_value.all.return_value = [
+                row for row in self.persisted_rows if row.session_id == sid
+            ]
+            return result
+
+        db.execute.side_effect = execute
+        return db
 
     async def _seed(self, sid):
         db = _fake_db()
         await vault.token_for(db, sid, PERSON, "Sarah Connor")
+        await db.commit()
+        self.persisted_rows.extend(call.args[0] for call in db.add.call_args_list)
         return db
 
     async def test_middleware_reveals_session_scoped_json_and_fixes_content_length(self):
@@ -348,7 +367,7 @@ class EgressTests(unittest.IsolatedAsyncioTestCase):
 
         sent = []
         scope = {"type": "http", "path": f"/api/sessions/{sid}/transcripts", "method": "GET"}
-        with patch("app.database.async_session", lambda: _AsyncCtx(_fake_db())), \
+        with patch("app.database.async_session", lambda: _AsyncCtx(self._reader_db())), \
              patch.object(shield, "record_reveal", AsyncMock()):
             await PiiRevealMiddleware(app)(scope, None, lambda m: _collect(sent, m))
         out = b"".join(m["body"] for m in sent if m["type"] == "http.response.body")
@@ -361,6 +380,8 @@ class EgressTests(unittest.IsolatedAsyncioTestCase):
         db = _fake_db()
         await vault.token_for(db, a, PERSON, "Sarah Connor")
         await vault.token_for(db, b, PERSON, "Bill Brown")
+        await db.commit()
+        self.persisted_rows.extend(call.args[0] for call in db.add.call_args_list)
         body = json.dumps([{"id": str(a), "name": "[PERSON_1]"}, {"id": str(b), "name": "[PERSON_1]"}]).encode()
 
         async def app(scope, receive, send):
@@ -368,7 +389,7 @@ class EgressTests(unittest.IsolatedAsyncioTestCase):
             await send({"type": "http.response.body", "body": body, "more_body": False})
 
         sent = []
-        with patch("app.database.async_session", lambda: _AsyncCtx(_fake_db())), \
+        with patch("app.database.async_session", lambda: _AsyncCtx(self._reader_db())), \
              patch.object(shield, "record_reveal", AsyncMock()):
             await PiiRevealMiddleware(app)({"type": "http", "path": "/api/sessions", "method": "GET"}, None, lambda m: _collect(sent, m))
         out = json.loads(b"".join(m["body"] for m in sent if m["type"] == "http.response.body"))
@@ -396,7 +417,7 @@ class EgressTests(unittest.IsolatedAsyncioTestCase):
         inner.receive_bytes = AsyncMock(return_value=b"x")
         inner.close = AsyncMock()
         sock = RevealingWebSocket(inner, sid)
-        with patch("app.database.async_session", lambda: _AsyncCtx(_fake_db())), \
+        with patch("app.database.async_session", lambda: _AsyncCtx(self._reader_db())), \
              patch.object(shield, "record_reveal", AsyncMock()) as audit:
             await sock.send_json({"type": "transcript", "data": {"text": "[PERSON_1] here"}})
             await sock.send_json({"type": "status", "data": {"state": "ok"}})
