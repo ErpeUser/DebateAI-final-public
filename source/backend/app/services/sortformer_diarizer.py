@@ -207,7 +207,7 @@ def _iter_sortformer_turns(result: Any) -> Iterable[SortformerTurn]:
 
 def _turn_from_dict(value: dict[str, Any]) -> SortformerTurn | None:
     def first_value(*keys):
-        return next((value[key] for key in keys if value.get(key) is not None), None)
+        return next((value[key] for key in keys if value.get(key) not in (None, "")), None)
 
     start = first_value("start", "start_time", "start_seconds")
     end = first_value("end", "end_time", "end_seconds")
