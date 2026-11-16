@@ -14,3 +14,8 @@ test("offers refresh, disconnect, re-login, and account switching", () => {
   assert.match(api, /disconnectChatGPTWeb/);
   assert.match(api, /switchChatGPTWebAccount/);
 });
+
+test("does not claim an unverified ChatGPT Pro entitlement", () => {
+  assert.match(component, /ChatGPT Web über normalen Zugang/);
+  assert.doesNotMatch(component, /ChatGPT Pro/);
+});

@@ -108,6 +108,37 @@ class ChatGPTWebLoginTests(unittest.TestCase):
             self.assertEqual(1, code)
             self.assertFalse(marker.exists())
 
+    def test_failure_does_not_persist_oracle_diagnostics(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            node = root / "node.exe"
+            cli = root / "oracle.js"
+            node.write_bytes(b"node")
+            cli.write_text("// oracle", encoding="utf-8")
+            result = root / "result.json"
+            env = {
+                "DEBATEAI_CHATGPT_WEB_NODE": str(node),
+                "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
+                "DEBATEAI_CHATGPT_WEB_HOME": str(root / "home"),
+                "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
+                "DEBATEAI_CHATGPT_WEB_MARKER": str(root / "verified.json"),
+            }
+            completed = mock.Mock(
+                returncode=1,
+                stderr="cookie=secret-provider-response",
+                stdout="account@example.com",
+            )
+            with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
+                chatgpt_web_login.subprocess, "run", return_value=completed
+            ):
+                code = chatgpt_web_login.run_chatgpt_web_login(result)
+            self.assertEqual(1, code)
+            payload = json.loads(result.read_text(encoding="utf-8"))
+            serialized = json.dumps(payload)
+            self.assertNotIn("secret-provider-response", serialized)
+            self.assertNotIn("account@example.com", serialized)
+            self.assertEqual("Die ChatGPT-Web-Prüfung konnte nicht abgeschlossen werden.", payload["error"])
+
 
 if __name__ == "__main__":
     unittest.main()
