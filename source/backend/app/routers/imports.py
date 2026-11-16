@@ -121,6 +121,7 @@ async def _persist_diarized_segments(
     speakers: list[Speaker],
     cancel_check: Callable[[], None] | None = None,
     entry_callback: Callable[[int], None] | None = None,
+    fail_on_transcription_error: bool = False,
 ) -> int:
     count = 0
     for seg, local_track, auto_speaker_map in segments:
@@ -129,6 +130,8 @@ async def _persist_diarized_segments(
         try:
             text = await transcriber.transcribe_segment(seg.pcm_bytes)
         except TranscriptionError as exc:
+            if fail_on_transcription_error:
+                raise
             # Keep import best-effort: a failed segment is skipped, not fatal.
             logger.warning(f"Audio import: segment transcription failed: {exc}")
             continue
@@ -213,6 +216,7 @@ async def _transcribe_audio_diarized(
     cancel_check: Callable[[], None] | None = None,
     entry_callback: Callable[[int], None] | None = None,
     commit: bool = True,
+    fail_on_transcription_error: bool = False,
 ) -> int:
     """Transcribe audio using diarization pipeline. Returns count of entries created."""
     # Convert to PCM16 16kHz mono
@@ -249,6 +253,7 @@ async def _transcribe_audio_diarized(
         speakers,
         cancel_check,
         entry_callback,
+        fail_on_transcription_error=fail_on_transcription_error,
     )
 
     if commit:
@@ -270,6 +275,7 @@ async def _transcribe_split_audio_diarized(
     cancel_check: Callable[[], None] | None = None,
     entry_callback: Callable[[int], None] | None = None,
     commit: bool = True,
+    fail_on_transcription_error: bool = False,
 ) -> int:
     mic_pcm = await asyncio.to_thread(convert_to_pcm16, mic_file_bytes, "wav")
     system_pcm = await asyncio.to_thread(convert_to_pcm16, system_file_bytes, "wav")
@@ -308,6 +314,7 @@ async def _transcribe_split_audio_diarized(
         speakers,
         cancel_check,
         entry_callback,
+        fail_on_transcription_error=fail_on_transcription_error,
     )
     if commit:
         await db.commit()
