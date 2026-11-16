@@ -79,6 +79,30 @@ class ExternalAuditTests(unittest.TestCase):
         self.assertTrue(external_audit.current_approval())
         self.assertEqual(external_audit.current_claim_id(), "")
 
+    def test_explicit_digest_and_context_keep_one_claim_across_request_lifecycle(self):
+        expected = external_audit.claim_id_for("synthetic research claim")
+        with external_audit.audit_context(claim="synthetic research claim"):
+            request_id = external_audit.start_external_request(
+                provider_route="test", approval=True,
+                claim_id=external_audit.current_claim_id(),
+            )
+            external_audit.finish_external_request(
+                request_id, provider_route="test", approval=True, status="completed"
+            )
+        self.assertEqual([row["claim_id"] for row in self._records()], [expected, expected])
+
+    def test_independent_digest_is_preserved_but_untrusted_text_is_hashed(self):
+        digest = external_audit.claim_id_for("different synthetic claim")
+        raw = "0123456789abcdef0123456789abcdef"
+        for value in (digest, raw):
+            external_audit.record_external_request(
+                provider_route="test", approval=True, status="started", claim_id=value
+            )
+        self.assertEqual(
+            [row["claim_id"] for row in self._records()],
+            [digest, external_audit.claim_id_for(raw)],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

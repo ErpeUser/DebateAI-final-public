@@ -115,6 +115,18 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(entry["tokens_present"])
         self.assertEqual(entry["source"], "consolidated_analyst")
 
+    async def test_reformatted_numeric_leaks_never_enter_the_prompt_log(self):
+        await vault.token_for(_fake_db(), uuid.uuid4(), PHONE, "555-867-5309")
+        prompt = "Call 555 867 5309, or (555) 867-5309, then 5558675309."
+        with patch.object(shield, "get_settings_standalone", _settings(enabled=True, prompt_log=True)), \
+             patch.object(shield, "record_reveal", AsyncMock()):
+            with self.assertRaises(egress.PiiEgressBlocked):
+                await egress.guard(prompt, model_id="m", source="chat")
+        entry = egress.recent()[0]
+        self.assertTrue(entry["blocked"])
+        for spelling in ("555 867 5309", "(555) 867-5309", "5558675309"):
+            self.assertNotIn(spelling, entry["prompt"])
+
     async def test_logging_without_the_shield_records_but_never_blocks(self):
         await self._seed()
         with patch.object(shield, "get_settings_standalone", _settings(enabled=False, prompt_log=True)):
