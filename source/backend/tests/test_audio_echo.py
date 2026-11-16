@@ -88,6 +88,13 @@ class DelayTrajectoryTests(unittest.TestCase):
 
 
 class CancelEchoTests(unittest.TestCase):
+    def test_silent_reference_preserves_the_non_block_aligned_tail(self):
+        mic = np.full(16001, 100.0)
+        system = np.zeros_like(mic)
+        np.testing.assert_array_equal(mic, cancel_echo(mic, system, RATE))
+        mixed = cancel_and_mix(mic, system, RATE)
+        np.testing.assert_array_equal(mic, mixed)
+
     def test_removes_echo_that_arrives_late_and_drifts(self):
         far = speechlike(90, seed=5)
         near = speechlike(90, seed=6, level=1200.0)
