@@ -222,6 +222,37 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("gpt-5.5-mini", generate.await_args.args[0])
         self.assertEqual("debate_analyst", generate.await_args.kwargs["source"])
 
+    async def test_deep_analysis_uses_shared_editable_prompt_by_default(self):
+        analysis = DeepDebateAnalysis(
+            best_reply="Die konkrete Behauptung braucht einen belastbaren Beleg."
+        )
+        generate = AsyncMock(return_value=analysis)
+        agent = ObjectionHandlerAgent(session_id=uuid.uuid4())
+
+        def load(name, fallback):
+            return f"EDITABLE::{name}\n{fallback}"
+
+        with (
+            patch("app.services.agents.objection_handler.generate_json", new=generate),
+            patch(
+                "app.services.agents.objection_handler.load_prompt_resource",
+                side_effect=load,
+            ),
+        ):
+            result, prompt = await agent.analyze_deep(
+                DebateRecommendation(
+                    target_claim="Die konkrete Behauptung.",
+                    answer_now="Bitte nennen Sie dafür eine Quelle.",
+                ),
+                model_id="gpt-5.5-mini",
+                own_position="Die Nutzerseite verlangt einen Beleg.",
+                relevant_context="",
+                sources=[],
+            )
+
+        self.assertEqual(analysis, result)
+        self.assertIn("EDITABLE::debate_deep_v1", prompt)
+
     def test_deep_analysis_keeps_only_typed_claim_relations(self):
         analysis = DeepDebateAnalysis(
             best_reply="Beide Aussagen koennen fuer denselben Zeitraum nicht zugleich gelten.",

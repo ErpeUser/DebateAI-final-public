@@ -1112,18 +1112,16 @@ class ObjectionHandlerAgent:
         prompt_resource: str | None = None,
     ) -> tuple[DeepDebateAnalysis, str]:
         """Use the existing hosted model route as a debate analyst, not a search summary."""
-        if model_id == "chatgpt-web:gpt-6":
-            prompt_name = "background.oracle"
-        elif "gemini" in model_id.casefold():
-            prompt_name = "background.gemini"
-        else:
-            prompt_name = "background.gpt6"
+        # The editor-visible deep-analysis prompt is the shared contract.
+        # Provider-specific resources remain available through the explicit
+        # prompt_resource override used by targeted experiments.
+        prompt_name = prompt_resource or "debate_deep_v1"
         prompt = build_deep_analysis_prompt(
             claim=recommendation.target_claim,
             own_position=own_position,
             relevant_context=relevant_context,
             sources=sources,
-            prompt_name=prompt_resource or prompt_name,
+            prompt_name=prompt_name,
         )
         phase_defaults = {
             "new_topic": "Erstelle einmalig eine belastbare Themenlandkarte mit Positionen, Prämissen, Beweislast, Gegenargumenten, offenen Fragen und Recherchebedarf.",
