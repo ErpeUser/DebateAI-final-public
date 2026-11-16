@@ -148,6 +148,17 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertIn("working-directory: source/source", publish)
             self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], publish)
 
+    def test_tag_verification_resolves_spec_from_source_working_directory(self):
+        verify_blocks = re.findall(
+            r"working-directory: source\n(?P<body>.*?)(?=\n      - name:|\n  [a-z-]+:|\Z)",
+            WORKFLOW,
+            re.DOTALL,
+        )
+        self.assertEqual(len(verify_blocks), 3)
+        for block in verify_blocks:
+            self.assertIn('[[ -f desktop/debateai.spec ]]', block)
+            self.assertNotIn('[[ -f source/desktop/debateai.spec ]]', block)
+
     def test_local_coordinator_is_tag_pinned_progressive_and_failure_isolated(self):
         for value in (
             "SupportsShouldProcess", "worktree add --detach", "^{commit}",
