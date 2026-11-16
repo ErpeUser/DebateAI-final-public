@@ -16,7 +16,7 @@ import logging
 import time
 import uuid
 from dataclasses import asdict, dataclass, field
-from typing import Any
+from typing import Any, Callable
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -373,11 +373,14 @@ async def reveal_text(
     *,
     route: str = "",
     audit: bool = True,
+    value_transform: Callable[[str], str] | None = None,
 ) -> str:
     """Substitute the session's real values back into ``text``. UI only."""
     if not text or not has_tokens(text):
         return text or ""
     mapping = await vault.reveal_map(db, session_id)
+    if value_transform is not None:
+        mapping = {token: value_transform(value) for token, value in mapping.items()}
     revealed, count = substitute(text, mapping)
     if count and audit:
         await record_reveal(session_id, route, count)

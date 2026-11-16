@@ -535,8 +535,29 @@ class RevealedBriefingTests(IsolatedAsyncioTestCase):
         self.assertIn("[PERSON_2]", html)
         self.assertNotIn("Sarah Connor", html)
 
+    async def test_revealed_values_cannot_introduce_html_markup(self):
+        value = '<img src=x onerror="alert(1)"> & Team'
+        with (
+            patch.object(artifacts.vault, "reveal_map", new=AsyncMock(return_value={"[PERSON_1]": value})),
+            patch.object(artifacts.shield, "record_reveal", new=AsyncMock()) as audit,
+        ):
+            html, _, _ = await _html(self._db(), _synthesis(), reveal=True)
+        self.assertNotIn(value, html)
+        self.assertIn("&lt;img src=x onerror=&quot;alert(1)&quot;&gt; &amp; Team", html)
+        self.assertGreater(audit.await_count, 0)
+
+    async def test_unicode_and_control_characters_are_safe_in_download_headers(self):
+        db = self._db()
+        db.session.name = 'Grüße 東京 "quoted"\r\nInjected: yes'
+        _, response, _ = await _html(db, _synthesis())
+        disposition = response.headers["content-disposition"]
+        self.assertNotIn("\r", disposition)
+        self.assertNotIn("\n", disposition)
+        self.assertIn("filename*=UTF-8''", disposition)
+        self.assertIn("%E6%9D%B1%E4%BA%AC", disposition)
+
     async def test_every_token_reaches_the_page_in_a_revealable_form(self):
-        async def fake_reveal(_db, _session_id, text, route=""):
+        async def fake_reveal(_db, _session_id, text, route="", value_transform=None):
             self.assertEqual("summary-export", route)
             for token, value in (
                 ("[PERSON_1]", "Sarah Connor"),
@@ -544,7 +565,7 @@ class RevealedBriefingTests(IsolatedAsyncioTestCase):
                 ("[ORG_1]", "Cyberdyne"),
             ):
                 self.assertIn(token, text, f"{token} did not survive rendering")
-                text = text.replace(token, value)
+                text = text.replace(token, value_transform(value) if value_transform else value)
             return text
 
         with patch.object(artifacts.shield, "reveal_text", new=AsyncMock(side_effect=fake_reveal)):

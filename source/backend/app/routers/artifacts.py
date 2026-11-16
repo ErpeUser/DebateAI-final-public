@@ -1,6 +1,9 @@
 import os
+import re
 import tempfile
 import uuid
+from html import escape as escape_html
+from urllib.parse import quote
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
@@ -14,6 +17,15 @@ from app.services.briefing_synthesis import get_session_synthesis
 from sqlalchemy import select
 
 router = APIRouter(prefix="/api/sessions/{session_id}/artifacts", tags=["artifacts"])
+
+
+def _attachment_header(filename: str) -> str:
+    clean = re.sub(r'[\x00-\x1f\x7f/\\]', '_', filename)
+    fallback = re.sub(r'[^A-Za-z0-9._-]', '_', clean) or "download"
+    header = f'attachment; filename="{fallback}"'
+    if clean != fallback:
+        header += "; filename*=UTF-8''" + quote(clean, safe="")
+    return header
 
 
 async def _stream_and_cleanup(file_path: str, media_type: str, filename: str):
@@ -115,7 +127,7 @@ async def export_transcript(session_id: uuid.UUID, reveal: bool = False, db: Asy
     return StreamingResponse(
         _stream_bytes(content),
         media_type="text/plain; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _attachment_header(filename)},
     )
 
 
@@ -329,7 +341,7 @@ async def export_insights(
     return StreamingResponse(
         _stream_bytes(content),
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _attachment_header(filename)},
     )
 
 
@@ -361,14 +373,16 @@ async def export_summary(session_id: uuid.UUID, reveal: bool = False, db: AsyncS
         # token reaches the page as literal text -- a token carries no
         # HTML-special characters, so escaping leaves it intact -- and without
         # this flag nothing here has ever seen a value to leak.
-        html = await shield.reveal_text(db, session_id, html, route="summary-export")
+        html = await shield.reveal_text(
+            db, session_id, html, route="summary-export", value_transform=escape_html
+        )
     content = html.encode("utf-8")
     filename = f"{prefix}-{session.name.replace(' ', '_')}.html"
 
     return StreamingResponse(
         _stream_bytes(content),
         media_type="text/html; charset=utf-8",
-        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+        headers={"Content-Disposition": _attachment_header(filename)},
     )
 
 
