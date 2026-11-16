@@ -44,6 +44,24 @@ class LifecycleSplashTests(unittest.TestCase):
         splash.close()
         self.assertTrue(window.closed)
 
+    def test_window_runtime_failure_never_blocks_the_launcher(self):
+        class _BrokenWindow(_Window):
+            def show(self, title, detail):
+                super().show(title, detail)
+                raise RuntimeError("display closed")
+
+        window = _BrokenWindow()
+        splash = LifecycleSplash(window_factory=lambda: window)
+
+        splash.show_startup("Start")
+        splash.show_shutdown("Ende")
+        splash.set_detail("Weiter")
+        splash.set_progress(50)
+        splash.close()
+
+        self.assertTrue(window.closed)
+        self.assertFalse(splash.visible)
+
     def test_unavailable_gui_never_blocks_the_launcher(self):
         splash = LifecycleSplash(window_factory=lambda: (_ for _ in ()).throw(RuntimeError("no GUI")))
 
