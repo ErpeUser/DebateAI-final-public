@@ -14,7 +14,7 @@ SCHEMA_VERSION = 1
 STATUSES = frozenset({"ok", "timeout", "empty", "stale", "error", "abstent"})
 FAILURE_CLASSES = frozenset({
     "none", "timeout", "empty", "stale", "error", "provider", "parse", "privacy",
-    "cancelled", "resource", "unknown",
+    "cancelled", "resource", "unknown", "abstent",
 })
 LATENCY_FIELDS = (
     "first_speakable_ms", "first_update_ms", "final_update_ms",

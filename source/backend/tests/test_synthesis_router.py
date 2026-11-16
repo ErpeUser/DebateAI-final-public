@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
 from app.routers.synthesis import get_synthesis, refresh_synthesis
-from app.services.agents.orchestrator import _synthesis_payload
+from app.services.agents.orchestrator import AgentOrchestrator, _synthesis_payload
 
 
 def _synthesis(history=None):
@@ -36,6 +36,20 @@ def _synthesis(history=None):
 
 
 class SynthesisRouterTests(unittest.IsolatedAsyncioTestCase):
+    async def test_live_update_reaches_the_websocket_with_json_safe_values(self):
+        synthesis = _synthesis([{"title": "Budget"}])
+        orchestrator = SimpleNamespace(websocket=AsyncMock())
+
+        await AgentOrchestrator._send_synthesis_update(orchestrator, synthesis)
+
+        orchestrator.websocket.send_json.assert_awaited_once()
+        event = orchestrator.websocket.send_json.call_args.args[0]
+        self.assertEqual("synthesis_updated", event["type"])
+        self.assertEqual(str(synthesis.id), event["data"]["id"])
+        self.assertEqual(synthesis.created_at.isoformat().replace("+00:00", "Z"), event["data"]["created_at"])
+        self.assertEqual(1, event["data"]["signal_history_count"])
+        self.assertNotIn("signal_history", event["data"])
+
     async def test_history_is_returned_only_for_the_explicit_opt_in(self):
         # Signals reach the live call view as insight rows (ALP-308), so the
         # raw history stays behind the opt-in the post-call panel uses.

@@ -77,6 +77,8 @@ class ResponseContractTests(unittest.TestCase):
                 )
                 self.assertEqual(event["status"], status)
                 self.assertEqual(event["failure_class"], status)
+                validate_response_event(event)
+                self.assertEqual(event, normalize_response_event(event))
 
     def test_ok_cannot_have_failure_class(self):
         with self.assertRaises(ResponseContractError):
