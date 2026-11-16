@@ -10,6 +10,7 @@ from pathlib import Path
 
 PG_VERSION = "16.4.0"
 DEST = Path(__file__).resolve().parent.parent / "pgsql"
+REQUIRED_BINARIES = ("postgres", "initdb", "pg_ctl")
 
 
 def artifact_platform() -> str:
@@ -30,8 +31,13 @@ def jar_url(plat: str) -> str:
     )
 
 
+def has_complete_install() -> bool:
+    suffix = ".exe" if sys.platform == "win32" else ""
+    return all((DEST / "bin" / f"{name}{suffix}").is_file() for name in REQUIRED_BINARIES)
+
+
 def main() -> None:
-    if (DEST / "bin").exists():
+    if has_complete_install():
         print(f"pgsql already present at {DEST}")
         return
     DEST.mkdir(parents=True, exist_ok=True)
