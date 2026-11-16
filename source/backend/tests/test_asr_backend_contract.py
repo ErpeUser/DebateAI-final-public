@@ -120,6 +120,33 @@ class ASRBackendContractTests(unittest.TestCase):
 
 
 class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_cancelled_handshake_closes_the_unregistered_socket(self):
+        started = asyncio.Event()
+        socket = _FakeSocket([])
+
+        async def recv():
+            started.set()
+            await asyncio.Event().wait()
+
+        socket.recv = recv
+
+        async def connect(_url):
+            return socket
+
+        backend = NemotronStreamingASRBackend(connect=connect, probe_readiness=False)
+        task = asyncio.create_task(backend._open_stream("mic"))
+        try:
+            await asyncio.wait_for(started.wait(), 2)
+            task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await task
+            self.assertTrue(socket.closed)
+            self.assertEqual({}, backend._streams)
+        finally:
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+            await backend.close()
+
     async def test_tracks_keep_independent_streams_and_flush_preserves_metadata(self):
         sockets = []
 
