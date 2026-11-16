@@ -23,6 +23,7 @@ const {
   cancelTranscriptionJob,
   getDebateSettings,
   getSynthesis,
+  getTranscriptionJob,
   updateDebateSettings,
   waitForTranscriptionJob,
 } = createRequire(import.meta.url)(outputPath);
@@ -105,6 +106,92 @@ test("transcription jobs poll by kind until the terminal result", async () => {
     "/api/sessions/session-1/retranscribe",
     "/api/sessions/session-1/retranscribe",
   ]);
+});
+
+test("transcription polling aborts before the next request when its owner unmounts", async () => {
+  const controller = new AbortController();
+  const calls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    calls.push(url);
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        job_id: "job-1",
+        kind: "retranscription",
+        status: "completed",
+        model_id: "model-1",
+        segments_done: 1,
+        total_segments: 1,
+        entries: 1,
+        progress: 100,
+        filename: null,
+        error: "",
+      }),
+    };
+  };
+
+  try {
+    const pending = waitForTranscriptionJob(
+      "session-1",
+      {
+        job_id: "job-1",
+        kind: "retranscription",
+        status: "queued",
+        model_id: "model-1",
+        segments_done: 0,
+        total_segments: 1,
+        entries: 0,
+        progress: 0,
+        filename: null,
+        error: "",
+      },
+      () => {},
+      25,
+      controller.signal,
+    );
+    const reason = new Error("component unmounted");
+    controller.abort(reason);
+    await assert.rejects(pending, reason);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(calls, []);
+});
+
+test("transcription status requests carry the caller abort signal", async () => {
+  const controller = new AbortController();
+  const originalFetch = globalThis.fetch;
+  let observedSignal;
+  globalThis.fetch = async (_url, options) => {
+    observedSignal = options?.signal;
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        job_id: "job-1",
+        kind: "retranscription",
+        status: "completed",
+        model_id: "model-1",
+        segments_done: 1,
+        total_segments: 1,
+        entries: 1,
+        progress: 100,
+        filename: null,
+        error: "",
+      }),
+    };
+  };
+
+  try {
+    await getTranscriptionJob("session-1", "retranscription", controller.signal);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(observedSignal, controller.signal);
 });
 
 test("audio import cancellation uses the import job endpoint", async () => {

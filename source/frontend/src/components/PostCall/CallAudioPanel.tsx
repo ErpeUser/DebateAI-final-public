@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CallSegment, ModelInfo, Session, TranscriptionJob } from "../../types";
 import * as api from "../../services/api";
 import { groupModels, optionLabel } from "../../lib/modelOptions";
@@ -16,6 +16,7 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
   const [modelId, setModelId] = useState("");
   const [job, setJob] = useState<TranscriptionJob | null>(null);
   const [message, setMessage] = useState<string | null>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
   const { confirm } = useConfirm();
   const busy = job ? api.transcriptionJobActive(job) : false;
 
@@ -29,6 +30,17 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     }).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
+    setJob(null);
+    setMessage(null);
+    return () => {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
+    };
+  }, [session.id]);
+
   if (audioSegments.length === 0) return null;
 
   const handleRetranscribe = async () => {
@@ -41,10 +53,14 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     });
     if (!ok) return;
     setMessage(null);
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     try {
       const queued = await api.retranscribeSession(session.id, modelId);
+      if (controller.signal.aborted) return;
       setJob(queued);
-      const result = await api.waitForTranscriptionJob(session.id, queued, setJob);
+      const result = await api.waitForTranscriptionJob(session.id, queued, setJob, 1000, controller.signal);
+      if (controller.signal.aborted) return;
       if (result.status === "completed") {
         setMessage(`${result.entries} Einträge wurden erneut transkribiert.`);
         await onRetranscribed();
@@ -54,7 +70,10 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
         setMessage(result.error || "Erneute Transkription fehlgeschlagen.");
       }
     } catch (err) {
+      if (controller.signal.aborted) return;
       setMessage(err instanceof Error ? err.message : "Erneute Transkription fehlgeschlagen");
+    } finally {
+      if (pollAbortRef.current === controller) pollAbortRef.current = null;
     }
   };
 

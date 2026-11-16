@@ -453,9 +453,10 @@ function MainApp() {
       } else if (msg.type === "experimental_debate_update") {
         // The dedicated event is additive. Old clients still receive the
         // legacy recommendation; current clients reduce the embedded snapshot.
-        if (msg.data.recommendation) {
+        const recommendation = msg.data.recommendation;
+        if (recommendation) {
           setDebateState((current) =>
-            reduceDebateUpdate(current, messageSessionId, msg.data.recommendation),
+            reduceDebateUpdate(current, messageSessionId, recommendation),
           );
         }
       } else if (msg.type === "status") {

@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as api from "../../services/api";
 import type { TranscriptionJob } from "../../types";
 import TranscriptionJobProgress from "../TranscriptionJobProgress";
@@ -14,7 +14,20 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
   const [job, setJob] = useState<TranscriptionJob | null>(null);
   const transcriptRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
   const busy = loading || (job ? api.transcriptionJobActive(job) : false);
+
+  useEffect(() => {
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = null;
+    setJob(null);
+    setLoading(false);
+    setStatus("");
+    return () => {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
+    };
+  }, [sessionId]);
 
   const handleTranscript = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,12 +51,16 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
     if (!file) return;
     setLoading(true);
     setStatus("Audio wird hochgeladen …");
+    const controller = new AbortController();
+    pollAbortRef.current = controller;
     try {
       const queued = await api.importAudio(sessionId, file);
+      if (controller.signal.aborted) return;
       setJob(queued);
       setLoading(false);
       setStatus("");
-      const result = await api.waitForTranscriptionJob(sessionId, queued, setJob);
+      const result = await api.waitForTranscriptionJob(sessionId, queued, setJob, 1000, controller.signal);
+      if (controller.signal.aborted) return;
       if (result.status === "completed") {
         setStatus(`${result.entries} Transkripteinträge aus ${result.filename} importiert.`);
         onImported?.();
@@ -53,9 +70,11 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
         setStatus(`Fehler: ${result.error || "Audioimport fehlgeschlagen."}`);
       }
     } catch (err: unknown) {
+      if (controller.signal.aborted) return;
       setStatus(`Fehler: ${err instanceof Error ? err.message : "Audioimport fehlgeschlagen."}`);
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
+      if (pollAbortRef.current === controller) pollAbortRef.current = null;
       if (audioRef.current) audioRef.current.value = "";
     }
   };
