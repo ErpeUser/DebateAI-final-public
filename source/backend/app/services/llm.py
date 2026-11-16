@@ -10,6 +10,7 @@ per call by services/llm_endpoint.py rather than hardcoded, which is what lets
 an agent target a local Ollama, LM Studio, vLLM, or LiteLLM server.
 """
 
+import asyncio
 import json
 import logging
 import os
