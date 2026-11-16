@@ -55,7 +55,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -167,7 +167,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -256,7 +256,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -335,7 +335,11 @@ jobs:
           $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue
           if ($null -eq $nodeCommand) { throw "Node.js 24 is required for the ChatGPT web runtime." }
           $nodeVersion = (& $nodeCommand.Source --version 2>&1 | Out-String).Trim()
-          if ($LASTEXITCODE -ne 0 -or $nodeVersion -notmatch "^v24\.") { throw "Node.js 24 is required; found '$nodeVersion'." }
+          $expectedNodeVersion = "v24.21.0"
+          $expectedNodeSha256 = "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32"
+          if ($LASTEXITCODE -ne 0 -or $nodeVersion -cne $expectedNodeVersion) { throw "Node.js $expectedNodeVersion is required; found '$nodeVersion'." }
+          $nodeSha256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $nodeCommand.Source).Hash.ToLowerInvariant()
+          if ($nodeSha256 -cne $expectedNodeSha256) { throw "Node.js $expectedNodeVersion has an unexpected SHA-256: $nodeSha256" }
           Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
           npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE -ne 0) { throw "ChatGPT Oracle npm ci failed with exit code $LASTEXITCODE." }
@@ -413,7 +417,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
@@ -541,8 +545,8 @@ jobs:
           set -euo pipefail
           mkdir -p linux-output controller/release-assets
           docker build \
-            --file controller/desktop/Dockerfile.release-linux \
-            --build-context controller=controller/desktop/scripts \
+            --file controller/source/desktop/Dockerfile.release-linux \
+            --build-context controller=controller/source/desktop/scripts \
             --target export \
             --output type=local,dest=linux-output \
             source
@@ -595,7 +599,7 @@ jobs:
 
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: 24
+          node-version: 24.21.0
 
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:

@@ -804,7 +804,7 @@ async def _ai_web_sources(
             with external_audit.audit_context(
                 claim=claim,
                 data_category="research_claim",
-                approval=True,
+                approval=external_audit.current_approval(),
             ):
                 if provider == "chatgpt_web":
                     if chatgpt_generate is None:

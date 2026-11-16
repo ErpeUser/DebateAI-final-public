@@ -945,3 +945,15 @@ NÄCHSTER PUNKT: 047/A085
 - **Commit/Push:** `55307c589af913955b7e1a05681bc30ebc008707` (source-/rhetoric-excerpt), `9c746f19cd3c71a3889d6e2565db47e048c35461` (Video-Regressionen), `ea66ccf830ca197f196f9397f5334c1816e72356` (experimenteller Claim-Selector), `ebd995fbff7663efec41ba0b50fa771238a919bd` (Orchestrator-Regression), `b52134692bd4ce22d2d6f616d8797b776cb08bb2` (Reconnect-Abschluss wiederhergestellt).
 
 NÄCHSTER PUNKT: 048/A086
+
+## Masterauftrag – 2026-11-15 – 048/A086
+**Status: QUELLCODE ERLEDIGT; vollständige Egress-Abdeckung und reale Providerabnahme offen.**
+
+- **Audit-Kontext korrigiert:** `debate_research._ai_web_sources()` übernimmt jetzt die geerbte Freigabe aus `external_audit.current_approval()` statt jede Research-Lane pauschal als genehmigt zu protokollieren. Damit bleibt ein äußerer Privacy-/Cost-Kontext auch in der Provider-Schleife erhalten.
+- **Claim-ID-Lifecycle korrigiert:** `external_audit._safe_claim_id()` bewahrt bereits erzeugte 32-stellige Claim-Digests. Start- und Abschlussereignisse derselben Anfrage schreiben dadurch dieselbe Claim-ID; Rohclaims werden weiterhin gehasht und nicht gespeichert.
+- **Regressionen ergänzt:** `test_ai_web_sources_preserves_outer_audit_approval` deckt die Research-Lane mit explizit verweigerter äußerer Freigabe ab. `test_claim_id_remains_stable_across_lifecycle_events` deckt Start/Cancelled-Lifecycle, Claim-ID-Gleichheit und die redigierte Auditform ab.
+- **Validierung:** Quell- und Testdateien wurden über den GitHub-Branch aktualisiert. Ein ausführbarer privater Checkout mit Backend-Abhängigkeiten und Provider-/Browser-Sitzungen steht in dieser Umgebung nicht zur Verfügung; die beiden neuen unittest-Regressionen bleiben deshalb zur lokalen Ausführung offen und werden nicht als bestanden behauptet. Die weiteren direkten Cloud-Egress-Routen (Transkription, Files, Live-WebSockets und Health-Probes) sind für A086 noch nicht vollständig instrumentiert.
+- **Commits:** `62098ef27e9b8b00e15e61ada68fd6b30ca5dfa9` (Approval-Kontext), `82e45e0469e6d7734309903bfb9b73578abfc81d` (Research-Regression), `e2b90f77bd4aa715e51f3162af227ae2b62dd447` (Claim-ID-Lifecycle), `adfd1e9d7db546502acb1c935232489c48bddbaa` (Lifecycle-Regression).
+
+NÄCHSTER PUNKT: 049/A087
+- **CI-Nachtrag:** Für PR-Head `123f6fa2248c3695a71cf8a141e6aab44d2f9f9d` meldeten die GitHub-Actions `security` und `tests` `failure`; die zugehörigen Jobs lieferten `steps: null`, und die Logabrufe endeten mit BlobNotFound/404. Das ist kein ausführbarer Testnachweis und bleibt als CI-/Runner-Blocker offen.
