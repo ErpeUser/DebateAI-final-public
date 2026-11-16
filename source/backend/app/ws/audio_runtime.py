@@ -336,8 +336,14 @@ async def _stop_diarization_worker(
     worker_task: asyncio.Task,
     pending_enqueued_at: deque[float],
 ) -> Any | None:
-    queue.put_nowait(None)
     deadline = monotonic() + _DIARIZATION_DRAIN_DEADLINE_SECONDS
+    try:
+        await asyncio.wait_for(queue.put(None), _DIARIZATION_DRAIN_DEADLINE_SECONDS)
+    except TimeoutError:
+        logger.warning("Could not enqueue diarization shutdown marker before deadline")
+        worker_task.cancel()
+        await asyncio.gather(worker_task, return_exceptions=True)
+        return None
     while not worker_task.done():
         remaining = deadline - monotonic()
         if remaining <= 0:

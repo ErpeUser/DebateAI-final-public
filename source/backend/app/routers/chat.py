@@ -1,5 +1,6 @@
 import json
 import logging
+import re
 import uuid
 from typing import Literal
 
@@ -33,6 +34,30 @@ BRIEFING_FIELDS = (
     "unresolved_discovery_questions",
     "strategic_signals",
 )
+
+
+_TOKEN_RE = re.compile(r"\[([A-Z][A-Z0-9]*)_(\d+)\]")
+
+def _namespace_tokens(value: str, namespace: str) -> str:
+    if not isinstance(value, str):
+        return value
+    return _TOKEN_RE.sub(lambda match: f"[{namespace}_{match.group(1)}_{match.group(2)}]", value)
+
+def _restore_namespace_tokens(value: str, namespace: str) -> str:
+    if not isinstance(value, str):
+        return value
+    prefix = re.compile(rf"\[{re.escape(namespace)}_([A-Z][A-Z0-9]*)_(\d+)\]")
+    return prefix.sub(lambda match: f"[{match.group(1)}_{match.group(2)}]", value)
+
+def _namespace_session_data(data: dict, namespace: str) -> dict:
+    result = dict(data)
+    for key in ("briefing", "insights"):
+        result[key] = _namespace_tokens(result.get(key, ""), namespace)
+    result["lines"] = [
+        (speaker, _namespace_tokens(text, namespace))
+        for speaker, text in result.get("lines", [])
+    ]
+    return result
 
 SYSTEM_PROMPT = (
     "You are a meeting analysis assistant. Use ONLY the supplied meeting "
@@ -185,6 +210,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
 
         started = session.started_at or session.created_at
         sessions_data.append({
+            "session_id": session_id,
             "name": session.name,
             "started_at": started.date().isoformat() if started else "unknown date",
             "sort_key": started.isoformat() if started else "",
@@ -194,10 +220,28 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         })
 
     sessions_data.sort(key=lambda data: data["sort_key"])
-    # A typed question can name people too. Tokens are minted in the first
-    # selected session's vault; the transcripts already carry their own.
+    namespace_by_session = {
+        str(data["session_id"]): f"S{index}"
+        for index, data in enumerate(sessions_data, 1)
+    }
+    sessions_data = [
+        _namespace_session_data(data, namespace_by_session[str(data["session_id"])])
+        for data in sessions_data
+    ]
+    # Each selected session gets a disjoint token namespace while it is in the
+    # provider prompt. Otherwise [PERSON_1] from two vaults is ambiguous and
+    # the reveal loop can substitute one session's name into another session's
+    # answer.
+    first_session = str(body.session_ids[0])
+    first_namespace = namespace_by_session[first_session]
     messages = [
-        {"role": m.role, "content": await shield.protect_text(db, body.session_ids[0], m.content)}
+        {
+            "role": m.role,
+            "content": _namespace_tokens(
+                await shield.protect_text(db, body.session_ids[0], m.content),
+                first_namespace,
+            ),
+        }
         for m in body.messages
     ]
     prompt = build_chat_prompt(sessions_data, messages)
@@ -223,6 +267,9 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
             provider_for(body.model_id), e, context="Chat failed"
         ) from e
     # Not session-scoped in the path, so the reveal middleware cannot see it.
-    for session_id in body.session_ids:
+    for data in sessions_data:
+        session_id = data["session_id"]
+        namespace = namespace_by_session[str(session_id)]
+        reply = _restore_namespace_tokens(reply, namespace)
         reply = await shield.reveal_text(db, session_id, reply, route="/api/chat")
     return {"reply": reply}

@@ -109,8 +109,8 @@ export const getChatGPTWebStatus = () =>
 export const startChatGPTWebLogin = () =>
   request<ChatGPTWebStatus>("/chatgpt-web/login", { method: "POST" });
 
-export const pollChatGPTWebLogin = () =>
-  request<ChatGPTWebStatus>("/chatgpt-web/login");
+export const pollChatGPTWebLogin = (signal?: AbortSignal) =>
+  request<ChatGPTWebStatus>("/chatgpt-web/login", { signal });
 
 export const disconnectChatGPTWeb = () =>
   request<ChatGPTWebStatus>("/chatgpt-web/account/disconnect", { method: "POST" });
@@ -219,26 +219,56 @@ export const probeNativeMicrophone = (microphoneIndex: number) =>
     body: JSON.stringify({ microphone_index: microphoneIndex }),
   });
 
-export const enhanceInsights = (id: string) =>
-  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights`, { method: "POST" });
+export const enhanceInsights = (id: string, signal?: AbortSignal) =>
+  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights`, { method: "POST", signal });
 
-export const getEnhancementStatus = (id: string, runId: string) =>
-  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights/${runId}`);
+export const getEnhancementStatus = (id: string, runId: string, signal?: AbortSignal) =>
+  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights/${runId}`, { signal });
 
 export const getLatestEnhancement = (id: string) =>
   request<EnhanceInsightsResult | null>(`/sessions/${id}/enhance-insights/latest`);
+
+function abortReason(signal?: AbortSignal): Error {
+  const reason = signal?.reason;
+  return reason instanceof Error ? reason : new DOMException("The operation was aborted", "AbortError");
+}
+
+function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) throw abortReason(signal);
+}
+
+function waitForPoll(pollMs: number, signal?: AbortSignal): Promise<void> {
+  throwIfAborted(signal);
+  return new Promise((resolve, reject) => {
+    let timer: ReturnType<typeof setTimeout>;
+    const onAbort = () => {
+      clearTimeout(timer);
+      signal?.removeEventListener("abort", onAbort);
+      reject(abortReason(signal));
+    };
+    timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, pollMs);
+    signal?.addEventListener("abort", onAbort, { once: true });
+    if (signal?.aborted) onAbort();
+  });
+}
 
 export async function waitForEnhancement(
   id: string,
   initial: EnhanceInsightsResult,
   onProgress: (result: EnhanceInsightsResult) => void,
+  signal?: AbortSignal,
 ): Promise<EnhanceInsightsResult> {
   let result = initial;
   while (result.status === "running" && result.run_id) {
+    throwIfAborted(signal);
     onProgress(result);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    result = await getEnhancementStatus(id, result.run_id);
+    await waitForPoll(1000, signal);
+    result = await getEnhancementStatus(id, result.run_id, signal);
   }
+  throwIfAborted(signal);
   return result;
 }
 
@@ -400,12 +430,13 @@ export const importTranscript = async (sessionId: string, file: File): Promise<{
   return res.json();
 };
 
-export const importAudio = async (sessionId: string, file: File): Promise<TranscriptionJob> => {
+export const importAudio = async (sessionId: string, file: File, signal?: AbortSignal): Promise<TranscriptionJob> => {
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/sessions/${sessionId}/import/audio`, {
     method: "POST",
     body: form,
+    signal,
   });
   if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
@@ -424,10 +455,11 @@ export const listReleaseNotes = () => request<ReleaseNote[]>("/meta/release-note
 export const segmentAudioUrl = (sessionId: string, segmentNumber: number) =>
   `${BASE}/sessions/${sessionId}/segments/${segmentNumber}/audio`;
 
-export const retranscribeSession = (sessionId: string, modelId: string) =>
+export const retranscribeSession = (sessionId: string, modelId: string, signal?: AbortSignal) =>
   request<TranscriptionJob>(`/sessions/${sessionId}/retranscribe`, {
     method: "POST",
     body: JSON.stringify({ model_id: modelId }),
+    signal,
   });
 
 const transcriptionJobPath = (sessionId: string, kind: TranscriptionJob["kind"]) =>
@@ -438,9 +470,10 @@ const transcriptionJobPath = (sessionId: string, kind: TranscriptionJob["kind"])
 export const transcriptionJobActive = (job: TranscriptionJob) =>
   job.status === "queued" || job.status === "running" || job.status === "canceling";
 
-export const getTranscriptionJob = (sessionId: string, kind: TranscriptionJob["kind"]) =>
+export const getTranscriptionJob = (sessionId: string, kind: TranscriptionJob["kind"], signal?: AbortSignal) =>
   request<TranscriptionJob>(
     `${transcriptionJobPath(sessionId, kind)}${kind === "audio_import" ? "/status" : ""}`,
+    { signal },
   );
 
 export const cancelTranscriptionJob = (sessionId: string, kind: TranscriptionJob["kind"]) =>
@@ -451,13 +484,16 @@ export async function waitForTranscriptionJob(
   initial: TranscriptionJob,
   onProgress: (job: TranscriptionJob) => void,
   pollMs = 1000,
+  signal?: AbortSignal,
 ): Promise<TranscriptionJob> {
   let job = initial;
   while (transcriptionJobActive(job)) {
+    throwIfAborted(signal);
     onProgress(job);
-    await new Promise((resolve) => setTimeout(resolve, pollMs));
-    job = await getTranscriptionJob(sessionId, job.kind);
+    await waitForPoll(pollMs, signal);
+    job = await getTranscriptionJob(sessionId, job.kind, signal);
   }
+  throwIfAborted(signal);
   onProgress(job);
   return job;
 }

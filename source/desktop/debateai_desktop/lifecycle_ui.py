@@ -12,70 +12,78 @@ class _TkLifecycleWindow:
         self._tk = tk
         root = tk.Tk()
         self._root = root
-        root.title("Debate AI")
-        root.configure(bg="#050505")
-        root.resizable(False, False)
-        root.attributes("-topmost", True)
-        root.overrideredirect(True)
-
-        width, height = 520, 270
-        x = max(0, (root.winfo_screenwidth() - width) // 2)
-        y = max(0, (root.winfo_screenheight() - height) // 2)
-        root.geometry(f"{width}x{height}+{x}+{y}")
-
-        frame = tk.Frame(root, bg="#111111", highlightbackground="#3f3f46", highlightthickness=1)
-        frame.pack(fill="both", expand=True, padx=1, pady=1)
-        tk.Label(
-            frame,
-            text="DEBATE AI",
-            bg="#111111",
-            fg="#f4f4f5",
-            font=("Segoe UI Semibold", 11),
-            anchor="w",
-        ).pack(fill="x", padx=34, pady=(34, 6))
-        self._title = tk.Label(
-            frame,
-            text="",
-            bg="#111111",
-            fg="#f5f8fc",
-            font=("Segoe UI Semibold", 22),
-            anchor="w",
-        )
-        self._title.pack(fill="x", padx=34, pady=(0, 10))
-        self._detail = tk.Label(
-            frame,
-            text="",
-            bg="#111111",
-            fg="#a1a1aa",
-            font=("Segoe UI", 11),
-            anchor="w",
-        )
-        self._detail.pack(fill="x", padx=34)
-        self._track_width = 452
-        track = tk.Frame(frame, bg="#27272a", width=self._track_width, height=6)
-        track.pack(fill="x", padx=34, pady=(30, 8))
-        track.pack_propagate(False)
-        self._bar = tk.Frame(track, bg="#f4f4f5", width=1, height=6)
-        self._bar.pack(side="left")
-        self._progress = tk.Label(
-            frame,
-            text="0 %",
-            bg="#111111",
-            fg="#a1a1aa",
-            font=("Segoe UI Semibold", 9),
-            anchor="e",
-        )
-        self._progress.pack(fill="x", padx=34)
-        tk.Label(
-            frame,
-            text="Datenbank und KI laufen nur, solange Debate AI aktiv ist.",
-            bg="#111111",
-            fg="#71717a",
-            font=("Segoe UI", 9),
-            anchor="w",
-        ).pack(fill="x", padx=34)
-        root.update_idletasks()
-        root.update()
+        try:
+            root.title("Debate AI")
+            root.configure(bg="#050505")
+            root.resizable(False, False)
+            root.attributes("-topmost", True)
+            root.overrideredirect(True)
+    
+            width, height = 520, 270
+            x = max(0, (root.winfo_screenwidth() - width) // 2)
+            y = max(0, (root.winfo_screenheight() - height) // 2)
+            root.geometry(f"{width}x{height}+{x}+{y}")
+    
+            frame = tk.Frame(root, bg="#111111", highlightbackground="#3f3f46", highlightthickness=1)
+            frame.pack(fill="both", expand=True, padx=1, pady=1)
+            tk.Label(
+                frame,
+                text="DEBATE AI",
+                bg="#111111",
+                fg="#f4f4f5",
+                font=("Segoe UI Semibold", 11),
+                anchor="w",
+            ).pack(fill="x", padx=34, pady=(34, 6))
+            self._title = tk.Label(
+                frame,
+                text="",
+                bg="#111111",
+                fg="#f5f8fc",
+                font=("Segoe UI Semibold", 22),
+                anchor="w",
+            )
+            self._title.pack(fill="x", padx=34, pady=(0, 10))
+            self._detail = tk.Label(
+                frame,
+                text="",
+                bg="#111111",
+                fg="#a1a1aa",
+                font=("Segoe UI", 11),
+                anchor="w",
+            )
+            self._detail.pack(fill="x", padx=34)
+            self._track_width = 452
+            track = tk.Frame(frame, bg="#27272a", width=self._track_width, height=6)
+            track.pack(fill="x", padx=34, pady=(30, 8))
+            track.pack_propagate(False)
+            self._bar = tk.Frame(track, bg="#f4f4f5", width=1, height=6)
+            self._bar.pack(side="left")
+            self._progress = tk.Label(
+                frame,
+                text="0 %",
+                bg="#111111",
+                fg="#a1a1aa",
+                font=("Segoe UI Semibold", 9),
+                anchor="e",
+            )
+            self._progress.pack(fill="x", padx=34)
+            tk.Label(
+                frame,
+                text="Datenbank und KI laufen nur, solange Debate AI aktiv ist.",
+                bg="#111111",
+                fg="#71717a",
+                font=("Segoe UI", 9),
+                anchor="w",
+            ).pack(fill="x", padx=34)
+            root.update_idletasks()
+            root.update()
+    
+        except Exception:
+            try:
+                root.destroy()
+            except Exception:
+                pass
+            raise
 
     def show(self, title: str, detail: str) -> None:
         self._title.configure(text=title)
@@ -150,14 +158,24 @@ class LifecycleSplash:
             try:
                 self._window.set_detail(detail)
             except Exception:
+                window = self._window
                 self._window = None
+                try:
+                    window.close() if window is not None else None
+                except Exception:
+                    pass
 
     def set_progress(self, progress: int, detail: str | None = None) -> None:
         if self._window is not None:
             try:
                 self._window.set_progress(progress, detail)
             except Exception:
+                window = self._window
                 self._window = None
+                try:
+                    window.close() if window is not None else None
+                except Exception:
+                    pass
 
     def close(self) -> None:
         window, self._window = self._window, None

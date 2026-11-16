@@ -6,13 +6,13 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
 from app.services.pii import shield
 from app.services.secrets import data_dir
-from app.models import AgentConfig, CallSegment, Session, SessionAgentOverride, Speaker, TokenUsage
+from app.models import AgentConfig, CallSegment, DebateClaimRecord, Session, SessionAgentOverride, Speaker, TokenUsage
 from app.schemas import (
     CallSegmentOut,
     EnhanceInsightsOut,
@@ -118,9 +118,11 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
         session.notes = await shield.protect_text(db, session_id, body.notes)
     if body.meeting_type is not None:
         session.meeting_type = normalize_meeting_type(body.meeting_type)
+    protected_context = None
     if body.meeting_context is not None:
-        session.meeting_context = await shield.protect_text(db, session_id, body.meeting_context)
-    if body.group_id is not None:
+        protected_context = await shield.protect_text(db, session_id, body.meeting_context)
+        session.meeting_context = protected_context
+    if "group_id" in body.model_fields_set:
         session.group_id = body.group_id
     await db.commit()
     await db.refresh(session)
@@ -131,7 +133,7 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
         if orchestrator:
             orchestrator.update_meeting_context(
                 meeting_type=body.meeting_type,
-                meeting_context=body.meeting_context,
+                meeting_context=protected_context,
             )
     return session
 
@@ -232,6 +234,7 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     session = await db.get(Session, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
+    await db.execute(delete(DebateClaimRecord).where(DebateClaimRecord.session_id == session_id))
     await db.delete(session)
     await db.commit()
     shield.forget_session(session_id)

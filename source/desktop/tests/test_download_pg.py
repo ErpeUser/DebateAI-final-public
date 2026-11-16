@@ -1,7 +1,9 @@
+import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
-from scripts.download_pg import artifact_platform, jar_url
+from scripts.download_pg import artifact_platform, has_complete_install, jar_url
 
 
 class DownloadPgTests(unittest.TestCase):
@@ -19,6 +21,23 @@ class DownloadPgTests(unittest.TestCase):
         self.assertTrue(url.startswith("https://repo1.maven.org/maven2/io/zonky/test/postgres/"))
         self.assertTrue(url.endswith(".jar"))
         self.assertIn("embedded-postgres-binaries-windows-amd64", url)
+
+    def test_incomplete_bin_directory_is_not_considered_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp)
+            with mock.patch("scripts.download_pg.DEST", new=destination):
+                (destination / "bin").mkdir()
+                self.assertFalse(has_complete_install())
+
+    def test_zero_length_binary_is_not_considered_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp)
+            binary_dir = destination / "bin"
+            binary_dir.mkdir()
+            for name in ("postgres", "initdb", "pg_ctl"):
+                (binary_dir / name).touch()
+            with mock.patch("scripts.download_pg.DEST", new=destination):
+                self.assertFalse(has_complete_install())
 
 
 if __name__ == "__main__":

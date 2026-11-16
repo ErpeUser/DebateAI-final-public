@@ -48,7 +48,7 @@ class LauncherHelperTests(unittest.TestCase):
         self.assertEqual(str(fallback), basic_config.call_args.kwargs["filename"])
 
     def test_updater_path_prefers_canonical_and_falls_back_to_legacy(self):
-        with tempfile.TemporaryDirectory() as tmp:
+        with patch.object(launcher.sys, "platform", "win32"), tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             canonical = root / "DebateAIUpdater.exe"
             legacy = root / "DebateAIUpdater.exe"
@@ -72,7 +72,7 @@ class LauncherHelperTests(unittest.TestCase):
         window.events.closing = closing
         webview = Mock()
         webview.create_window.return_value = window
-        with patch.dict("sys.modules", {"webview": webview}):
+        with patch.dict("sys.modules", {"webview": webview}), patch.object(launcher.sys, "platform", "win32"):
             result = launcher.run_embedded_webview(
                 "http://localhost:8474/?desktop=1",
                 "Debate AI",
@@ -84,6 +84,14 @@ class LauncherHelperTests(unittest.TestCase):
         self.assertEqual(result, 0)
         self.assertEqual(closing.handlers, [])
         webview.start.assert_called_once_with(gui="edgechromium", debug=False)
+
+    def test_embedded_webview_selects_native_backend_per_platform(self):
+        with patch.object(launcher.sys, "platform", "linux"):
+            self.assertEqual(launcher._webview_gui(), "gtk")
+        with patch.object(launcher.sys, "platform", "darwin"):
+            self.assertEqual(launcher._webview_gui(), "cocoa")
+        with patch.object(launcher.sys, "platform", "win32"):
+            self.assertEqual(launcher._webview_gui(), "edgechromium")
 
     def test_instance_guard_prevents_a_second_startup_owner(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -684,6 +692,21 @@ class LauncherHelperTests(unittest.TestCase):
         )
         opener.assert_called_once_with("http://localhost:8474/?desktop=1&view=about")
 
+    def test_update_status_get_includes_instance_token(self):
+        response = Mock(status=200)
+        response.__enter__ = Mock(return_value=response)
+        response.__exit__ = Mock(return_value=False)
+        response.read.return_value = b'{"state":"available"}'
+        with patch("launcher.urllib.request.urlopen", return_value=response) as urlopen:
+            self.assertEqual(launcher._update_status(8474, "instance-secret"), {"state": "available"})
+        request = urlopen.call_args.args[0]
+        self.assertEqual(
+            {key.lower(): value for key, value in request.header_items()}.get(
+                launcher.INSTANCE_HEADER.lower()
+            ),
+            "instance-secret",
+        )
+
     def test_available_tray_label_includes_version_and_signed_note_title(self):
         with patch.object(launcher, "_update_status", return_value={
             "state": "available",
@@ -691,7 +714,7 @@ class LauncherHelperTests(unittest.TestCase):
             "available_notes": "# Safer updates\nMore detail.",
         }):
             self.assertEqual(
-                launcher._update_menu_label(8474),
+                launcher._update_menu_label(8474, "instance-secret"),
                 "Update v0.4.0: Safer updates",
             )
 
@@ -741,7 +764,7 @@ class LauncherHelperTests(unittest.TestCase):
             resolved = menu[3][0](None)
         self.assertTrue(callable(menu[3][0]))
         self.assertEqual(resolved, "Update v0.4.0: Safer updates")
-        label.assert_called_once_with(8474)
+        label.assert_called_once_with(8474, "instance-secret")
 
     def test_stale_lock_file_means_no_instance(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -838,6 +861,18 @@ class LauncherHelperTests(unittest.TestCase):
             launcher._open_data_folder(data_dir)
 
         run.assert_called_once_with(["xdg-open", str(data_dir)], check=False)
+
+    def test_non_windows_child_that_exits_uses_browser_fallback(self):
+        process = Mock(pid=1234)
+        process.poll.return_value = 1
+        with (
+            patch.object(launcher.sys, "platform", "linux"),
+            patch.object(launcher, "visible_popen", return_value=process),
+            patch.object(launcher, "_open_system_browser", return_value=True) as fallback,
+        ):
+            self.assertTrue(launcher.open_desktop_window("http://localhost:8474"))
+        fallback.assert_called_once_with("http://localhost:8474")
+        process.terminate.assert_not_called()
 
 
 if __name__ == "__main__":

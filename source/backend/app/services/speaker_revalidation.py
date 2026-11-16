@@ -585,6 +585,7 @@ async def _run_batch(
     batch: SpeakerRevalidationBatch,
 ) -> None:
     started = datetime.now(timezone.utc)
+    batch_id = batch.id
     batch.status = "running"
     batch.attempts += 1
     batch.started_at = started
@@ -634,7 +635,10 @@ async def _run_batch(
         await db.commit()
     except Exception as exc:
         await db.rollback()
-        failed = await db.get(SpeakerRevalidationBatch, batch.id)
+        failed = await db.get(SpeakerRevalidationBatch, batch_id)
+        if failed is None:
+            logger.error("Speaker revalidation batch %s disappeared during rollback", batch_id)
+            return
         failed.status = "failed"
         failed.error_message = batch_failure_reason(exc)
         failed.duration_ms = max(
@@ -643,4 +647,4 @@ async def _run_batch(
         )
         failed.completed_at = datetime.now(timezone.utc)
         await db.commit()
-        logger.exception("Speaker revalidation batch %s failed", batch.id)
+        logger.exception("Speaker revalidation batch %s failed", batch_id)

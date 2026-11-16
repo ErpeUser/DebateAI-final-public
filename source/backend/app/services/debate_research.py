@@ -328,11 +328,20 @@ async def _bounded_get(
     if not isinstance(client, httpx.AsyncClient):
         response = await client.get(url, params=params, headers=_HEADERS)
         response.raise_for_status()
-        if hasattr(response, "json"):
+        headers = getattr(response, "headers", {}) or {}
+        content_type = str(headers.get("content-type", "text/plain")).split(";", 1)[0].casefold()
+        if content_type not in accepted_types:
+            raise ValueError("Research response content type is not allowed")
+        if content_type == "application/json" and hasattr(response, "json"):
             content = json.dumps(response.json(), ensure_ascii=False).encode("utf-8")
-            if len(content) > max_bytes:
-                raise ValueError("Research response exceeds the decoded size limit")
-            return content, "application/json"
+        else:
+            raw = getattr(response, "content", None)
+            if raw is None:
+                raw = getattr(response, "text", "")
+            content = raw if isinstance(raw, bytes) else str(raw).encode("utf-8")
+        if len(content) > max_bytes:
+            raise ValueError("Research response exceeds the decoded size limit")
+        return content, content_type
         raise ValueError("Injected research client returned no readable body")
     headers = {
         **_HEADERS,
@@ -612,14 +621,20 @@ async def _read_trusted_original(
             max_entries=_DOCUMENT_CACHE_MAX_ENTRIES,
         )
     else:
-        content, _content_type = cached_document
-    parser = _OriginalTextParser()
-    parser.feed(content.decode("utf-8", errors="replace"))
+        content, content_type = cached_document
+    _content_type = content_type
+    text_content = content.decode("utf-8", errors="replace")
+    if _content_type.split(";", 1)[0].casefold() == "text/plain":
+        passage_text = text_content
+    else:
+        parser = _OriginalTextParser()
+        parser.feed(text_content)
+        passage_text = " ".join(parser.parts)
     content_hash = hashlib.sha256(content).hexdigest()
     passage_key = (content_hash, query.casefold())
     cached_passage = _cache_get(_passage_cache, passage_key)
     if cached_passage is None:
-        passage = _relevant_passage(" ".join(parser.parts), query)
+        passage = _relevant_passage(passage_text, query)
         _cache_set(
             _passage_cache,
             passage_key,
@@ -1052,7 +1067,7 @@ async def research_claim(
                 status="unavailable",
                 error="Research timed out",
             )
-    key = clean_query.casefold() if mode == "deep" else f"live:{clean_query.casefold()}"
+    key = f"{mode}:{clean_claim.casefold()}\x00{clean_query.casefold()}"
     cached = _cache_get(_search_cache, key)
     if cached is not None:
         return _result_for_claim(cached[0], clean_claim)

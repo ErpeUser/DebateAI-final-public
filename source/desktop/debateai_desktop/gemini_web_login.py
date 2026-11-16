@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import threading
 import time
 from http.cookies import SimpleCookie
@@ -129,7 +130,7 @@ def run_gemini_web_login(result_path: Path) -> int:
     window.events.loaded += capture_authenticated_cookies
     webview.start(
         start_cookie_poller,
-        gui="edgechromium",
+        gui=_webview_gui(),
         debug=False,
         private_mode=True,
     )
@@ -140,3 +141,12 @@ def run_gemini_web_login(result_path: Path) -> int:
         )
         return 1
     return 0
+
+
+def _webview_gui() -> str:
+    """Select the pywebview backend available on the current desktop OS."""
+    if sys.platform == "win32":
+        return "edgechromium"
+    if sys.platform == "darwin":
+        return "cocoa"
+    return "gtk"

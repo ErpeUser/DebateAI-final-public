@@ -203,13 +203,14 @@ def build_blind_pairs(
     pairs: list[dict[str, Any]] = []
     for row in manifest.splits.get("test", []):
         case_id = str(row.get("case_id") or "")
+        video_id = str(row.get("video_id") or "")
         pair_id = hashlib.sha256(
-            f"{manifest.seed}:{case_id}:{baseline_label}:{candidate_label}".encode("utf-8")
+            f"{manifest.seed}:{video_id}:{case_id}:{baseline_label}:{candidate_label}".encode("utf-8")
         ).hexdigest()[:24]
         pairs.append({
             "pair_id": pair_id,
             "case_id": case_id,
-            "video_id": row.get("video_id", ""),
+            "video_id": video_id,
             "claim_family": row.get("claim_family", ""),
             "left_label": "A",
             "right_label": "B",

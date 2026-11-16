@@ -70,8 +70,10 @@ def master_key_recovery_message(exc: Exception | None = None) -> str:
     return (
         f"The credentials master key at {master_key_path()} cannot be used on this "
         f"account or machine{reason}. Provider keys stored with it are unreadable "
-        "until it is replaced: stop Debate AI, delete that file, start again, "
-        "and re-enter the provider keys in Admin -> Connections."
+        "until the original key is restored. Stop Debate AI, preserve and back up "
+        "that master.key, and restore it together with the original OS account or "
+        "machine before retrying. Do not delete or regenerate it: the same key "
+        "also decrypts stored PII."
     )
 
 

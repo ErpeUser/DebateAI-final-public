@@ -785,16 +785,44 @@ async def _persist_error_synthesis(
     meeting_output: BriefLensOutput | None = None,
     discovery_output: BriefLensOutput | None = None,
 ) -> SessionSynthesis:
-    return await _persist_synthesis(
-        session_id=session_id,
-        mode=mode,
-        status="error",
-        meeting_output=meeting_output,
-        discovery_output=discovery_output,
-        arbiter_output=BriefArbiterOutput(arbiter_notes="Briefing synthesis failed."),
-        model_ids=model_ids,
-        error_message=error_message,
-    )
+    # An arbiter/provider failure is a status update, not a new empty
+    # synthesis. Reusing _persist_synthesis here used to overwrite a
+    # previously completed snapshot and delete its insight clusters.
+    now = datetime.now(timezone.utc)
+    async with async_session() as db:
+        await _lock_synthesis_scope(db, session_id, mode)
+        result = await db.execute(
+            select(SessionSynthesis)
+            .where(SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode)
+            .with_for_update()
+        )
+        synthesis = result.scalar_one_or_none()
+        if synthesis is None:
+            synthesis = SessionSynthesis(
+                session_id=session_id, mode=mode, status="error",
+                arbiter_notes="Briefing synthesis failed.",
+                model_ids=model_ids, error_message=error_message,
+                created_at=now, updated_at=now,
+            )
+            db.add(synthesis)
+        else:
+            synthesis.status = "error"
+            synthesis.model_ids = model_ids
+            synthesis.error_message = error_message
+            synthesis.updated_at = now
+            # Preserve the successful owner/lens fields and cluster rows.
+            if not synthesis.arbiter_notes:
+                synthesis.arbiter_notes = "Briefing synthesis failed."
+        await db.commit()
+        result = await db.execute(
+            select(SessionSynthesis)
+            .where(SessionSynthesis.id == synthesis.id)
+            .options(selectinload(SessionSynthesis.clusters))
+        )
+        synthesis = result.scalar_one()
+        speaker_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+        speaker_names = _speaker_owner_names(speaker_result.scalars().all())
+    return _normalize_synthesis_owners(synthesis, speaker_names)
 
 
 async def _persist_synthesis(

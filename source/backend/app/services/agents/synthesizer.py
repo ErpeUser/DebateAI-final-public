@@ -23,6 +23,7 @@ from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.signal_insights import SIGNAL_ITEM_TYPES
 from app.services.agents.speaker_context import (
     build_speaker_aliases,
+    format_speakers_list,
     format_transcript_segment,
     normalize_speaker_type,
 )
@@ -251,7 +252,9 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
                 select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
             )
         ).scalars().all()
-        aliases = build_speaker_aliases([_speaker_dict(s) for s in roster])
+        roster_dicts = [_speaker_dict(s) for s in roster]
+        aliases = build_speaker_aliases(roster_dicts)
+        speaker_legend = format_speakers_list(roster_dicts, aliases)
 
     transcript_text = _format_transcript_entries(entries, aliases)
     insights_json = _build_insights_json(questions)
@@ -275,6 +278,10 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
         insights_json=insights_json,
         transcript_text=transcript_text,
     )
+    # The synthesizer template predates the shared transcript alias contract.
+    # Bind aliases once in a compact legend so [S1] references in operations
+    # remain attributable without repeating identities on every transcript line.
+    prompt = f"{prompt}\n\nParticipants (alias legend):\n{speaker_legend}"
 
     model_id = settings.REFINEMENT_MODEL if model_override is None else model_override
 

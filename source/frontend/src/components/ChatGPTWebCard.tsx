@@ -15,24 +15,33 @@ export default function ChatGPTWebCard({ onChanged }: { onChanged?: () => void }
   useEffect(() => { void load(); }, [load]);
   useEffect(() => {
     if (status?.login_state !== "pending") return;
-    let stopped = false;
-    const timer = window.setInterval(() => {
-      void api.pollChatGPTWebLogin().then((next) => {
-        if (stopped) return;
+    const controller = new AbortController();
+    let timer: number | undefined;
+    const poll = async () => {
+      try {
+        const next = await api.pollChatGPTWebLogin(controller.signal);
+        if (controller.signal.aborted) return;
         setStatus(next);
         setMessage(next.message);
         if (next.login_state !== "pending") {
           setBusy(false);
           if (next.ready) onChanged?.();
+          return;
         }
-      }).catch((error) => {
-        if (!stopped) {
-          setBusy(false);
-          setMessage(error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.");
-        }
-      });
-    }, 1000);
-    return () => { stopped = true; window.clearInterval(timer); };
+        timer = window.setTimeout(() => void poll(), 1000);
+      } catch (error) {
+        if (controller.signal.aborted) return;
+        const message = error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.";
+        setStatus((current) => current ? { ...current, login_state: "error", message } : current);
+        setBusy(false);
+        setMessage(message);
+      }
+    };
+    timer = window.setTimeout(() => void poll(), 1000);
+    return () => {
+      controller.abort();
+      if (timer !== undefined) window.clearTimeout(timer);
+    };
   }, [onChanged, status?.login_state]);
 
   const startLogin = async () => {

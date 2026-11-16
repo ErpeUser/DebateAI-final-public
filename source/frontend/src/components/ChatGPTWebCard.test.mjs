@@ -19,3 +19,10 @@ test("does not claim an unverified ChatGPT Pro entitlement", () => {
   assert.match(component, /ChatGPT Web über normalen Zugang/);
   assert.doesNotMatch(component, /ChatGPT Pro/);
 });
+
+test("login polling is abortable and stops after an API error", () => {
+  assert.match(component, /new AbortController\(\)/);
+  assert.match(component, /pollChatGPTWebLogin\([^)]*signal/);
+  assert.doesNotMatch(component, /window\.setInterval\(/);
+  assert.match(component, /login_state: "error"/);
+});

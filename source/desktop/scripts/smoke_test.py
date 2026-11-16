@@ -47,7 +47,10 @@ def dump_logs(data_dir: Path) -> None:
 
 
 def bundle_exe(bundle: Path | None = None) -> Path:
-    bundle = bundle or (Path("dist") / "DebateAI")
+    # main() launches with cwd set to its isolated data directory. Resolve the
+    # staged bundle before Popen changes cwd, otherwise a relative --bundle
+    # path points into the temporary runtime directory.
+    bundle = (bundle or (Path("dist") / "DebateAI")).resolve()
     exe = bundle / "DebateAI"
     if sys.platform == "win32":
         exe = exe.with_suffix(".exe")

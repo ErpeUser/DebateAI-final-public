@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import tempfile
 import unittest
@@ -48,9 +49,24 @@ class SmokeTestTests(unittest.TestCase):
 
     def test_bundle_exe_accepts_an_explicit_staged_bundle(self):
         bundle = Path("release stage") / "DebateAI"
-        expected = bundle / "DebateAI.exe"
+        expected = (bundle / "DebateAI.exe").resolve()
         with patch.object(Path, "exists", return_value=True):
             self.assertEqual(smoke_test.bundle_exe(bundle), expected)
+
+    def test_bundle_exe_resolves_before_launcher_changes_cwd(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            executable = root / "dist" / "DebateAI" / "DebateAI"
+            executable.parent.mkdir(parents=True)
+            executable.write_text("fixture")
+            previous = Path.cwd()
+            os.chdir(root)
+            try:
+                resolved = smoke_test.bundle_exe(Path("dist") / "DebateAI")
+            finally:
+                os.chdir(previous)
+        self.assertTrue(resolved.is_absolute())
+        self.assertTrue(resolved.exists())
 
     def test_wait_for_health_retries_and_checks_instance_token(self):
         proc = Mock()

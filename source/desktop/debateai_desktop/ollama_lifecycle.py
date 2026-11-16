@@ -151,7 +151,14 @@ class ManagedOllama:
             process.terminate()
             process.wait(timeout=3)
         except Exception:
-            pass
+            # A stubborn child must not be left behind as an unowned Ollama
+            # server after startup timed out. Escalate exactly as shutdown
+            # does, while keeping the launcher failure path non-blocking.
+            try:
+                process.kill()
+                process.wait(timeout=3)
+            except Exception:
+                pass
         return "failed"
 
     def stop(self) -> None:

@@ -20,6 +20,24 @@ class _Process:
         return 0
 
 
+class _StubbornProcess(_Process):
+    def __init__(self):
+        super().__init__()
+        self.killed = False
+
+    def terminate(self):
+        raise TimeoutError("terminate did not complete")
+
+    def wait(self, timeout=None):
+        if not self.killed:
+            raise TimeoutError("child is still alive")
+        self.waited = True
+        return 0
+
+    def kill(self):
+        self.killed = True
+
+
 class ManagedOllamaTests(unittest.TestCase):
     def test_existing_server_is_never_stopped_by_the_app(self):
         launches = []
@@ -74,6 +92,20 @@ class ManagedOllamaTests(unittest.TestCase):
         manager.stop()
 
         self.assertEqual(["qwen3:4b"], unloaded)
+        self.assertFalse(manager.owns_process)
+
+    def test_start_timeout_kills_a_stubborn_child(self):
+        process = _StubbornProcess()
+        manager = ManagedOllama(
+            executable=Path("ollama.exe"),
+            probe=lambda: False,
+            process_factory=lambda *args, **kwargs: process,
+            sleep=lambda _seconds: None,
+        )
+
+        self.assertEqual("failed", manager.start(timeout=0))
+        self.assertTrue(process.killed)
+        self.assertTrue(process.waited)
         self.assertFalse(manager.owns_process)
 
 

@@ -358,17 +358,31 @@ def build_atomic_claims(
     if not candidates and original:
         candidates = [original]
     folded_original = original.casefold()
+    folded_to_original: list[int] = []
+    for original_index, character in enumerate(original):
+        folded_to_original.extend([original_index] * len(character.casefold()))
+
+    def original_span(folded_start: int, folded_end: int) -> tuple[int, int]:
+        if folded_start < 0 or folded_end <= folded_start or folded_start >= len(folded_to_original):
+            return -1, -1
+        start = folded_to_original[folded_start]
+        last = min(folded_end, len(folded_to_original)) - 1
+        if last < folded_start:
+            return -1, -1
+        return start, folded_to_original[last] + 1
+
     pieces: list[tuple[str, int, int, bool]] = []
     covered: list[tuple[int, int]] = []
     search_from = 0
     for point in candidates:
-        start = folded_original.find(point.casefold(), search_from) if original else -1
-        if start < 0 and original:
-            start = folded_original.find(point.casefold())
-        end = start + len(point) if start >= 0 else -1
+        folded_start = folded_original.find(point.casefold(), search_from) if original else -1
+        if folded_start < 0 and original:
+            folded_start = folded_original.find(point.casefold())
+        start, end = original_span(folded_start, folded_start + len(point.casefold()))
         if start >= 0:
+            point = original[start:end]
             covered.append((start, end))
-            search_from = end
+            search_from = folded_start + len(point.casefold())
         pieces.append((point, start, end, start < 0))
 
     # Every original character carrying content must remain represented even
@@ -755,6 +769,7 @@ class ObjectionHandlerAgent:
             speakers_text=speakers_text,
             recent_objections=recent_text,
         )
+        system = system or ""
         system += "\n\n" + _mode_instruction(self._debate_mode)
         system += "\n\n" + _analogy_instruction(self._always_analogy)
         if not self._recommendation_only:
@@ -914,7 +929,7 @@ class ObjectionHandlerAgent:
         elif guidance_empty:
             self._conversation_state = {}
         raw_items = [item.model_dump(exclude_unset=True) for item in output.items]
-        items = self._parse_response(raw_items, valid_speaker_ids)
+        items = self._parse_response(raw_items, valid_speaker_ids, aliases)
         for item in items:
             self._recent_objections.append(item["question"])
         if guidance_error is not None:
@@ -1142,6 +1157,7 @@ class ObjectionHandlerAgent:
         self,
         items: list[object],
         valid_speaker_ids: set[str],
+        aliases: dict[str, str] | None = None,
     ) -> list[dict]:
         """Normalize schema-validated objections for the insight pipeline."""
         valid = []
@@ -1166,7 +1182,9 @@ class ObjectionHandlerAgent:
                 "question": text.strip(),
                 "rationale": _compose_rationale(item),
                 "source_context": item.get("source_context", "") or "",
-                "speaker_id": _normalize_speaker_id(item.get("speaker_id"), valid_speaker_ids),
+                "speaker_id": _normalize_speaker_id(
+                    item.get("speaker_id"), valid_speaker_ids, aliases
+                ),
                 "agent_source": "objection_handler",
             })
 

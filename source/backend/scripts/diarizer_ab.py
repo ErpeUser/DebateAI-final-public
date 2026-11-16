@@ -45,6 +45,7 @@ import sys
 import tempfile
 import time
 import wave
+from pathlib import Path
 
 import numpy as np
 
@@ -512,8 +513,9 @@ def cached_track_features(path: str, cache_dir: str):
         return audio, rms_envelope(audio), vad_mask(audio)
     os.makedirs(cache_dir, exist_ok=True)
     stat = os.stat(path)
+    digest = hashlib.sha256(Path(path).read_bytes()).hexdigest()[:20]
     key = f"{os.path.basename(os.path.dirname(path))}_{os.path.basename(path)}"
-    key = f"{key}_{int(stat.st_mtime)}_{stat.st_size}_{settings.VAD_THRESHOLD}.npz"
+    key = f"{key}_{digest}_{int(stat.st_mtime)}_{stat.st_size}_{settings.VAD_THRESHOLD}.npz"
     cache_path = os.path.join(cache_dir, key.replace(os.sep, "_"))
     if os.path.exists(cache_path):
         blob = np.load(cache_path)
@@ -537,8 +539,9 @@ def cached_embeddings(model_path, key, track, spans, audio, cache_dir):
     if not cache_dir:
         return embed_spans(audio, spans)
     os.makedirs(cache_dir, exist_ok=True)
+    model_digest = hashlib.sha256(Path(model_path).read_bytes()).hexdigest()
     digest = hashlib.sha256(
-        f"{os.path.basename(model_path)}|{key}|{track}|{spans}".encode()
+        f"{model_digest}|{key}|{track}|{spans}".encode()
     ).hexdigest()[:20]
     path = os.path.join(cache_dir, f"emb_{digest}.npy")
     if os.path.exists(path):
@@ -815,7 +818,7 @@ def report_track_purity(mic_embeddings: dict, sys_embeddings: dict) -> None:
                       f"{single_speaker_report(store[key])}")
 
 
-def restrict_positives(mic_embeddings: dict, mic_starts: dict, tokens) -> None:
+def restrict_positives(mic_embeddings: dict, mic_starts: dict, tokens, mic_spans: dict | None = None) -> None:
     """Drop mic tracks that should not supply same-speaker pairs."""
     allowed = [k for k in mic_embeddings
                if any(token in k for token in tokens)]
@@ -826,6 +829,8 @@ def restrict_positives(mic_embeddings: dict, mic_starts: dict, tokens) -> None:
     for key in dropped:
         mic_embeddings[key] = np.zeros((0, 256), dtype=np.float32)
         mic_starts[key] = np.zeros(0)
+        if mic_spans is not None:
+            mic_spans[key] = []
 
 
 def track_label_pairs(mic_embeddings, sys_embeddings, mic_starts, min_pair_gap):
@@ -976,7 +981,12 @@ def analyze_model(label: str, path: str, prepared, args) -> dict:
 
     report_track_purity(mic_embeddings, sys_embeddings)
     if args.positive_sessions:
-        restrict_positives(mic_embeddings, store["mic_starts"], args.positive_sessions)
+        restrict_positives(
+            mic_embeddings,
+            store["mic_starts"],
+            args.positive_sessions,
+            store["mic_spans"],
+        )
 
     pos, neg, unknown, cross, far = track_label_pairs(
         mic_embeddings, sys_embeddings, store["mic_starts"], args.min_pair_gap

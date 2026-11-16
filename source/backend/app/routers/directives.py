@@ -1,11 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Directive
+from app.models import Directive, Question
 from app.schemas import DirectiveCreate, DirectiveOut, DirectiveUpdate
 from app.services.pii import shield
 
@@ -50,5 +50,10 @@ async def delete_directive(session_id: uuid.UUID, directive_id: uuid.UUID, db: A
     directive = await db.get(Directive, directive_id)
     if not directive or directive.session_id != session_id:
         raise HTTPException(404, "Directive not found")
+    await db.execute(
+        update(Question)
+        .where(Question.directive_id == directive_id)
+        .values(directive_id=None)
+    )
     await db.delete(directive)
     await db.commit()

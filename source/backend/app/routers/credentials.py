@@ -6,6 +6,7 @@ from app.database import get_db
 from app.services.llm_endpoint import (
     OPENAI_COMPATIBLE_PROVIDER,
     get_endpoint_config,
+    normalize_base_url,
     requires_api_key,
     resolve_base_url,
     set_endpoint_config,
@@ -60,7 +61,11 @@ async def read_text_endpoint(db: AsyncSession = Depends(get_db)):
 @router.put(_ENDPOINT_PATH)
 async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(get_db)):
     current = await get_endpoint_config(db)
-    if body.base_url and body.base_url.strip() != current.get("base_url"):
+    target_effective_url = (
+        normalize_base_url(body.base_url) if body.base_url is not None and body.base_url.strip()
+        else current.get("fallback_base_url")
+    )
+    if body.base_url is not None and target_effective_url != current.get("effective_base_url"):
         existing = await get_provider_key(db, OPENAI_COMPATIBLE_PROVIDER)
         if existing and body.api_key is None:
             raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")

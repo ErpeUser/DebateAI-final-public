@@ -45,9 +45,14 @@ class DiagnosticUploadLimitMiddleware:
         deadline = time.monotonic() + self.timeout
         chunks, size = [], 0
         while True:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return await reject(408, 'Diagnostic upload timed out.')
             try:
-                message = await asyncio.wait_for(receive(), max(.001, deadline - time.monotonic()))
+                message = await asyncio.wait_for(receive(), remaining)
             except TimeoutError:
+                return await reject(408, 'Diagnostic upload timed out.')
+            if deadline - time.monotonic() <= 0:
                 return await reject(408, 'Diagnostic upload timed out.')
             if message['type'] == 'http.disconnect':
                 return
