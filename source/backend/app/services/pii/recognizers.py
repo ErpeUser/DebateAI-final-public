@@ -100,7 +100,7 @@ _ADDRESS = re.compile(
 # Someone naming themselves or a colleague. Speech transcripts rarely carry
 # honorifics, but introductions are frequent and reliable.
 _INTRODUCTION = re.compile(
-    r"\b(?:my name is|my name's|this is|I am|I'm|speaking with|joined by|here with|introduce)\s+"
+    r"\b(?i:my name is|my name's|this is|I am|I'm|speaking with|joined by|here with|introduce)\s+"
     r"((?:[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?)(?:\s+[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?){0,2})\b"
 )
 # Capitalized words that follow an introduction cue but are not names.

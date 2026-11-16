@@ -73,6 +73,12 @@ class RecognizerTests(unittest.TestCase):
         found = {s.text for s in find_patterns("Hi, my name is Sarah Connor. This is Great news.", {PERSON})}
         self.assertEqual(found, {"Sarah Connor"})
 
+    def test_introduction_cues_ignore_case_without_matching_lowercase_prose(self):
+        for cue in ("my name is", "My name is", "MY NAME IS", "This is", "JOINED BY"):
+            with self.subTest(cue=cue):
+                self.assertEqual({"Sarah Connor"}, {s.text for s in find_patterns(f"{cue} Sarah Connor.", {PERSON})})
+        self.assertEqual([], find_patterns("This is ordinary prose. I am very happy.", {PERSON}))
+
     def test_roster_matches_whole_names_and_capitalized_parts(self):
         roster = [RosterEntry("Bill Brown", PERSON), RosterEntry("Cyberdyne", ORG)]
         text = "Bill Brown said the bill is due; Brown agreed and cyberdyne signed."
