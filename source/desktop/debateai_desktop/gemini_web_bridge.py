@@ -131,6 +131,8 @@ class GeminiWebBridge:
             self.log.exception("Gemini web provider failed to stop cleanly")
 
     def _start_process(self, cookie: str) -> bool:
+        if self.stop_event.is_set():
+            return False
         self._stop_process()
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         try:
@@ -155,6 +157,9 @@ class GeminiWebBridge:
         # Keep this wait in the dedicated watcher thread so neither backend
         # startup nor the UI is blocked, and do not publish an empty catalog.
         for _attempt in range(150):
+            if self.stop_event.is_set():
+                self._stop_process()
+                return False
             process = self.process
             if process is None or process.poll() is not None:
                 break
@@ -167,6 +172,9 @@ class GeminiWebBridge:
                 # the process is restarted because this startup probe is the
                 # only place that exports the catalog.
                 if models:
+                    if self.stop_event.is_set():
+                        self._stop_process()
+                        return False
                     set_env("DEBATEAI_GEMINI_WEB_MODELS", json.dumps(models, separators=(",", ":")))
                     set_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "1")
                     self.log.info(

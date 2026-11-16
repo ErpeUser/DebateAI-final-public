@@ -157,6 +157,15 @@ class GeminiWebBridgeTests(unittest.TestCase):
             self.assertFalse(bridge.cookie_file.exists())
             self.assertTrue(bridge.cookie_cache.exists())
 
+    def test_stop_event_cancels_start_before_spawning_a_child(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            bridge = self._bridge(tmp)
+            bridge._ensure_key()
+            bridge.stop_event.set()
+            with patch("debateai_desktop.gemini_web_bridge.subprocess.Popen") as popen:
+                self.assertFalse(bridge._start_process("private-cookie"))
+            popen.assert_not_called()
+
 
 if __name__ == "__main__":
     unittest.main()

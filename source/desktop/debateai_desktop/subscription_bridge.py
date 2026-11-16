@@ -12,6 +12,7 @@ import secrets
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.error
 import urllib.request
@@ -125,6 +126,7 @@ class SubscriptionBridge:
         self.port = configured_port
         self.base_url = f"http://127.0.0.1:{self.port}"
         self.process: subprocess.Popen | None = None
+        self.stop_event = threading.Event()
         self.served_models: list[str] = []
         self.adopted = False
 
@@ -290,9 +292,12 @@ class SubscriptionBridge:
         return self.executable.is_file()
 
     def start(self) -> bool:
+        self.stop_event.clear()
         if self.process is not None and self.process.poll() is None:
             return True
 
+        if self.stop_event.is_set():
+            return False
         self._ensure_config()
         existing_models = self._probe()
         if existing_models is not None:
@@ -315,6 +320,8 @@ class SubscriptionBridge:
         self._export_connection()
         flags = subprocess.CREATE_NO_WINDOW if sys.platform == "win32" else 0
         try:
+            if self.stop_event.is_set():
+                return False
             self.process = subprocess.Popen(
                 [
                     str(self.executable),
@@ -336,6 +343,9 @@ class SubscriptionBridge:
 
         empty_catalog_probes = 0
         for _attempt in range(40):
+            if self.stop_event.is_set():
+                self.stop()
+                return False
             models = self._probe()
             if models is not None:
                 # CLIProxyAPI starts accepting HTTP requests before its OAuth
@@ -346,6 +356,9 @@ class SubscriptionBridge:
                     if empty_catalog_probes < 15:
                         time.sleep(0.2)
                         continue
+                if self.stop_event.is_set():
+                    self.stop()
+                    return False
                 self.served_models = models
                 self._export_connection()
                 self.log.info(
@@ -360,6 +373,7 @@ class SubscriptionBridge:
         return False
 
     def stop(self) -> None:
+        self.stop_event.set()
         process = self.process
         self.process = None
         self.adopted = False
