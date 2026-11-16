@@ -158,6 +158,41 @@ class SessionEventJournalTests(unittest.TestCase):
 
 
 class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
+    async def test_coalescing_preserves_append_dependencies_without_mutating_events(self):
+        for wrapped in (False, True):
+            for first_mode, next_mode, expected_text, expected_mode in (
+                ("append", "append", "Hello world", "append"),
+                ("replace", "append", "Hello world", "replace"),
+                ("append", "replace", "world", "replace"),
+            ):
+                with self.subTest(wrapped=wrapped, modes=(first_mode, next_mode)):
+                    buffer = ClientSendBuffer(maxsize=2)
+                    first = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": first_mode, "text": "Hello ", "audio_start_sample": 0, "segment_revision": 1}}
+                    latest = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": next_mode, "text": "world", "audio_start_sample": 1600, "segment_revision": 2}}
+                    wrap = (lambda payload: {"payload": payload, "event_id": "newest"}) if wrapped else (lambda payload: payload)
+                    await buffer.put(wrap(first))
+                    await buffer.put(wrap(latest))
+                    result = await buffer.get()
+                    data = result["payload"]["data"] if wrapped else result["data"]
+                    self.assertEqual(expected_text, data["text"])
+                    self.assertEqual(expected_mode, data["mode"])
+                    self.assertEqual(2, data["segment_revision"])
+                    self.assertEqual(0 if next_mode == "append" else 1600, data["audio_start_sample"])
+                    self.assertEqual("Hello ", first["data"]["text"])
+                    self.assertEqual("world", latest["data"]["text"])
+
+    async def test_discarding_an_interim_prefix_requests_a_snapshot(self):
+        buffer = ClientSendBuffer(maxsize=1)
+        await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "replace", "text": "Prefix"}})
+        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s2", "mode": "append", "text": "Other"}}))
+        self.assertTrue(buffer.needs_resync)
+
+    async def test_rejected_append_also_requests_a_snapshot(self):
+        buffer = ClientSendBuffer(maxsize=1)
+        await buffer.put({"type": "transcript", "data": {"id": "final"}})
+        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "append", "text": "Prefix"}}))
+        self.assertTrue(buffer.needs_resync)
+
     async def test_replaces_stale_interim_for_the_same_segment(self):
         buffer = ClientSendBuffer(maxsize=2)
 

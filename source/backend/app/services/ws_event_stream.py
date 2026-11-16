@@ -30,6 +30,21 @@ def _coalescible_key(event: dict[str, Any]) -> tuple[str, str, str]:
     )
 
 
+def _coalesce(previous: dict[str, Any], current: dict[str, Any]) -> dict[str, Any]:
+    payload = _payload(current)
+    data = payload.get("data") or {}
+    if payload.get("type") != "interim_transcript" or data.get("mode") != "append":
+        return current
+    merged = copy.deepcopy(current)
+    target = _payload(merged)["data"]
+    prior = _payload(previous).get("data") or {}
+    target["text"] = str(prior.get("text") or "") + str(data.get("text") or "")
+    target["mode"] = prior.get("mode") or "replace"
+    if prior.get("audio_start_sample") is not None:
+        target["audio_start_sample"] = prior["audio_start_sample"]
+    return merged
+
+
 def _state_key(event: dict[str, Any]) -> tuple[str, str]:
     event_type = str(event.get("type") or "unknown")
     data = event.get("data") or {}
@@ -179,16 +194,23 @@ class ClientSendBuffer:
                 key = _coalescible_key(event)
                 for index, queued in enumerate(self._items):
                     if _payload(queued).get("type") in COALESCIBLE_TYPES and _coalescible_key(queued) == key:
-                        self._items[index] = event
+                        self._items[index] = _coalesce(queued, event)
                         self._condition.notify()
                         return True
                 if len(self._items) >= self.maxsize:
                     for index, queued in enumerate(self._items):
                         if _payload(queued).get("type") in COALESCIBLE_TYPES:
+                            if _payload(queued).get("type") == "interim_transcript":
+                                # A future append may depend on this prefix.
+                                # The journal's snapshot holds the complete text.
+                                self._needs_resync = True
+                                return False
                             del self._items[index]
                             self._items.append(event)
                             self._condition.notify()
                             return True
+                    if _payload(event).get("type") == "interim_transcript":
+                        self._needs_resync = True
                     return False
                 self._items.append(event)
                 self._condition.notify()
