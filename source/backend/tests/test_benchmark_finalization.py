@@ -38,6 +38,8 @@ class FakeOrchestrator:
         self.ws, self.answer, self.question = ws, answer, question
         self.stall, self.old = stall, old
         self._debate_revision = 1
+        self._active_claim_id = 'claim-current'
+        self._transcript_revision = 1
         self._objection_task = None
         self.objection_agent = SimpleNamespace(last_outcome=None)
         self.calls = 0
@@ -45,11 +47,12 @@ class FakeOrchestrator:
     async def feed_transcript(self, text, speaker):
         self.calls += 1
         async def produce():
-            data = dict(claim_id='claim-current', revision=1, recommendation_revision=1,
+            data = dict(claim_id=self._active_claim_id, transcript_revision=self._transcript_revision,
+                        revision=1, recommendation_revision=1,
                         primary_move='answer', answer_now=self.answer, counter_question=self.question,
                         counterargument='', analogy='', target_claim=text, confidence='low', needs_research=False)
             if self.old:
-                await self.ws.send_json({'type':'debate_update','data':dict(data,claim_id='old',revision=0,origin='model')})
+                await self.ws.send_json({'type':'debate_update','data':dict(data,claim_id='old',transcript_revision=0,revision=0,origin='model')})
             await self.ws.send_json({'type':'debate_update','data':dict(data,origin='model_stream')})
             if self.stall: await asyncio.Event().wait()
             await self.ws.send_json({'type':'debate_update','data':dict(data,origin='model')})
@@ -147,7 +150,8 @@ class FirstSpeakableTests(unittest.IsolatedAsyncioTestCase):
         ws=bench._CaptureWebSocket(now);producer=FakeOrchestrator(ws)
         async def feed(text,speaker):
             async def emit():
-                data=dict(revision=1,claim_id='claim-current',recommendation_revision=1,primary_move='answer',counter_question='',target_claim=text)
+                data=dict(revision=1,claim_id=producer._active_claim_id,transcript_revision=producer._transcript_revision,
+                          recommendation_revision=1,primary_move='answer',counter_question='',target_claim=text)
                 for at,origin,answer in [(10.001,'model_stream',''),(10.021,'model_stream','Der Beleg fehlt.'),(10.025,'model','Der Beleg fehlt.')]:
                     clock.value=at;await ws.send_json({'type':'debate_update','data':dict(data,origin=origin,answer_now=answer)})
             producer._objection_task=asyncio.create_task(emit())
