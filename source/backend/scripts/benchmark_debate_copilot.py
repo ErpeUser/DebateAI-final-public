@@ -455,20 +455,43 @@ class _CaptureWebSocket:
         self.timeline.append((captured_at, message))
         await self.events.put((captured_at, message))
 
-    async def wait_for_revision(
+    @staticmethod
+    def matches_turn(
+        message: dict,
+        claim_id: str,
+        transcript_revision: int,
+        *,
+        final_only: bool = False,
+    ) -> bool:
+        # Visible card revisions advance on both partial and final publishes.
+        # Model worker revisions advance even when a request is cancelled.
+        # Neither counter identifies the transcript a card actually answers.
+        data = message.get("data") or {}
+        return bool(
+            claim_id
+            and transcript_revision > 0
+            and message.get("type") == "debate_update"
+            and data.get("claim_id") == claim_id
+            and data.get("transcript_revision") == transcript_revision
+            and data.get("origin") in ({"model"} if final_only else {"model_stream", "model"})
+            and _has_visible_spoken_text(data)
+        )
+
+    async def wait_for_turn(
         self,
-        revision: int,
+        claim_id: str,
+        transcript_revision: int,
         timeout_seconds: float,
     ) -> tuple[float, dict]:
         async with asyncio.timeout(timeout_seconds):
             while True:
                 captured_at, message = await self.events.get()
-                if message.get("data", {}).get("revision") == revision:
+                if self.matches_turn(message, claim_id, transcript_revision):
                     return captured_at, message
 
-    def has_revision(self, revision: int) -> bool:
+    def has_turn(self, claim_id: str, transcript_revision: int) -> bool:
         return any(
-            message.get("data", {}).get("revision") == revision
+            self.matches_turn(message, claim_id, transcript_revision, final_only=True)
             for message in self.messages
         )
 
@@ -523,6 +546,9 @@ class ApplicationReplay:
             "speaker": turn["speaker"],
             "text": turn["text"],
             "revision": None,
+            "claim_id": None,
+            "transcript_revision": None,
+            "recommendation_revision": None,
             "status": "failed",
             "first_update_ms": None,
             "current_update_ms": None,
@@ -544,22 +570,22 @@ class ApplicationReplay:
                 raise ValueError("timeout_seconds must be finite and positive")
             deadline = asyncio.get_running_loop().time() + timeout_seconds
             await self.orchestrator.feed_transcript(turn["text"], turn["speaker"])
+            claim_id = str(self.orchestrator._active_claim_id or "")
+            transcript_revision = self.orchestrator._transcript_revision
+            record["claim_id"] = claim_id
+            record["transcript_revision"] = transcript_revision
             # The production scheduler starts a single coalescing worker so
             # continuous speech cannot cancel every useful reply. Let that
             # worker claim its revision before observing the event.
             await asyncio.sleep(0)
             revision = self.orchestrator._debate_revision
-            record["revision"] = revision
+            record["revision"] = revision  # Retain the worker counter for diagnostics.
             try:
-                async with asyncio.timeout_at(deadline):
-                    captured_at, message = await self.websocket.events.get()
-                    while (
-                        message.get("type") != "debate_update"
-                        or message.get("data", {}).get("revision") != revision
-                        or message.get("data", {}).get("origin") not in {"model_stream", "model"}
-                        or not _has_visible_spoken_text(message.get("data", {}))
-                    ):
-                        captured_at, message = await self.websocket.events.get()
+                captured_at, message = await self.websocket.wait_for_turn(
+                    claim_id,
+                    transcript_revision,
+                    max(0.0, deadline - asyncio.get_running_loop().time()),
+                )
             except TimeoutError as exc:
                 raise TimeoutError(
                     "model did not emit a debate_update before the timeout"
@@ -570,17 +596,15 @@ class ApplicationReplay:
                 # Shield avoids wait_for waiting forever for a cancellation-
                 # resistant worker. The exception path quarantines this replay.
                 await asyncio.wait_for(asyncio.shield(task), remaining)
-            first_data = message["data"]
             record["first_update_ms"] = elapsed_ms(started, captured_at)
-            claim_id = first_data.get("claim_id")
             accepted = next(
                 (
                     (at, item)
                     for at, item in reversed(self.websocket.timeline)
                     if at >= started
-                    and item.get("data", {}).get("origin") == "model"
-                    and item.get("data", {}).get("revision") == revision
-                    and item.get("data", {}).get("claim_id") == claim_id
+                    and self.websocket.matches_turn(
+                        item, claim_id, transcript_revision, final_only=True
+                    )
                 ),
                 None,
             )
@@ -591,6 +615,7 @@ class ApplicationReplay:
                 )
             accepted_at, accepted_message = accepted
             data = accepted_message["data"]
+            record["recommendation_revision"] = data.get("recommendation_revision")
             record["deep_revision_ms"] = elapsed_ms(started, accepted_at)
             record["accepted_model_ms"] = elapsed_ms(started, accepted_at)
             record["deep_recommendation"] = {
@@ -664,9 +689,14 @@ class ApplicationReplay:
         previous = None
         statuses: list[str] = []
         records: list[dict] = []
+        evidence: list[tuple[str, int]] = []
         cancellation_count = 0
         for index, turn in enumerate(turns):
             await self.orchestrator.feed_transcript(turn["text"], turn["speaker"])
+            evidence.append((
+                str(self.orchestrator._active_claim_id or ""),
+                self.orchestrator._transcript_revision,
+            ))
             # The coalescing worker increments the production revision when it
             # claims pending speech, not synchronously inside feed_transcript.
             # Yield once so a one-turn probe does not check revision zero.
@@ -675,7 +705,7 @@ class ApplicationReplay:
             if previous is not None:
                 try:
                     await previous
-                    status = "ok" if self.websocket.has_revision(index) else "failed"
+                    status = "ok" if self.websocket.has_turn(*evidence[index - 1]) else "failed"
                     statuses.append(status)
                     records.append({"turn_index": index - 1, "status": status})
                 except asyncio.CancelledError:
@@ -686,11 +716,10 @@ class ApplicationReplay:
             if index < len(turns) - 1:
                 await asyncio.sleep(delay_seconds)
 
-        final_revision = self.orchestrator._debate_revision
         if previous is not None:
             try:
                 await asyncio.wait_for(previous, timeout_seconds)
-                status = "ok" if self.websocket.has_revision(final_revision) else "failed"
+                status = "ok" if self.websocket.has_turn(*evidence[-1]) else "failed"
                 record = {"turn_index": len(turns) - 1, "status": status}
                 if status == "failed":
                     record["error"] = str(
@@ -712,6 +741,9 @@ class ApplicationReplay:
                         "error": str(exc)[:500],
                     }
                 )
+        for record in records:
+            claim_id, transcript_revision = evidence[record["turn_index"]]
+            record.update(claim_id=claim_id, transcript_revision=transcript_revision)
         return {
             "delay_ms": round(delay_seconds * 1000.0, 3),
             "cancellation_count": cancellation_count,

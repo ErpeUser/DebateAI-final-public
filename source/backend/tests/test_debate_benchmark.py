@@ -331,6 +331,116 @@ class DebateBenchmarkTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, result["stale_publishes"])
         self.assertEqual(0, replay.websocket.stale_publishes)
 
+    async def test_application_replay_keeps_worker_card_and_transcript_revisions_separate(self):
+        clock = FakeClock()
+        replay = create_application_replay(ApplicationFixtureAgent(clock), clock=clock)
+        # Earlier cancelled workers and multiple visible cards make these
+        # counters independent even before the next transcript arrives.
+        replay.orchestrator._debate_revision = 40
+        replay.orchestrator._recommendation_revision = 7
+
+        record = await replay.measure_turn(dict(DEFAULT_TURNS[0]), turn_index=0, timeout_seconds=1)
+
+        self.assertEqual("ok", record["status"])
+        self.assertEqual(41, record["revision"])
+        self.assertEqual(8, record["recommendation_revision"])
+        self.assertEqual(1, record["transcript_revision"])
+        self.assertEqual(replay.orchestrator._active_claim_id, record["claim_id"])
+        self.assertEqual(250.0, record["accepted_model_ms"])
+
+    async def test_streamed_and_final_cards_keep_two_sequential_turns_measurable(self):
+        class StreamingAgent(ApplicationFixtureAgent):
+            async def run_cycle(self, **kwargs):
+                self.clock.advance(0.1)
+                await kwargs["on_model_partial"](DebateRecommendation(
+                    answer_now="Das braucht einen Beleg.",
+                    target_claim="Die aktuelle Behauptung.",
+                    provisional=True,
+                ))
+                return await super().run_cycle(**kwargs)
+
+        clock = FakeClock()
+        replay = create_application_replay(StreamingAgent(clock), clock=clock)
+        records = []
+        for index, turn in enumerate(DEFAULT_TURNS[:2]):
+            records.append(await replay.measure_turn(dict(turn), turn_index=index, timeout_seconds=1))
+
+        self.assertEqual(["ok", "ok"], [item["status"] for item in records])
+        self.assertEqual([1, 2], [item["transcript_revision"] for item in records])
+        self.assertEqual([2, 4], [item["recommendation_revision"] for item in records])
+        self.assertEqual([100.0, 100.0], [item["first_update_ms"] for item in records])
+        self.assertEqual([350.0, 350.0], [item["accepted_model_ms"] for item in records])
+
+    async def test_replay_ignores_cards_with_wrong_claim_or_transcript_despite_matching_counter(self):
+        class DecoyAgent(ApplicationFixtureAgent):
+            async def run_cycle(self, **kwargs):
+                self.clock.advance(0.05)
+                await self.send_decoy()
+                return await super().run_cycle(**kwargs)
+
+        for mismatch in ("claim", "transcript"):
+            with self.subTest(mismatch=mismatch):
+                clock = FakeClock()
+                agent = DecoyAgent(clock)
+                replay = create_application_replay(agent, clock=clock)
+                replay.orchestrator._transcript_revision = 3
+
+                async def send_decoy():
+                    head = replay.orchestrator
+                    await replay.websocket.send_json({
+                        "type": "debate_update",
+                        "data": {
+                            "origin": "model",
+                            "revision": head._debate_revision,
+                            "recommendation_revision": 1,
+                            "claim_id": "unrelated" if mismatch == "claim" else head._active_claim_id,
+                            "transcript_revision": head._transcript_revision - int(mismatch == "transcript"),
+                            "claim_revision": head._transcript_revision,
+                            "answer_now": "Diese alte Karte darf keine Latenz liefern.",
+                        },
+                    })
+
+                agent.send_decoy = send_decoy
+                record = await replay.measure_turn(dict(DEFAULT_TURNS[0]), turn_index=0, timeout_seconds=1)
+
+                self.assertEqual("ok", record["status"])
+                self.assertEqual(300.0, record["first_update_ms"])
+                self.assertEqual(300.0, record["accepted_model_ms"])
+                self.assertEqual(4, record["transcript_revision"])
+
+    async def test_application_supersession_correlates_final_turn_after_prior_counter_gaps(self):
+        replay = create_application_replay(ApplicationFixtureAgent(FakeClock()))
+        replay.orchestrator._debate_revision = 40
+        replay.orchestrator._recommendation_revision = 7
+        replay.orchestrator._transcript_revision = 12
+
+        result = await replay.supersession_probe(list(DEFAULT_TURNS), delay_seconds=0, timeout_seconds=1)
+
+        self.assertEqual(0, result["failure_count"])
+        self.assertEqual("ok", result["records"][-1]["status"])
+        self.assertEqual(17, result["records"][-1]["transcript_revision"])
+        self.assertEqual(replay.orchestrator._active_claim_id, result["records"][-1]["claim_id"])
+        self.assertEqual(0, result["stale_publishes"])
+
+    async def test_application_supersession_does_not_accept_only_a_streamed_partial(self):
+        class PartialOnlyAgent(ApplicationFixtureAgent):
+            async def run_cycle(self, **kwargs):
+                await kwargs["on_model_partial"](DebateRecommendation(
+                    answer_now="Eine vorlaeufige Antwort.",
+                    target_claim="Die aktuelle Behauptung.",
+                    provisional=True,
+                ))
+                self.latest_recommendation = DebateRecommendation()
+                self.last_outcome = {"kind": "error", "error": {"message": "model failed after partial"}}
+                return []
+
+        replay = create_application_replay(PartialOnlyAgent(FakeClock()))
+        result = await replay.supersession_probe([dict(DEFAULT_TURNS[0])], delay_seconds=0, timeout_seconds=1)
+
+        self.assertEqual(["model_stream"], [item["data"]["origin"] for item in replay.websocket.messages])
+        self.assertEqual(["failed"], result["statuses"])
+        self.assertEqual(1, result["failure_count"])
+
     async def test_application_replay_does_not_count_template_without_model_answer(self):
         replay = create_application_replay(TemplateOnlyFixtureAgent())
 
