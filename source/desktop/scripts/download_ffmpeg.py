@@ -5,6 +5,7 @@ Windows and Linux desktop bundles ship this binary so audio conversion
 macOS bundles stay ffmpeg-free, matching docs/releasing.md.
 """
 
+import hashlib
 import io
 import sys
 import tarfile
@@ -14,9 +15,19 @@ from pathlib import Path
 
 DEST = Path(__file__).resolve().parent.parent / "ffmpeg"
 
-_BTBN = "https://github.com/BtbN/FFmpeg-Builds/releases/download/latest"
-WINDOWS_URL = f"{_BTBN}/ffmpeg-master-latest-win64-lgpl.zip"
-LINUX_URL = f"{_BTBN}/ffmpeg-master-latest-linux64-lgpl.tar.xz"
+_FFMPEG_RELEASE = "autobuild-2026-11-15-12-40"
+_FFMPEG_BASE = (
+    "https://github.com/FFmpeg-Builds/FFmpeg-Builds/releases/download/"
+    f"{_FFMPEG_RELEASE}"
+)
+_WINDOWS_ASSET = "ffmpeg-N-128915-g3d16b774d7-win64-lgpl.zip"
+_LINUX_ASSET = "ffmpeg-N-128915-g3d16b774d7-linux64-lgpl.tar.xz"
+WINDOWS_URL = f"{_FFMPEG_BASE}/{_WINDOWS_ASSET}"
+LINUX_URL = f"{_FFMPEG_BASE}/{_LINUX_ASSET}"
+SHA256_BY_URL = {
+    WINDOWS_URL: "bc39b32bbcb56c0dd679e69a37e63cfce88b911240946cccfe966d30f9a279b4",
+    LINUX_URL: "61c4e1fc02346ca60786b96d1d1c4672e527c20766ef1d02b6036672b32e4144",
+}
 
 
 def build_url() -> str | None:
@@ -30,6 +41,19 @@ def build_url() -> str | None:
 def binary_name() -> str:
     return "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 
+def download_payload(url: str) -> io.BytesIO:
+    expected = SHA256_BY_URL.get(url)
+    if expected is None:
+        raise ValueError(f"no checksum pinned for ffmpeg URL: {url}")
+    with urllib.request.urlopen(url) as resp:
+        payload = resp.read()
+    actual = hashlib.sha256(payload).hexdigest()
+    if actual != expected:
+        raise RuntimeError(
+            f"ffmpeg checksum mismatch for {url}: expected {expected}, got {actual}"
+        )
+    return io.BytesIO(payload)
+
 
 def main() -> None:
     target = DEST / binary_name()
@@ -42,8 +66,7 @@ def main() -> None:
         return
     DEST.mkdir(parents=True, exist_ok=True)
     print(f"downloading {url}")
-    with urllib.request.urlopen(url) as resp:
-        payload = io.BytesIO(resp.read())
+    payload = download_payload(url)
     if url.endswith(".zip"):
         with zipfile.ZipFile(payload) as zf:
             binary = next(n for n in zf.namelist() if n.endswith("bin/ffmpeg.exe"))
