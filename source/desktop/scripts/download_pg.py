@@ -33,7 +33,11 @@ def jar_url(plat: str) -> str:
 
 def has_complete_install() -> bool:
     suffix = ".exe" if sys.platform == "win32" else ""
-    return all((DEST / "bin" / f"{name}{suffix}").is_file() for name in REQUIRED_BINARIES)
+    return all(
+        (path := DEST / "bin" / f"{name}{suffix}").is_file()
+        and path.stat().st_size > 0
+        for name in REQUIRED_BINARIES
+    )
 
 
 def main() -> None:

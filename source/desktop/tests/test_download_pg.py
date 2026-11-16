@@ -29,6 +29,16 @@ class DownloadPgTests(unittest.TestCase):
                 (destination / "bin").mkdir()
                 self.assertFalse(has_complete_install())
 
+    def test_zero_length_binary_is_not_considered_installed(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            destination = Path(tmp)
+            binary_dir = destination / "bin"
+            binary_dir.mkdir()
+            for name in ("postgres", "initdb", "pg_ctl"):
+                (binary_dir / name).touch()
+            with mock.patch("scripts.download_pg.DEST", new=destination):
+                self.assertFalse(has_complete_install())
+
 
 if __name__ == "__main__":
     unittest.main()
