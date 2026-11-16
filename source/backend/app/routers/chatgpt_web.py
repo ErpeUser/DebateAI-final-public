@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import subprocess
@@ -18,6 +19,16 @@ from app.services.identity import env_value
 router = APIRouter(prefix="/api/chatgpt-web", tags=["chatgpt-web"])
 _login_process: subprocess.Popen | None = None
 _login_lock = threading.Lock()
+_login_observers: set[asyncio.Task] = set()
+
+
+async def _observe_login(process: subprocess.Popen) -> None:
+    """Release this generation's reservation even when its UI stops polling."""
+    while process.poll() is None:
+        await asyncio.sleep(0.1)
+    with _login_lock:
+        if process is _login_process:
+            chatgpt_web.release_login()
 
 
 def _setting(name: str) -> str:
@@ -124,14 +135,17 @@ async def start_login():
     with _login_lock:
         if _login_process is not None and _login_process.poll() is None:
             return _status(state="pending", message="Das ChatGPT-Anmeldefenster ist bereits offen.")
+        if _login_process is not None:
+            _login_process = None
+            chatgpt_web.release_login()
         if not chatgpt_web.reserve_login():
             raise HTTPException(
                 status_code=409,
                 detail="ChatGPT Web bearbeitet gerade eine Anfrage. Bitte gleich erneut versuchen.",
             )
-        result.parent.mkdir(parents=True, exist_ok=True)
-        result.unlink(missing_ok=True)
         try:
+            result.parent.mkdir(parents=True, exist_ok=True)
+            result.unlink(missing_ok=True)
             _login_process = subprocess.Popen(
                 [*command, "--chatgpt-web-login", str(result)],
                 stdin=subprocess.DEVNULL,
@@ -140,8 +154,12 @@ async def start_login():
                 creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0,
             )
         except OSError as exc:
+            _login_process = None
             chatgpt_web.release_login()
             raise HTTPException(status_code=503, detail="Das ChatGPT-Anmeldefenster konnte nicht gestartet werden.") from exc
+        observer = asyncio.create_task(_observe_login(_login_process))
+        _login_observers.add(observer)
+        observer.add_done_callback(_login_observers.discard)
     return _status(state="pending", message="Melde dich im geoeffneten Chrome-Fenster bei ChatGPT an. Die Pro-Pruefung startet danach automatisch.")
 
 
@@ -154,6 +172,8 @@ async def poll_login():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     with _login_lock:
         process = _login_process
+        if process is not None and process.poll() is None:
+            return _status(state="pending", message="Die Anmeldung oder Pro-Pruefung laeuft.")
         if result.is_file():
             try:
                 payload = json.loads(result.read_text(encoding="utf-8"))
@@ -165,8 +185,6 @@ async def poll_login():
             chatgpt_web.release_login()
             error = str(payload.get("error", "")) if isinstance(payload, dict) else ""
             return _status(state="error" if error else "complete", message=error)
-        if process is not None and process.poll() is None:
-            return _status(state="pending", message="Die Anmeldung oder Pro-Pruefung laeuft.")
         if process is not None:
             _login_process = None
             chatgpt_web.release_login()
