@@ -1,40 +1,292 @@
-# DebateAI
+<p align="center">
+  <img src="docs/assets/wordmark.svg" alt="DebateAI" width="440" />
+</p>
 
-Private, local-first German live debate assistant. Canonical product name: **DebateAI**. The integrated calibration laboratory, safety fixes and production comparison tools are versioned here, not only in a separate recovery ZIP.
+<p align="center">
+  <strong>Real-time meeting transcription and AI insight generation.</strong>
+</p>
 
-**Status:** source integration and focused regression evidence. This is not a newly built/signed/installed Windows release. Full-project CI, the coupled native binary/archive identity migration and real Windows acceptance remain required. A source merge is not a production release.
+<p align="center">
+  <a href="#run-it">Run it</a> -
+  <a href="#features">Features</a> -
+  <a href="#what-it-looks-like">Screenshots</a> -
+  <a href="#architecture">Architecture</a> -
+  <a href="docs/README.md">Documentation</a>
+</p>
 
-Desktop downloads are published through the authenticated [DebateAI download portal](/downloads/).
+---
 
-## Integrated laboratory
+DebateAI is a self-hosted, open-source (MIT) AI meeting assistant that
+runs on your own hardware -- no bot joins your call, and your audio never
+leaves your infrastructure except for the model API calls you configure.
 
-Open **Testlabor** inside the app. Its same-origin dialog leaves the main application mounted. Compare the same short German recording across cached local ASR adapters; inspect WER/CER, critical words and runtime separately. Explicit recording, no silent model download or active-setting changes. Heavy diagnostics retain worker ownership until real completion, even after browser cancellation.
+It listens to your meetings and works quietly in the background. It
+captures microphone and system audio in the browser, streams it to a FastAPI
+backend that builds a live speaker-attributed transcript, and runs a crew of
+AI agents over the conversation as it happens -- surfacing the questions you
+should ask, the objections you need to handle, and the opportunities and
+action items you would otherwise reconstruct from memory afterwards.
 
-Blind pair/suite imports support A/B, ties and both-unsuitable feedback; identities appear after voting. Generated experiments retain failed pairs in their denominators and verify declared context hashes. Optional ratings are not prefilled. Usefulness is not factual truth. Persistence/export is explicit and excludes audio and credentials.
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/live-call-dark.webp" />
+    <img src="site/assets/shots/live-call.webp" alt="DebateAI during a live call: strategic signals across the top, 125 insights in the feed with a mid-call question already answered, a speaker-attributed transcript beside it, and the ask bar along the bottom." width="900" />
+  </picture>
+</p>
 
-## Actual production-path pairs
+<p align="center">
+  <em>A live call: signals across the top, a question asked and answered mid-call, the attributed
+  transcript running beside it. Every screenshot here comes from a fictional demo workspace seeded
+  by <code>showcase/seed_demo.py</code>.</em>
+</p>
 
-Stop the desktop first. In the complete backend source environment select two already installed genuinely local Ollama models:
+## Features
 
-```sh
-cd source/backend
-python scripts/benchmark_blind_pair.py --model-a qwen3:4b --model-b SECOND_INSTALLED_LOCAL_MODEL --output comparison.json
+- **Live diarized transcription** -- Silero VAD plus WeSpeaker ResNet152
+  speaker embeddings segment speech and attribute every line to a speaker, with
+  interim text streaming in seconds ahead of the final transcript
+- **Agent-based analysis** -- a consolidated analyst, a low-latency objection
+  handler, a synthesizer, an opportunity specialist, and a live Strategic
+  Signals agent run on their own triggers and push insights to the UI mid-call.
+  Signals are kept with how often each recurred instead of being overwritten by
+  the next cycle
+- **Ask the call mid-conversation** -- the command bar answers from the live
+  transcript, the insights raised so far, strategic signals, directives, and
+  attached document summaries, without stopping the recording. The answer is
+  saved with the call, starred, and exported with everything else; you choose
+  which model answers, including a local one
+- **Post-call briefings** -- two briefing lenses draft the factual record and
+  the broader discovery view, and an arbiter settles them into a meeting
+  briefing after End Call or on demand, with owners resolved to speaker names
+- **Provider-routed models** -- mix Google Gemini and OpenAI models per
+  agent, or register any number of self-hosted OpenAI-compatible servers
+  (LM Studio, Ollama, vLLM, LiteLLM) and pick their models by name. With
+  local ONNX Whisper/Parakeet handling transcription, that runs the whole
+  pipeline on your own hardware with no API key from anyone -- and because
+  Privacy First recognizes endpoints on your machine or network, you can
+  leave the switch on and keep the agents working
+- **PII Shield** -- names, companies, contact details and identifiers are
+  replaced with tokens such as `[PERSON_1]` the moment they are written, so
+  every model prompt, local or cloud, and the database itself hold only
+  tokens. The real values sit in an encrypted vault on the machine and are put
+  back only on your screen; detection is entirely on-device, and the switch
+  tells you honestly which audio paths it cannot cover
+- **Nothing chosen on your behalf** -- a fresh install seeds no cloud model.
+  Every agent starts unselected, models are grouped by Google, OpenAI, and
+  local, and one role-appropriate recommendation is marked in each provider you
+  actually have available
+- **Dual-track audio** -- mic and tab/system audio are captured separately,
+  so remote participants get their own speaker identities, and a short voice
+  calibration clip keeps your own lines attributed to you
+- **Import and re-transcription** -- bring in existing transcripts (`.txt`,
+  `.md`, `.docx`) or audio files (`.mp3`, `.m4a`, `.wav`, `.ogg`, `.flac`),
+  and replay any recorded call through a different transcription model later
+- **Meeting context** -- directives (standing or mid-call), uploaded
+  documents, speaker roles, and an offerings/knowledge catalog all feed
+  agent prompts
+- **Exports and chat** -- transcript TXT, insights XLSX, and summary HTML
+  exports, plus cross-session Q&A grounded in each meeting's briefing,
+  saved insights, and speaker-attributed transcript
+- **Encrypted credentials** -- provider API keys are stored encrypted at
+  rest and managed from the Admin panel
+
+## What it looks like
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/pii-preview-dark.webp" />
+  <img src="site/assets/shots/pii-preview.webp" alt="The PII Shield's try-a-sentence box: a sentence naming a person, a company, an email address and a phone number, the tokenized version a model actually receives, and a legend giving each token's real value and how it was detected." />
+</picture>
+
+**What the model actually reads.** With the PII Shield on, recognized PII is
+replaced before a protected model call. Review the preview and the deployment
+settings because unknown values, research queries, logs, and provider-side
+transcription have separate privacy boundaries.
+
+<table>
+<tr>
+<td width="50%" valign="top">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/postcall-briefing-dark.webp" />
+  <img src="site/assets/shots/postcall-briefing.webp" alt="The post-call briefing: an at-a-glance strip, the kept strategic-signal history, and the top three outcomes with named owners." />
+</picture>
+
+**The briefing.** Two lenses draft in parallel, an arbiter settles them, and the
+page opens with the whole meeting in five seconds.
+
+</td>
+<td width="50%" valign="top">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/postcall-insights-dark.webp" />
+  <img src="site/assets/shots/postcall-insights.webp" alt="The insights tab: 125 total across asked, action items, objections, opportunities, observations, and questions." />
+</picture>
+
+**Every insight, kept.** 125 from one 46-minute call, each attributed to who
+said it and exportable as one enriched workbook.
+
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/live-answered-dark.webp" />
+  <img src="site/assets/shots/live-answered.webp" alt="A live objection card matched to an offering and marked Answered above a drafted response." />
+</picture>
+
+**Objections, handled.** Event-driven from the freshest conversation context,
+with a response you can say out loud.
+
+</td>
+<td width="50%" valign="top">
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="site/assets/shots/admin-agents-dark.webp" />
+  <img src="site/assets/shots/admin-agents.webp" alt="The Admin agents tab: the Privacy First switch above the ten-agent lineup with a model picker per agent." />
+</picture>
+
+**The crew, configurable.** Ten agents, each with its own model, prompt, and
+trigger -- and a Privacy First switch that judges the destination.
+
+</td>
+</tr>
+</table>
+
+## How DebateAI compares
+
+Live in-call assistance is no longer rare -- Otter, Zoom, and the revenue
+intelligence vendors all ship some form of it. What differs is the mechanism
+and the deployment: DebateAI runs a configurable crew of agents you can
+re-prompt and re-model yourself, on hardware you own, with no bot in the
+meeting and no per-seat license.
+
+Sourced, dated comparisons against the tools people evaluate alongside it
+live at the external historical comparison hub below. These links are
+informational and are not runtime, update or download dependencies:
+[comparison hub](https://github.com/ErpeUser/DebateAI/blob/master/source/site/open-source-meeting-assistants/index.html),
+which indexes the full set. The most common starting points:
+
+- [DebateAI vs Meetily](https://github.com/ErpeUser/DebateAI/blob/master/source/site/vs-meetily/index.html) -- the
+  closest open-source, local-first alternative
+- [Otter alternative](https://github.com/ErpeUser/DebateAI/blob/master/source/site/otter-alternative/index.html) -- including
+  how Otter's Live Assist compares
+- [Granola alternative](https://github.com/ErpeUser/DebateAI/blob/master/source/site/granola-alternative/index.html) --
+  bot-free capture without the hosted backend
+
+## Architecture
+
+![Architecture diagram](architecture.svg)
+
+The browser streams PCM16 16 kHz audio over a WebSocket. The backend
+diarizes it, transcribes each segment, persists speaker-attributed
+transcript entries to PostgreSQL, and feeds the text to an agent
+orchestrator whose insights stream back to the UI over the same socket. A
+parallel Gemini Live (or OpenAI Realtime) session provides interim
+transcription while the batch pipeline produces the durable record.
+
+Read more in [docs/architecture.md](docs/architecture.md).
+
+## Run it
+
+### Option 1: Desktop app (easiest)
+
+Download the latest desktop release for your platform from the\n[authenticated DebateAI download portal](/downloads/) or the\ndeployment-specific HTTPS update endpoint configured by the operator.\nDownloads are open to everyone; no account, GitHub identity, or repository
+membership is needed. Release notes for the configured deployment are shown
+in-app under Admin -> About.
+
+- `DebateAI-windows-x64.zip` - unzip, run `DebateAI.exe`.
+  Windows releases must be Authenticode-signed before production distribution; do not bypass SmartScreen for an unverified bundle.
+- `DebateAI-macos-arm64.zip` (Apple Silicon) - unzip, right-click
+  `DebateAI.app` and choose "Open" the first time (unsigned build).
+- `DebateAI-linux-x64.tar.gz` (x64) - a portable bundle, not a
+  package-manager installer: `tar -xzf DebateAI-linux-x64.tar.gz`,
+  then run `DebateAI/DebateAI`.
+
+The app lives in your system tray / menu bar and opens DebateAI in your
+default browser. Data is stored per-user (`%LOCALAPPDATA%\DebateAI` on
+Windows, `~/Library/Application Support/DebateAI` on macOS,
+`~/.local/share/debateai` on Linux).
+
+Notes:
+- The Windows and Linux bundles ship their own ffmpeg, so compressed audio
+  imports (MP3, M4A) and browser-recorded voice-calibration clips work out
+  of the box; only the macOS bundle needs a system `ffmpeg` on PATH.
+- The optional Sortformer (Enhanced) diarizer is not bundled; the desktop
+  app uses the built-in lightweight diarizer. Use the Docker setup if you
+  want Sortformer.
+
+### Option 2: Local German Debate Copilot on Windows
+
+For a fully local setup with German live transcription and no API key, install
+Docker Desktop, open PowerShell in the clone root, and run:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1
 ```
 
-Replace the second-model placeholder. The existing production replay runs in separate sequential child processes for both modes; causal output pairs and failure counts are exported for laboratory import. Missing models/remote aliases/timeouts/empty answers are not fabricated successes. No second prompt engine, synchronous judge or automatic winner settings. This is a source CLI, not a one-click frozen-EXE feature.
+The idempotent setup installs Ollama when needed, pulls Qwen3 4B, selects local
+Parakeet v3 transcription, and configures the live Sprechspur plus all
+background agents. Privacy First is on by default. Pass `-Research` only if
+you want short, model-produced factual queries sent to configured ChatGPT Web/Gemini AI research lanes; audio and transcript text still remain local. See the
+[Windows quickstart](docs/quickstart.md#local-german-debate-copilot-on-windows-no-api-key)
+for system-audio selection, data locations, switches, and recovery steps.
 
-## Identity and data preservation
+### Option 3: Docker (isolated)
 
-Fresh installs select DebateAI data paths; existing nonempty legacy data remains accessible. Never blindly remove keys, profiles, databases, transcripts, models or customized strategies. Independent API update channel requires explicit HTTPS endpoints and public trust keys; archive/signature/rollback checks stay mandatory.
+Keeps everything in containers, includes the optional Sortformer diarizer,
+and doesn't touch your environment - at the cost of installing Docker and a
+couple of extra setup steps.
 
-Target repository ErpeUser/DebateAI, stable ID1450951492, private. The authenticated rename helper previews before --apply; its existence does not prove an actual rename. Legacy binary/archive names remain until their coupled contracts are tested together. License/provenance notices and historical manifests remain; old checksums are not new release evidence.
+Requires Docker with the Compose plugin. The default pipeline uses a free
+[Gemini API key](https://ai.google.dev/) for transcription and agents.
+For a setup that needs no key at all, pair local ONNX Whisper/Parakeet
+transcription with a self-hosted endpoint for the agents
+(see [Configuration](docs/configuration.md#self-hosted-endpoints)).
 
-## Evidence and native completion
+```bash
+git clone https://github.com/ErpeUser/DebateAI.git
+cd DebateAI/source
+cp .env.example .env   # set GEMINI_API_KEY (or add keys later in Admin -> Connections)
+docker compose up --build
+```
 
-- [Reconciliation of both deliveries](source/docs/RECONCILIATION_MATRIX_DE.md)
-- [Fresh focused tests and limitations](source/docs/FINAL_VERIFICATION_2026-11-11.md)
-- [Unified Desktop completion and Windows runbook](source/docs/DESKTOP_FINAL.md)
-- [Research-informed decisions](source/docs/RESEARCH_DE.md)
-- [Ready-to-use Deep Research brief](source/docs/DEEP_RESEARCH_AUFTRAG_DE.md)
+- App: http://localhost:3000
+- Backend API: http://localhost:8001 (OpenAPI docs at `/docs`)
 
-Read root/source AGENTS and current handoff together. After verified consolidation use newest master; do not require an obsolete feature branch or overlay the old ZIP onto newer source. Never install an old executable and present it as the current revision.
+On a host with an NVIDIA GPU, enable GPU diarization with the override:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+```
+
+Full setup options (local development, migrations, GPU validation) are in
+[docs/quickstart.md](docs/quickstart.md) and
+[docs/deployment.md](docs/deployment.md).
+
+## Documentation
+
+| Page | What it covers |
+| --- | --- |
+| [Quickstart](docs/quickstart.md) | Docker Compose, local development, migrations, tests |
+| [Getting API Keys](docs/api-keys.md) | Step-by-step Gemini and OpenAI key setup |
+| [Architecture](docs/architecture.md) | The live call path end to end, frontend and backend structure |
+| [Agent System](docs/agents.md) | Each agent's trigger and purpose, configuration and overrides |
+| [Audio Pipeline](docs/audio-pipeline.md) | Capture format, VAD/diarization, transcription routing, audio storage |
+| [WebSocket Protocol](docs/websocket-protocol.md) | Binary audio framing and every message type on `/ws/{session_id}` |
+| [REST API](docs/rest-api.md) | Endpoint reference for every router |
+| [Configuration](docs/configuration.md) | Settings, environment variables, credentials, model registry |
+| [Deployment](docs/deployment.md) | Compose services, GPU support, nginx proxying, startup behavior |
+
+## Tech stack
+
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, served by nginx |
+| Backend | FastAPI, SQLAlchemy (async), Alembic, PostgreSQL 16 |
+| AI providers | Google Gemini (Live + Flash), OpenAI (GPT-5.x, Realtime), any OpenAI-compatible server |
+| Local inference | Silero VAD, WeSpeaker ResNet152, Whisper/Parakeet via ONNX Runtime |
+
+## License
+
+[MIT](LICENSE)
