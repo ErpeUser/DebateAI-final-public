@@ -1,0 +1,4 @@
+# Install alongside requirements.txt; SQLite is used only by isolated DB tests.
+aiosqlite==0.21.0
+pytest==8.3.5
+pytest-asyncio==0.25.3

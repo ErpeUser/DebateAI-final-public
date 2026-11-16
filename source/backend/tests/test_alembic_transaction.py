@@ -3,7 +3,7 @@
 import runpy
 import tempfile
 import unittest
-from contextlib import asynccontextmanager
+from contextlib import ExitStack, asynccontextmanager
 from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
@@ -14,9 +14,9 @@ from sqlalchemy import create_engine
 
 class MigrationTransactionTests(unittest.TestCase):
     def _run(self, fail):
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, ExitStack() as cleanup:
             engine = create_engine("sqlite:///" + str(Path(directory) / "migration.sqlite"))
-            self.addCleanup(engine.dispose)
+            cleanup.callback(engine.dispose)
             with engine.begin() as connection:
                 connection.exec_driver_sql("CREATE TABLE proof (value TEXT NOT NULL)")
 
