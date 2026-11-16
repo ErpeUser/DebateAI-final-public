@@ -160,30 +160,41 @@ class FastEmbedContextIndex:
             entry = self._cache.get(key)
             return entry.metadata(include_vector=include_vector) if entry else {}
 
-    def prepare_sections(self, sections: Sequence[KnowledgeSection]) -> int:
-        """Embed only sections whose model/dimension/hash metadata is stale."""
+    def _prepare_entries(
+        self, sections: Sequence[KnowledgeSection]
+    ) -> tuple[int, dict[str, _EmbeddingCacheEntry]]:
+        """Prepare sections and retain an operation-local view of every entry."""
         missing: list[KnowledgeSection] = []
+        entries: dict[str, _EmbeddingCacheEntry] = {}
         with self._lock:
             for section in sections:
                 entry = self._cache.get(section.key)
                 if self._valid_entry(section, entry):
                     self._cache.move_to_end(section.key)
+                    entries[section.key] = entry
                 else:
                     self._cache.pop(section.key, None)
                     missing.append(section)
         if not missing:
-            return 0
+            return 0, entries
         vectors = self._embed([section.text for section in missing])
         if len(vectors) != len(missing):
             raise ValueError("FastEmbed returned the wrong number of vectors")
         for section, vector in zip(missing, vectors):
-            self._remember(section.key, _EmbeddingCacheEntry(
+            entry = _EmbeddingCacheEntry(
                 model_version=self.model_version,
                 dimension=int(vector.shape[0]),
                 content_hash=_content_hash(section.text),
                 vector=vector,
-            ))
-        return len(missing)
+            )
+            entries[section.key] = entry
+            self._remember(section.key, entry)
+        return len(missing), entries
+
+    def prepare_sections(self, sections: Sequence[KnowledgeSection]) -> int:
+        """Embed only sections whose model/dimension/hash metadata is stale."""
+        prepared, _entries = self._prepare_entries(sections)
+        return prepared
 
     def semantic_ranking(
         self,
@@ -196,9 +207,7 @@ class FastEmbedContextIndex:
         if not clean_query or not sections or limit <= 0:
             return []
 
-        self.prepare_sections(sections)
-        with self._lock:
-            entries = {section.key: self._cache[section.key] for section in sections}
+        _prepared, entries = self._prepare_entries(sections)
 
         query_vector = self._embed([clean_query])[0]
         ranked: list[tuple[str, float, int]] = []

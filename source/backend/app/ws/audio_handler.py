@@ -319,6 +319,32 @@ async def _start_call_segment(
         return segment_id, audio_writers
 
 
+async def _abort_call_start(
+    session_id: uuid.UUID,
+    segment_id: uuid.UUID | None,
+    orchestrator: AgentOrchestrator | None = None,
+) -> None:
+    """Close a segment when processor setup fails before the pipeline starts."""
+    if orchestrator is not None:
+        try:
+            await orchestrator.close_all()
+        except Exception:
+            logger.exception("Failed to close orchestrator after audio setup error")
+    try:
+        async with async_session() as db:
+            if segment_id is not None:
+                segment = await db.get(CallSegment, segment_id)
+                if segment is not None and segment.ended_at is None:
+                    segment.ended_at = datetime.now(timezone.utc)
+            session = await db.get(Session, session_id)
+            if session is not None and session.state == "active":
+                session.state = "completed"
+                session.ended_at = session.ended_at or datetime.now(timezone.utc)
+            await db.commit()
+    except Exception:
+        logger.exception("Failed to clean up audio startup for session %s", session_id)
+
+
 async def _finalize_call(
     session_id: uuid.UUID,
     websocket: WebSocket,
@@ -834,46 +860,58 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
         capture_id=capture_id,
     )
 
-    # --- Speaker diarization ---
-    diarizer, transcriber, create_system_diarizer, batch_model_is_local = (
-        _create_audio_processors(
-            runtime_config,
-            transcription_config,
-            session_id,
-            local_voice_embedding,
-            debate_config.simple_1to1_audio_mode,
+    try:
+        # --- Speaker diarization ---
+        diarizer, transcriber, create_system_diarizer, batch_model_is_local = (
+            _create_audio_processors(
+                runtime_config,
+                transcription_config,
+                session_id,
+                local_voice_embedding,
+                debate_config.simple_1to1_audio_mode,
+            )
         )
-    )
 
-    emit_transcript = _create_transcript_emitter(
-        session_id,
-        websocket,
-        orchestrator,
-        speaker_rows,
-        retain_transcript=debate_config.transcript_retention_enabled,
-    )
-    transcription_queue = OrderedTranscriptionQueue(
-        transcribe=transcriber.transcribe_segment,
-        emit=emit_transcript,
-        on_failure=_transcription_failure_handler(
+        emit_transcript = _create_transcript_emitter(
+            session_id,
             websocket,
-            batch_model_is_local,
-            orchestrator.activity,
-        ),
-        # Whisper Base was measurably correct on the user's real German audio
-        # with 10+ seconds of context, while short VAD fragments corrupted key
-        # nouns. Live Parakeet still supplies immediate partials; final local
-        # Whisper segments are therefore coalesced by speaker for accuracy and
-        # fewer inference calls.
-        min_batch_bytes=(
-            _WHISPER_FINAL_CONTEXT_BYTES
-            if str(getattr(transcriber, "_model_id", "")).startswith("local-whisper")
-            else 0
-        ),
-        max_batch_wait_seconds=_final_transcript_batch_wait_seconds(
-            str(getattr(transcriber, "_model_id", ""))
-        ),
-    )
+            orchestrator,
+            speaker_rows,
+            retain_transcript=debate_config.transcript_retention_enabled,
+        )
+        transcription_queue = OrderedTranscriptionQueue(
+            transcribe=transcriber.transcribe_segment,
+            emit=emit_transcript,
+            on_failure=_transcription_failure_handler(
+                websocket,
+                batch_model_is_local,
+                orchestrator.activity,
+            ),
+            # Whisper Base was measurably correct on the user's real German audio
+            # with 10+ seconds of context, while short VAD fragments corrupted key
+            # nouns. Live Parakeet still supplies immediate partials; final local
+            # Whisper segments are therefore coalesced by speaker for accuracy and
+            # fewer inference calls.
+            min_batch_bytes=(
+                _WHISPER_FINAL_CONTEXT_BYTES
+                if str(getattr(transcriber, "_model_id", "")).startswith("local-whisper")
+                else 0
+            ),
+            max_batch_wait_seconds=_final_transcript_batch_wait_seconds(
+                str(getattr(transcriber, "_model_id", ""))
+            ),
+        )
+    except Exception:
+        await _abort_call_start(
+            session_id,
+            initial_segment_start[0] if initial_segment_start else None,
+            orchestrator,
+        )
+        try:
+            await websocket.close()
+        except Exception:
+            pass
+        raise
     try:
         await _run_audio_pipeline(
             session_id,

@@ -1,13 +1,13 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Speaker, TranscriptEntry, TranscriptEntryRevision
+from app.models import Session, Speaker, TranscriptEntry, TranscriptEntryRevision
 from app.schemas import TranscriptEntryOut, TranscriptEntryRevisionOut
 from app.services.pii import shield
 from app.services.session_manager import get_next_sequence
@@ -39,6 +39,12 @@ class TranscriptUpdate(BaseModel):
 @router.post("", status_code=201)
 async def create_transcript(session_id: uuid.UUID, body: TranscriptCreate, db: AsyncSession = Depends(get_db)):
     """Save a transcript entry from the browser's Speech Recognition API."""
+    if await db.get(Session, session_id) is None:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if body.speaker_id is not None:
+        speaker = await db.get(Speaker, body.speaker_id)
+        if speaker is None or speaker.session_id != session_id:
+            raise HTTPException(status_code=422, detail="Speaker does not belong to this session")
     text = await shield.protect_text(db, session_id, body.text)
     seq = await get_next_sequence(session_id, db)
     entry = TranscriptEntry(session_id=session_id, text=text, sequence=seq, speaker_id=body.speaker_id)

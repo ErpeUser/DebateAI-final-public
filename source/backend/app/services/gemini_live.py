@@ -155,7 +155,7 @@ class GeminiLiveSession:
                 # --- input transcription (user speech -> text) ---
                 has_input_tx = hasattr(sc, 'input_transcription') and bool(sc.input_transcription)
                 if has_input_tx:
-                    text = sc.input_transcription.text
+                    text = getattr(sc.input_transcription, "text", None) or ""
                     logger.info("Live input_transcription received (%d chars)", len(text))
                     if text and text.strip():
                         from app.services.batch_transcriber import _is_hallucination

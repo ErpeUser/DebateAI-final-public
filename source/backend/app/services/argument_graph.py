@@ -381,6 +381,7 @@ def argument_graph_from_records(
         if current is None or record.revision >= current.revision:
             newest[record.claim_id] = record
     graph = ArgumentGraph(session_id=str(session_id))
+    prepared: list[dict[str, Any]] = []
     for record in sorted(newest.values(), key=lambda item: (item.revision, item.claim_id)):
         feedback = record.feedback if isinstance(record.feedback, dict) else {}
         presentation = feedback.get("presentation")
@@ -394,7 +395,22 @@ def argument_graph_from_records(
             "sources": list(record.sources or []),
             "logical_relations": list(record.relations or []),
         })
+        prepared.append(data)
+    # Build every claim node before resolving relations so a record may refer
+    # to a later claim in revision order without losing that edge.
+    for data in prepared:
+        graph = update_argument_graph(graph, {**data, "logical_relations": []})
+    for data in prepared:
         graph = update_argument_graph(graph, data)
+    seen_edges: set[tuple[str, str, str]] = set()
+    unique_edges = []
+    for edge in graph.edges:
+        key = (edge.source_id, edge.target_id, edge.relation)
+        if key in seen_edges:
+            continue
+        seen_edges.add(key)
+        unique_edges.append(edge)
+    graph = graph.model_copy(update={"edges": unique_edges})
     return _trim_claims(graph)
 
 

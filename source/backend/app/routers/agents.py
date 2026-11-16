@@ -16,7 +16,7 @@ from app.services.agents.consolidated_analyst import TYPE_SLUG_RE
 from app.services.custom_endpoints import endpoint_model_entry
 from app.services.seed_agents import DEFAULT_LENSES_BY_SLUG, DEFAULT_PROMPTS
 from app.services.agents.prompt_resources import load_prompt_resource
-from app.services.ai_config import save_prompt
+from app.services.ai_config import ai_directory, save_prompt
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -84,7 +84,8 @@ async def update_agent(slug: str, body: AgentConfigUpdate, db: AsyncSession = De
     if not agent:
         raise HTTPException(404, "Agent not found")
 
-    for field, value in body.model_dump(exclude_unset=True).items():
+    updates = body.model_dump(exclude_unset=True)
+    for field, value in list(updates.items()):
         if field == "model_id" and value:
             valid_ids = {m["id"] for m in MODEL_REGISTRY}
             # Self-hosted endpoint models are not in the static registry, so
@@ -102,15 +103,27 @@ async def update_agent(slug: str, body: AgentConfigUpdate, db: AsyncSession = De
                 source = await db.get(KnowledgeSource, source_id)
                 if source is None:
                     raise HTTPException(400, f"Unknown knowledge source id: {raw_id}")
-        if field == "prompt" and value is not None:
-            try:
-                value = save_prompt(f"agent.{slug}", value)["content"]
-            except ValueError as exc:
-                raise HTTPException(400, str(exc)) from exc
+    prompt_path = ai_directory() / f"agent.{slug}.txt"
+    previous_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    if updates.get("prompt") is not None:
+        try:
+            updates["prompt"] = save_prompt(f"agent.{slug}", updates["prompt"])["content"]
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from exc
+    for field, value in updates.items():
         setattr(agent, field, value)
 
     agent.updated_at = datetime.now(timezone.utc)
-    await db.commit()
+    try:
+        await db.commit()
+    except Exception:
+        await db.rollback()
+        if updates.get("prompt") is not None:
+            if previous_prompt is None:
+                prompt_path.unlink(missing_ok=True)
+            else:
+                prompt_path.write_text(previous_prompt, encoding="utf-8")
+        raise
     await db.refresh(agent)
     return agent
 

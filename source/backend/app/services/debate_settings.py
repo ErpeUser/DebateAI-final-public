@@ -120,6 +120,10 @@ def _from_json(raw: str) -> DebateSettings:
     simple_1to1_audio_mode = data.get("simple_1to1_audio_mode")
     profile_id = data.get("profile_id")
     profile_directive = data.get("profile_directive")
+    if not isinstance(profile_id, str):
+        profile_id = ""
+    if not isinstance(frequency, str):
+        frequency = ""
     if not isinstance(memory_threshold, (int, float)) or isinstance(memory_threshold, bool):
         memory_threshold = fallback.memory_similarity_threshold
     elif not 0.1 <= float(memory_threshold) <= 0.95:

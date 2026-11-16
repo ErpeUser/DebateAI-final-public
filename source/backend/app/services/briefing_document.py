@@ -365,7 +365,9 @@ def _label(item_type: str | None) -> str:
 
 
 def _text(value: object) -> str:
-    return str(value or "").strip()
+    if value is None:
+        return ""
+    return str(value).strip()
 
 
 def _e(value: object) -> str:
