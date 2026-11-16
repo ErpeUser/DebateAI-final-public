@@ -151,7 +151,7 @@ class ReleaseContractTests(unittest.TestCase):
 
     def test_tag_verification_resolves_spec_from_source_working_directory(self):
         verify_blocks = re.findall(
-            r"working-directory: source\n(?P<body>.*?)(?=\n      - name:|\n  [a-z-]+:|\Z)",
+            r"      - name: Verify annotated release tag\n(?P<body>.*?)(?=\n      - name:|\n  [a-z-]+:|\Z)",
             WORKFLOW,
             re.DOTALL,
         )
