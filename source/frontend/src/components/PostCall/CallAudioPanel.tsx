@@ -56,7 +56,7 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     const controller = new AbortController();
     pollAbortRef.current = controller;
     try {
-      const queued = await api.retranscribeSession(session.id, modelId);
+      const queued = await api.retranscribeSession(session.id, modelId, controller.signal);
       if (controller.signal.aborted) return;
       setJob(queued);
       const result = await api.waitForTranscriptionJob(session.id, queued, setJob, 1000, controller.signal);

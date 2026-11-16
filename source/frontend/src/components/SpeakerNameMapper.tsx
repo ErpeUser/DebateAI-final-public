@@ -208,7 +208,7 @@ export default function SpeakerNameMapper({
     const controller = new AbortController();
     enhancementAbortRef.current = controller;
     try {
-      const initial = await api.enhanceInsights(session.id);
+      const initial = await api.enhanceInsights(session.id, controller.signal);
       if (controller.signal.aborted) return;
       const result = await api.waitForEnhancement(
         session.id,

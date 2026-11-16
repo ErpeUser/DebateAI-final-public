@@ -54,7 +54,7 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
     const controller = new AbortController();
     pollAbortRef.current = controller;
     try {
-      const queued = await api.importAudio(sessionId, file);
+      const queued = await api.importAudio(sessionId, file, controller.signal);
       if (controller.signal.aborted) return;
       setJob(queued);
       setLoading(false);

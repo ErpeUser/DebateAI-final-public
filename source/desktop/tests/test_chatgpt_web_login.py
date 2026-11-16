@@ -57,6 +57,7 @@ class ChatGPTWebLoginTests(unittest.TestCase):
             evidence = json.loads(marker.read_text(encoding="utf-8"))
             self.assertEqual("gpt-6", evidence["actual_model"])
             self.assertEqual("xhigh", evidence["thinking"])
+            self.assertIs(evidence["answer_received"], True)
             self.assertNotIn("cookie", json.dumps(evidence).casefold())
             self.assertFalse(output.exists())
 

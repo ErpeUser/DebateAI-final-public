@@ -120,3 +120,11 @@ test("admin recorder cancels pending and active capture on unmount", () => {
   assert.match(card, /recorder\.onstop = null/);
   assert.match(card, /generation !== recordingGenerationRef\.current/);
 });
+
+test("a display share without audio stops every candidate track", () => {
+  const hook = readFileSync(new URL("./useAudioCapture.ts", import.meta.url), "utf8");
+  assert.match(
+    hook,
+    /if \(candidate\.getAudioTracks\(\)\.length > 0\) \{[\s\S]*?\} else \{[\s\S]*?candidate\.getTracks\(\)\.forEach\(\(track\) => track\.stop\(\)\)/,
+  );
+});

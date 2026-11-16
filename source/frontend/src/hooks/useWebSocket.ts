@@ -31,12 +31,27 @@ export const STOP_SILENCE_TIMEOUT_MS = 180000;
 export const AUDIO_SEND_HIGH_WATER_BYTES = 1_000_000;
 export const AUDIO_SEND_LOW_WATER_BYTES = 250_000;
 
+export function safeSocketSend(
+  socket: Pick<WebSocket, "send"> | null,
+  payload: string | ArrayBuffer,
+): boolean {
+  if (!socket) return false;
+  try {
+    socket.send(payload);
+    return true;
+  } catch {
+    // The browser can close a socket between readyState inspection and send().
+    return false;
+  }
+}
+
 /**
  * Manages a WebSocket connection to the backend for a single call session.
  * Handles binary frames (audio) and JSON messages (questions, transcripts, status).
  */
 export function useWebSocket() {
   const [status, setStatus] = useState<WSStatus>("disconnected");
+  const [serverEpoch, setServerEpoch] = useState("");
   const [messages, setMessages] = useState<WSMessage[]>([]);
   const [audioStats, setAudioStats] = useState<AudioSendStats>({
     chunksSent: 0,
@@ -133,6 +148,7 @@ export function useWebSocket() {
       captureIdRef.current = "";
       lastSequenceRef.current = 0;
       serverEpochRef.current = "";
+      setServerEpoch("");
       reconnectAttemptRef.current = 0;
       messagesRef.current = [];
       setMessages([]);
@@ -185,6 +201,7 @@ export function useWebSocket() {
             setMessages([]);
           }
           serverEpochRef.current = incomingEpoch;
+          setServerEpoch(incomingEpoch);
         }
         const accepted = socketPayloadEvents(payload)
           .filter((message) => (
@@ -293,8 +310,9 @@ export function useWebSocket() {
   }, [resolveStop, publishAudioStats]);
 
   const sendAudio = useCallback((data: ArrayBuffer, track: 0 | 1 = 0) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      const bufferedAmount = wsRef.current.bufferedAmount || 0;
+    const socket = wsRef.current;
+    if (socket?.readyState === WebSocket.OPEN) {
+      const bufferedAmount = socket.bufferedAmount || 0;
       if (audioBackpressureRef.current) {
         if (bufferedAmount > AUDIO_SEND_LOW_WATER_BYTES) {
           audioStatsRef.current = {
@@ -319,7 +337,14 @@ export function useWebSocket() {
       const framed = new Uint8Array(1 + data.byteLength);
       framed[0] = track;
       framed.set(new Uint8Array(data), 1);
-      wsRef.current.send(framed.buffer);
+      if (!safeSocketSend(socket, framed.buffer)) {
+        audioStatsRef.current = {
+          ...audioStatsRef.current,
+          chunksDropped: audioStatsRef.current.chunksDropped + 1,
+        };
+        publishAudioStats();
+        return;
+      }
       audioStatsRef.current = {
         ...audioStatsRef.current,
         chunksSent: audioStatsRef.current.chunksSent + 1,
@@ -336,71 +361,72 @@ export function useWebSocket() {
   }, [publishAudioStats]);
 
   const sendDirective = useCallback((text: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "directive", text }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({ type: "directive", text }));
   }, []);
 
   const sendDebateResearch = useCallback((category: DebateResearchCategory) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "debate_research", category }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({ type: "debate_research", category }));
   }, []);
 
   const sendDebateResearchControl = useCallback((enabled: boolean) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: "debate_research_control",
-        enabled,
-      }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({
+      type: "debate_research_control",
+      enabled,
+    }));
   }, []);
 
   const sendDebateAnalysisCancel = useCallback(() => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "debate_analysis_cancel" }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({ type: "debate_analysis_cancel" }));
   }, []);
 
   const sendDebateUpdateAck = useCallback((claimId: string, recommendationRevision: number) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: "debate_update_ack",
-        claim_id: claimId,
-        recommendation_revision: recommendationRevision,
-      }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({
+      type: "debate_update_ack",
+      claim_id: claimId,
+      recommendation_revision: recommendationRevision,
+    }));
   }, []);
 
   const sendDebateAnswerGood = useCallback((claimId: string, recommendationRevision: number) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: "debate_answer_good",
-        claim_id: claimId,
-        recommendation_revision: recommendationRevision,
-      }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({
+      type: "debate_answer_good",
+      claim_id: claimId,
+      recommendation_revision: recommendationRevision,
+    }));
   }, []);
 
   const sendExperimentalOptionSelected = useCallback((claimId: string, recommendationRevision: number, optionId: string) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: "debate_option_select",
-        claim_id: claimId,
-        recommendation_revision: recommendationRevision,
-        option_id: optionId,
-      }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({
+      type: "debate_option_select",
+      claim_id: claimId,
+      recommendation_revision: recommendationRevision,
+      option_id: optionId,
+    }));
   }, []);
 
   const sendTrackState = useCallback((track: AudioTrack, active: boolean) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({ type: "track_state", track, active }));
-    }
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) return;
+    safeSocketSend(socket, JSON.stringify({ type: "track_state", track, active }));
   }, []);
 
   const sendStop = useCallback((drain: StopDrainMode = "full") => {
-    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+    const socket = wsRef.current;
+    if (socket?.readyState !== WebSocket.OPEN) {
       return Promise.resolve<StopOutcome>("disconnected");
     }
 
@@ -411,9 +437,11 @@ export function useWebSocket() {
       // A bare stop keeps the backend's full drain; only send the drain field
       // when requesting the shorter pipeline (backward compatible).
       const payload = drain === "full" ? { type: "stop" } : { type: "stop", drain };
-      wsRef.current?.send(JSON.stringify(payload));
+      if (!safeSocketSend(socket, JSON.stringify(payload))) {
+        resolveStop("disconnected");
+      }
     });
   }, [resolveStop, armStopDeadline]);
 
-  return { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats };
+  return { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats, serverEpoch };
 }
