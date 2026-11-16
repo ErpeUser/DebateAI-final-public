@@ -22,8 +22,14 @@ from updater import (
 
 class UpdaterTests(unittest.TestCase):
     def test_canonical_bundle_names_are_the_default(self):
-        self.assertEqual(expected_launcher(), "DebateAI.exe")
-        self.assertEqual(expected_root(), "DebateAI")
+        for platform, launcher, root in (
+            ("win32", "DebateAI.exe", "DebateAI"),
+            ("linux", "DebateAI", "DebateAI"),
+            ("darwin", "Contents/MacOS/DebateAI", "DebateAI.app"),
+        ):
+            with self.subTest(platform=platform), patch.object(updater.sys, "platform", platform):
+                self.assertEqual(expected_launcher(), launcher)
+                self.assertEqual(expected_root(), root)
 
     @unittest.skipUnless(os.name == "nt", "requires Windows extended paths")
     def test_recursive_cleanup_uses_extended_windows_path(self):

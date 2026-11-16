@@ -1,12 +1,12 @@
 # syntax=docker/dockerfile:1
-FROM node:24-bookworm-slim AS frontend
+FROM node:24-bookworm-slim@sha256:dc26ae92c9fb15cf6b1d63e20f0944b2efe0f115b20e00be48fb23fceb061c54 AS frontend
 WORKDIR /src/frontend
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM python:3.12-slim AS bundle
+FROM python:3.12-slim@sha256:5e2bdb1b0d542d5039cffb8181c65930093949194a65c365dfb1b0fe13a4fa5b AS bundle
 RUN apt-get update && apt-get install -y --no-install-recommends \
     binutils libsndfile1 libx11-6 libxext6 libxrender1 libsm6 libglib2.0-0 \
     && rm -rf /var/lib/apt/lists/*
@@ -27,6 +27,7 @@ USER nobody
 RUN python /tmp/debateai-smoke-test.py
 USER root
 RUN mkdir /out && tar -C dist -czf "/out/DebateAI-linux-x64.tar.gz" DebateAI
+RUN install -d -o nobody build/native-smoke build/native-smoke-data
 USER nobody
 RUN python desktop/scripts/smoke_update_archive.py \
     --platform linux-x64 --archive /out/DebateAI-linux-x64.tar.gz

@@ -11,15 +11,9 @@ name: Structure
 # worse than what came before it?" With no comparison point available it falls
 # back to the committed baseline rather than skipping the gate.
 #
-# THIS JOB IS NON-BLOCKING (continue-on-error) FOR ONE REMAINING REASON:
-# it has never run on Linux. Sentrux is verified only on the maintainer's
-# Windows machine; plugin installation and path-argument handling on a hosted
-# runner are unverified. Treat the first runs as a probe.
-#
-# The second reason is gone: ALP-183 landed and refreshed the baseline (quality
-# 6469, 0 cycles), and the Rules check step below now tolerates exactly the two
-# generated lockfiles that Sentrux 0.5.7 cannot exempt by path. Promote this to
-# blocking by deleting `continue-on-error` once the first Linux runs are green.
+# Keep the job non-blocking until the absolute rules are green on Linux and
+# a hosted run has executed them. A local Ubuntu run found pre-existing rule
+# violations; the relative regression check still runs and reports separately.
 
 on:
   pull_request:
@@ -95,6 +89,7 @@ jobs:
           sentrux --version
 
       - name: Install language plugins
+        id: plugins
         run: |
           set -euo pipefail
           sentrux plugin add-standard
@@ -104,7 +99,7 @@ jobs:
           sentrux plugin list
 
       - name: Rules check
-        working-directory: head
+        working-directory: head/source
         run: |
           # Sentrux 0.5.7 has no per-path max_file_lines exception and applies
           # the constraint to tracked JSON, so the two generated lockfiles
@@ -113,8 +108,12 @@ jobs:
           # two documented exceptions and fail on anything else (ALP-266).
           set +e
           output=$(sentrux check . 2>&1)
+          status=$?
           set -e
           printf '%s\n' "$output"
+          if [ "$status" -eq 0 ]; then
+            exit 0
+          fi
           violated_rules=$(printf '%s\n' "$output" \
             | grep -oE '^✗ \[[A-Za-z]+\] [a-z_]+' | awk '{print $NF}' | sort -u || true)
           offenders=$(printf '%s\n' "$output" \
@@ -123,45 +122,40 @@ jobs:
           unexpected_rules=$(printf '%s\n' "$violated_rules" | grep -v '^max_file_lines$' | grep -v '^$' || true)
           unexpected_files=$(printf '%s\n' "$offenders" \
             | grep -vE '^(docs-site|frontend)/package-lock\.json$' | grep -v '^$' || true)
-          if [ -n "$unexpected_rules" ] || [ -n "$unexpected_files" ]; then
+          if [ "$status" -ne 1 ] || [ "$violated_rules" != max_file_lines ] \
+            || [ -z "$offenders" ] || [ -n "$unexpected_files" ]; then
             echo "::error::sentrux check reported findings beyond the approved lockfile exceptions"
             [ -n "$unexpected_rules" ] && echo "unexpected rules: $unexpected_rules"
             [ -n "$unexpected_files" ] && echo "unexpected files: $unexpected_files"
             exit 1
           fi
-          echo "Only the two approved generated lockfiles were reported."
+          echo "Only approved generated lockfiles were reported."
 
       - name: Gate the head against its base
+        if: ${{ !cancelled() && steps.plugins.conclusion == 'success' }}
         run: |
           set -euo pipefail
-          if [ ! -d base ]; then
+          if [ ! -d base/source ]; then
             # No comparison point (first push, force push, or manual dispatch).
             # Fall back to the committed baseline rather than skipping the gate
             # entirely, which is what let master drift unmeasured.
             echo "No base checkout for this event; gating against the committed baseline."
-            cd head && sentrux gate .
+            cd head/source && sentrux gate .
             exit 0
           fi
-          # --save writes base/.sentrux/baseline.json, replacing the committed
+          # --save writes base/source/.sentrux/baseline.json, replacing the committed
           # one in this throwaway checkout only.
-          sentrux gate --save base
-          cp base/.sentrux/baseline.json head/.sentrux/baseline.json
-          cd head && sentrux gate .
+          sentrux gate --save base/source
+          cp base/source/.sentrux/baseline.json head/source/.sentrux/baseline.json
+          cd head/source && sentrux gate .
 
-      - name: Note the known-red state in the run summary
+      - name: Explain the result in the run summary
         if: failure()
         run: |
           {
             echo "### Sentrux reported a problem"
             echo
-            echo "This job is non-blocking. One known cause unrelated to the change:"
-            echo
-            echo "- This job had never run on Linux before, so an install or"
-            echo "  argument-handling failure here is a workflow bug, not a code regression."
-            echo
-            echo "Everything else is real. The Rules check step tolerates only the two"
-            echo "generated lockfiles, so any other finding there is genuine debt. The"
-            echo "gate step compares this change against what it branched from - the PR"
-            echo "base, or the previous \`master\` commit on a push - so a failure *there*"
-            echo "is a structural regression introduced by this change."
+            echo "The rules check reports absolute violations, including inherited debt."
+            echo "The gate step reports changes relative to the PR base or previous master commit."
+            echo "Read the failing step's output to distinguish findings from an execution error."
           } >> "$GITHUB_STEP_SUMMARY"

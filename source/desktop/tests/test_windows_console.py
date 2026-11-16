@@ -21,6 +21,7 @@ class WindowsConsoleSuppressorTests(unittest.TestCase):
 
         self.assertGreaterEqual(suppressor.poll_seconds, 0.25)
 
+    @unittest.skipUnless(sys.platform == "win32", "Windows startup information")
     def test_global_child_policy_forces_every_windows_console_child_hidden(self):
         policy = getattr(windows_console, "hidden_subprocess_kwargs", None)
         self.assertIsNotNone(policy)

@@ -330,6 +330,14 @@ creating its tarball and before export:
 docker build --file desktop/Dockerfile.release-linux --build-context controller=desktop/scripts --target export --output type=local,dest=linux-output .
 ```
 
+The desktop Linux and backend Dockerfiles pin the official Node and Python
+base images by multi-platform manifest digest. Refresh the digest from the
+official registry and rerun the affected build when updating either image.
+Fresh embedded PostgreSQL downloads are verified against the four pinned Maven
+Central JAR checksums before extraction. When changing the PostgreSQL version,
+verify each JAR against Maven Central's `.jar.sha256` file and refresh the local
+`desktop/pgsql` build cache before validating the bundle.
+
 The credential-free macOS build runs
 `smoke_update_archive.py --platform macos-arm64` against the real
 `ditto -c -k --keepParent` `.app` archive before cache handoff. Its native run
