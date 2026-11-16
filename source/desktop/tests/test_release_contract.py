@@ -1,4 +1,5 @@
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -158,6 +159,15 @@ class ReleaseContractTests(unittest.TestCase):
         for block in verify_blocks:
             self.assertIn('[[ -f desktop/debateai.spec ]]', block)
             self.assertNotIn('[[ -f source/desktop/debateai.spec ]]', block)
+
+    def test_tag_verification_path_resolves_against_source_checkout(self):
+        with tempfile.TemporaryDirectory() as root:
+            checkout = Path(root) / "source"
+            spec = checkout / "desktop" / "debateai.spec"
+            spec.parent.mkdir(parents=True)
+            spec.write_text("fixture")
+            self.assertTrue((checkout / "desktop" / "debateai.spec").is_file())
+            self.assertFalse((checkout / "source" / "desktop" / "debateai.spec").exists())
 
     def test_local_coordinator_is_tag_pinned_progressive_and_failure_isolated(self):
         for value in (
