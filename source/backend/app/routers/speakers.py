@@ -1,11 +1,11 @@
 import uuid
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.models import Speaker
+from app.models import Question, Speaker, TranscriptEntry
 from app.schemas import SpeakerCreate, SpeakerMergeOut, SpeakerMergeRequest, SpeakerOut, SpeakerUpdate
 from app.services.pii import shield
 from app.services.speaker_context_enhancer import (
@@ -93,5 +93,15 @@ async def delete_speaker(
     if not speaker or speaker.session_id != session_id:
         raise HTTPException(status_code=404, detail="Speaker not found")
     await mark_speaker_context_dirty_if_completed(db, session_id)
+    await db.execute(
+        update(Question)
+        .where(Question.speaker_id == speaker_id)
+        .values(speaker_id=None)
+    )
+    await db.execute(
+        update(TranscriptEntry)
+        .where(TranscriptEntry.speaker_id == speaker_id)
+        .values(speaker_id=None)
+    )
     await db.delete(speaker)
     await db.commit()

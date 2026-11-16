@@ -227,6 +227,25 @@ async def _run_audio_pipeline(
         maxsize=MAX_DIARIZATION_QUEUE_FRAMES
     )
     pending_enqueued_at: deque[float] = deque()
+
+    async def _enqueue_diarization_flush(track: int, *, split_track_established: bool) -> None:
+        queued_at = monotonic()
+        pending_enqueued_at.append(queued_at)
+        frame = _QueuedAudioFrame(
+            track=track,
+            pcm_bytes=b"",
+            split_track_established=split_track_established,
+            enqueued_at=queued_at,
+            flush=True,
+        )
+        try:
+            await asyncio.wait_for(diarization_queue.put(frame), 5.0)
+        except Exception:
+            try:
+                pending_enqueued_at.remove(queued_at)
+            except ValueError:
+                pass
+            raise
     native_audio_queue = register_native_audio_session(session_id)
     # The live gateway is an optional interim path.  Keep its queue small so
     # a slow provider cannot grow memory or stall the durable batch path.
@@ -356,19 +375,10 @@ async def _run_audio_pipeline(
         this the buffer sat until End Call and surfaced there as a new remote
         speaker minutes after sharing had ended (ALP-103).
         """
-        queued_at = monotonic()
-        # Balance the backlog deque: the worker pops one entry per item, so a
-        # sentinel that skipped this would consume a real frame's entry.
-        pending_enqueued_at.append(queued_at)
-        diarization_queue.put_nowait(
-            _QueuedAudioFrame(
-                track=1,
-                pcm_bytes=b"",
-                split_track_established=True,
-                enqueued_at=queued_at,
-                flush=True,
-            )
-        )
+        try:
+            await _enqueue_diarization_flush(1, split_track_established=True)
+        except TimeoutError:
+            logger.warning("System-track flush could not be queued before shutdown")
 
     diarization_worker = asyncio.create_task(
         _run_diarization_worker(
@@ -583,17 +593,13 @@ async def _run_audio_pipeline(
         try:
             if streaming_transcriber is not None:
                 for track in (0, 1):
-                    queued_at = monotonic()
-                    pending_enqueued_at.append(queued_at)
-                    diarization_queue.put_nowait(
-                        _QueuedAudioFrame(
-                            track=track,
-                            pcm_bytes=b"",
+                    try:
+                        await _enqueue_diarization_flush(
+                            track,
                             split_track_established=state.split_track_established,
-                            enqueued_at=queued_at,
-                            flush=True,
                         )
-                    )
+                    except TimeoutError:
+                        logger.warning("Track %s flush could not be queued before shutdown", track)
             sys_diarizer = await _stop_diarization_worker(
                 websocket,
                 diarization_queue,

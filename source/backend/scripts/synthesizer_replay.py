@@ -58,7 +58,7 @@ CACHE_DISCOUNT = 0.75
 
 SCALE_CUTOFFS_MIN = [10, 15, 20, 30, 40, 55]
 
-SYNTH_PATH = "backend/app/services/agents/synthesizer.py"
+SYNTH_PATH = "source/backend/app/services/agents/synthesizer.py"
 
 
 def repo_root() -> str:
@@ -267,7 +267,8 @@ def main():
     args = ap.parse_args()
 
     root = repo_root()
-    sys.path.insert(0, os.path.join(root, "backend"))
+    backend_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.insert(0, backend_root)
     questions, entries = load_corpus(data_dir())
     baseline = load_baseline(root, args.baseline)
     from app.services.agents import synthesizer as candidate  # noqa: E402

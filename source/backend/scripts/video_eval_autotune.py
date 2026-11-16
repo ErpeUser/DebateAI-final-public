@@ -20,7 +20,7 @@ from typing import Any
 
 from app.services.video_eval_evaluator import build_split_manifest, load_video_artifacts, save_manifest
 from app.services.ai_config import research_settings
-from video_eval_batch import process
+from video_eval_batch import _assert_unique_video_ids, process
 
 
 def _json(value: Any) -> str:
@@ -138,6 +138,7 @@ def _run_checks(repo_root: str, command: str) -> dict[str, Any]:
 async def run(video_list: Path, out_dir: Path, *, language: str, diarization: bool, style_profile: str, repo_root: str, test_command: str) -> Path:
     raw_items = json.loads(video_list.read_text(encoding="utf-8"))
     items = _normalize_video_items(raw_items)
+    _assert_unique_video_ids(items)
     out_dir.mkdir(parents=True, exist_ok=True)
     artifact_paths: list[Path] = []
     for item in items:

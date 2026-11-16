@@ -6,6 +6,7 @@ import json
 import os
 import re
 from hashlib import sha256
+from pathlib import Path
 
 from fastapi import APIRouter, Body, Depends, HTTPException
 from pydantic import BaseModel
@@ -234,18 +235,30 @@ async def update_prompt(name: str, update: PromptUpdate, db: AsyncSession = Depe
         item = _prompt_payload(name, content)
         item["path"] = str(ai_directory() / "playbooks.json")
         return item
-    try:
-        saved = save_prompt(name, update.content)
-    except ValueError as exc:
-        raise HTTPException(400, str(exc)) from exc
+    agent = None
     if name.startswith("agent."):
         slug = name.removeprefix("agent.")
         result = await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))
         agent = result.scalar_one_or_none()
         if agent is None:
             raise HTTPException(404, "Der zugeordnete Agent wurde nicht gefunden.")
+    prompt_path = ai_directory() / f"{name}.txt"
+    previous_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    try:
+        saved = save_prompt(name, update.content)
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    if agent is not None:
         agent.prompt = saved["content"]
-        await db.commit()
+        try:
+            await db.commit()
+        except Exception:
+            await db.rollback()
+            if previous_prompt is None:
+                prompt_path.unlink(missing_ok=True)
+            else:
+                prompt_path.write_text(previous_prompt, encoding="utf-8")
+            raise
     return _prompt_payload(name, saved["content"])
 
 

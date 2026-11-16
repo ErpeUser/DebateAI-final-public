@@ -42,6 +42,8 @@ async def _source(db: AsyncSession, session_id: uuid.UUID, *, create: bool) -> K
             config = json.loads(source.config or "{}")
         except ValueError:
             continue
+        if not isinstance(config, dict):
+            continue
         if (
             bool(getattr(source, "active", False))
             and config.get("kind") == "session_dossier"
@@ -68,6 +70,8 @@ def _record_out(record: KnowledgeRecord) -> dict:
     try:
         meta = json.loads(record.meta or "{}")
     except ValueError:
+        meta = {}
+    if not isinstance(meta, dict):
         meta = {}
     return {
         "id": str(record.id), "title": record.title, "body": record.body,

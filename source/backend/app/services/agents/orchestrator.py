@@ -2530,12 +2530,13 @@ class AgentOrchestrator:
             drain_total_steps,
             result,
         )
-        if getattr(self, "_experimental_mode", False):
-            # Refinement may have replaced durable rows; refresh the complete
-            # transcript before final reasoning so earlier turns remain visible.
-            transcript_window = await self._get_complete_transcript()
-            transcript_available = transcript_window != "(No recent transcript)"
-            result["transcript_available"] = transcript_available
+        # Refinement may have replaced durable rows; refresh the complete
+        # transcript before final reasoning so earlier turns remain visible.
+        # This must also happen in the normal lane: the live buffer is only a
+        # recent window and can omit turns that were persisted during drain.
+        transcript_window = await self._get_complete_transcript()
+        transcript_available = transcript_window != "(No recent transcript)"
+        result["transcript_available"] = transcript_available
         await self._run_final_insights_stage(
             stages,
             progress_callback,
@@ -3062,6 +3063,10 @@ class AgentOrchestrator:
                 # guard the objection handler has always had.
                 if transcript_window == last_window:
                     logger.debug("[consolidated_analyst] Window unchanged, skipping cycle")
+                    await self.activity.cycle_finished(
+                        "consolidated_analyst",
+                        {"kind": "skipped_unchanged", "items": 0},
+                    )
                     await asyncio.sleep(interval)
                     continue
                 logger.info(f"[consolidated_analyst] Running cycle with {len(transcript_window)} chars of transcript")
@@ -3071,6 +3076,7 @@ class AgentOrchestrator:
                     doc_summaries=self.doc_summaries,
                     speakers=self.speakers,
                     active_questions=self.active_questions,
+                    board_notes=self._board_stubs,
                 )
 
                 saved_count = 0

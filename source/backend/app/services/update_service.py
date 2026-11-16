@@ -376,6 +376,13 @@ class UpdateService:
     def check(self, force: bool = False) -> dict:
         if not self.enabled:
             return {"enabled": False, "state": "idle"}
+        # A descriptor refresh can replace available_version/filename while the
+        # downloader is using those fields to locate its partial and stage.
+        # Defer checks until the worker settles so one download cannot resume
+        # into another version's path.
+        with self._lock:
+            if self._download_thread and self._download_thread.is_alive():
+                return self._copy_status_locked()
         cached, done = self._claim_check(force)
         if cached is not None:
             return cached

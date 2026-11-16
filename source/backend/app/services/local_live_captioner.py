@@ -119,15 +119,23 @@ class LocalLiveCaptioner:
         self._segment_revision = 0
         self._audio_samples_seen = 0
         self._closed = False
-        self.session = True
-        # Best-effort warmup so the first caption is not slowed by model load.
+        self.session = None
+        # Warmup is the readiness gate: a timed-out native model must not be
+        # advertised as connected while its first real caption is still stuck
+        # behind model initialization.
         try:
             await asyncio.wait_for(
                 self._transcriber.transcribe_segment(synthetic_speech_clip(2)),
                 timeout=_WARMUP_TIMEOUT_SECONDS,
             )
-        except Exception as exc:  # noqa: BLE001 - warmup is optional
+        except asyncio.TimeoutError as exc:
+            self._closed = True
+            self._transcriber = None
+            logger.warning("Local live captioner warmup timed out; lane quarantined")
+            raise RuntimeError("local live captioner warmup timed out") from exc
+        except Exception as exc:  # noqa: BLE001 - non-timeout warmup remains best effort
             logger.info("Local live captioner warmup skipped: %s", exc)
+        self.session = True
         logger.info("Local live captioner ready (%s)", self._asr_model_id)
         return self.session
 

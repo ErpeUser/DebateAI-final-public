@@ -225,6 +225,21 @@ def _normalize_video_item(item: object, index: int) -> dict:
     return normalized
 
 
+def _assert_unique_video_ids(items: list[dict]) -> None:
+    seen: dict[str, int] = {}
+    for index, item in enumerate(items):
+        effective = _safe_video_id(
+            item.get("video_id") or item.get("id"),
+            fallback=f"video-{index + 1:04d}",
+        )
+        previous = seen.get(effective)
+        if previous is not None:
+            raise ValueError(
+                f"video IDs {previous + 1} and {index + 1} both map to artifact ID {effective!r}"
+            )
+        seen[effective] = index
+
+
 async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
     video_id = _safe_video_id(
         item.get("video_id") or item.get("id"),
@@ -283,6 +298,7 @@ async def main() -> int:
     if not isinstance(raw_items, list):
         raise SystemExit("video-list must be a JSON array")
     items = [_normalize_video_item(item, index) for index, item in enumerate(raw_items)]
+    _assert_unique_video_ids(items)
     output_dir = Path(args.out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     for item in items:
