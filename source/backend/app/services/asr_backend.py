@@ -320,7 +320,8 @@ class NemotronStreamingASRBackend:
             try:
                 await asyncio.shield(socket.close())
             except Exception:
-                logger.debug("Could not close ASR socket after failed handshake", exc_info=True)
+                # Cleanup must not replace the original error or cancellation.
+                pass
             raise
         stream = _TrackStream(track=track, socket=socket)
         stream.receiver = asyncio.create_task(

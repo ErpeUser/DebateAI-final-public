@@ -120,6 +120,18 @@ class ASRBackendContractTests(unittest.TestCase):
 
 
 class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
+    async def test_handshake_error_survives_a_socket_cleanup_error(self):
+        socket = _FakeSocket([{"type": "unexpected"}])
+        socket.close = mock.AsyncMock(side_effect=OSError("cleanup failed"))
+
+        async def connect(_url):
+            return socket
+
+        backend = NemotronStreamingASRBackend(connect=connect, probe_readiness=False)
+        with self.assertRaisesRegex(RuntimeError, "Expected session.created"):
+            await backend._open_stream("mic")
+        socket.close.assert_awaited_once()
+
     async def test_cancelled_handshake_closes_the_unregistered_socket(self):
         started = asyncio.Event()
         socket = _FakeSocket([])
