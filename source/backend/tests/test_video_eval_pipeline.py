@@ -6,6 +6,7 @@ from app.services.video_eval_pipeline import (
     TranscriptSegment,
     VideoEvalArtifact,
     build_eval_cases,
+    build_video_artifact,
     build_rhetorical_profile,
     evaluate_rhetoric_profile,
     extract_source_candidates,
@@ -15,7 +16,7 @@ from app.services.video_eval_pipeline import (
 def test_extract_source_candidates_keeps_urls_dois_and_study_years():
     text = "Siehe https://example.org/report, DOI 10.1234/ABC-1 und Studie zur Wirkung 2021."
     rows = extract_source_candidates(text)
-    assert {row.kind for row in rows} == {"url", "doi", "study_reference"}
+    assert {row.kind for row in rows} == {"url", "doi", "study_reference", "citation"}
     assert any(row.value == "https://example.org/report" for row in rows)
 
 

@@ -19,7 +19,7 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
     async def test_identical_live_queries_share_one_inflight_research(self):
         calls = 0
 
-        async def fake_research(client, claim, query):
+        async def fake_research(client, claim, query, *, research_mode):
             nonlocal calls
             calls += 1
             await asyncio.sleep(0)
@@ -346,7 +346,7 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         started = asyncio.Event()
         release = asyncio.Event()
 
-        async def fake_research(client, claim, query):
+        async def fake_research(client, claim, query, *, research_mode):
             started.set()
             await release.wait()
             return debate_research.ResearchResult(
@@ -357,11 +357,15 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             waiter = asyncio.create_task(
                 debate_research.research_claim("Claim", "abgebrochene Suche")
             )
-            await started.wait()
-            waiter.cancel()
-            with self.assertRaises(asyncio.CancelledError):
-                await waiter
-            release.set()
+            try:
+                await asyncio.wait_for(started.wait(), timeout=2)
+                waiter.cancel()
+                with self.assertRaises(asyncio.CancelledError):
+                    await waiter
+            finally:
+                release.set()
+                waiter.cancel()
+                await asyncio.gather(waiter, return_exceptions=True)
             await asyncio.sleep(0)
             await asyncio.sleep(0)
 
@@ -518,7 +522,7 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             for provider in providers
         ]
 
-        async def read(_client, source, _query):
+        async def read(_client, source, _query, _claim):
             return source.model_copy(update={
                 "verification_status": "read",
                 "retrieval_status": "read",
@@ -615,6 +619,9 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
 
         with mock.patch(
             "app.services.chatgpt_web.runtime_available",
+            return_value=True,
+        ), mock.patch(
+            "app.services.chatgpt_web.configured",
             return_value=False,
         ), mock.patch(
             "app.services.subscription_bridge.gemini_web_cookie_configured",

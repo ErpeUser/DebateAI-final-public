@@ -82,10 +82,10 @@ class AudioStoreTests(unittest.TestCase):
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
-        os.environ["DATA_DIR"] = self.tmp.name
-
-    def tearDown(self):
-        self.tmp.cleanup()
+        self.addCleanup(self.tmp.cleanup)
+        environment = patch.dict(os.environ, {"DATA_DIR": self.tmp.name})
+        environment.start()
+        self.addCleanup(environment.stop)
 
     def test_append_close_roundtrip(self):
         from app.services.audio_store import SegmentAudioWriter, audio_file_path

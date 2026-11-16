@@ -66,6 +66,7 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 },
             )
         orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
         orchestrator.consolidated_agent.run_cycle = AsyncMock(
             return_value=[
                 {
@@ -148,6 +149,7 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 },
             )
         orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: Hello.")
+        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: Hello.")
         orchestrator._save_and_send_insight = AsyncMock(return_value=True)
 
         output_limit = RuntimeError(
@@ -213,6 +215,7 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
             )
 
         orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
 
         progress_events = []
 
@@ -277,6 +280,7 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 agent_configs=agent_configs,
             )
         orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
         return orchestrator
 
     async def test_drain_stage_plans_reflect_mode(self):
