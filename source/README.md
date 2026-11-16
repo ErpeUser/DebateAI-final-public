@@ -191,7 +191,10 @@ Read more in [docs/architecture.md](docs/architecture.md).
 
 ### Option 1: Desktop app (easiest)
 
-Download the latest desktop release for your platform from the\n[authenticated DebateAI download portal](/downloads/) or the\ndeployment-specific HTTPS update endpoint configured by the operator.\nDownloads are open to everyone; no account, GitHub identity, or repository
+Download the latest desktop release for your platform from the
+[authenticated DebateAI download portal](/downloads/) or the
+deployment-specific HTTPS update endpoint configured by the operator.
+Downloads are open to everyone; no account, GitHub identity, or repository
 membership is needed. Release notes for the configured deployment are shown
 in-app under Admin -> About.
 
