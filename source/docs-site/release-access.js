@@ -17,9 +17,12 @@ const MANIFEST_KEY_PATTERN = /^releases\/((?=.{2,32}\/manifest\.json$)v(?:0|[1-9
 const RELEASE_KEY_PATTERN = /^releases\/((?=.{2,32}\/release\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/release\.json$/;
 const PLATFORM_KEY_PATTERN = /^releases\/((?=.{2,32}\/platforms\/)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/platforms\/(windows-x64|macos-arm64|linux-x64)\.json$/;
 const ASSET_TUPLES = new Map([
-  ['windows-x64', ['Windows x64', 'DebateAI-windows-x64.zip', 'application/zip']],
-  ['macos-arm64', ['macOS arm64', 'DebateAI-macos-arm64.zip', 'application/zip']],
-  ['linux-x64', ['Linux x64', 'DebateAI-linux-x64.tar.gz', 'application/gzip']],
+  // Releases v0.1.x/v0.2.x were migrated with the historical Backchannel
+  // filenames. New builds use the DebateAI names, but both names identify
+  // the same trusted platform tuple and must remain readable from R2.
+  ['windows-x64', ['Windows x64', ['DebateAI-windows-x64.zip', 'Backchannel-windows-x64.zip'], 'application/zip']],
+  ['macos-arm64', ['macOS arm64', ['DebateAI-macos-arm64.zip', 'Backchannel-macos-arm64.zip'], 'application/zip']],
+  ['linux-x64', ['Linux x64', ['DebateAI-linux-x64.tar.gz', 'Backchannel-linux-x64.tar.gz'], 'application/gzip']],
 ]);
 const DUMMY_SALT = new Uint8Array(16);
 
@@ -191,7 +194,7 @@ function parseAsset(asset, version) {
   const tuple = ASSET_TUPLES.get(asset.id);
   return tuple
     && asset.platform === tuple[0]
-    && asset.filename === tuple[1]
+    && tuple[1].includes(asset.filename)
     && asset.content_type === tuple[2]
     && asset.key === `releases/${version}/${asset.filename}`
     && Number.isSafeInteger(asset.size)

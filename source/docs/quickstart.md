@@ -3,7 +3,8 @@
 ## Desktop app (easiest)
 
 Prefer the shortest path? Download the latest desktop build from the
-a deployment-specific HTTPS update endpoint configured by the operator.
+[authenticated DebateAI download portal](/downloads/). The deployment-specific
+HTTPS update endpoint configured by the operator serves the same verified assets.
 Downloads are open to everyone when the configured endpoint is public. The
 application never assumes a vendor portal; see the release notes shipped with
 your deployment for its current asset inventory.

@@ -1,4 +1,5 @@
 import re
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -147,6 +148,26 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertIn("ref: ${{ inputs.expected_commit }}", publish)
             self.assertIn("working-directory: source/source", publish)
             self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], publish)
+
+    def test_tag_verification_resolves_spec_from_source_working_directory(self):
+        verify_blocks = re.findall(
+            r"      - name: Verify annotated release tag\n(?P<body>.*?)(?=\n      - name:|\n  [a-z-]+:|\Z)",
+            WORKFLOW,
+            re.DOTALL,
+        )
+        self.assertEqual(len(verify_blocks), 3)
+        for block in verify_blocks:
+            self.assertIn('[[ -f source/desktop/debateai.spec ]]', block)
+            self.assertNotIn('[[ -f desktop/debateai.spec ]]', block)
+
+    def test_tag_verification_path_resolves_against_source_checkout(self):
+        with tempfile.TemporaryDirectory() as root:
+            checkout = Path(root) / "source"
+            spec = checkout / "source" / "desktop" / "debateai.spec"
+            spec.parent.mkdir(parents=True)
+            spec.write_text("fixture")
+            self.assertTrue((checkout / "source" / "desktop" / "debateai.spec").is_file())
+            self.assertFalse((checkout / "desktop" / "debateai.spec").exists())
 
     def test_local_coordinator_is_tag_pinned_progressive_and_failure_isolated(self):
         for value in (
