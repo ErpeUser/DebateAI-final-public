@@ -35,7 +35,7 @@ DebateAI is the canonical product identity. The starting master carried active B
 
 desktop/debateai_identity.py owns canonical names, executable paths, headers, data roots and migration entry points. desktop/debateai_desktop/ contains the renamed desktop runtime package. Backend and frontend use canonical environment and header constants. The updater accepts only DebateAI archive layout and its defaults are disabled until explicit DEBATEAI_UPDATE_DESCRIPTOR_URL, DEBATEAI_UPDATE_ASSET_URL, installation and trust-key paths are configured.
 
-Legacy migration is isolated in debateai_identity.migrate_legacy_data_root(...), called before the first database or configuration access. It never deletes the source, never overwrites a non-empty destination, and returns a structured result for diagnostics. No BACKCHANNEL_* variable or X-Backchannel-* header is read by active runtime code.
+Runtime data-root selection is side-effect-free and never searches, copies or selects an older product directory. The optional `tools/legacy_data_import.py` is invoked explicitly outside the bundle: it verifies same-user ownership, creates a digest-verified backup, refuses target conflicts and publishes file-only data once. Database/browser stores are refused in their entirety pending a database-aware export/restore; that migration gate remains open. Originals and backups are never removed. No BACKCHANNEL_* variable or X-Backchannel-* header is read by active runtime code.
 
 ## Documentation and cleanup policy
 

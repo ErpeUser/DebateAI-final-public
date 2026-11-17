@@ -1,3 +1,4 @@
+from pathlib import Path
 """A stored provider key never comes back out of the API or the logs.
 
 Drives the real routers through the real app (Host guard included) with the
@@ -143,8 +144,10 @@ class CredentialExposureTests(unittest.TestCase):
         self.assertEqual(503, response.status_code, response.text)
         detail = response.json()["detail"]
         self.assertIn(key_file, detail)
-        self.assertIn("delete that file", detail)
-        self.assertIn("re-enter the provider keys", detail)
+        self.assertIn("preserve and back up", detail)
+        self.assertIn("Do not delete or regenerate", detail)
+        self.assertIn("restore it together with the original OS account", detail)
+        self.assertTrue(Path(key_file).is_file())
         self._assert_clean(response.text, SECRET)
         # Reads still answer, reporting the provider as unconfigured.
         listed = self.client.get("/api/credentials")

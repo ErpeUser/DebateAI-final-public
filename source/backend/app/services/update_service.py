@@ -117,6 +117,8 @@ def _platform_id() -> str | None:
 
 
 def _update_origin(value: str) -> tuple[str, str, int | None]:
+    if not isinstance(value, str) or re.search(r"[\s\x00-\x1f\x7f\\]", value) or "#" in value:
+        raise ValueError("ambiguous update source")
     parsed = urllib.parse.urlsplit(value)
     host = (parsed.hostname or "").lower()
     if (
@@ -128,8 +130,35 @@ def _update_origin(value: str) -> tuple[str, str, int | None]:
         raise ValueError("invalid update source")
     if parsed.scheme != "https" and host not in {"127.0.0.1", "::1", "localhost"}:
         raise ValueError("update source must use TLS")
+    if parsed.port == 0:
+        raise ValueError("invalid update source port")
     default_port = 443 if parsed.scheme == "https" else 80
     return parsed.scheme, host, parsed.port or default_port
+
+
+class _SameOriginUpdateRedirect(urllib.request.HTTPRedirectHandler):
+    """Reject a new origin before urllib forwards any request or credentials."""
+
+    def __init__(self, origin):
+        self.origin = origin
+
+    def redirect_request(self, request, response, code, message, headers, new_url):
+        try:
+            if _update_origin(new_url) != self.origin:
+                raise ValueError("origin changed")
+        except ValueError as exc:
+            raise InvalidUpdate("update redirect source changed") from exc
+        return super().redirect_request(request, response, code, message, headers, new_url)
+
+
+def _open_update_url(request, *, timeout, context, source_origin):
+    if _update_origin(request.full_url) != source_origin:
+        raise InvalidUpdate("update request source changed")
+    opener = urllib.request.build_opener(
+        urllib.request.HTTPSHandler(context=context),
+        _SameOriginUpdateRedirect(source_origin),
+    )
+    return opener.open(request, timeout=timeout)
 
 
 class UpdateService:
@@ -293,8 +322,8 @@ class UpdateService:
             },
         )
         context = ssl.create_default_context(cafile=certifi.where())
-        with urllib.request.urlopen(
-            request, timeout=self.timeout, context=context
+        with _open_update_url(
+            request, timeout=self.timeout, context=context, source_origin=self._source_origin
         ) as response:
             final_url = getattr(response, "geturl", lambda: request.full_url)()
             if _update_origin(final_url) != self._source_origin:
@@ -488,10 +517,11 @@ class UpdateService:
             headers=headers,
         )
         try:
-            response = urllib.request.urlopen(
+            response = _open_update_url(
                 request,
                 timeout=self.timeout,
                 context=ssl.create_default_context(cafile=certifi.where()),
+                source_origin=self._source_origin,
             )
             final_url = getattr(response, "geturl", lambda: request.full_url)()
             if _update_origin(final_url) != self._source_origin:

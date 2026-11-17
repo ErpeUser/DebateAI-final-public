@@ -341,7 +341,7 @@ async def _cleanup_orphan_audio(conn):
     referenced = {path for row in result for path in row if path}
     removed = cleanup_orphan_track_audio(referenced)
     if removed:
-        logging.info("Removed %s orphan auxiliary audio files", removed)
+        logging.info("Preserved %s orphan auxiliary audio files for recovery", removed)
 
 
 async def _recover_interrupted_audio(conn):

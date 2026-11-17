@@ -11,6 +11,7 @@ logger = logging.getLogger(__name__)
 
 TranscribeFn = Callable[[bytes], Awaitable[str | None]]
 EmitFn = Callable[[str, bytes, str], Awaitable[None]]
+IdentityEmitFn = Callable[[str, bytes, str, str | None], Awaitable[None]]
 # Called with the cumulative failure count and the failure kind:
 # "transcribe" (provider/model/timeout) or "emit" (persisting the transcript).
 FailureFn = Callable[[int, str], Awaitable[None]]
@@ -21,6 +22,7 @@ class TranscriptionResult:
     speaker_auto_id: str
     pcm_bytes: bytes
     text: str | None
+    provisional_segment_id: str | None = None
 
 
 class OrderedTranscriptionQueue:
@@ -36,9 +38,11 @@ class OrderedTranscriptionQueue:
         on_failure: FailureFn | None = None,
         min_batch_bytes: int = 0,
         max_batch_wait_seconds: float = 0.0,
+        emit_with_identity: IdentityEmitFn | None = None,
     ):
         self._transcribe = transcribe
         self._emit = emit
+        self._emit_with_identity = emit_with_identity
         self._transcribe_timeout_seconds = transcribe_timeout_seconds
         self._emit_timeout_seconds = emit_timeout_seconds
         self._on_failure = on_failure
@@ -113,6 +117,7 @@ class OrderedTranscriptionQueue:
         text: str | None,
         *,
         failed: bool = False,
+        provisional_segment_id: str | None = None,
     ) -> int:
         """Queue a transcript produced by a persistent streaming backend."""
         if self._closed:
@@ -122,9 +127,18 @@ class OrderedTranscriptionQueue:
         if failed:
             await self._record_failure("transcribe")
         async with self._lock:
-            self._results[index] = TranscriptionResult(speaker_auto_id, pcm_bytes, text)
+            self._results[index] = TranscriptionResult(speaker_auto_id, pcm_bytes, text, provisional_segment_id)
         await self._emit_ready()
         return index
+
+    async def _emit_result(self, result: TranscriptionResult) -> None:
+        if self._emit_with_identity is not None:
+            await self._emit_with_identity(
+                result.speaker_auto_id, result.pcm_bytes, result.text,
+                result.provisional_segment_id,
+            )
+        else:
+            await self._emit(result.speaker_auto_id, result.pcm_bytes, result.text)
 
     async def _record_failure(self, kind: str):
         self._failed_count += 1
@@ -198,10 +212,10 @@ class OrderedTranscriptionQueue:
             for result in ready:
                 try:
                     if self._emit_timeout_seconds is None:
-                        await self._emit(result.speaker_auto_id, result.pcm_bytes, result.text)
+                        await self._emit_result(result)
                     else:
                         await asyncio.wait_for(
-                            self._emit(result.speaker_auto_id, result.pcm_bytes, result.text),
+                            self._emit_result(result),
                             timeout=self._emit_timeout_seconds,
                         )
                     self._emitted_count += 1

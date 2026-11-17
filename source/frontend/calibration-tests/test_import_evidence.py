@@ -1,5 +1,7 @@
 """Real DOM, explicit API/storage fixtures; not audio hardware acceptance."""
 import json
+import os
+import shutil
 from pathlib import Path
 import re
 import unittest
@@ -8,11 +10,11 @@ from browser_fixture import PUBLIC, load_calibration_modules
 class ImportEvidenceBrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.pw=sync_playwright().start();options={'headless':True}
-        if Path('/usr/bin/chromium').exists():options.update(executable_path='/usr/bin/chromium',args=['--no-sandbox'])
-        cls.browser=cls.pw.chromium.launch(**options)
-    @classmethod
-    def tearDownClass(cls):cls.browser.close();cls.pw.stop()
+        cls.pw = cls.enterClassContext(sync_playwright())
+        cls.browser = cls.pw.chromium.launch(
+            executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or shutil.which('chromium') or None,
+            headless=True, args=['--no-sandbox'])
+        cls.addClassCleanup(cls.browser.close)
     def setUp(self):
         self.context=self.browser.new_context();self.page=self.context.new_page();self.page.set_default_timeout(5000)
         self.addCleanup(self.context.close)

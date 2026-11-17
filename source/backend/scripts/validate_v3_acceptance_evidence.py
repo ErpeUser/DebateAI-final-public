@@ -295,7 +295,11 @@ def _validate_a22(
     if payload.get("future_data_excluded") is not True:
         errors.append("A22 future_data_excluded must be true")
     denominator = payload.get("denominator")
-    if not isinstance(denominator, int) or denominator <= 0:
+    if (
+        not isinstance(denominator, int)
+        or isinstance(denominator, bool)
+        or denominator <= 0
+    ):
         errors.append("A22 denominator must be a positive integer fixed before the run")
     runs = payload.get("runs")
     if not isinstance(runs, list) or len(runs) != 2:
@@ -313,7 +317,18 @@ def _validate_a22(
                 errors.append("A22 production and reference must use the same load")
             _required_metrics(run, ("latency_ms", "error_rate"), errors)
             _validate_metric_range(run, "error_rate", errors, maximum=1.0)
-    _validate_human_review(payload, missing, errors, require_blinded=True)
+    minimum_ratings = (
+        denominator
+        if isinstance(denominator, int) and not isinstance(denominator, bool) and denominator > 0
+        else None
+    )
+    _validate_human_review(
+        payload,
+        missing,
+        errors,
+        require_blinded=True,
+        minimum_ratings=minimum_ratings,
+    )
 
 
 def validate_evidence_package(payload: Any) -> dict[str, Any]:

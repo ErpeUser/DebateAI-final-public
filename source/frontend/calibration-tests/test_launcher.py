@@ -10,11 +10,9 @@ PUBLIC=pathlib.Path(__file__).resolve().parents[1]/'public'
 class LauncherTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
-        cls.p=sync_playwright().start()
+        cls.p = cls.enterClassContext(sync_playwright())
         cls.browser=cls.p.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or shutil.which('chromium') or None,headless=True,args=['--no-sandbox'])
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close(); cls.p.stop()
+        cls.addClassCleanup(cls.browser.close)
     def setUp(self):
         self.page=self.browser.new_page()
         self.page.set_default_timeout(5000)

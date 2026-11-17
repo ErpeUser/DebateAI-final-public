@@ -25,6 +25,18 @@ async def _flush_remaining_audio(
             pass
 
 
+
+def _preserve_failed_archive(writer: SegmentAudioWriter, track: str) -> None:
+    try:
+        path = writer.quarantine_failed_archive()
+        if isinstance(path, str):
+            logger.warning("Preserved incomplete %s archive for recovery: %s", track, path)
+    except Exception:
+        # Never unlink previously confirmed audio just because preservation
+        # itself failed. Keep the original and report the recovery failure.
+        logger.exception("Could not quarantine failed %s archive; original was not deleted", track)
+
+
 def _close_audio_writers(
     audio_writers: dict[str, SegmentAudioWriter | None],
     split_track_established: bool,
@@ -35,8 +47,12 @@ def _close_audio_writers(
             paths[track] = writer.close() if writer else None
         except Exception as exc:
             logger.warning("Failed to finalize %s segment audio: %s", track, exc)
+            if writer is not None:
+                _preserve_failed_archive(writer, track)
             paths[track] = None
-    if not split_track_established:
+    # Auxiliary copies are redundant only when a finalized mixed archive exists.
+    # A mixed-write failure must not delete the last valid microphone/system data.
+    if not split_track_established and paths["mixed"]:
         for path in (paths["mic"], paths["system"]):
             if path:
                 (data_dir() / path).unlink(missing_ok=True)
@@ -62,9 +78,8 @@ def _append_audio_frames(
         except Exception as exc:
             logger.warning("Disabling %s segment audio persistence: %s", track, exc)
             try:
-                failed_path = writer.close()
-                if isinstance(failed_path, str):
-                    (data_dir() / failed_path).unlink(missing_ok=True)
+                writer.close()
             except Exception:
                 pass
+            _preserve_failed_archive(writer, track)
             audio_writers[track] = None

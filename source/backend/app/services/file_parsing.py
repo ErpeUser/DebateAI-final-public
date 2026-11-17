@@ -4,6 +4,8 @@ import io
 import os
 import re
 
+from app.services.office_archive import preflight_office_archive
+
 
 def safe_upload_filename(filename: str | None, *, fallback: str = "upload", max_length: int = 255) -> str:
     """Return a display filename without path or control-character tricks."""
@@ -51,6 +53,7 @@ def parse_markdown(content: str) -> list[str]:
 
 def parse_docx(file_bytes: bytes) -> list[str]:
     """Extract text from a Word document."""
+    preflight_office_archive(file_bytes, "document.docx")
     import docx
     doc = docx.Document(io.BytesIO(file_bytes))
     segments = []

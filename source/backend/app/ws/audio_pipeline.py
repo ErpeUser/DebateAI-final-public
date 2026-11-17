@@ -17,6 +17,7 @@ from app.services.native_audio_bridge import (
     unregister_native_audio_session,
 )
 from app.services.ordered_transcription import OrderedTranscriptionQueue
+from app.ws.streaming_provisional import StreamingProvisionalRelay
 from app.services.track_mixer import TrackMixer
 from app.services.windows_audio_capture import native_windows_audio
 from app.ws.audio_messages import _handle_audio_frame, _handle_text_message
@@ -256,31 +257,26 @@ async def _run_audio_pipeline(
     websocket_receive_task: asyncio.Task | None = None
     native_receive_task: asyncio.Task | None = None
 
+    provisional_relay = None
     if streaming_transcriber is not None:
         capture_id = str(getattr(orchestrator, "capture_id", "") or uuid.uuid4().hex)[:96]
-        partial_segment_ids = {
-            track: f"{capture_id}:track:{track}" for track in (0, 1)
-        }
-        partial_revisions = {track: 0 for track in (0, 1)}
+        provisional_relay = StreamingProvisionalRelay(
+            orchestrator.feed_interim_transcript, capture_id=capture_id,
+        )
 
         async def _send_streaming_partial(track: int, text: str) -> None:
             if not text:
                 return
-            partial_revisions[track] = partial_revisions.get(track, 0) + 1
-            await websocket.send_json(
-                {
-                    "type": "interim_transcript",
-                    "data": {
-                        "text": text,
-                        "track": track,
-                        "track_id": "mic" if track == 0 else "system",
-                        "segment_id": partial_segment_ids.setdefault(track, uuid.uuid4().hex),
-                        "segment_revision": partial_revisions[track],
-                        "mode": "append",
-                        "source": "nemotron",
-                    },
-                }
-            )
+            segment_id, revision = provisional_relay.append(track, text)
+            await websocket.send_json({
+                "type": "interim_transcript",
+                "data": {
+                    "text": text, "track": track,
+                    "track_id": "mic" if track == 0 else "system",
+                    "segment_id": segment_id, "segment_revision": revision,
+                    "mode": "append", "source": "nemotron", "final": False,
+                },
+            })
 
         streaming_transcriber._on_partial = _send_streaming_partial
 
@@ -320,20 +316,27 @@ async def _run_audio_pipeline(
         else:
             try:
                 result = await streaming_transcriber.flush(item.track)
-                await transcription_queue.add_result(
-                    queued_speaker,
-                    segment.pcm_bytes,
-                    result.text or None,
-                )
-                partial_segment_ids[item.track] = uuid.uuid4().hex
-                partial_revisions[item.track] = 0
+                text = result.text or None
             except Exception:
+                provisional_id = await provisional_relay.finalize(item.track)
+                await orchestrator.retire_interim_transcript(provisional_id)
                 await transcription_queue.add_result(
-                    queued_speaker,
-                    segment.pcm_bytes,
-                    None,
-                    failed=True,
+                    queued_speaker, segment.pcm_bytes, None,
+                    failed=True, provisional_segment_id=provisional_id,
                 )
+                raise
+            provisional_id = await provisional_relay.finalize(item.track)
+            if not (text or "").strip():
+                await orchestrator.retire_interim_transcript(provisional_id)
+                text = None
+            try:
+                await transcription_queue.add_result(
+                    queued_speaker, segment.pcm_bytes, text,
+                    provisional_segment_id=provisional_id,
+                )
+            except Exception:
+                # Do not rotate the next generation if queue admission fails.
+                await orchestrator.retire_interim_transcript(provisional_id)
                 raise
         if isinstance(getattr(orchestrator, "activity", None), ActivityRegistry):
             await orchestrator.activity.update_call(
@@ -609,6 +612,8 @@ async def _run_audio_pipeline(
         except Exception:
             logger.exception("Diarization worker failed during shutdown")
 
+        if provisional_relay is not None:
+            await provisional_relay.close()
         try:
             await finalize_call(
                 session_id,

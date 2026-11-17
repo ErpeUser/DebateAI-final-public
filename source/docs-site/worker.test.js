@@ -611,6 +611,7 @@ const fixedDependencies = {
 
 test('approval creates identity and default Latest policy without grant input', async (context) => {
   const bindings = sqliteReleaseBindings();
+  bindings.env.DEBATEAI_DOWNLOAD_HOST = 'downloads.operator.example';
   context.after(() => bindings.db.close());
   bindings.db.prepare(`
     INSERT INTO interest_subscribers (email, consent_version)
@@ -624,8 +625,9 @@ test('approval creates identity and default Latest policy without grant input', 
   );
   const body = await response.json();
   assert.equal(response.status, 201);
+  assert.equal(body.credential.login_url, 'https://downloads.operator.example/');
   assert.deepEqual(Object.keys(body.credential).sort(), [
-    'email', 'password', 'password_expires_at',
+    'email', 'login_url', 'password', 'password_expires_at',
   ]);
   assert.deepEqual({ ...bindings.db.prepare(`
     SELECT state, must_change_password FROM release_accounts WHERE email = ?
@@ -858,6 +860,7 @@ test('approval normalizes input and creates a one-time credential without bindin
   const { credential } = await response.json();
   assert.deepEqual({ ...credential, password: undefined }, {
     email: 'person@example.com',
+    login_url: 'https://downloads.debateai.test/',
     password: undefined,
     password_expires_at: '2026-07-15T12:00:00.000Z',
   });
@@ -1300,7 +1303,7 @@ test('reset and revoke delete sessions atomically without reactivating accounts'
   const resetBody = await resetResponse.json();
   const resetCredential = resetBody.credential;
   assert.deepEqual(Object.keys(resetCredential).sort(), [
-    'email', 'password', 'password_expires_at',
+    'email', 'login_url', 'password', 'password_expires_at',
   ]);
   assert.deepEqual(resetBody.item, { ...activeUser, must_change_password: true });
   assert.equal(resetCredential.password.length, 20);

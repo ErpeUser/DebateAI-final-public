@@ -10,6 +10,7 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.models import Offering
 from app.schemas import OfferingCreate, OfferingOut, OfferingUpdate
 from app.services.upload_limits import UploadTooLarge, read_bounded_upload
@@ -115,6 +116,10 @@ async def import_offerings(file: UploadFile = File(...), db: AsyncSession = Depe
     except UploadTooLarge as error:
         raise HTTPException(413, "Offerings import exceeds the 10 MiB upload limit") from error
     filename = (file.filename or "").lower()
+    try:
+        preflight_office_archive(content, filename)
+    except OfficeArchiveError as error:
+        raise HTTPException(400, str(error)) from error
 
     rows: list[dict] = []
 

@@ -378,11 +378,13 @@ function statement(env, sql, ...values) {
   return env.INTEREST_DB.prepare(sql).bind(...values);
 }
 
-function credential(email, password, expiresAt) {
+function credential(env, email, password, expiresAt) {
+  const hosts = hostConfig(env);
   return {
     email,
     password,
     password_expires_at: expiresAt,
+    login_url: hosts ? `https://${hosts.downloadHost}/` : null,
   };
 }
 
@@ -487,7 +489,7 @@ async function approve(env, email, dependencies, now) {
   }
   return privateJson(201, {
     ok: true,
-    credential: credential(email, password, expiresAt),
+    credential: credential(env, email, password, expiresAt),
   });
 }
 
@@ -620,7 +622,7 @@ async function resetPassword(env, email, dependencies, now) {
     return privateJson(200, {
       ok: true,
       item,
-      credential: credential(email, password, expiresAt),
+      credential: credential(env, email, password, expiresAt),
     });
   } catch {
     return dbError();

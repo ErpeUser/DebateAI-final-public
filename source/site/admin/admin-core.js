@@ -4,6 +4,27 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
   timeStyle: 'short',
 });
 
+export function formatAccessCredential(credential) {
+  let portal = '[not configured]';
+  const supplied = credential.login_url;
+  if (typeof supplied === 'string' && !/[\s\u0000-\u001f\u007f\\]/u.test(supplied)) {
+    try {
+      const url = new URL(supplied);
+      if (url.protocol === 'https:' && url.hostname && !url.username && !url.password
+          && url.pathname === '/' && !url.search && !url.hash) portal = url.href;
+    } catch {
+      // Keep an explicit missing-configuration notice; do not invent a host.
+    }
+  }
+  return [
+    'DebateAI desktop access',
+    `Account: ${credential.email}`,
+    `Temporary password: ${credential.password}`,
+    `Sign in: ${portal}`,
+    `Password expires: ${credential.password_expires_at}`,
+  ].join('\n');
+}
+
 export function element(name, className = '', text, documentValue = document) {
   const node = documentValue.createElement(name);
   if (className) node.className = className;

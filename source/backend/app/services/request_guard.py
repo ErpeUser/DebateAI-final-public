@@ -33,7 +33,8 @@ import ipaddress
 import hmac
 import logging
 import os
-from http.cookies import SimpleCookie
+import re
+from http.cookies import CookieError, SimpleCookie
 from urllib.parse import urlsplit
 
 from starlette.datastructures import Headers
@@ -159,22 +160,54 @@ def _websocket_instance_protocol(headers: Headers) -> tuple[str, str] | None:
     systems. WebSocket subprotocols are carried in the handshake headers and
     echoed only after validation.
     """
-    offered = headers.get("sec-websocket-protocol", "")
-    for value in offered.split(","):
-        protocol = value.strip()
-        if protocol.startswith(WS_TOKEN_PROTOCOL_PREFIX):
-            return protocol, protocol[len(WS_TOKEN_PROTOCOL_PREFIX):]
-    return None
+    protocols = [
+        value.strip()
+        for header in headers.getlist("sec-websocket-protocol")
+        for value in header.split(",")
+        if value.strip().startswith(WS_TOKEN_PROTOCOL_PREFIX)
+    ]
+    if len(protocols) != 1:
+        return None
+    protocol = protocols[0]
+    return protocol, protocol[len(WS_TOKEN_PROTOCOL_PREFIX):]
+
+
+def instance_token_matches(supplied: str | None, expected: str) -> bool:
+    """Compare a single ASCII instance secret; malformed input fails closed."""
+    return bool(
+        isinstance(supplied, str)
+        and supplied
+        and isinstance(expected, str)
+        and expected
+        and supplied.isascii()
+        and expected.isascii()
+        and hmac.compare_digest(supplied, expected)
+    )
 
 
 def _instance_cookie(headers: Headers) -> str:
+    # Reject ambiguity rather than accepting whichever cookie a parser chose
+    # last. SimpleCookie also accepts whitespace-separated assignments, so
+    # those duplicates must be rejected too. Multiple Cookie headers may
+    # carry unrelated legitimate cookies.
+    raw = "; ".join(headers.getlist("cookie"))
+    if len(re.findall(r"(?:^|[;\s])" + re.escape(INSTANCE_COOKIE) + r"\s*=", raw)) != 1:
+        return ""
     cookie = SimpleCookie()
     try:
-        cookie.load(headers.get("cookie", ""))
-    except (TypeError, ValueError):
+        cookie.load(raw)
+    except (CookieError, TypeError, ValueError):
         return ""
     morsel = cookie.get(INSTANCE_COOKIE)
     return morsel.value if morsel is not None else ""
+
+
+def _request_instance_token(headers: Headers) -> str:
+    supplied = headers.getlist("x-debateai-instance")
+    if supplied:
+        # An explicit malformed header must not be rescued by a valid cookie.
+        return supplied[0] if len(supplied) == 1 else ""
+    return _instance_cookie(headers)
 
 
 class RequestGuardMiddleware:
@@ -224,8 +257,8 @@ class RequestGuardMiddleware:
             origin = headers.get("origin")
             if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
                 expected = env_value("DEBATEAI_INSTANCE_TOKEN")
-                supplied = headers.get("x-debateai-instance", "") or _instance_cookie(headers)
-                if expected and not hmac.compare_digest(supplied, expected):
+                supplied = _request_instance_token(headers)
+                if expected and not instance_token_matches(supplied, expected):
                     await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
                     return
             elif origin is not None and not origin_allowed(origin, self.allowed_hosts, self.allowed_origins):
@@ -243,7 +276,7 @@ class RequestGuardMiddleware:
             if expected:
                 offered = _websocket_instance_protocol(headers)
                 supplied = offered[1] if offered else ""
-                if not hmac.compare_digest(supplied, expected):
+                if not instance_token_matches(supplied, expected):
                     await self._reject(
                         scope,
                         receive,
@@ -255,8 +288,8 @@ class RequestGuardMiddleware:
                 selected_ws_protocol = offered[0]
         elif method not in {"OPTIONS"} and not health_path:
             expected = env_value("DEBATEAI_INSTANCE_TOKEN")
-            supplied = headers.get("x-debateai-instance", "") or _instance_cookie(headers)
-            if expected and not hmac.compare_digest(supplied, expected) and not bootstrap_path:
+            supplied = _request_instance_token(headers)
+            if expected and not instance_token_matches(supplied, expected) and not bootstrap_path:
                 await self._reject(
                     scope,
                     receive,

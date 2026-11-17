@@ -346,7 +346,9 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
         self.assertEqual("completed", persist.await_args.kwargs["status"])
 
     async def test_openai_provider_error_surfaces_actionable_briefing_status(self):
-        persist = self._patch_briefing()
+        success_persist = self._patch_briefing()
+        persist = AsyncMock(return_value=SimpleNamespace(status="error"))
+        self.enterContext(patch.object(briefing_synthesis, "_persist_error_synthesis", persist))
         fake = FakeHTTPX([_chat_response(status=429), _chat_response(status=429)])
         self._patch_openai(fake)
 
@@ -355,9 +357,8 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
         )
 
         persist.assert_awaited_once()
-        kwargs = persist.await_args.kwargs
-        self.assertEqual("error", kwargs["status"])
-        message = kwargs["error_message"]
+        success_persist.assert_not_awaited()
+        message = persist.await_args.args[2]
         self.assertIn("brief_meeting_lens: OpenAI quota exhausted", message)
         self.assertIn("Admin", message)
         # The status must carry the actionable remedy, not a raw JSON blob.

@@ -16,7 +16,7 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         debate_research._research_provider_cooldown_until.clear()
         debate_research._research_provider_health.clear()
 
-    async def test_identical_live_queries_share_one_inflight_research(self):
+    async def test_identical_claim_and_query_share_one_inflight_research(self):
         calls = 0
 
         async def fake_research(client, claim, query, *, research_mode):
@@ -30,12 +30,25 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         with mock.patch.object(debate_research, "_research_with_client", fake_research):
             first, second = await asyncio.gather(
                 debate_research.research_claim("Claim A", "gleiche Suche"),
-                debate_research.research_claim("Claim B", "gleiche Suche"),
+                debate_research.research_claim("Claim A", "gleiche Suche"),
             )
 
         self.assertEqual(1, calls)
         self.assertEqual("Claim A", first.claim)
-        self.assertEqual("Claim B", second.claim)
+        self.assertEqual("Claim A", second.claim)
+
+    async def test_same_query_cannot_reuse_claim_specific_verdict(self):
+        async def fake_research(client, claim, query, *, research_mode):
+            await asyncio.sleep(0)
+            return debate_research.ResearchResult(claim=claim, query=query, status="completed")
+        with mock.patch.object(debate_research, "_research_with_client", new=mock.AsyncMock(side_effect=fake_research)) as research:
+            first, second = await asyncio.gather(
+                debate_research.research_claim("Claim A", "gleiche Suche"),
+                debate_research.research_claim("Not Claim A", "gleiche Suche"),
+            )
+        self.assertEqual(2, research.await_count)
+        self.assertEqual("Claim A", first.claim)
+        self.assertEqual("Not Claim A", second.claim)
 
     async def test_legacy_providers_are_disabled_even_in_old_configuration(self):
         with mock.patch.object(

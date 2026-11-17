@@ -235,7 +235,8 @@ class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
                     self.secrets.encrypt_value("sk-value-that-should-not-store-0123")
                 message = self.secrets.master_key_recovery_message(raised.exception)
                 self.assertIn(str(self.key_file), message)
-                self.assertIn("delete that file", message)
+                self.assertIn("preserve and back up", message)
+                self.assertIn("Do not delete or regenerate", message)
                 # The key file was not silently regenerated over the corrupt one.
                 self.assertEqual(content, self.key_file.read_bytes())
 

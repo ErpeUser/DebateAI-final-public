@@ -20,6 +20,7 @@ const request = {
 };
 const credential = {
   email: 'person@example.com',
+  login_url: 'https://downloads.debateai.test/',
   password: 'generated-value',
   password_expires_at: '2026-07-16T12:00:00.000Z',
 };

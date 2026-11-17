@@ -30,6 +30,7 @@ const resetItem = {
 };
 const credential = {
   email: user.email,
+  login_url: 'https://downloads.debateai.test/',
   password: 'generated-value',
   password_expires_at: resetItem.password_expires_at,
 };

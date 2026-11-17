@@ -107,6 +107,21 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         synth.assert_awaited_once()
         opp.assert_awaited_once()
 
+    async def test_final_pass_reloads_same_durable_source_after_refinement(self):
+        orchestrator = self._build_orchestrator(include_briefing=False)
+        orchestrator._load_complete_transcript = AsyncMock(side_effect=["Before refinement", "After refinement"])
+        orchestrator._get_complete_transcript = AsyncMock(side_effect=AssertionError("divergent transcript loader"))
+        orchestrator._save_and_send_insight = AsyncMock(return_value=True)
+        with (
+            patch("app.services.agents.orchestrator.run_synthesizer_cycle", new=AsyncMock(return_value=[])),
+            patch("app.services.agents.orchestrator.run_opportunity_specialist_cycle", new=AsyncMock(return_value=[])),
+        ):
+            result = await orchestrator.graceful_drain()
+        self.assertTrue(result["transcript_available"])
+        self.assertEqual(2, orchestrator._load_complete_transcript.await_count)
+        orchestrator._get_complete_transcript.assert_not_awaited()
+        self.assertIn("After refinement", str(orchestrator.consolidated_agent.run_cycle.await_args))
+
     async def test_a_failing_stage_degrades_and_is_named_in_the_result(self):
         """The ALP-103 acceptance failure, pinned.
 

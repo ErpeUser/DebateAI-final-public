@@ -1,5 +1,4 @@
 import asyncio
-import hmac
 import os
 
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
@@ -12,6 +11,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from app.database import get_db
 from app.models import Session
 from app.services import runtime_activity
+from app.services.request_guard import instance_token_matches
 from app.services.update_service import UpdateService, get_update_service
 
 
@@ -61,11 +61,12 @@ def configure_app(app: FastAPI) -> None:
 
 
 def require_instance_token(
+    request: Request,
     token: str | None = Header(default=None, alias="X-DebateAI-Instance"),
     ) -> None:
     expected = os.environ.get("DEBATEAI_INSTANCE_TOKEN", "")
-    supplied = token
-    if not isinstance(supplied, str) or not supplied or not expected or not hmac.compare_digest(supplied, expected):
+    supplied = request.headers.getlist("x-debateai-instance")
+    if len(supplied) != 1 or not instance_token_matches(token, expected):
         raise HTTPException(403, "Desktop instance authorization failed")
 
 

@@ -1178,6 +1178,7 @@ class AgentOrchestrator:
 
         # Coordination
         self._consolidated_task: asyncio.Task | None = None
+        self._consolidated_context_event = asyncio.Event()
         self._objection_task: asyncio.Task | None = None
         self._debate_pending = False
         self._last_transcript_activity_at: float | None = None
@@ -1254,8 +1255,8 @@ class AgentOrchestrator:
         self._refiner_task = None
         self._stopped = False
 
-        # Recent insights for dedup (text -> timestamp)
-        self._recent_insights: dict[str, float] = {}
+        # Committed insights for dedup ((validated speaker, text) -> timestamp).
+        self._recent_insights: dict[tuple[str | None, str], float] = {}
 
         # Non-question insights on the board, stubbed for the analyst's
         # context (see _MAX_BOARD_STUBS). Seeded from the session's saved
@@ -2021,6 +2022,7 @@ class AgentOrchestrator:
         speaker_type: str | None = None,
         utterance_id: str | None = None,
         is_local_mic: bool = False,
+        provisional_segment_id: str | None = None,
     ):
         self._mark_transcript_activity()
         if (
@@ -2038,6 +2040,8 @@ class AgentOrchestrator:
             if hypotheses and not utterance_id
             else None
         )
+        if provisional_segment_id:
+            hypotheses.pop(provisional_segment_id, None)
         if utterance_id:
             hypotheses.pop(utterance_id, None)
         else:
@@ -2050,7 +2054,7 @@ class AgentOrchestrator:
             finalized_segments = set()
             self._finalized_interim_segments = finalized_segments
         finalized_segments.add(self._active_utterance_id)
-        active_interim_segment_id = getattr(
+        active_interim_segment_id = provisional_segment_id or getattr(
             self, "_active_interim_segment_id", None
         )
         if active_interim_segment_id:
@@ -2060,7 +2064,7 @@ class AgentOrchestrator:
         # explicitly on every durable final so append replay cannot grow for
         # the whole call as one unbounded interim value.
         gateway_segment_id = getattr(self, "_gateway_segment_id", None)
-        if gateway_segment_id:
+        if gateway_segment_id and provisional_segment_id is None:
             finalized_segments.add(gateway_segment_id)
             self._gateway_segment_start_sample = self._gateway_samples_sent
             self._gateway_segment_id = f"{self.capture_id}:{uuid.uuid4().hex}"
@@ -2080,6 +2084,7 @@ class AgentOrchestrator:
             speaker_type=speaker_type,
             utterance_id=self._active_utterance_id,
         )
+        self._consolidated_context_event.set()
         if self._stopped or not self._is_enabled("objection_handler"):
             return
 
@@ -2107,6 +2112,7 @@ class AgentOrchestrator:
             speaker_type=speaker_type,
             utterance_id=utterance_id,
         )
+        self._consolidated_context_event.set()
         self._transcript_revision = getattr(self, "_transcript_revision", 0) + 1
         recommendation = self.objection_agent.latest_recommendation
         depends_on_utterance = utterance_id in {
@@ -2157,6 +2163,63 @@ class AgentOrchestrator:
             origin="instant",
         )
         self._schedule_debate_revision()
+        return True
+
+    async def retire_interim_transcript(self, utterance_id: str) -> bool:
+        """Retire a rejected local hypothesis without inventing a durable final.
+
+        Empty/failed ASR results never enter feed_transcript. Their exact
+        provisional identity must nevertheless stop contributing live context.
+        Another track's active claim and all persisted transcript rows survive.
+        """
+        if not utterance_id:
+            return False
+        finalized = getattr(self, "_finalized_interim_segments", None)
+        if finalized is None:
+            finalized = self._finalized_interim_segments = set()
+        if utterance_id in finalized:
+            return False
+        finalized.add(utterance_id)
+        hypotheses = getattr(self, "_interim_debate_hypotheses", {})
+        removed = hypotheses.pop(utterance_id, None) is not None
+        getattr(self, "_interim_segment_revisions", {}).pop(utterance_id, None)
+        if (getattr(self, "_active_claim_id", None) != utterance_id
+                or not getattr(self, "_active_claim_is_interim", False)):
+            return removed
+
+        # Advance the guards before the first await. Clearing the active claim
+        # also prevents an old external-analysis context accepting a newer
+        # revision merely because it still has the same provisional claim ID.
+        self._transcript_revision = getattr(self, "_transcript_revision", 0) + 1
+        self._debate_revision = getattr(self, "_debate_revision", 0) + 1
+        self._active_claim_id = None
+        self._active_utterance_id = None
+        self._active_claim_is_interim = False
+        self._active_semantic_related_claim_ids = []
+        self._debate_pending = False
+        self._debate_partial_visible = False
+        task = self._objection_task
+        self._objection_task = None
+        if task is not None and not task.done():
+            task.cancel("provisional transcript was not confirmed")
+        recommendation = self.objection_agent.latest_recommendation
+        try:
+            if utterance_id in {recommendation.claim_id, recommendation.utterance_id}:
+                await self._send_debate_update(
+                    self._debate_revision,
+                    DebateRecommendation(
+                        claim_id=utterance_id, utterance_id=utterance_id,
+                        transcript_revision=self._transcript_revision,
+                        claim_revision=self._transcript_revision,
+                        analysis_status="cancelled", analysis_can_cancel=False,
+                        research_status="cancelled",
+                        research_alert="Zwischentranskript wurde nicht bestaetigt.",
+                    ),
+                    origin="instant",
+                )
+        finally:
+            if task is not None:
+                await asyncio.gather(task, return_exceptions=True)
         return True
 
     async def feed_interim_transcript(
@@ -2534,7 +2597,7 @@ class AgentOrchestrator:
         # transcript before final reasoning so earlier turns remain visible.
         # This must also happen in the normal lane: the live buffer is only a
         # recent window and can omit turns that were persisted during drain.
-        transcript_window = await self._get_complete_transcript()
+        transcript_window = await self._load_complete_transcript()
         transcript_available = transcript_window != "(No recent transcript)"
         result["transcript_available"] = transcript_available
         await self._run_final_insights_stage(
@@ -2873,6 +2936,25 @@ class AgentOrchestrator:
 
     # ── Save + broadcast (shared by all agents) ─────────────────────────
 
+    def _is_duplicate_insight(self, text: str, speaker_id: str | None = None) -> bool:
+        """Read committed history without reserving or extending a candidate."""
+        now = time.time()
+        return any(
+            existing_speaker == speaker_id
+            and now - committed_at < _DEDUP_WINDOW_SECONDS
+            and _texts_similar(text, existing_text)
+            for (existing_speaker, existing_text), committed_at in self._recent_insights.items()
+        )
+
+    def _remember_committed_insight(self, text: str, speaker_id: str | None = None) -> None:
+        """Remember only a successful commit, even if refresh or broadcast fails."""
+        now = time.time()
+        self._recent_insights = {
+            key: committed_at for key, committed_at in self._recent_insights.items()
+            if now - committed_at < _DEDUP_WINDOW_SECONDS
+        }
+        self._recent_insights[(speaker_id, text)] = now
+
     async def _save_and_send_insight(self, q_json: dict, agent_source: str) -> bool:
         """Save a new insight. Returns True if saved (not deduped)."""
         if "question" not in q_json:
@@ -2890,21 +2972,14 @@ class AgentOrchestrator:
 
         text = q_json["question"]
 
-        # Dedup check
-        now = time.time()
-        self._recent_insights = {
-            k: v for k, v in self._recent_insights.items()
-            if now - v < _DEDUP_WINDOW_SECONDS
-        }
-        for existing_text in self._recent_insights:
-            if _texts_similar(text, existing_text):
-                logger.info(f"[{agent_source}] Skipping near-duplicate: {text[:60]}")
-                return False
-        # Do not reserve the fingerprint until the database transaction
-        # has committed. A transient DB failure must remain retryable.
         # Use agent_source from the insight dict if provided (consolidated analyst sets per-type)
         effective_source = q_json.get("agent_source", agent_source)
         speaker_id = self._validated_speaker_id(q_json.get("speaker_id"))
+        # Only roster-validated attribution partitions legacy text similarity.
+        # Type/owner behavior stays unchanged; model claim IDs are not identity.
+        if self._is_duplicate_insight(text, speaker_id):
+            logger.info(f"[{effective_source}] Skipping near-duplicate: {text[:60]}")
+            return False
 
         async with async_session() as db:
             directive_id = None
@@ -2931,8 +3006,8 @@ class AgentOrchestrator:
             )
             db.add(question)
             await db.commit()
+            self._remember_committed_insight(text, speaker_id)
             await db.refresh(question)
-            self._recent_insights[text] = now
 
             if question.item_type == "question":
                 self._remember_active_question(str(question.id), question.question, question.item_type)
@@ -3034,7 +3109,7 @@ class AgentOrchestrator:
     # ── Consolidated Analyst (single batch call) ─────────────────────────
 
     async def _consolidated_agent_loop(self):
-        """Run consolidated analyst on interval."""
+        """Wake on first durable context, then retain the configured cadence."""
         interval = self._get_interval("consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS)
         # Run immediately when a session already has transcript context; the
         # interval is the delay between subsequent cycles, not startup latency.
@@ -3043,6 +3118,9 @@ class AgentOrchestrator:
         while not self._stopped:
             await self.activity.cycle_started("consolidated_analyst")
             try:
+                # Clear before reading: an arrival while get_window awaits
+                # must remain visible if that read still returns an empty snapshot.
+                self._consolidated_context_event.clear()
                 transcript_window = await self.transcript_buffer.get_window(
                     aliases=self.speaker_aliases()
                 )
@@ -3056,7 +3134,7 @@ class AgentOrchestrator:
                             "items": 0,
                         },
                     )
-                    await asyncio.sleep(interval)
+                    await self._consolidated_context_event.wait()
                     continue
                 # Nobody spoke since the last cycle: the model has already read
                 # exactly this window, so re-reading it buys nothing. Mirrors the

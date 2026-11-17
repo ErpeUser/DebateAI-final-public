@@ -185,18 +185,17 @@ class EmbeddedPostgresTests(unittest.TestCase):
         )
         self.assertTrue(self.pg.role_marker.is_file())
 
-    def test_initdb_wipes_wedged_pgdata_without_pg_version(self):
+    def test_initdb_refuses_nonempty_pgdata_without_pg_version(self):
         pgdata = self.data_dir / "pgdata"
         pgdata.mkdir(parents=True)
-        (pgdata / "stray.txt").write_text("leftover from a crashed initdb")
+        sentinel = pgdata / "stray.txt"
+        sentinel.write_text("retained data with missing cluster metadata")
         with mock.patch("debateai_desktop.pg.subprocess.run") as run:
-            run.return_value = mock.Mock(returncode=0)
-            self.pg.ensure_initdb()
-        # rmtree removed the wedged dir entirely; nothing recreated it
-        # since subprocess.run (initdb) is mocked out.
-        self.assertFalse(pgdata.exists())
-        cmd = run.call_args.args[0]
-        self.assertIn("initdb", str(cmd[0]))
+            with self.assertRaisesRegex(RuntimeError, "explicit recovery"):
+                self.pg.ensure_initdb()
+        run.assert_not_called()
+        self.assertEqual("retained data with missing cluster metadata", sentinel.read_text())
+        self.assertFalse(self.pg.pwfile.exists())
 
     def test_start_binds_localhost_only_on_given_port(self):
         with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \

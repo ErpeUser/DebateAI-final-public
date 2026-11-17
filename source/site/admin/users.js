@@ -2,6 +2,7 @@ import {
   createListDetailController,
   element,
   formatCount,
+  formatAccessCredential,
   jsonRequest,
   replaceByEmail,
   timeNode,
@@ -171,13 +172,7 @@ const commandCopy = {
 
 function showResetCredential(dialogs, value, returnFocus) {
   dialogs.showCredential({
-    text: [
-      'DebateAI desktop access',
-      `Account: ${value.credential.email}`,
-      `Temporary password: ${value.credential.password}`,
-      'Sign in: /downloads/',
-      `Password expires: ${value.credential.password_expires_at}`,
-    ].join('\n'),
+    text: formatAccessCredential(value.credential),
     email: value.credential.email,
     returnFocus,
   });

@@ -12,6 +12,8 @@ import logging
 import os
 import tempfile
 
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
+
 logger = logging.getLogger(__name__)
 
 # Already plain text/Markdown: stored as-is, no conversion needed
@@ -34,6 +36,10 @@ def file_extension(filename: str) -> str:
 def convert_to_markdown(content: bytes, filename: str) -> str:
     """Return the Markdown representation of an uploaded file's bytes."""
     ext = file_extension(filename)
+    try:
+        preflight_office_archive(content, filename)
+    except OfficeArchiveError as error:
+        raise MarkdownConversionError(str(error)) from error
 
     if ext in PASSTHROUGH_EXTENSIONS:
         return content.decode("utf-8", errors="replace").strip()

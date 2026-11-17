@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.models import Document, Session
 from app.schemas import DocumentOut
 from app.services.pii import shield
@@ -71,6 +72,10 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
     content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
     if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
         raise HTTPException(413, "Document exceeds the 25 MiB upload limit")
+    try:
+        preflight_office_archive(content, filename)
+    except OfficeArchiveError as error:
+        raise HTTPException(400, str(error)) from error
     shielded = (await shield.get_settings(db)).enabled
     if await is_local_only() or shielded:
         # With the PII Shield on, the file itself never leaves the machine:

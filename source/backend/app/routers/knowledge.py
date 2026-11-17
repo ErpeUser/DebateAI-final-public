@@ -27,6 +27,7 @@ from app.services.markdown_conversion import (
     file_extension,
 )
 from app.services.upload_limits import UploadTooLarge, read_bounded_upload
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
 MAX_KNOWLEDGE_UPLOAD_BYTES = 25 * 1024 * 1024
@@ -206,6 +207,10 @@ async def import_records(
     except UploadTooLarge as error:
         raise HTTPException(413, "Knowledge import exceeds the 25 MiB upload limit") from error
     filename = (file.filename or "").lower()
+    try:
+        preflight_office_archive(content, filename)
+    except OfficeArchiveError as error:
+        raise HTTPException(400, str(error)) from error
 
     rows: list[dict] = []
     if filename.endswith(".csv"):

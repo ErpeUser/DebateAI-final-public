@@ -3,6 +3,7 @@
 import os
 import asyncio
 import secrets
+import stat
 import shutil
 import socket
 import subprocess
@@ -205,11 +206,30 @@ class EmbeddedPostgres:
         if (self.pgdata / "PG_VERSION").exists():
             self.initialized_here = self.role_marker.is_file()
             return
-        if self.pgdata.exists():
-            # A pgdata dir without PG_VERSION was never a valid cluster
-            # (e.g. initdb crashed or was killed mid-run). initdb refuses
-            # to write into a non-empty directory, so clear it first.
-            shutil.rmtree(self.pgdata)
+        # Missing PG_VERSION is not proof that existing files are disposable.
+        # Never delete an uncertain cluster or retry over a failed initdb result.
+        # Reject before password creation, ACL changes, or launching initdb.
+        try:
+            identity = self.pgdata.lstat()
+        except FileNotFoundError:
+            identity = None
+        # Windows junctions are reparse points, including when their target is
+        # absent. Do not depend solely on the newer pathlib convenience API.
+        reparse = getattr(identity, "st_file_attributes", 0) & getattr(
+            stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
+        )
+        if (reparse or self.pgdata.is_symlink()
+                or getattr(self.pgdata, "is_junction", lambda: False)()):
+            raise RuntimeError(
+                "Refusing to initialize a linked PostgreSQL data path; explicit recovery is required"
+            )
+        if self.pgdata.exists() and (
+            not self.pgdata.is_dir() or next(self.pgdata.iterdir(), None) is not None
+        ):
+            raise RuntimeError(
+                "Refusing to initialize existing PostgreSQL data without PG_VERSION; "
+                "explicit recovery is required; existing files were preserved"
+            )
         self.password()
         self._grant_windows_acl()
         self._run([

@@ -18,16 +18,15 @@ class BrowserTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.server = http.server.ThreadingHTTPServer(('127.0.0.1', 0), functools.partial(QuietHandler, directory=str(PUBLIC)))
+        cls.addClassCleanup(cls.server.server_close)
         cls.thread = threading.Thread(target=cls.server.serve_forever, daemon=True)
         cls.thread.start()
-        cls.playwright = sync_playwright().start()
+        cls.addClassCleanup(cls.server.shutdown)
+        cls.playwright = cls.enterClassContext(sync_playwright())
         cls.browser = cls.playwright.chromium.launch(executable_path=os.environ.get('PLAYWRIGHT_CHROMIUM_EXECUTABLE') or shutil.which('chromium') or None, headless=True,
             args=['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream'])
+        cls.addClassCleanup(cls.browser.close)
         cls.url = f'http://127.0.0.1:{cls.server.server_port}/calibration.html'
-
-    @classmethod
-    def tearDownClass(cls):
-        cls.browser.close(); cls.playwright.stop(); cls.server.shutdown(); cls.server.server_close()
 
     def setUp(self):
         self.context = self.browser.new_context(viewport={'width':1440,'height':1000})

@@ -877,6 +877,7 @@ def create_application_replay(
     orchestrator._get_model = lambda _slug: getattr(agent, "_model", "benchmark")
     orchestrator._is_enabled = lambda slug, fallback=True: slug == "objection_handler"
     orchestrator._stopped = False
+    orchestrator._consolidated_context_event = asyncio.Event()
     orchestrator._objection_task = None
     orchestrator._debate_pending = False
     orchestrator._interim_debate_chunks = deque(maxlen=3)

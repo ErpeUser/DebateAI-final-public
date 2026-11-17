@@ -11,6 +11,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import async_session, get_db
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.models import CallSegment, Session, Speaker, TranscriptEntry
 from app.services.pii import shield
 from app.services.audio_store import SegmentAudioWriter
@@ -377,6 +378,10 @@ async def import_transcript(
     content = await file.read(MAX_TRANSCRIPT_UPLOAD_BYTES + 1)
     if len(content) > MAX_TRANSCRIPT_UPLOAD_BYTES:
         raise HTTPException(413, "Transcript exceeds the 10 MiB upload limit")
+    try:
+        preflight_office_archive(content, filename)
+    except OfficeArchiveError as error:
+        raise HTTPException(400, str(error)) from error
 
     if ext == ".docx":
         segments = _parse_docx(content)

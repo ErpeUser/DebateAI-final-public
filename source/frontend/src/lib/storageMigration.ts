@@ -12,13 +12,15 @@ const PREFIXES: Array<[string, string]> = [
   ["backchannel:meeting-chat:", "debateai:meeting-chat:"],
 ];
 
+/** Copy missing canonical values without deleting the recoverable originals.
+ * Existing canonical values, including empty strings, always take precedence.
+ * A failed write may be retried; neither conflicts nor failures erase sources. */
 export function migrateLegacyStorage(storage: Storage): void {
   for (const [legacy, canonical] of STATIC_KEYS) {
     if (storage.getItem(canonical) === null) {
       const value = storage.getItem(legacy);
       if (value !== null) storage.setItem(canonical, value);
     }
-    storage.removeItem(legacy);
   }
 
   for (const key of Object.keys(storage)) {
@@ -29,7 +31,6 @@ export function migrateLegacyStorage(storage: Storage): void {
         const value = storage.getItem(key);
         if (value !== null) storage.setItem(canonical, value);
       }
-      storage.removeItem(key);
       break;
     }
   }

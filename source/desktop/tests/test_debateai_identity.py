@@ -33,7 +33,7 @@ class IdentityTests(unittest.TestCase):
             )
             self.assertFalse((Path(tmp) / "DebateAI").exists())
 
-    def test_legacy_data_is_copied_without_deleting_source(self):
+    def test_legacy_data_stays_untouched_until_explicit_import(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -42,7 +42,7 @@ class IdentityTests(unittest.TestCase):
             (legacy / "master.key").write_bytes(b"opaque-fixture")
             destination = module.resolve_data_root(base=base, environment={})
             self.assertEqual(destination, base / "DebateAI")
-            self.assertEqual((destination / "master.key").read_bytes(), b"opaque-fixture")
+            self.assertFalse((destination / "master.key").exists())
             self.assertEqual((legacy / "master.key").read_bytes(), b"opaque-fixture")
 
     def test_non_empty_destination_is_never_overwritten(self):
@@ -59,7 +59,7 @@ class IdentityTests(unittest.TestCase):
             self.assertEqual((destination / "current").read_text(), "current")
             self.assertFalse((destination / "old").exists())
 
-    def test_empty_destination_is_populated_without_overwriting(self):
+    def test_empty_destination_is_not_populated_implicitly(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -69,7 +69,7 @@ class IdentityTests(unittest.TestCase):
             destination = base / "DebateAI"
             destination.mkdir()
             self.assertEqual(module.resolve_data_root(base=base, environment={}), destination)
-            self.assertEqual((destination / "master.key").read_bytes(), b"opaque-fixture")
+            self.assertFalse((destination / "master.key").exists())
             self.assertEqual((legacy / "master.key").read_bytes(), b"opaque-fixture")
 
     def test_explicit_new_override_has_priority(self):
@@ -80,7 +80,7 @@ class IdentityTests(unittest.TestCase):
         )
         self.assertEqual(value, Path("/new-fixture"))
 
-    def test_lowercase_root_migrates(self):
+    def test_lowercase_root_remains_canonical_without_migration(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
@@ -91,7 +91,8 @@ class IdentityTests(unittest.TestCase):
                 module.resolve_data_root(base=base, environment={}, lowercase=True),
                 base / "debateai",
             )
-            self.assertEqual((base / "debateai" / "state").read_text(), "saved")
+            self.assertFalse((base / "debateai" / "state").exists())
+            self.assertEqual((legacy / "state").read_text(), "saved")
 
     def test_file_collision_is_not_used_as_data_directory(self):
         module = self.load()
@@ -100,41 +101,25 @@ class IdentityTests(unittest.TestCase):
             with self.assertRaises(NotADirectoryError):
                 module.resolve_data_root(base=Path(tmp), environment={})
 
-    def test_interrupted_migration_leaves_no_partial_destination(self):
+    def test_resolution_never_copies_even_when_legacy_data_exists(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             legacy = base / "Backchannel"
             legacy.mkdir()
             (legacy / "state").write_text("saved")
-
-            def interrupted(_source, staging, **_kwargs):
-                (Path(staging) / "partial").write_text("incomplete")
-                raise OSError("disk full")
-
-            with patch.object(module.shutil, "copytree", side_effect=interrupted):
-                self.assertEqual(
-                    module.resolve_data_root(base=base, environment={}),
-                    legacy,
-                )
+            with patch("shutil.copytree", side_effect=AssertionError("implicit migration")):
+                self.assertEqual(module.resolve_data_root(base=base, environment={}), base / "DebateAI")
             self.assertFalse((base / "DebateAI").exists())
-            self.assertEqual(
-                list(base.glob(".DebateAI.migration-*")),
-                [],
-            )
+            self.assertEqual((legacy / "state").read_text(), "saved")
 
-    def test_read_only_destination_falls_back_to_legacy_source(self):
+    def test_unreadable_legacy_directory_does_not_change_selection(self):
         module = self.load()
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
-            legacy = base / "Backchannel"
-            legacy.mkdir()
-            (legacy / "state").write_text("saved")
-            with patch.object(module.shutil, "copytree", side_effect=OSError("read-only")):
-                self.assertEqual(
-                    module.resolve_data_root(base=base, environment={}),
-                    legacy,
-                )
+            (base / "Backchannel").mkdir()
+            with patch.object(Path, "iterdir", side_effect=PermissionError("synthetic read-only")):
+                self.assertEqual(module.resolve_data_root(base=base, environment={}), base / "DebateAI")
 
 
 if __name__ == "__main__":

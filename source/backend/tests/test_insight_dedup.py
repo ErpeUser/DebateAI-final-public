@@ -11,8 +11,9 @@ The pairs below are real insight texts from that meeting.
 
 import time
 import unittest
+from unittest.mock import patch
 
-from app.services.agents.orchestrator import _DEDUP_WINDOW_SECONDS, _texts_similar
+from app.services.agents.orchestrator import AgentOrchestrator, _DEDUP_WINDOW_SECONDS, _texts_similar
 
 # (earlier text, later text, gap in seconds) drawn from the reference meeting.
 MERGED_PAIRS = [
@@ -119,6 +120,38 @@ class TextSimilarityTests(unittest.TestCase):
     def test_empty_text_never_matches(self):
         self.assertFalse(_texts_similar("", "anything at all"))
         self.assertFalse(_texts_similar("anything at all", ""))
+
+
+class EmissionLookupTests(unittest.TestCase):
+    def setUp(self):
+        self.orchestrator = object.__new__(AgentOrchestrator)
+        self.orchestrator._recent_insights = {}
+
+    def test_lookup_does_not_remember_an_uncommitted_candidate(self):
+        text = "Validate the rollout plan with the project team"
+        self.assertFalse(self.orchestrator._is_duplicate_insight(text))
+        self.assertFalse(self.orchestrator._is_duplicate_insight(text))
+        self.assertEqual(self.orchestrator._recent_insights, {})
+
+    def test_lookup_does_not_extend_or_prune_committed_history(self):
+        text = "Validate the rollout plan with the project team"
+        with patch("app.services.agents.orchestrator.time.time", return_value=1000.0):
+            self.orchestrator._remember_committed_insight(text)
+        history = self.orchestrator._recent_insights.copy()
+        with patch("app.services.agents.orchestrator.time.time", return_value=1100.0):
+            self.assertTrue(self.orchestrator._is_duplicate_insight(text))
+        with patch("app.services.agents.orchestrator.time.time", return_value=1300.0):
+            self.assertFalse(self.orchestrator._is_duplicate_insight(text))
+        self.assertEqual(self.orchestrator._recent_insights, history)
+
+    def test_successful_remember_prunes_expired_emissions(self):
+        with patch("app.services.agents.orchestrator.time.time", return_value=1000.0):
+            self.orchestrator._remember_committed_insight("Validate the rollout plan")
+        with patch("app.services.agents.orchestrator.time.time", return_value=1301.0):
+            self.orchestrator._remember_committed_insight("Discuss the separate budget approval")
+            self.assertFalse(self.orchestrator._is_duplicate_insight("Validate the rollout plan"))
+            self.assertTrue(self.orchestrator._is_duplicate_insight("Discuss the separate budget approval"))
+        self.assertEqual(len(self.orchestrator._recent_insights), 1)
 
 
 if __name__ == "__main__":

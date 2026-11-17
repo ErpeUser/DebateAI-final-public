@@ -146,6 +146,102 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
         orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
 
 
+    async def test_empty_start_wakes_on_first_durable_transcript(self):
+        import asyncio
+
+        orchestrator = make_orchestrator()
+        orchestrator._get_interval = MagicMock(return_value=60.0)
+        orchestrator._schedule_debate_revision = MagicMock()
+        empty_seen = asyncio.Event()
+        analyzed = asyncio.Event()
+
+        async def finished(_slug, outcome):
+            if outcome.get("kind") == "skipped_no_transcript":
+                empty_seen.set()
+
+        async def analyze(**_kwargs):
+            analyzed.set()
+            return []
+
+        orchestrator.activity.cycle_finished = AsyncMock(side_effect=finished)
+        orchestrator.consolidated_agent.run_cycle = AsyncMock(side_effect=analyze)
+        task = asyncio.create_task(orchestrator._consolidated_agent_loop())
+        try:
+            await asyncio.wait_for(empty_seen.wait(), timeout=0.5)
+            await orchestrator.feed_transcript("A durable opening statement.", utterance_id="first")
+            await asyncio.wait_for(analyzed.wait(), timeout=0.5)
+            orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
+        finally:
+            orchestrator._stopped = True
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    async def test_first_transcript_arriving_during_snapshot_is_not_lost(self):
+        import asyncio
+
+        orchestrator = make_orchestrator()
+        orchestrator._get_interval = MagicMock(return_value=60.0)
+        orchestrator._schedule_debate_revision = MagicMock()
+        original_window = orchestrator.transcript_buffer.get_window
+        calls = 0
+        analyzed = asyncio.Event()
+
+        async def snapshot(**kwargs):
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                await orchestrator.feed_transcript("A statement arrived during the snapshot.", utterance_id="race")
+                return "(No recent transcript)"
+            return await original_window(**kwargs)
+
+        async def analyze(**_kwargs):
+            analyzed.set()
+            return []
+
+        orchestrator.transcript_buffer.get_window = AsyncMock(side_effect=snapshot)
+        orchestrator.consolidated_agent.run_cycle = AsyncMock(side_effect=analyze)
+        task = asyncio.create_task(orchestrator._consolidated_agent_loop())
+        try:
+            await asyncio.wait_for(analyzed.wait(), timeout=0.5)
+            self.assertEqual(2, calls)
+            orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
+        finally:
+            orchestrator._stopped = True
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
+    async def test_manual_correction_can_supply_first_analyst_context(self):
+        import asyncio
+
+        orchestrator = make_orchestrator()
+        orchestrator._get_interval = MagicMock(return_value=60.0)
+        empty_seen = asyncio.Event()
+        analyzed = asyncio.Event()
+
+        async def finished(_slug, outcome):
+            if outcome.get("kind") == "skipped_no_transcript":
+                empty_seen.set()
+
+        async def analyze(**_kwargs):
+            analyzed.set()
+            return []
+
+        orchestrator.activity.cycle_finished = AsyncMock(side_effect=finished)
+        orchestrator.consolidated_agent.run_cycle = AsyncMock(side_effect=analyze)
+        task = asyncio.create_task(orchestrator._consolidated_agent_loop())
+        try:
+            await asyncio.wait_for(empty_seen.wait(), timeout=0.5)
+            await orchestrator.apply_manual_transcript_correction(
+                text="Corrected first context.", speaker_name=None,
+                speaker_id=None, speaker_type=None, utterance_id="edited",
+            )
+            await asyncio.wait_for(analyzed.wait(), timeout=0.5)
+            orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
+        finally:
+            orchestrator._stopped = True
+            task.cancel()
+            await asyncio.gather(task, return_exceptions=True)
+
     async def test_failed_cycle_retries_the_unchanged_window(self):
         """A transient provider failure must not suppress the same transcript."""
         orchestrator = make_orchestrator()

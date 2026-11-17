@@ -2,6 +2,7 @@ import {
   createListDetailController,
   element,
   formatCount,
+  formatAccessCredential,
   jsonRequest,
   replaceByEmail,
   timeNode,
@@ -40,13 +41,7 @@ function validCredential(credential, email) {
 }
 
 function credentialText(credential) {
-  return [
-    'DebateAI desktop access',
-    `Account: ${credential.email}`,
-    `Temporary password: ${credential.password}`,
-    'Sign in: /downloads/',
-    `Password expires: ${credential.password_expires_at}`,
-  ].join('\n');
+  return formatAccessCredential(credential);
 }
 
 function cell(label, content, document) {

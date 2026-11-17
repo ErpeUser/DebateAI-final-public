@@ -598,10 +598,11 @@ def _create_transcript_emitter(
     ephemeral_sequence = 0
     turn_assembler = TurnAssembler()
 
-    async def _emit_transcript(speaker_auto_id: str, pcm_bytes: bytes, text: str):
+    async def _emit_transcript(speaker_auto_id: str, pcm_bytes: bytes, text: str, provisional_segment_id: str | None = None):
         """Persist an already-transcribed diarized segment in original audio order."""
         nonlocal ephemeral_sequence
-        provisional_segment_id = (
+        explicit_provisional_id = provisional_segment_id
+        provisional_segment_id = provisional_segment_id or (
             getattr(orchestrator, "_active_interim_segment_id", None)
             or getattr(orchestrator, "_gateway_segment_id", None)
         )
@@ -687,6 +688,7 @@ def _create_transcript_emitter(
             speaker_type=speaker_type,
             utterance_id=turn.utterance_id,
             is_local_mic=split_track_mic,
+            **({"provisional_segment_id": explicit_provisional_id} if explicit_provisional_id else {}),
         )
 
         try:
@@ -882,6 +884,7 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
         transcription_queue = OrderedTranscriptionQueue(
             transcribe=transcriber.transcribe_segment,
             emit=emit_transcript,
+            emit_with_identity=emit_transcript,
             on_failure=_transcription_failure_handler(
                 websocket,
                 batch_model_is_local,

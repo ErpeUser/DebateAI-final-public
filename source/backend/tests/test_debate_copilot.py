@@ -777,6 +777,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._get_model = lambda slug: "qwen3:4b"
         orchestrator._is_enabled = lambda slug, fallback=True: slug == "objection_handler"
         orchestrator._stopped = False
+        orchestrator._consolidated_context_event = asyncio.Event()
         orchestrator._objection_task = None
         orchestrator._debate_pending = False
         orchestrator._interim_debate_chunks = deque(maxlen=3)
@@ -1040,6 +1041,20 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIn("kann nicht", agent.windows[-1])
         self.assertNotIn("Das kann funktionieren", agent.windows[-1])
+
+    async def test_final_retires_explicit_provisional_not_other_track(self):
+        import inspect
+        agent=MagicMock()
+        orchestrator=self._orchestrator(agent)
+        self.assertIn("provisional_segment_id",inspect.signature(orchestrator.feed_transcript).parameters)
+        orchestrator._schedule_debate_revision=MagicMock()
+        orchestrator._interim_debate_hypotheses={"mic-part":"Mic", "sys-part":"System"}
+        orchestrator._active_interim_segment_id="sys-part"
+        orchestrator._finalized_interim_segments=set()
+        await orchestrator.feed_transcript("Final microphone",utterance_id="final-mic",provisional_segment_id="mic-part")
+        self.assertIn("mic-part",orchestrator._finalized_interim_segments)
+        self.assertNotIn("sys-part",orchestrator._finalized_interim_segments)
+        self.assertNotIn("mic-part",orchestrator._interim_debate_hypotheses)
 
     async def test_manual_correction_invalidates_matching_live_recommendation(self):
         agent = MagicMock()

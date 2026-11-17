@@ -65,7 +65,7 @@ class V3AcceptanceEvidenceTests(unittest.TestCase):
         payload["reference"]["duration_seconds"] = 600
         payload["dataset_sha256"] = "d" * 64
         payload["future_data_excluded"] = True
-        payload["denominator"] = 20
+        payload["denominator"] = 1
         payload["runs"] = [
             {
                 "name": "production",
@@ -89,6 +89,64 @@ class V3AcceptanceEvidenceTests(unittest.TestCase):
         self.assertEqual("ready_for_manual_review", result["status"])
         self.assertTrue(result["human_review_required"])
         self.assertEqual([], result["errors"])
+
+    def test_a22_rejects_incomplete_human_case_coverage(self):
+        payload = _common("A22")
+        payload["reference"]["duration_seconds"] = 600
+        payload["dataset_sha256"] = "d" * 64
+        payload["future_data_excluded"] = True
+        payload["denominator"] = 2
+        payload["runs"] = [
+            {
+                "name": "production",
+                "load_profile": "mic+system+agents",
+                "metrics": {"latency_ms": 100, "error_rate": 0.1},
+            },
+            {
+                "name": "reference",
+                "load_profile": "mic+system+agents",
+                "metrics": {"latency_ms": 120, "error_rate": 0.2},
+            },
+        ]
+        payload["human_review"] = {
+            "rater_ids": ["rater-anon-1"],
+            "blinded": True,
+            "ratings": [{"case": 1, "score": 3}],
+        }
+
+        result = validate_evidence_package(payload)
+
+        self.assertEqual("incomplete", result["status"])
+        self.assertTrue(any("cover every case" in item for item in result["errors"]))
+
+    def test_a22_rejects_boolean_denominator(self):
+        payload = _common("A22")
+        payload["reference"]["duration_seconds"] = 600
+        payload["dataset_sha256"] = "d" * 64
+        payload["future_data_excluded"] = True
+        payload["denominator"] = True
+        payload["runs"] = [
+            {
+                "name": "production",
+                "load_profile": "mic+system+agents",
+                "metrics": {"latency_ms": 100, "error_rate": 0.1},
+            },
+            {
+                "name": "reference",
+                "load_profile": "mic+system+agents",
+                "metrics": {"latency_ms": 120, "error_rate": 0.2},
+            },
+        ]
+        payload["human_review"] = {
+            "rater_ids": ["rater-anon-1"],
+            "blinded": True,
+            "ratings": [{"case": 1, "score": 3}],
+        }
+
+        result = validate_evidence_package(payload)
+
+        self.assertEqual("incomplete", result["status"])
+        self.assertTrue(any("positive integer" in item for item in result["errors"]))
 
     def test_rejects_non_numeric_reference_duration(self):
         payload = _common("A06")

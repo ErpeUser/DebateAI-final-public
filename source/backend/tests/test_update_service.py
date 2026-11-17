@@ -94,6 +94,7 @@ class UpdateFixture:
         self.ignore_range = False
         self.wrong_range = False
         self.slow_asset = False
+        self.redirects = {}
         fixture = self
 
         class Handler(BaseHTTPRequestHandler):
@@ -101,6 +102,12 @@ class UpdateFixture:
                 pass
 
             def do_GET(self):
+                if self.path in fixture.redirects:
+                    self.send_response(302)
+                    self.send_header("Location", fixture.redirects[self.path])
+                    self.send_header("Content-Length", "0")
+                    self.end_headers()
+                    return
                 if self.path.startswith("/latest/"):
                     fixture.descriptor_requests += 1
                     if fixture.descriptor_delay:
@@ -220,6 +227,41 @@ class UpdateServiceTests(unittest.TestCase):
         options.update(overrides)
         return UpdateService(**options)
 
+    def test_cross_origin_asset_redirect_never_receives_authorization(self):
+        archive = zip_bundle()
+        with UpdateFixture(descriptor(archive), archive) as origin, UpdateFixture(descriptor(archive), archive) as other:
+            service = self.service(origin)
+            self.assertEqual('available', service.check(force=True)['state'])
+            origin.redirects['/assets/v0.4.0/windows-x64'] = other.origin + '/capture'
+            with self.assertRaises(InvalidUpdate):
+                service._asset_request(GRANT, None)
+            self.assertEqual([], other.asset_requests, 'Grant reached another origin before rejection')
+
+    def test_cross_origin_descriptor_redirect_is_rejected_before_contact(self):
+        archive = zip_bundle()
+        with UpdateFixture(descriptor(archive), archive) as origin, UpdateFixture(descriptor(archive), archive) as other:
+            origin.redirects['/latest/windows-x64'] = other.origin + '/latest/windows-x64'
+            self.assertEqual('error', self.service(origin).check(force=True)['state'])
+            self.assertEqual(0, other.descriptor_requests)
+
+    def test_same_origin_redirect_keeps_resumable_authenticated_download(self):
+        archive = zip_bundle()
+        with UpdateFixture(descriptor(archive), archive) as origin:
+            service = self.service(origin)
+            self.assertEqual('available', service.check(force=True)['state'])
+            origin.redirects['/assets/v0.4.0/windows-x64'] = origin.origin + '/stored-archive'
+            with service._asset_request(GRANT, 3) as response:
+                self.assertEqual(archive[3:], response.read())
+            self.assertEqual('Bearer ' + GRANT, origin.asset_requests[-1]['Authorization'])
+            self.assertEqual('bytes=3-', origin.asset_requests[-1]['Range'])
+
+    def test_ambiguous_update_sources_are_rejected_without_normalization(self):
+        for url in ('https://updates.example:0/path', 'https://updates.example/path#fragment',
+                    ' https://updates.example/path', 'https://updates.example/\npath',
+                    'https://updates.example\\@other.example/path'):
+            with self.subTest(url=url), self.assertRaises(ValueError):
+                _update_origin(url)
+
     def test_source_deployment_is_disabled(self):
         service = UpdateService(enabled=False)
         self.assertEqual(service.status(), {"enabled": False, "state": "idle"})
@@ -318,7 +360,7 @@ class UpdateServiceTests(unittest.TestCase):
             return Response(body)
 
         service = self.service()
-        with patch("app.services.update_service.urllib.request.urlopen", open_request):
+        with patch("app.services.update_service._open_update_url", open_request):
             self.assertEqual(service.check(force=True)["state"], "available")
         self.assertIsInstance(captured["context"], ssl.SSLContext)
         self.assertEqual(captured["timeout"], 10)
