@@ -15,6 +15,8 @@ release-assets/
 pgdata/
 desktop/pgsql/
 desktop/ffmpeg/
+source/desktop/pgsql/
+source/desktop/ffmpeg/
 .release-venv/
 .venv/
 .tmp/
