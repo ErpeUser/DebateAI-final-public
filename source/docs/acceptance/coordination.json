@@ -1,0 +1,57 @@
+{
+  "schema_version": 1,
+  "prompt_version": "local-consolidation-20261117",
+  "state": "LOCAL_IN_PROGRESS",
+  "checkpoint": "INTEGRATION_BLOCKED",
+  "candidate_branch": "codex/local-consolidation-20261117",
+  "default_branch": "master",
+  "default_observed_sha": "ac51b3730a58b143715b49e63d707654d948ed59",
+  "candidate_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+  "recovery_id": "consolidation-20261117-102642",
+  "writer_ack": {
+    "issue": 20,
+    "verified": false
+  },
+  "web_writes_allowed": false,
+  "roles": {
+    "integrator_after_handoff": "A",
+    "windows_coordinator": "A",
+    "B": "Separate branch and PR only"
+  },
+  "activation": "Require explicit matching writer ACKs, exact remote/base verification, permitted default integration, then fast-forward the Windows main checkout and record LOCAL_DONE_WEB_ALLOWED.",
+  "file_owners": {
+    "source/backend/app/services/agents/orchestrator.py": "A",
+    "source/backend/app/services/agents/synthesizer.py": "A",
+    "source/backend/app/services/request_guard.py": "A",
+    "source/backend/app/services/update_service.py": "A",
+    "source/backend/app/services/audio_store.py": "A",
+    "source/backend/app/ws/audio_persistence.py": "A",
+    "source/backend/app/services/office_archive.py": "A",
+    "source/desktop/debateai_desktop/pg.py": "A",
+    "source/tools/legacy_data_import.py": "A",
+    "source/scripts/run_acceptance.py": "A",
+    "source/backend/scripts/validate_v3_acceptance_evidence.py": "A",
+    "source/frontend/src/lib/storageMigration.ts": "B",
+    "source/frontend/calibration-tests/test_import_evidence.py": "B",
+    "source/docs-site/worker.js": "B",
+    "source/site/admin/admin-core.js": "B",
+    "source/docs/acceptance/coordination.json": "A"
+  },
+  "ticket_owners": {
+    "F11": "A",
+    "F12": "A",
+    "A22": "A",
+    "native-external": "A",
+    "acceptance-runner-convergence": "A",
+    "browser-lab-docs": "B"
+  },
+  "local_exceptions": [
+    "Main checkout and all existing development checkouts retained.",
+    "Raw logs, untracked user files, original prompts and both stashes remain in the verified local recovery.",
+    "No second repository, new credentials, model download, paid service or production changes."
+  ],
+  "review_limits": [
+    "Author/peer logs may inform scope; no independent review of the exact final tree is claimed.",
+    "No hosted jobs, hardware or human sign-off claimed without direct evidence."
+  ]
+}

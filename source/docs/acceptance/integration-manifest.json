@@ -1,0 +1,1088 @@
+{
+  "schema_version": 1,
+  "recovery_id": "consolidation-20261117-102642",
+  "observed_at": "2026-11-17T10:26:42+01:00",
+  "repository": {
+    "id": 1450951492,
+    "full_name": "ErpeUser/DebateAI",
+    "private": true,
+    "default": "master",
+    "observed_sha": "ac51b3730a58b143715b49e63d707654d948ed59"
+  },
+  "recovery": {
+    "bundle_sha256": "c14b817271a0e0f1dce8bc557c55015e0ded2e4f7a4a5bf3e1fd11c0095f6160",
+    "restore": "PASS",
+    "worktrees": 7,
+    "untracked_files_restored": 2165,
+    "raw_artifacts": "private local only"
+  },
+  "candidate_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+  "active_remote_branches": [
+    {
+      "name": "codex/p0-a22-human-coverage",
+      "protected": false,
+      "sha": "5989730a7cae36acbcb4aaec5057b298ae337d83"
+    },
+    {
+      "name": "codex/p0-source-safety-20261116",
+      "protected": false,
+      "sha": "140ff2c6500603020067bb35f12b16fdcb774ab3"
+    },
+    {
+      "name": "codex/rest-integration-20261117",
+      "protected": false,
+      "sha": "b937e44827788aea68b269515b7a42d979ca74aa"
+    },
+    {
+      "name": "hardening/v3-ci-evidence-20261117",
+      "protected": false,
+      "sha": "0d9ef2f1ba29578d6357321786fa7cfa53abd1d8"
+    },
+    {
+      "name": "hardening/verified-acceptance-20261116",
+      "protected": false,
+      "sha": "c4c4d26376ea1ca3d1fa8bad2471a8798a1931e9"
+    },
+    {
+      "name": "master",
+      "protected": false,
+      "sha": "ac51b3730a58b143715b49e63d707654d948ed59"
+    }
+  ],
+  "pr_inventory": [
+    {
+      "base": {
+        "ref": "master",
+        "sha": "ac51b3730a58b143715b49e63d707654d948ed59"
+      },
+      "draft": true,
+      "head": {
+        "ref": "codex/p0-a22-human-coverage",
+        "sha": "5989730a7cae36acbcb4aaec5057b298ae337d83"
+      },
+      "merged_at": null,
+      "number": 19,
+      "state": "open",
+      "title": "P0: fail closed on incomplete A22 human evidence"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "e87af7aef377c122fc34cce24a6bb86a7acc6da5"
+      },
+      "draft": false,
+      "head": {
+        "ref": "integration/consolidate-c1-c2-c3",
+        "sha": "f262bb2caf6740a485a6067b9c1901aa5e78cd16"
+      },
+      "merged_at": "2026-11-16T13:01:44Z",
+      "number": 18,
+      "state": "closed",
+      "title": "Consolidate C1/C2/C3 backend, runtime, and release hardening"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "e87af7aef377c122fc34cce24a6bb86a7acc6da5"
+      },
+      "draft": true,
+      "head": {
+        "ref": "review-v10-c1-backend-ai",
+        "sha": "fb6eaa03c734e89c01154f59519e44603b7af764"
+      },
+      "merged_at": "2026-11-16T13:01:46Z",
+      "number": 17,
+      "state": "closed",
+      "title": "C1: harden backend, AI and open function paths"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "e87af7aef377c122fc34cce24a6bb86a7acc6da5"
+      },
+      "draft": true,
+      "head": {
+        "ref": "review-v10-c2-client-runtime",
+        "sha": "72a22b79e331992fc75a88544ec1e099a2a876fc"
+      },
+      "merged_at": "2026-11-16T13:01:46Z",
+      "number": 16,
+      "state": "closed",
+      "title": "C2: harden frontend and desktop runtime"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "e87af7aef377c122fc34cce24a6bb86a7acc6da5"
+      },
+      "draft": true,
+      "head": {
+        "ref": "review-v10-c3-release-site",
+        "sha": "f8b11c81e48ba1863c4b9f0754639e85f325bb02"
+      },
+      "merged_at": "2026-11-16T13:01:46Z",
+      "number": 15,
+      "state": "closed",
+      "title": "C3: fix release checkout paths and CI contracts"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "50ba43d7299b25800ce34627f03c2f7eefb5e0d6"
+      },
+      "draft": false,
+      "head": {
+        "ref": "integration/review-a-b-20261116",
+        "sha": "db49b788fd3bc55c55f9e5e3efc5011047252fd6"
+      },
+      "merged_at": "2026-11-16T07:28:37Z",
+      "number": 14,
+      "state": "closed",
+      "title": "Review-Fixes aus #11, #12 und #13 zusammenführen"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "50ba43d7299b25800ce34627f03c2f7eefb5e0d6"
+      },
+      "draft": true,
+      "head": {
+        "ref": "review-fix-a-backend-ai-50ba43d",
+        "sha": "8d1573433ed391d295ce3932e48068f2dbe3f678"
+      },
+      "merged_at": "2026-11-16T07:28:39Z",
+      "number": 13,
+      "state": "closed",
+      "title": "Teil A: Backend-/KI-Verträge, Transaktionen und Prozesslebenszyklen absichern"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "50ba43d7299b25800ce34627f03c2f7eefb5e0d6"
+      },
+      "draft": true,
+      "head": {
+        "ref": "review-fix-b-client-release-50ba43d",
+        "sha": "fcdfec5bfcf2a3d43a844be380366b006251e766"
+      },
+      "merged_at": "2026-11-16T07:28:39Z",
+      "number": 12,
+      "state": "closed",
+      "title": "[Chat B] Fix client release paths, Node provenance, and ChatGPT Web evidence"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "50ba43d7299b25800ce34627f03c2f7eefb5e0d6"
+      },
+      "draft": true,
+      "head": {
+        "ref": "codex/a086-audit-approval-fix",
+        "sha": "0e14fa60c656fbcf2e847159c0081af46d6500a4"
+      },
+      "merged_at": "2026-11-16T07:28:39Z",
+      "number": 11,
+      "state": "closed",
+      "title": "fix(audit): complete A086 approval and claim lifecycle hardening"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "bf8fb9d45165b7883f53f007819df5849de8d63f"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/acceptance-final-20261112",
+        "sha": "83e5248c4b7cf8dbbcd5e629385d0d488663ea33"
+      },
+      "merged_at": "2026-11-12T04:22:17Z",
+      "number": 10,
+      "state": "closed",
+      "title": "docs: record final merged acceptance state"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "635bd76b318be9fbd809c984586cdf9abafa865e"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/site-metadata-followup-20261112",
+        "sha": "98d7a38dc1b03bff22b4fc00cd0af50e4b255df6"
+      },
+      "merged_at": "2026-11-12T04:19:02Z",
+      "number": 9,
+      "state": "closed",
+      "title": "fix: make release archive JSON-LD positions consistent"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "ffde73c2648bacab54388d749375a7083e42c12d"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/final-audit-20261112",
+        "sha": "d8dd08fbe48747909735b709852857f147d97213"
+      },
+      "merged_at": "2026-11-12T04:11:25Z",
+      "number": 8,
+      "state": "closed",
+      "title": "chore: final DebateAI audit, hardening, and Codex acceptance handoff"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "fcdfc798f97f62f44768b242a9a039c8787bf6ea"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/post-merge-hardening",
+        "sha": "35881cd4258dd08fe5d5be5a6cb4ffd2ad92c183"
+      },
+      "merged_at": "2026-11-12T01:22:20Z",
+      "number": 7,
+      "state": "closed",
+      "title": "fix: harden post-merge DebateAI contracts"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "4f8b1b5525087ce99b368c2bc0ba48d2a367b4cb"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/debateai-identity-decoupling",
+        "sha": "6a0d7e3f2f8120517b4a1b7e5da5259396bd107f"
+      },
+      "merged_at": "2026-11-12T00:48:14Z",
+      "number": 6,
+      "state": "closed",
+      "title": "refactor: complete DebateAI identity decoupling"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "44dc0a3821a8f52ae7136598027c9f039168f776"
+      },
+      "draft": false,
+      "head": {
+        "ref": "docs/unify-desktop-final-20261111",
+        "sha": "3880db23189469d0f87ebd5535b49bef5869c8a8"
+      },
+      "merged_at": "2026-11-11T07:30:52Z",
+      "number": 5,
+      "state": "closed",
+      "title": "docs: unify native desktop completion and Windows runbook"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "37bb37ab55da775dd62373079bfe686764e3c6bf"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/final-polish-2026-11",
+        "sha": "f552f5d5120ad269e5c1c94dcd4dcae5818d3a30"
+      },
+      "merged_at": "2026-11-11T07:10:17Z",
+      "number": 4,
+      "state": "closed",
+      "title": "fix(ui): polish mobile accessibility and responsive controls"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "b1fee512d0a3da6492048ca3af026b4e8fc40905"
+      },
+      "draft": false,
+      "head": {
+        "ref": "codex/debateai-v6-implementation",
+        "sha": "b854c18c36bff7ec9b19c5c5b8ead9b17ae4ff7a"
+      },
+      "merged_at": "2026-11-11T06:28:35Z",
+      "number": 3,
+      "state": "closed",
+      "title": "Implement DebateAI V6 contract, replay, CI and Windows gate foundations"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "d07a6581f91944434f691bd1295b39a002b938b5"
+      },
+      "draft": false,
+      "head": {
+        "ref": "hardening/debateai-standalone",
+        "sha": "103f1ded1ec935b4d9a5855fe79a1c92e44234b9"
+      },
+      "merged_at": "2026-11-11T04:34:46Z",
+      "number": 2,
+      "state": "closed",
+      "title": "DebateAI: Recovery integriert, Produktions-A/B, Testlabor und sichere Windows-Fortsetzung"
+    },
+    {
+      "base": {
+        "ref": "master",
+        "sha": "7296fc0e50829d6f3fceaf2e00faa83d3557882f"
+      },
+      "draft": false,
+      "head": {
+        "ref": "hardening/production-security",
+        "sha": "72664dec6a599694cf2c76ca167ad0f020573539"
+      },
+      "merged_at": "2026-11-10T00:58:23Z",
+      "number": 1,
+      "state": "closed",
+      "title": "Harden authentication, privacy, CI, and production defaults"
+    }
+  ],
+  "dispositions": [
+    {
+      "source": "9e413ce98286c9f9175a8160df00dbf2c23d0d84",
+      "summary": "fix: fail closed on malformed or ambiguous instance credentials",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/routers/updates.py",
+        "source/backend/app/services/request_guard.py",
+        "source/backend/tests/test_instance_token_boundary.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "5e24106389017503856d372adf63e7ce11ebc43d",
+      "summary": "fix: wake empty-start analyst on first durable context",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/agents/orchestrator.py",
+        "source/backend/tests/test_active_questions_bound.py",
+        "source/backend/tests/test_debate_copilot.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "a8c4b1b2b7698d5d5b5edbdcebfefdc089a966f0",
+      "summary": "fix: bound OOXML imports before conversion and data mutation",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/routers/documents.py",
+        "source/backend/app/routers/imports.py",
+        "source/backend/app/routers/offerings.py",
+        "source/backend/app/services/file_parsing.py",
+        "source/backend/app/services/markdown_conversion.py",
+        "source/backend/app/services/office_archive.py",
+        "source/backend/tests/test_office_archive.py",
+        "source/backend/tests/test_office_import_rejection.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "5df92f45d83c03da06385a53ffd6858a14d9b917",
+      "summary": "fix: isolate legacy file imports from canonical startup",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/desktop/debateai_identity.py",
+        "source/desktop/tests/test_debateai_identity.py",
+        "source/desktop/tests/test_explicit_legacy_import.py",
+        "source/docs/identity-decoupling-design.md",
+        "source/docs/optional-file-data-import.md",
+        "source/tools/legacy_data_import.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "fb3cda00cb475adc8ed3dcad387d168cc7c6b60f",
+      "summary": "fix: route local provisional context and repair full-suite regressions",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/agents/orchestrator.py",
+        "source/backend/app/services/ordered_transcription.py",
+        "source/backend/app/services/request_guard.py",
+        "source/backend/app/ws/audio_handler.py",
+        "source/backend/app/ws/audio_pipeline.py",
+        "source/backend/app/ws/streaming_provisional.py",
+        "source/backend/scripts/benchmark_debate_copilot.py",
+        "source/backend/tests/test_briefing_provider_routing.py",
+        "source/backend/tests/test_credential_exposure.py",
+        "source/backend/tests/test_debate_copilot.py",
+        "source/backend/tests/test_debate_research.py",
+        "source/backend/tests/test_instance_token_boundary.py",
+        "source/backend/tests/test_orchestrator_graceful_drain.py",
+        "source/backend/tests/test_secrets.py",
+        "source/backend/tests/test_streaming_provisional_relay.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "ec7d1ff6863dac5fad37255cf0993e620f62d6bd",
+      "summary": "test: require complete A22 human coverage",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/scripts/validate_v3_acceptance_evidence.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "fb9a4b8453565a0cb71f33b05654417e46581d26",
+      "summary": "test: require complete A22 human coverage",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/tests/test_v3_acceptance_evidence.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "2ee8af5dd03a213612ecc2319bda1e811f3099c2",
+      "summary": "fix: reject boolean A22 denominator",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/scripts/validate_v3_acceptance_evidence.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "c232849f519794d7a89115574827a21ba16361f9",
+      "summary": "test: reject boolean A22 denominator",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/tests/test_v3_acceptance_evidence.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "0cc5cae1171673130bafe9fce53eac03c17476f7",
+      "summary": "test: record fresh recovery regression and pushed checkpoints",
+      "decision": "PRESERVED_UNRESOLVED",
+      "target_source_tree": null,
+      "source_paths": [],
+      "reason": "Historical evidence is preserved on the source ref and in recovery rather than republished."
+    },
+    {
+      "source": "108e04730dd238a6a28c312f87d6032e307a577d",
+      "summary": "fix: enforce Office admission on knowledge record imports",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/routers/knowledge.py",
+        "source/backend/tests/test_knowledge_office_admission.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "a24c87421fd06da65feed7e4fad03a54383c763a",
+      "summary": "fix: retire rejected streaming hypotheses and stale guidance",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/agents/orchestrator.py",
+        "source/backend/app/ws/audio_pipeline.py",
+        "source/backend/tests/test_streaming_provisional_retirement.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "140ff2c6500603020067bb35f12b16fdcb774ab3",
+      "summary": "feat: add fail-closed acceptance adapter with owned process evidence",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/desktop/tests/test_acceptance_adapter.py",
+        "source/desktop/tests/test_acceptance_integrity.py",
+        "source/desktop/tests/test_acceptance_ownership.py",
+        "source/desktop/tests/test_acceptance_review_findings.py",
+        "source/scripts/acceptance/README.md",
+        "source/scripts/acceptance/__init__.py",
+        "source/scripts/acceptance/environment.py",
+        "source/scripts/acceptance/evidence.py",
+        "source/scripts/acceptance/execution.py",
+        "source/scripts/acceptance/owned_process.py",
+        "source/scripts/acceptance/process_launcher.py",
+        "source/scripts/run_acceptance.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "c95296647585760cab2633a23b8b45e9c7764704",
+      "summary": "fix: preserve original browser storage during migration",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/frontend/src/lib/storageMigration.test.mjs",
+        "source/frontend/src/lib/storageMigration.ts"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "9415ecd56be5656e6d5c7fdffbd0def1e44f4d52",
+      "summary": "fix: integrate configured credential links across admin exports",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/docs-site/admin-early-access.test.js",
+        "source/docs-site/admin-users.test.js",
+        "source/docs-site/credential-export.test.js",
+        "source/docs-site/worker.js",
+        "source/docs-site/worker.test.js",
+        "source/site/admin/admin-core.js",
+        "source/site/admin/early-access.js",
+        "source/site/admin/users.js"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "d3928ddcddee17c43764c9ced12d7d61cb466c10",
+      "summary": "fix: retain failed pytest denominators in acceptance evidence",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/desktop/tests/test_acceptance_failed_subtests.py",
+        "source/scripts/acceptance/evidence.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "987fadeccbf73e2ad3f1db9abfcf562bb2411463",
+      "summary": "fix: distinguish unexecuted CI jobs from observed failures",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/desktop/tests/test_acceptance_adapter.py",
+        "source/desktop/tests/test_ci_execution_evidence.py",
+        "source/scripts/run_acceptance.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "bb3902f8fc6eb816d3cd5526256c2c20720d1b12",
+      "summary": "test: verify CI evidence adapter on native Windows",
+      "decision": "PRESERVED_UNRESOLVED",
+      "target_source_tree": null,
+      "source_paths": [],
+      "reason": "Historical evidence is preserved on the source ref and in recovery rather than republished."
+    },
+    {
+      "source": "dc49a617b5f059922072df9cf8cd6996f5310baa",
+      "summary": "test: recover F11 commit retry coverage on native asyncio",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/tests/test_synthesizer_commit_retry.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "b48ef04bc395a56971af905dc3cd3058e262dd9d",
+      "summary": "merge: integrate verified CI evidence and F11 retry coverage",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/tests/test_synthesizer_commit_retry.py",
+        "source/desktop/tests/test_acceptance_adapter.py",
+        "source/desktop/tests/test_ci_execution_evidence.py",
+        "source/scripts/run_acceptance.py",
+        "source/desktop/tests/test_acceptance_failed_subtests.py",
+        "source/docs-site/admin-early-access.test.js",
+        "source/docs-site/admin-users.test.js",
+        "source/docs-site/credential-export.test.js",
+        "source/docs-site/worker.js",
+        "source/docs-site/worker.test.js",
+        "source/frontend/src/lib/storageMigration.test.mjs",
+        "source/frontend/src/lib/storageMigration.ts",
+        "source/scripts/acceptance/evidence.py",
+        "source/site/admin/admin-core.js",
+        "source/site/admin/early-access.js",
+        "source/site/admin/users.js"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "e0dd1532d6cad7de1cd2871b8fab77e53f34227d",
+      "summary": "fix: preserve committed insights and validated speaker ownership",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/agents/orchestrator.py",
+        "source/backend/tests/test_insight_commit_retry.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "6248a5fe61c3579d8bfa17d13e8a8a0589b7d27b",
+      "summary": "fix: validate complete bounded Office decompression streams",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/office_archive.py",
+        "source/backend/tests/test_office_deflate_integrity.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "c2155850b552e8540acdaeb7fdc5c94e48584f3e",
+      "summary": "fix: preserve uncertain PostgreSQL data before initialization",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/desktop/debateai_desktop/pg.py",
+        "source/desktop/tests/test_pg.py",
+        "source/desktop/tests/test_pg_data_preservation.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "b937e44827788aea68b269515b7a42d979ca74aa",
+      "summary": "fix: preserve accepted audio archives on finalize failures",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "source_paths": [
+        "source/backend/app/services/audio_store.py",
+        "source/backend/app/ws/audio_persistence.py",
+        "source/backend/tests/test_audio_failure_preservation.py",
+        "source/backend/tests/test_audio_store_recovery.py"
+      ],
+      "reason": "Final reviewed leaf tree preserves the scoped source behavior; raw logs and historical WIP stay in recovery."
+    },
+    {
+      "source": "0d9ef2f1ba29578d6357321786fa7cfa53abd1d8",
+      "decision": "INTEGRATED",
+      "reason": "Preserve orphan auxiliary archives in recovery and retain mic/system copies when no valid mixed archive exists; use checked bits in the reviewed audio tree.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "65b564212f60c75e130caa4e5446a5ec97f7f3a5",
+      "decision": "EQUIVALENT",
+      "reason": "Orchestrator runtime byte-identical to e0dd1532 in the candidate; add the complementary real PostgreSQL fixture tests.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "5c1708e96874a0eb444a4923eef33c9b654fd0d4",
+      "decision": "EQUIVALENT",
+      "reason": "Browser migration, credential routes and CI subtest accounting retained via the other integration lineage; raw duplicate artifacts stay in recovery.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "c4c4d26376ea1ca3d1fa8bad2471a8798a1931e9",
+      "decision": "INTEGRATED",
+      "reason": "Keep scoped Chromium fixture and temporary-copy cleanup; alternative acceptance package preserved separately.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "24c2f2b21a7e734928bb2ce8ad7430a2ec23425b",
+      "decision": "EQUIVALENT",
+      "reason": "Credential worker and admin runtime are identical to 9415ecd5 on the changed runtime paths.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "09019667acb202253ebf5cd9ddb2c95ef50026a1",
+      "decision": "PRESERVED_UNRESOLVED",
+      "reason": "Alternate acceptance engine not added. Reconcile its coverage, catalog and isolated audit-tool contracts into the existing runner after handoff.",
+      "target_source_tree": null
+    },
+    {
+      "source": "705281cdf452f41a34ae7c0bcbedcc276bfc755c",
+      "decision": "EQUIVALENT",
+      "reason": "The primary train resolves the same legacy key/routing/drain regression expectations; keep the full candidate verification as the target proof.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "1f2de5adaa77d585c806d5d55bfff6035b87632f",
+      "decision": "EQUIVALENT",
+      "reason": "Reviewed primary audio train keeps strict recovered WAV layout and confirmed archive preservation.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "071833492af845c607e3cf57403c30019d8bb2c9",
+      "decision": "EQUIVALENT",
+      "reason": "Confirmed audio survives later failures, preserved by the primary train with complementary orphan recovery from 0d9ef2f1.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "5989730a7cae36acbcb4aaec5057b298ae337d83",
+      "decision": "EQUIVALENT",
+      "reason": "PR #19 changes only the A22 validator and tests, both byte-identical to the primary candidate before doc staging. Draft remains open pending default integration/ACK.",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "source": "worktree-06:unstaged:update-origin",
+      "parent": "c4c4d26376ea1ca3d1fa8bad2471a8798a1931e9",
+      "patch_sha256": "720381f7410116af66750625189968a2515b972ad783a7dfc24b1db3dc4cc8b6",
+      "decision": "INTEGRATED",
+      "target_source_tree": "04545139e7744dc686843302f60a8670c420c788",
+      "reason": "Origin is validated before network use, with safe same-origin retries and read-only Windows ownership guard compatibility."
+    },
+    {
+      "source": "worktree-06:unstaged:calibration-imports",
+      "decision": "SUPERSEDED_WITH_REASON",
+      "reason": "Only duplicate os/shutil imports. Actual calibration fixture cleanup came from c4c4d263."
+    },
+    {
+      "source": "worktrees-01/02:F11/F12-original-drafts",
+      "decision": "SUPERSEDED_WITH_REASON",
+      "reason": "F11 test recovered in b48ef04b. F12 validated speaker and commit-cache behavior selected from e0dd1532 with reviewed real PostgreSQL coverage. Raw drafts and test variants remain recoverable; broader retry journal/identity remains open."
+    },
+    {
+      "source": "worktree-00:untracked-credential-test",
+      "decision": "SUPERSEDED_WITH_REASON",
+      "reason": "The validated credential export regression file covers configured, missing and unsafe URL cases. Draft and local notes remain in the archive."
+    },
+    {
+      "source": "stashes:000/001",
+      "decision": "PRESERVED_UNRESOLVED",
+      "reason": "Older identity/updater variants and local notes preserved as two unique stash refs. No blind overlay on the current identity or update paths."
+    },
+    {
+      "source": "legacy-remote-tracking-refs",
+      "decision": "PRESERVED_UNRESOLVED",
+      "reason": "Local cached historical refs absent from the live remote branch listing; enumerated in the backup, not treated as live branches or silently pruned."
+    }
+  ],
+  "checks": [
+    {
+      "id": "baseline-backend",
+      "status": "FAIL",
+      "command": "python -m pytest -q (baseline; initial offline model files unavailable)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 1,
+      "summary": [
+        "11 failed, 1989 passed, 13 skipped, 4 warnings, 264 subtests passed in 207.27s (0:03:27)"
+      ],
+      "log_sha256": "d821d19402efee8df78662b98faac9968d6ccde9717deebdf6d8bd0e3dfab371",
+      "log_created_utc": "2026-11-17T09:33:37.192404+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:05.417433+00:00",
+      "source_reference": "ac51b3730a58b143715b49e63d707654d948ed59"
+    },
+    {
+      "id": "baseline-voice-with-model",
+      "status": "PASS",
+      "command": "python -m pytest -q tests/test_voice_enrollment.py -k webm_fixture_runs_real_conversion (baseline; existing model)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "1 passed, 5 deselected in 1.57s"
+      ],
+      "log_sha256": "690974eec3435c99f9b8608155f1804abed60e49d270cc181f0ab19266d3d882",
+      "log_created_utc": "2026-11-17T09:42:23.287915+00:00",
+      "log_last_written_utc": "2026-11-17T09:42:25.565360+00:00",
+      "source_reference": "ac51b3730a58b143715b49e63d707654d948ed59",
+      "model_assets": {
+        "silero_vad.onnx": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "voxceleb_resnet152_LM.onnx": "5b734353b4b410e222bbd124dd095537642237ad895727d18a3b9fee330262a8"
+      }
+    },
+    {
+      "id": "update-url-validation-red",
+      "status": "FAIL",
+      "command": "python -m pytest -q tests/test_update_service.py -k ambiguous_update_sources (test only, pre-fix)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 1,
+      "summary": [
+        "4 failed, 1 passed, 31 deselected, 1 warning, 1 subtests passed in 1.01s"
+      ],
+      "log_sha256": "94b90a560fe5d03c2f5bd7b3649567aa0c5b60ef1ce022d8c3de7bcb33424a85",
+      "log_created_utc": "2026-11-17T09:35:20.948918+00:00",
+      "log_last_written_utc": "2026-11-17T09:35:22.542222+00:00",
+      "source_reference": "8314a9b2ca28921007c170033e2498bcfacc72e8"
+    },
+    {
+      "id": "candidate-focused",
+      "status": "PASS",
+      "command": "python -m pytest -q (12 targeted audio, Office, instance, updater, A22, F11 and F12 test files)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "152 passed, 2 skipped, 1 warning, 88 subtests passed in 41.37s"
+      ],
+      "log_sha256": "841dbbcb3768b5357d501ec1166c6ac3b188efc4a36d918dd3751b89a3261fd3",
+      "log_created_utc": "2026-11-17T09:35:43.442336+00:00",
+      "log_last_written_utc": "2026-11-17T09:36:25.568149+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-backend-final",
+      "status": "PASS",
+      "command": "python -m pytest -q (existing local model assets)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "2136 passed, 18 skipped, 4 warnings, 355 subtests passed in 194.17s (0:03:14)"
+      ],
+      "log_sha256": "c7477571a369acd3d2460fd984d4dfe305525bb7e3ec1533806ca53cf3fbcc62",
+      "log_created_utc": "2026-11-17T09:42:23.451318+00:00",
+      "log_last_written_utc": "2026-11-17T09:45:38.581551+00:00",
+      "source_reference": "04545139e7744dc686843302f60a8670c420c788",
+      "model_assets": {
+        "silero_vad.onnx": "1a153a22f4509e292a94e67d6f9b85e8deb25b4988682b7e174c65279d8788e3",
+        "voxceleb_resnet152_LM.onnx": "5b734353b4b410e222bbd124dd095537642237ad895727d18a3b9fee330262a8"
+      }
+    },
+    {
+      "id": "candidate-desktop-final",
+      "status": "PASS",
+      "command": "python -m unittest discover -s tests -p test_*.py -q (Windows release test environment)",
+      "cwd": "source/desktop",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "Ran 320 tests in 30.088s",
+        "OK (skipped=1)"
+      ],
+      "log_sha256": "a974453358ca3845280142be1e8813ad34249809b1a7d57b659c16645cbdad96",
+      "log_created_utc": "2026-11-17T09:41:41.241426+00:00",
+      "log_last_written_utc": "2026-11-17T09:42:12.383141+00:00",
+      "source_reference": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "id": "candidate-postgres-retry",
+      "status": "PASS",
+      "command": "python -m pytest -q tests/test_insight_commit_postgres.py (owned isolated native PostgreSQL)",
+      "cwd": "source/backend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "4 passed in 2.73s"
+      ],
+      "log_sha256": "cbc421f59fc5eef69a83425e0064d4039f62ac4acc3ab0588d7201b0d482ace2",
+      "log_created_utc": "2026-11-17T09:44:45.601254+00:00",
+      "log_last_written_utc": "2026-11-17T09:44:56.797251+00:00",
+      "source_reference": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "id": "candidate-browser-cached",
+      "status": "PASS",
+      "command": "python -m unittest discover -s frontend/calibration-tests -p test_*.py -q (cached Chromium revision 1255)",
+      "cwd": "source",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0",
+        "chromium_revision": 1255
+      },
+      "exit_code": 0,
+      "summary": [
+        "Ran 29 tests in 11.668s",
+        "OK"
+      ],
+      "log_sha256": "ddf99b5518e357de6744b8f9a943de663ba5036482d483d77a6291c9941f3b01",
+      "log_created_utc": "2026-11-17T09:39:36.617803+00:00",
+      "log_last_written_utc": "2026-11-17T09:39:48.558461+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-frontend",
+      "status": "PASS",
+      "command": "npm test (offline lockfile install)",
+      "cwd": "source/frontend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "ℹ tests 364",
+        "ℹ pass 364",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "log_sha256": "bae6a79fac57b980f8ef062f332e117c192770f46cd11bfe3f8798d4325778c6",
+      "log_created_utc": "2026-11-17T09:37:29.122936+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:31.127220+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-frontend-build",
+      "status": "PASS",
+      "command": "npm run build",
+      "cwd": "source/frontend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "✓ built in 4.36s"
+      ],
+      "log_sha256": "a9f891e61eedb431a1211ac8566b5bf7afa630be95a66e91d3793b8c63486c27",
+      "log_created_utc": "2026-11-17T09:37:18.802223+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:28.517099+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-pwa",
+      "status": "PASS",
+      "command": "npm run test:pwa -- --dist",
+      "cwd": "source/frontend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "ℹ tests 5",
+        "ℹ pass 5",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "log_sha256": "4be815bd4c058646bf680b67bea9d2be764c192add4c36ae4ca6d74094ec7c2f",
+      "log_created_utc": "2026-11-17T09:37:31.159955+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:31.611485+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-calibration",
+      "status": "PASS",
+      "command": "node --test calibration-tests/core.test.mjs calibration-tests/suite.test.mjs",
+      "cwd": "source/frontend",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "ℹ tests 20",
+        "ℹ pass 20",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "log_sha256": "b84a250afd0d6c9e66d0fd5f901e54c855fa186dfcde8c6b565ffccc7d063c28",
+      "log_created_utc": "2026-11-17T09:37:31.635007+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:31.734742+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-docs-site",
+      "status": "PASS",
+      "command": "npm test (offline lockfile install)",
+      "cwd": "source/docs-site",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "ℹ tests 19",
+        "ℹ pass 19",
+        "ℹ fail 0",
+        "ℹ skipped 0",
+        "ℹ tests 13",
+        "ℹ pass 13",
+        "ℹ fail 0",
+        "ℹ skipped 0",
+        "ℹ tests 27",
+        "ℹ pass 27",
+        "ℹ fail 0",
+        "ℹ skipped 0",
+        "ℹ tests 8",
+        "ℹ pass 8",
+        "ℹ fail 0",
+        "ℹ skipped 0",
+        "ℹ tests 84",
+        "ℹ pass 84",
+        "ℹ fail 0",
+        "ℹ skipped 0",
+        "ℹ tests 18",
+        "ℹ pass 18",
+        "ℹ fail 0",
+        "ℹ skipped 0"
+      ],
+      "log_sha256": "89b266283845711b54ef7edd05604691afc90b6c6ad7af2e2b0f008d8c19e3db",
+      "log_created_utc": "2026-11-17T09:37:15.681216+00:00",
+      "log_last_written_utc": "2026-11-17T09:37:36.454157+00:00",
+      "source_reference": "479a576d8ec699e5cd786b5a2df2f2c4b5e5a33e"
+    },
+    {
+      "id": "candidate-docs-site-build",
+      "status": "PASS",
+      "command": "npm run build (no deploy)",
+      "cwd": "source/docs-site",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "10:44:52 [build] 36 page(s) built in 3.58s"
+      ],
+      "log_sha256": "0ef473aa537dd7072ddeeec3829b9d12109c46d0d05999a0e10b5950ace4bd5d",
+      "log_created_utc": "2026-11-17T09:44:45.625667+00:00",
+      "log_last_written_utc": "2026-11-17T09:44:54.766688+00:00",
+      "source_reference": "04545139e7744dc686843302f60a8670c420c788"
+    },
+    {
+      "id": "candidate-workspace",
+      "status": "PASS",
+      "command": "python -m unittest discover -s scripts/tests -p test_*.py -q",
+      "cwd": "source",
+      "toolchain": {
+        "os": "Windows",
+        "python": "3.12.10",
+        "node": "24.21.0"
+      },
+      "exit_code": 0,
+      "summary": [
+        "Ran 25 tests in 9.396s",
+        "OK (skipped=2)"
+      ],
+      "log_sha256": "aac336cf2d03aefc38fb8de23106e3f2d0b4bc1291e4ca61bb306a33f1466562",
+      "log_created_utc": "2026-11-17T09:42:23.287915+00:00",
+      "log_last_written_utc": "2026-11-17T09:42:32.868847+00:00",
+      "source_reference": "04545139e7744dc686843302f60a8670c420c788"
+    }
+  ],
+  "hosted_ci": "RUNNER_NOT_EXECUTED unless fresh steps prove otherwise",
+  "removed_refs": [],
+  "removed_worktrees": [],
+  "unlocated_claims": [
+    "066274c",
+    "40dd341",
+    "013a88f",
+    "f1b1828",
+    "8cab4f6"
+  ]
+}
