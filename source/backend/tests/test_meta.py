@@ -27,7 +27,7 @@ class ReleaseNotesDataTests(unittest.TestCase):
             self.assertTrue(note["body"].strip())
 
     def test_notes_are_ascii(self):
-        # Repo convention: new content stays ASCII (see CLAUDE.md).
+# Repo convention: new content stays ASCII (see source/AGENTS.md).
         for note in RELEASE_NOTES:
             note["title"].encode("ascii")
             note["body"].encode("ascii")

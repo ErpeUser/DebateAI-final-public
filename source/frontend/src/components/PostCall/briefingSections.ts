@@ -61,7 +61,7 @@ export function formatList(items: string[]): string {
   return `${items.slice(0, -1).join(", ")} und ${items[items.length - 1]}`;
 }
 
-export interface SectionSpec {
+interface SectionSpec {
   key: string;
   label: string;
   items: SynthesisSectionItem[];
@@ -69,7 +69,7 @@ export interface SectionSpec {
 
 // A block is one row of the page. A pair only exists when both of its
 // sections have content; otherwise the survivor takes the full measure.
-export type SectionBlock =
+type SectionBlock =
   | { kind: "lead"; section: SectionSpec }
   | { kind: "single"; section: SectionSpec }
   | { kind: "pair"; cols: string; sections: [SectionSpec, SectionSpec] };
@@ -80,8 +80,8 @@ export interface BriefingLayout {
 }
 
 // The action plan takes the wider column: it is the list a reader acts on.
-export const ACTION_RISK_COLS = "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]";
-export const EVEN_COLS = "lg:grid-cols-2";
+const ACTION_RISK_COLS = "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]";
+const EVEN_COLS = "lg:grid-cols-2";
 
 function pairOrSingles(a: SectionSpec, b: SectionSpec, cols: string): SectionBlock[] {
   if (a.items.length > 0 && b.items.length > 0) return [{ kind: "pair", cols, sections: [a, b] }];

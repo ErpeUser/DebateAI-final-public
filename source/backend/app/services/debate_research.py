@@ -342,7 +342,6 @@ async def _bounded_get(
         if len(content) > max_bytes:
             raise ValueError("Research response exceeds the decoded size limit")
         return content, content_type
-        raise ValueError("Injected research client returned no readable body")
     headers = {
         **_HEADERS,
         "Authorization": "",

@@ -10,7 +10,6 @@ const customerFiles = [
   '../docs/deployment.md',
   '../docs/README.md',
   '../AGENTS.md',
-  '../CLAUDE.md',
   '../site/index.html',
   '../site/private-meeting-ai/index.html',
   '../site/analyst-lenses/index.html',

@@ -26,8 +26,8 @@ await build({
         sectionLabels,
         statusTone,
       } from "./BriefingView.tsx";
-      import { ACTION_RISK_COLS, EVEN_COLS, buildBriefingLayout } from "./briefingSections.ts";
-      export { ACTION_RISK_COLS, DIVIDED_LIST_CLASS, EVEN_COLS, buildBriefingLayout, formatList, meetingTypeLabel, presentItems, sectionLabels, statusTone };
+      import { buildBriefingLayout } from "./briefingSections.ts";
+      export { DIVIDED_LIST_CLASS, buildBriefingLayout, formatList, meetingTypeLabel, presentItems, sectionLabels, statusTone };
       export function render(props) {
         return renderToStaticMarkup(React.createElement(BriefingView, props));
       }
@@ -52,9 +52,7 @@ const {
   render,
   renderStatus,
   renderHeading,
-  ACTION_RISK_COLS,
   DIVIDED_LIST_CLASS,
-  EVEN_COLS,
   buildBriefingLayout,
   formatList,
   meetingTypeLabel,
@@ -256,7 +254,7 @@ test("the layout helper pairs sections only when both have content and drops emp
     both.blocks.map((block) => [block.kind, block.kind === "pair" ? block.sections.map((s) => s.key) : block.section.key]),
     [["pair", ["actions", "risks"]]],
   );
-  assert.equal(both.blocks[0].cols, ACTION_RISK_COLS);
+  assert.equal(both.blocks[0].cols, "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]");
   assert.equal(both.missingNote, "In diesem Briefing nicht erfasst: wichtigste ergebnisse, ziele, wichtigste chancen und offene fragen.");
 
   const lone = buildBriefingLayout(session, synthesis({ risks_blockers: [item("Risk")], top_opportunities: [item("Win")] }));
@@ -278,7 +276,7 @@ test("the layout helper pairs sections only when both have content and drops emp
     }),
   );
   assert.deepEqual(full.blocks.map((block) => block.kind), ["lead", "pair", "pair", "single", "single"]);
-  assert.equal(full.blocks[2].cols, EVEN_COLS);
+  assert.equal(full.blocks[2].cols, "lg:grid-cols-2");
   assert.equal(full.blocks[4].section.label, "Strategische Signale");
   assert.equal(full.missingNote, null);
 

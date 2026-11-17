@@ -27,7 +27,7 @@ interface ApiKeysCardProps {
 // be used (an unwrappable DPAPI blob after a password reset, a corrupt file);
 // its detail carries the recovery steps, so show that text rather than the
 // "API-Fehler 503:" prefix the client wraps every failure in.
-export function describeKeyError(err: unknown, fallback: string): string {
+function describeKeyError(err: unknown, fallback: string): string {
   if (!(err instanceof Error)) return fallback;
   return err.message.replace(/^API-Fehler \d+:\s*/, "") || fallback;
 }

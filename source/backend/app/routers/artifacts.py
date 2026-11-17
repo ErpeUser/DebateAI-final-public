@@ -1,6 +1,4 @@
-import os
 import re
-import tempfile
 import uuid
 from html import escape as escape_html
 from urllib.parse import quote
@@ -26,20 +24,6 @@ def _attachment_header(filename: str) -> str:
     if clean != fallback:
         header += "; filename*=UTF-8''" + quote(clean, safe="")
     return header
-
-
-async def _stream_and_cleanup(file_path: str, media_type: str, filename: str):
-    """Stream a temp file to the client, then delete it immediately after."""
-    with runtime_activity.track("artifact export"):
-        try:
-            with open(file_path, "rb") as f:
-                while chunk := f.read(8192):
-                    yield chunk
-        finally:
-            try:
-                os.unlink(file_path)
-            except OSError:
-                pass
 
 
 _INSIGHT_TEXT_FIELDS = (

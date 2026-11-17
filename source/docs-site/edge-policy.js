@@ -3,7 +3,7 @@
 // security headers, and browser caching for assets that are immutable
 // (hashed) or slow-moving (fonts, screenshots).
 
-export const HSTS_VALUE = 'max-age=31536000; includeSubDomains';
+const HSTS_VALUE = 'max-age=31536000; includeSubDomains';
 
 // 301 to the canonical https apex when the request arrived on plain HTTP or
 // the www host; null when the URL is already canonical.

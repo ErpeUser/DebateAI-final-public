@@ -11,7 +11,7 @@ import type { ModelDownload } from "../types";
 
 const smallButton = "min-h-8 shrink-0 rounded-lg border border-brand-light-gray-1 px-2.5 py-1 font-body text-xs font-semibold text-brand-dark-gray transition-colors motion-reduce:transition-none hover:border-brand-teal hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
-export function bytes(value = 0): string {
+function bytes(value = 0): string {
   if (value < 1024) return `${value} B`;
   const units = ["KB", "MB", "GB"];
   let amount = value / 1024;
@@ -25,7 +25,7 @@ export function bytes(value = 0): string {
 }
 
 /** One line describing where a download has got to. */
-export function downloadProgressText(download: ModelDownload): string {
+function downloadProgressText(download: ModelDownload): string {
   if (download.state === "queued") return "Wartet auf Start";
   if (download.state === "installed") return "Installiert";
   if (download.state === "error") return download.error || "Herunterladen fehlgeschlagen";
@@ -36,7 +36,7 @@ export function downloadProgressText(download: ModelDownload): string {
   return download.downloaded > 0 ? `${bytes(download.downloaded)} bisher` : "Wird gestartet";
 }
 
-export function downloadHeadline(download: ModelDownload): string {
+function downloadHeadline(download: ModelDownload): string {
   const what = download.purpose ? `${download.label} (${download.purpose})` : download.label;
   switch (download.state) {
     case "queued":

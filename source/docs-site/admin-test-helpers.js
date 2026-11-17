@@ -1,4 +1,4 @@
-export class TestElement {
+class TestElement {
   constructor(name = 'div', ownerDocument = null) {
     this.name = name;
     this.ownerDocument = ownerDocument;

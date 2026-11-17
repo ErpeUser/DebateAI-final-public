@@ -7,6 +7,9 @@ requirement.
 
 ## Maintained contract
 
+- [Repository evidence register](../../EVIDENCE.md) — current verification limits and retained provenance.
+- [Implementation history](../../IMPLEMENTATION_HISTORY.md) — concise current change record; Git remains the detailed history.
+- [Open gates](../../TODO.md) — work that still requires fresh evidence.
 - [Quickstart](quickstart.md) — supported desktop, Docker and local setup.
 - [Architecture](architecture.md) — current frontend, backend and WebSocket boundaries.
 - [Configuration](configuration.md) — canonical `DEBATEAI_*` variables and explicitly configured update endpoints.

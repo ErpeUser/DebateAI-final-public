@@ -8,7 +8,7 @@ const SECTION_LABELS: Record<string, string> = {
   action_plan: "Aufgabe",
 };
 
-export function signalSectionLabel(section: string): string {
+function signalSectionLabel(section: string): string {
   return SECTION_LABELS[section] || (section || "Signal").replace(/_/g, " ");
 }
 

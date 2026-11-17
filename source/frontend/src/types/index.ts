@@ -25,7 +25,7 @@ export interface Session {
   drain_summary?: string;
 }
 
-export interface TokenUsageBreakdown {
+interface TokenUsageBreakdown {
   source?: string;
   model_id: string;
   input_tokens: number;
@@ -245,7 +245,7 @@ export interface ReleaseNote {
   body: string;
 }
 
-export type DesktopUpdateState =
+type DesktopUpdateState =
   | "idle"
   | "checking"
   | "available"
@@ -299,7 +299,7 @@ export interface ModelInfo {
   recommendations?: ModelRecommendation[];
 }
 
-export interface ModelRecommendation {
+interface ModelRecommendation {
   role: string;
   provider: string;
   recommended: boolean;
@@ -309,7 +309,7 @@ export interface ModelRecommendation {
 }
 
 /** A self-hosted OpenAI-compatible server (LM Studio, Ollama, vLLM, LiteLLM). */
-export interface CustomEndpointModel {
+interface CustomEndpointModel {
   id: string;
   label: string;
   /** Registry id to store on an agent, e.g. "endpoint:lm-studio:antares-1b". */
@@ -398,7 +398,7 @@ export interface DiarizationBenchmarkResult {
   reason: string;
 }
 
-export interface TranscriptionLanguageOption {
+interface TranscriptionLanguageOption {
   code: string;
   name: string;
 }
@@ -414,14 +414,14 @@ export interface TranscriptionConfig {
 
 // Local Model Fit Test: keep-up speed of self-hosted text models per agent role.
 export type FitVerdict = "green" | "yellow" | "red";
-export type FitValidityStatus = "current" | "incompatible" | "superseded" | "aged";
-export interface FitValidity {
+type FitValidityStatus = "current" | "incompatible" | "superseded" | "aged";
+interface FitValidity {
   status: FitValidityStatus;
   reason: string;
   age_days: number | null;
 }
 
-export interface FitProfileLatency {
+interface FitProfileLatency {
   latency_seconds: number;
   output_chars: number;
   tokens_per_second: number | null;
@@ -454,7 +454,7 @@ export interface TextModelFit {
   validity?: FitValidity;
 }
 
-export interface LocalFitRoleCatalogEntry {
+interface LocalFitRoleCatalogEntry {
   slug: string;
   name: string;
   prompt_profile: "short" | "long";
@@ -462,7 +462,7 @@ export interface LocalFitRoleCatalogEntry {
   post_call: boolean;
 }
 
-export interface LocalServiceOption {
+interface LocalServiceOption {
   key: string;
   label: string;
   local_options: { id: string; name: string }[];
@@ -470,7 +470,7 @@ export interface LocalServiceOption {
   note: string;
 }
 
-export interface LocalModelUsage {
+interface LocalModelUsage {
   id: string;
   name: string;
   usable_for: string[];
@@ -523,7 +523,7 @@ export interface AsrFitReport {
   asr_models: AsrModelFit[];
 }
 
-export interface PrivacyImpactItem {
+interface PrivacyImpactItem {
   feature: string;
   detail: string;
 }
@@ -540,7 +540,7 @@ export interface PrivacyConfig {
 export type PiiCategory =
   | "PERSON" | "ORG" | "LOCATION" | "EMAIL" | "PHONE" | "SSN" | "CARD" | "IP" | "ADDRESS";
 
-export interface PiiProtectedTerm {
+interface PiiProtectedTerm {
   value: string;
   category: PiiCategory;
 }
@@ -779,14 +779,14 @@ export interface AudioSendStats {
   lastSentAt: string | null;
 }
 
-export type AgentActivityState =
+type AgentActivityState =
   | "running"
   | "waiting"
   | "blocked"
   | "off"
   | "failing";
 
-export interface AgentActivityOutcome {
+interface AgentActivityOutcome {
   kind: string;
   detail: string;
   items: number;
@@ -794,7 +794,7 @@ export interface AgentActivityOutcome {
   deduped?: number;
 }
 
-export interface AgentActivityError {
+interface AgentActivityError {
   kind: "timeout" | "truncated" | "api_error" | "refusal";
   detail: string;
   remedy: string;
@@ -827,7 +827,7 @@ export interface AgentActivityRecord {
   };
 }
 
-export interface CallHealth {
+interface CallHealth {
   privacy_first: boolean;
   degraded: boolean;
   degraded_reasons: string[];
@@ -855,7 +855,7 @@ export interface AIProviderRoute {
   lazy_start?: boolean;
 }
 
-export interface AIPromptVersion {
+interface AIPromptVersion {
   version: string;
   path: string;
 }
@@ -935,7 +935,7 @@ export type DebateResearchCategory =
   | "interpretation"
   | "all";
 
-export interface ExperimentalStrategyOption {
+interface ExperimentalStrategyOption {
   id: string;
   kind: "contradiction" | "example" | "counter_question" | "refutation";
   title: string;
@@ -953,7 +953,7 @@ export interface ExperimentalStrategyOption {
   provisional?: boolean;
 }
 
-export interface ExternalLaneInsight {
+interface ExternalLaneInsight {
   insight_id: string;
   lane_id: string;
   kind: string;
@@ -990,7 +990,7 @@ export interface ExternalLaneArtifact {
   external_insights?: ExternalLaneInsight[];
 }
 
-export interface ExperimentalDebateUpdate {
+interface ExperimentalDebateUpdate {
   session_id: string;
   claim_id: string;
   claim_revision: number;
@@ -1007,7 +1007,7 @@ export interface ExperimentalDebateUpdate {
   recommendation?: DebateRecommendation;
 }
 
-export interface ExperimentalLaneUpdate {
+interface ExperimentalLaneUpdate {
   type?: "experimental_lane_update";
   session_id: string;
   claim_id: string;
@@ -1111,13 +1111,13 @@ export interface DebateProfile {
   resources: string[];
 }
 
-export interface DebateReviewImprovement {
+interface DebateReviewImprovement {
   issue: string;
   example: string;
   better: string;
 }
 
-export interface DebateReviewTrace {
+interface DebateReviewTrace {
   category: "open_question" | "unsupported_claim" | "corrected_statement" | "concession" | "late_recommendation";
   title: string;
   explanation: string;
@@ -1165,7 +1165,7 @@ export interface ArgumentNode {
   evidence_urls: string[];
 }
 
-export interface ArgumentEdge {
+interface ArgumentEdge {
   source_id: string;
   target_id: string;
   relation: "rebuts" | "supports" | "questions" | "continues";

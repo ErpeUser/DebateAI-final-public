@@ -1,2 +1,31 @@
 # Local GUI evidence may display personal provider/profile information.
 /evidence/gui-capture/
+
+# Generated and machine-local state is never part of the source snapshot.
+__pycache__/
+*.pyc
+.env
+node_modules/
+dist/
+build/
+release-assets/
+.vite/
+*.log
+.DS_Store
+pgdata/
+desktop/pgsql/
+desktop/ffmpeg/
+.release-venv/
+.venv/
+.tmp/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+coverage/
+
+# Internal marketing strategy and per-machine agent state.
+marketing/
+.agents/
+.claude/
+skills-lock.json
+.worktrees/

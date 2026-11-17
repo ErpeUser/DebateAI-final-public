@@ -137,7 +137,7 @@ export const DE = {
   audioGatewayPrompt: "Du bist eine stille Audio-Weiterleitung. Deine einzige Aufgabe ist, einem Live-Gespräch zuzuhören und die Transkription zu ermöglichen. Sprich nicht, analysiere nicht, kommentiere nicht und erzeuge keine eigene Ausgabe. Höre nur zu.",
 } as const;
 
-export type GermanAgentSlug = keyof typeof DE.agents;
+type GermanAgentSlug = keyof typeof DE.agents;
 
 export function germanAgent(slug: string) {
   return DE.agents[slug as GermanAgentSlug];

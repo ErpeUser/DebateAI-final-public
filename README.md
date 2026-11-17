@@ -4,6 +4,8 @@ Private, local-first German live debate assistant. Canonical product name: **Deb
 
 **Status:** source integration and focused regression evidence. This is not a newly built/signed/installed Windows release. Full-project CI, the coupled native binary/archive identity migration and real Windows acceptance remain required. A source merge is not a production release.
 
+Current decisions, open gates and verification are kept in [`IMPLEMENTATION_HISTORY.md`](IMPLEMENTATION_HISTORY.md), [`TODO.md`](TODO.md) and [`EVIDENCE.md`](EVIDENCE.md). The maintained product contract remains [`source/docs/DEBATEAI_CANONICAL_INDEX.md`](source/docs/DEBATEAI_CANONICAL_INDEX.md).
+
 ## Integrated laboratory
 
 Open **Testlabor** inside the app. Its same-origin dialog leaves the main application mounted. Compare the same short German recording across cached local ASR adapters; inspect WER/CER, critical words and runtime separately. Explicit recording, no silent model download or active-setting changes. Heavy diagnostics retain worker ownership until real completion, even after browser cancellation.
