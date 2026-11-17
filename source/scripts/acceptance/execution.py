@@ -1,132 +1,138 @@
-"""Run trusted project commands with owned lifecycle and bounded output.
-
-Job/process-group ownership is not an OS privilege, memory or network sandbox.
-"""
+"""Bounded command execution with owned children and per-task completion events."""
 from __future__ import annotations
-from datetime import datetime, timezone
+from dataclasses import dataclass
 import hashlib
 import math
+import os
 from pathlib import Path
 import re
-import subprocess
+import shutil
 import threading
 import time
-
-from .evidence import junit_counts, log_counts, safe_path, test_status
 from .owned_process import OwnedProcess
-from .environment import has_user_dotenv
-
-MAX_LOG_BYTES = 4 * 1024 * 1024
 
 
-class _Output:
-    def __init__(self, pipe):
-        self.pipe = pipe
-        self.body = bytearray()
-        self.overflow = threading.Event()
-        self.error = False
-        self.thread = threading.Thread(target=self.read, daemon=True, name='acceptance-output')
+@dataclass(frozen=True)
+class Step:
+    id: str
+    argv: tuple[str, ...]
+    cwd: str = '.'
+    timeout: float = 900.0
+    depends_on: tuple[str, ...] = ()
+    blocked_reason: str = ''
+    kind: str = 'command'
 
-    def read(self):
+
+def redact(text: str, secrets=()) -> str:
+    for value in sorted((v for v in secrets if v), key=len, reverse=True):
+        text = text.replace(value, '[REDACTED]')
+    text = re.sub(r'(?i)(authorization\s*[:=]\s*(?:bearer\s+)?)[^\s,;]+', r'\1[REDACTED]', text)
+    return re.sub(r'(?i)((?:api[_-]?key|access[_-]?token|password|cookie)\s*[:=]\s*)[^\s,;]+', r'\1[REDACTED]', text)
+
+
+def validate_steps(steps, root):
+    seen = set()
+    for step in steps:
+        if (not re.fullmatch(r'[a-z][a-z0-9_-]{0,79}', step.id) or step.id in seen
+                or (not step.argv and not step.blocked_reason)
+                or not all(isinstance(a,str) and a and '\x00' not in a for a in step.argv)
+                or not math.isfinite(step.timeout) or not 0 < step.timeout <= 7200
+                or any(d not in seen for d in step.depends_on)
+                or not (root/step.cwd).resolve().is_relative_to(root.resolve())):
+            raise ValueError('Invalid task plan: '+step.id)
+        seen.add(step.id)
+
+
+def execute(step, root, logs, env, secrets, max_output):
+    result = {'id':step.id,'status':'BLOCKED','returncode':None,'reason':step.blocked_reason,
+              'command':[redact(a,secrets) for a in step.argv], 'cwd':step.cwd, 'duration_seconds':0.0}
+    if step.blocked_reason:
+        return result
+    if not (root/step.cwd).is_dir():
+        result['reason']='Working directory unavailable'
+        return result
+    executable = shutil.which(step.argv[0],path=env.get('PATH',os.defpath))
+    if not executable or Path(executable).suffix.lower() in {'.cmd','.bat'}:
+        result['reason']='Executable unavailable or requires an implicit command shell'
+        return result
+    start = time.monotonic()
+    try:
+        owned = OwnedProcess((executable,*step.argv[1:]), root/step.cwd, dict(env))
+    except OSError as exc:
+        result['reason']='Process containment/start failed: '+type(exc).__name__
+        return result
+    proc = owned.process
+    buffer = bytearray()
+    overflow = threading.Event()
+    read_error = []
+    def collect():
         try:
-            while chunk := self.pipe.read1(65536):
-                remaining = MAX_LOG_BYTES - len(self.body)
-                self.body.extend(chunk[:remaining])
-                if len(chunk) > remaining:
-                    self.overflow.set()
-        except (OSError, ValueError):
-            self.error = True
-
-
-def _utc():
-    return datetime.now(timezone.utc).isoformat()
-
-
-def _execute(command, cwd, environment, timeout):
-    owned = None
-    output = None
-    code = 127
-    reason = ''
-    timed_out = False
-    cleanup_ok = True
-    begin = time.monotonic()
+            while chunk := proc.stdout.read(4096):
+                remaining=max_output-len(buffer)
+                buffer.extend(chunk[:remaining])
+                if len(chunk)>remaining:
+                    overflow.set()
+        except OSError as exc:
+            read_error.append(type(exc).__name__)
+    reader=threading.Thread(target=collect,daemon=True)
+    reader.start()
+    status=None
     try:
-        owned = OwnedProcess(command, cwd, environment)
-        output = _Output(owned.process.stdout)
-        output.thread.start()
-        while owned.process.poll() is None:
-            if output.overflow.is_set():
-                code, reason = 125, 'Child output limit exceeded'
+        while proc.poll() is None:
+            if overflow.is_set():
+                status='OUTPUT_LIMIT'
                 break
-            if time.monotonic() - begin >= timeout:
-                timed_out, code, reason = True, 124, 'Command wall-time limit exceeded'
+            if time.monotonic()-start >= step.timeout:
+                status='TIMED_OUT'
                 break
-            time.sleep(0.01)
-        else:
-            code = owned.process.returncode
-    except (OSError, RuntimeError) as error:
-        reason = 'Required executable or process containment unavailable: ' + type(error).__name__
+            time.sleep(0.02)
+        result['returncode']=proc.poll()
     finally:
-        if owned is not None:
-            try:
-                # Also runs on success: a completed parent may leave descendants.
-                owned.close()
-            except (OSError, RuntimeError, TimeoutError, subprocess.TimeoutExpired) as error:
-                cleanup_ok, code = False, 125
-                reason = 'Owned process cleanup failed: ' + type(error).__name__
-            if output is not None:
-                output.thread.join(timeout=5)
-                if output.thread.is_alive():
-                    cleanup_ok, code = False, 125
-                    reason = 'Owned output pipe did not close after cleanup'
-                else:
-                    owned.process.stdout.close()
-    body = bytes(output.body) if output else b''
-    if output and (output.overflow.is_set() or output.error):
-        code = 125
-        reason = 'Child output limit exceeded' if output.overflow.is_set() else 'Child output could not be captured'
-    return code, body, reason, timed_out, cleanup_ok
+        try:
+            # Also reap descendants after their parent exits successfully.
+            owned.close()
+        except OSError:
+            status='CLEANUP_FAILED'
+        reader.join(timeout=3)
+        if reader.is_alive() or read_error:
+            status='CLEANUP_FAILED'
+        else:
+            proc.stdout.close()
+    if overflow.is_set() and status!='CLEANUP_FAILED':
+        status='OUTPUT_LIMIT'
+    result['returncode']=result['returncode'] if result['returncode'] is not None else proc.returncode
+    result['status']=status or ('PASSED' if result['returncode']==0 else 'FAILED')
+    result['duration_seconds']=round(time.monotonic()-start,6)
+    # Whole-secret replacement cannot protect a prefix cut by truncation.
+    text='[OUTPUT_LIMIT: captured output omitted]\n' if overflow.is_set() else redact(buffer.decode('utf-8',errors='replace'),secrets)
+    from .test_results import classify
+    classify(result, text, step.kind)
+    path=logs/(step.id+'.log')
+    with path.open('x',encoding='utf-8') as stream:
+        stream.write(text)
+    result['log']='logs/'+path.name
+    result['log_sha256']=hashlib.sha256(path.read_bytes()).hexdigest()
+    return result
 
 
-def run_check(name: str, command: list[str], cwd: Path, output: Path,
-              environment: dict, *, timeout: float = 900, kind: str = 'tests',
-              junit: Path | None = None) -> dict:
-    if (isinstance(timeout, bool) or not isinstance(timeout, (int, float))
-            or not math.isfinite(timeout) or not 0 < timeout <= 3600):
-        raise ValueError('Timeout must be finite, positive and at most 3600 seconds')
-    if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9_.-]{0,99}', name):
-        raise ValueError('Invalid evidence name')
-    if kind not in {'tests', 'command'} or not command or not all(isinstance(arg, str) for arg in command):
-        raise ValueError('Invalid command contract')
-    safe_path(output)
-    if junit is not None:
-        safe_path(junit)
-        if junit.exists():
-            raise ValueError('JUnit already exists; stale evidence cannot be reused')
-    log = output / (name + '.log')
-    start, begin = _utc(), time.monotonic()
-    blocked = has_user_dotenv(cwd, environment)
-    try:
-        with log.open('xb') as stream:
-            if blocked:
-                code, body = 127, b'User .env present; command not executed\n'
-                reason, timed_out, cleanup_ok = 'Refusing to load a user .env file', False, True
-            else:
-                code, body, reason, timed_out, cleanup_ok = _execute(command, cwd, environment, timeout)
-            stream.write(body)
-    except FileExistsError:
-        raise ValueError('Evidence output already exists; choose a new directory') from None
-    tail = body[-2 * 1024**2:].decode('utf-8', 'replace')
-    counts = junit_counts(junit, terminal_output=tail) if junit else log_counts(tail)
-    status = test_status(code, counts) if kind == 'tests' else ('PASS' if code == 0 else 'FAIL')
-    if blocked or code == 127:
-        status = 'BLOCKED_EXTERNAL'
-    if not cleanup_ok:
-        status = 'FAIL'
-    return {'name': name, 'command': command, 'cwd': str(cwd), 'started_at_utc': start,
-            'finished_at_utc': _utc(), 'duration_seconds': time.monotonic() - begin,
-            'exit_code': code, 'timed_out': timed_out, 'counts': counts,
-            'status': status, 'reason': reason, 'log': log.name,
-            'log_sha256': hashlib.sha256(body).hexdigest(), 'owned_cleanup_confirmed': cleanup_ok,
-            'test_level': 'source-unit' if kind == 'tests' else 'source-tool',
-            'native_runtime_evidence': False}
+def run_steps(steps, root: Path, logs: Path, *, env, secrets=(), max_output=4*1024*1024, on_result=None):
+    if type(max_output) is not int or max_output <= 0:
+        raise ValueError('Output limit must be positive')
+    validate_steps(steps,root)
+    if logs.exists():
+        raise FileExistsError('Use a new log directory for each execution')
+    for path in (logs,*logs.parents):
+        if path.is_symlink() or getattr(path,'is_junction',lambda:False)():
+            raise ValueError('Log path traverses a link or junction')
+    logs.mkdir(parents=True)
+    rows,by_id=[],{}
+    for step in steps:
+        if any(by_id[d]['status']!='PASSED' for d in step.depends_on):
+            row={'id':step.id,'status':'BLOCKED','returncode':None,'reason':'Prerequisite did not pass'}
+        else:
+            row=execute(step,root,logs,env,secrets,max_output)
+        rows.append(row)
+        by_id[step.id]=row
+        if on_result:
+            on_result(row)
+    return rows

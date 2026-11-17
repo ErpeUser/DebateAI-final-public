@@ -1,0 +1,40 @@
+{
+  "phase": "red",
+  "qualification": "Historical ordering mutant; not unmodified base RED.",
+  "base_sha": "a24c87421fd06da65feed7e4fad03a54383c763a",
+  "production_file_modified": false,
+  "python": "C:\\Users\\User\\Datein\\Coding\\DebateAI\\source\\.release-venv\\Scripts\\python.exe",
+  "python_version": "3.12.10 (tags/v3.12.10:0cc8128, Apr  8 2025, 12:21:36) [MSC v.1943 64 bit (AMD64)]",
+  "event_loop": "TimerOnlyLoop: real asyncio tasks/timers, no socket/proactor I/O",
+  "imported_source": "C:\\Temp\\DebateAI-agent-20261116-native\\f11-retry-worktree\\source\\backend\\app\\services\\agents\\synthesizer.py",
+  "tests": 1,
+  "failures": 1,
+  "errors": 0,
+  "skipped": 0,
+  "exit_code": 1,
+  "command": "PowerShell command and Python runner: run.md; F11_PHASE=red",
+  "mutation_source_sha256": "60fe2be3e1a61d5595c2bfcf32dd71f0fcdd82a36a59f70f71763f4c49b85cb5",
+  "environment": {
+    "PYTHONPATH": "C:\\Temp\\DebateAI-agent-20261116-native\\f11-retry-worktree\\source\\backend",
+    "PYTHONDONTWRITEBYTECODE": "1",
+    "HF_HUB_OFFLINE": "1",
+    "TRANSFORMERS_OFFLINE": "1",
+    "GOOGLE_GENAI_USE_VERTEXAI": "false",
+    "GEMINI_API_KEY": "",
+    "GOOGLE_API_KEY": "",
+    "OPENAI_API_KEY": "",
+    "OPENAI_COMPATIBLE_API_KEY": "",
+    "ANTHROPIC_API_KEY": "",
+    "DATA_DIR": "C:\\Users\\User\\AppData\\Local\\Packages\\sandbox.{9bf619a9-641e-4a58-b1e4-8c32c3c2eb3f}\\AC\\Temp\\debateai-f11-747dd9055e3649c2939bad12ce5fde5d",
+    "DATABASE_URL": "postgresql+asyncpg://synthetic:synthetic@127.0.0.1:1/synthetic"
+  },
+  "sha256": {
+    "source/backend/app/services/agents/synthesizer.py": "f8966e88b9569bd79be79e1b994c6a08ce35ae2be32c6e979f41b34416673059",
+    "source/backend/tests/test_synthesizer_commit_retry.py": "9900aee1b3b060e28eb19b7575d774429021959a5f3e333193062251b37194d8",
+    "source/backend/tests/test_synthesizer_guards.py": "dfd2b8cc77ab1c35faee50a339d70cb0d00d99d8dda22b7a765c0b4e176f9009",
+    "source/backend/tests/test_synthesizer_working_set.py": "c2b8002a3d06d89bcd5a1031dc007d70010a3c0ad8bd142a9b7aced636ef7c24",
+    "source/backend/tests/test_structured_text_agents.py": "337c343761565f38c683bd64c2c8225e9ccc197eb69f6615f0c21df8723994ca",
+    "docs/agent-work/f11-retry-20261116/run.md": "61b0e3e41fc148ba1421368526dfc4e650ca56edd0fcfd239c38900c7babc4a5"
+  },
+  "log_sha256": "145ef98de5f67916acb5bb3d9563b0d4c9e695519de4f74da3b77ac42a80979e"
+}

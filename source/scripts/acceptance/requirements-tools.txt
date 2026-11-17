@@ -1,0 +1,4 @@
+# Optional verification tools, separated from production dependencies.
+bandit==1.8.6
+pip-audit==2.9.0
+playwright==1.57.0

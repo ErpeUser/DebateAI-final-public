@@ -1,44 +1,87 @@
-# Acceptance command adapter
+# DebateAI acceptance entry
 
-Use the existing installed project Python; this command never installs dependencies:
+Run from the existing repository root:
 
 ```powershell
-source\.release-venv\Scripts\python.exe source\scripts\run_acceptance.py --profile fast --output C:\Temp\debateai-acceptance-unique
-source\.release-venv\Scripts\python.exe source\scripts\run_acceptance.py --profile full-software --output C:\Temp\debateai-full-unique
+powershell -NoProfile -File .\source\scripts\acceptance\run_all.ps1 -Profile Full
 ```
 
-The output directory must be new, private and outside active user data. `fast`
-runs the focused safety and adapter tests. `full-software` wraps the existing
-backend pytest, desktop unittest, frontend Node and docs-site Node suites;
-it does not replace them. Output includes JSON, HTML, bounded logs, exact
-commands/exits/counts/hashes, source commit and actual source-content identity.
-One task-finished JSON event is emitted after each completed command.
+`-Python` selects an existing Python environment. The wrapper first uses the
+checkout's `source/.release-venv/Scripts/python.exe`, then Python 3.12. Worktrees
+without their own environment can explicitly use the original checkout's venv.
+Python entry: `python source/scripts/acceptance/run.py --profile Full`.
 
-Missing/empty test evidence is never PASS. All-skipped suites are NOT_RUN.
-Inconsistent JUnit counts are rejected; passing pytest subtests omitted as case
-nodes are counted separately only when the same child's terminal summary and
-suite total reconcile. Existing JUnit/log files are never reused. Source-byte
-changes during a campaign fail its stability gate. Source symlinks/junctions
-are refused instead of silently hashing unrelated content.
+Profiles: Fast, Full, Audio, ASR, Prompts, Security, Desktop, Release, Report.
+Report gathers inventory without running suites. No model download, login,
+installation, release publication, user-data migration or update is initiated.
+Existing locked dependencies and approved model fixtures must already exist.
+Only `-AllowNetwork` enables the dependency advisory query; ordinary trusted
+repository tests are not network-sandboxed by this runner.
 
-Child commands inherit only selected non-secret environment variables and use
-isolated synthetic profile/data directories. Existing `.env` files at command
-or import roots and their ancestors block execution without being read/deleted.
-This is for reviewed project commands, not a privilege or network sandbox.
+Each finished job prints `TASK-END <id> <status>`. Independent work continues
+after a failed job. A dependent check runs only after its prerequisite passed.
+All results remain in the denominator. Zero discovered tests, missing summaries,
+skips, timeouts and unavailable tools cannot silently turn green. The Full
+backend check uses pytest so free functions and fixtures are not omitted.
 
-A Windows Job Object (or POSIX process group) owns launched descendants from
-before execution. Cleanup runs on success and timeout. Output is capped at
-4 MiB; overflow and uncertain cleanup fail. Failed commands, timeouts, skips,
-and earlier failed campaign reports remain evidence, not silently excluded.
+## Process and data safety
 
-`windows-native`, `hardware`, and `production-release` never substitute software
-results for their real external protocols. `release_decision` remains
-BLOCKED_EXTERNAL. No EXE, microphone, human rating, signature, installation or
-publication is performed by this adapter. Independent review is a separate gate.
+Tests receive isolated DATA_DIR, HOME, AppData, cache and temporary directories,
+blank provider credentials and a deliberately unavailable database URL. User
+`.env` files block affected Python suites. This is not permission/network
+sandboxing; only trusted project tests may run. Do not use real data as fixtures.
+The Windows launcher waits for assignment to a kill-on-close Job Object before
+executing a command. POSIX uses a new session. Owned descendants are stopped on
+success as well as timeout; unrelated processes are not terminated.
 
-The 2026-11-16 full-software campaign exposed four docs-site failures (two
-credential-link assertions and missing local `@noble/hashes`/`jose` dependencies).
-Those are separate repair/setup tasks, not runner successes or hidden skips.
+Output has a hard memory limit. Known credential values are redacted; overflow
+output is omitted because truncation can expose a partial credential. Evidence
+stays under Git-ignored `evidence/acceptance/`; it is not uploaded automatically.
+Existing reports are never overwritten. Symlink/junction output paths and
+concurrent runner locks are rejected. A crashed lock requires inspection of its
+owner; do not delete a lock while another run is active.
 
-Process helpers were reused from the existing isolated acceptance draft; this
-file documents the single current command, not a second test framework.
+## Honest results
+
+Exit 0 means the selected automated scope passed, not product acceptance.
+Exit 1 means an executed check failed; exit 2 means incomplete evidence or a
+blocked check. Full and Release do not currently approve a product: original
+requirement review and actual hardware, model, human and release evidence remain
+separate. `project_status` stays `IN_ARBEIT`. A successful subprocess duration is
+not speech-to-painted-card latency. Missing measurements say `NOT_MEASURED`.
+
+The inventory imports all 65 namespaced A/F/R gates plus the separate 276
+historical identities. Historical statuses never become fresh approvals. An
+unresolved original definition is reported explicitly, never invented from a
+hash. The historical ledger is not modified by this command.
+
+## Resume
+
+```powershell
+powershell -NoProfile -File .\source\scripts\automation\resume_debateai.ps1 -State .\evidence\acceptance\RUN\resume.json
+```
+
+Resume only revalidates a fixed profile on the recorded clean commit; it never
+executes shell commands supplied in JSON and does not restart a coding agent.
+Changed source requires a fresh run. No invisible background implementation is
+promised by this script.
+
+## Runner verification
+
+```powershell
+python -m unittest discover -s source/scripts/tests -p "test_acceptance*.py" -v
+```
+
+The 2026-11-16 native Windows/Python 3.12 verification ran 47 contract tests with
+no skips or failures. That proves these runner contracts, not all product gates.
+
+## Prepared verification tools
+
+If present, source/.acceptance-venv supplies only Bandit, pip-audit and browser
+fixtures; backend/desktop continue using the selected project interpreter.
+Pinned direct tool versions are in requirements-tools.txt. The runner never
+installs them. An explicit absolute PLAYWRIGHT_CHROMIUM_EXECUTABLE pointing
+to an existing approved binary is forwarded; browser profiles and cookies are
+not copied. All browser cases use fresh fixture contexts, not user tabs.
+The 29 native Chromium fixture tests passed after repairing setup-failure
+cleanup; they do not count as microphone or Windows WebView acceptance.

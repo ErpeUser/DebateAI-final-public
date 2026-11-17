@@ -1,1 +1,1 @@
-"""Helpers for the single run_acceptance.py adapter over existing project suites."""
+"""Local verification; never confers hardware, human or release acceptance."""
