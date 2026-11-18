@@ -78,7 +78,7 @@ jobs:
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
-          [[ -f source/desktop/debateai.spec ]]
+          [[ -f app/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -94,37 +94,37 @@ jobs:
           echo "published_at=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend
-        working-directory: source/source/frontend
+        working-directory: source/app/frontend
         run: |
           npm ci
           npm run build
 
       - name: Install Python dependencies
-        run: pip install -r source/source/backend/requirements.txt -r source/source/desktop/requirements.txt
+        run: pip install -r source/app/backend/requirements.txt -r source/app/desktop/requirements.txt
 
       - name: Download ONNX models
-        working-directory: source/source/backend
+        working-directory: source/app/backend
         run: python scripts/download_models.py
 
       - name: Download embedded Postgres
-        run: python source/source/desktop/scripts/download_pg.py
+        run: python source/app/desktop/scripts/download_pg.py
 
       - name: Build bundle
-        working-directory: source/source
+        working-directory: source/app
         run: python -m PyInstaller desktop/debateai.spec --distpath dist --workpath build --noconfirm
 
       - name: Smoke test bundle
-        working-directory: source/source
+        working-directory: source/app
         run: python desktop/scripts/smoke_test.py
 
       - name: Zip macOS bundle
-        working-directory: source/source
+        working-directory: source/app
         run: |
           mkdir -p ../../controller/release-assets
           ditto -c -k --keepParent dist/DebateAI.app ../../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Smoke test macOS update archive
-        working-directory: source/source
+        working-directory: source/app
         run: python desktop/scripts/smoke_update_archive.py --platform macos-arm64 --archive ../../controller/release-assets/DebateAI-macos-arm64.zip
 
       - name: Prepare macOS cache handoff
@@ -193,7 +193,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-macos-arm64.zip" | shasum -a 256 -c -
 
       - name: Publish verified macOS platform
-        working-directory: source/source
+        working-directory: source/app
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -281,7 +281,7 @@ jobs:
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
-          [[ -f source/desktop/debateai.spec ]]
+          [[ -f app/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -297,7 +297,7 @@ jobs:
           echo "published_at=$published_at" >> "$GITHUB_OUTPUT"
 
       - name: Build frontend
-        working-directory: source/source/frontend
+        working-directory: source/app/frontend
         shell: bash
         run: |
           npm ci
@@ -305,32 +305,32 @@ jobs:
 
       - name: Install Python dependencies
         shell: bash
-        run: pip install -r source/source/backend/requirements.txt -r source/source/desktop/requirements.txt
+        run: pip install -r source/app/backend/requirements.txt -r source/app/desktop/requirements.txt
 
       - name: Download ONNX models
-        working-directory: source/source/backend
+        working-directory: source/app/backend
         shell: bash
         run: python scripts/download_models.py
 
       - name: Download embedded Postgres
         shell: bash
-        run: python source/source/desktop/scripts/download_pg.py
+        run: python source/app/desktop/scripts/download_pg.py
 
       - name: Download ffmpeg
         shell: bash
-        run: python source/source/desktop/scripts/download_ffmpeg.py
+        run: python source/app/desktop/scripts/download_ffmpeg.py
 
       - name: Download CLIProxyAPI and Gemini plugin
         shell: bash
-        run: python source/source/desktop/scripts/download_cliproxyapi.py
+        run: python source/app/desktop/scripts/download_cliproxyapi.py
 
       - name: Build Gemini web bridge
-        working-directory: source/source
+        working-directory: source/app
         shell: pwsh
         run: ./desktop/gemini_web_to_api/build.ps1
 
       - name: Prepare ChatGPT web runtime
-        working-directory: source/source
+        working-directory: source/app
         shell: pwsh
         run: |
           $oracleRoot = Join-Path (Get-Location) "desktop\chatgpt_oracle"
@@ -351,7 +351,7 @@ jobs:
           if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) { throw "ChatGPT Oracle CLI is missing after npm ci." }
 
       - name: Build bundle
-        working-directory: source/source
+        working-directory: source/app
         shell: pwsh
         run: |
           $env:DEBATEAI_INCLUDE_ORACLE = "true"
@@ -363,19 +363,19 @@ jobs:
           }
 
       - name: Smoke test bundle
-        working-directory: source/source
+        working-directory: source/app
         shell: bash
         run: python desktop/scripts/smoke_test.py
 
       - name: Zip Windows bundle
-        working-directory: source/source
+        working-directory: source/app
         shell: pwsh
         run: |
           New-Item -ItemType Directory -Force -Path ../../controller/release-assets | Out-Null
           Compress-Archive -LiteralPath dist/DebateAI -DestinationPath ../../controller/release-assets/DebateAI-windows-x64.zip -Force
 
       - name: Smoke test Windows update archive
-        working-directory: source/source
+        working-directory: source/app
         shell: bash
         run: python desktop/scripts/smoke_update_archive.py --platform windows-x64 --archive ../../controller/release-assets/DebateAI-windows-x64.zip
 
@@ -446,7 +446,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-windows-x64.zip" | sha256sum -c -
 
       - name: Publish verified Windows platform
-        working-directory: source/source
+        working-directory: source/app
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
@@ -530,7 +530,7 @@ jobs:
           actual_commit="$(git rev-parse "refs/tags/$RELEASE_REF^{commit}")"
           [[ "$actual_commit" == "$EXPECTED_COMMIT" ]]
           [[ "$(git rev-parse HEAD)" == "$EXPECTED_COMMIT" ]]
-          [[ -f source/desktop/debateai.spec ]]
+          [[ -f app/desktop/debateai.spec ]]
           tagger_date="$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$RELEASE_REF")"
           [[ -n "$tagger_date" ]]
           published_at="$(python - "$tagger_date" <<'PY'
@@ -551,11 +551,11 @@ jobs:
           set -euo pipefail
           mkdir -p linux-output controller/release-assets
           docker build \
-            --file controller/source/desktop/Dockerfile.release-linux \
-            --build-context controller=controller/source/desktop/scripts \
+            --file controller/app/desktop/Dockerfile.release-linux \
+            --build-context controller=controller/app/desktop/scripts \
             --target export \
             --output type=local,dest=linux-output \
-            source/source
+            source/app
           shopt -s dotglob nullglob
           files=(linux-output/*)
           [[ ${#files[@]} -eq 1 ]]
@@ -630,7 +630,7 @@ jobs:
         run: echo "$BUNDLE_SHA256  release-assets/DebateAI-linux-x64.tar.gz" | sha256sum -c -
 
       - name: Publish verified Linux platform
-        working-directory: source/source
+        working-directory: source/app
         env:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}

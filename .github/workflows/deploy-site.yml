@@ -4,15 +4,15 @@ on:
   push:
     branches: [master]
     paths:
-      - "source/docs-site/**"
-      - "source/docs/**"
-      - "source/site/**"
+      - "app/docs-site/**"
+      - "app/docs/**"
+      - "app/site/**"
       - ".github/workflows/deploy-site.yml"
   pull_request:
     paths:
-      - "source/docs-site/**"
-      - "source/docs/**"
-      - "source/site/**"
+      - "app/docs-site/**"
+      - "app/docs/**"
+      - "app/site/**"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
 
@@ -26,7 +26,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: source/docs-site
+        working-directory: app/docs-site
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -35,7 +35,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: source/docs-site/package-lock.json
+          cache-dependency-path: app/docs-site/package-lock.json
       - run: npm ci
       - run: npm test
       - run: npm run build

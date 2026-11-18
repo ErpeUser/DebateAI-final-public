@@ -19,7 +19,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: source/backend
+        working-directory: app/backend
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -29,8 +29,8 @@ jobs:
           python-version: "3.12"
           cache: pip
           cache-dependency-path: |
-            source/backend/requirements.txt
-            source/backend/requirements-test.txt
+            app/backend/requirements.txt
+            app/backend/requirements-test.txt
       - run: python -m pip install --upgrade pip
       - run: pip install -r requirements.txt -r requirements-test.txt
       - run: python scripts/download_models.py
@@ -42,9 +42,9 @@ jobs:
       - name: Desktop release contract
         run: python -m unittest discover -s ../desktop/tests -p test_release_contract.py -v
       - name: Portable desktop unit contracts
-        working-directory: source/desktop
+        working-directory: app/desktop
         env:
-          PYTHONPATH: ${{ github.workspace }}/source:${{ github.workspace }}/source/backend
+          PYTHONPATH: ${{ github.workspace }}/app:${{ github.workspace }}/app/backend
         run: |
           set -euo pipefail
           for test_file in \
@@ -64,7 +64,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: source/frontend
+        working-directory: app/frontend
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -73,7 +73,7 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: source/frontend/package-lock.json
+          cache-dependency-path: app/frontend/package-lock.json
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -103,4 +103,4 @@ jobs:
       - run: python -m pip install playwright==1.57.0
       - run: python -m playwright install --with-deps chromium
       - name: Laboratory DOM and mocked audio/API contracts, not Windows hardware acceptance
-        run: python -m unittest discover -s source/frontend/calibration-tests -p 'test_*.py' -v
+        run: python -m unittest discover -s app/frontend/calibration-tests -p 'test_*.py' -v

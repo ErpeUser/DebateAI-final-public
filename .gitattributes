@@ -1,1 +1,2 @@
-source/desktop/gemini_web_to_api/debateai-loopback.patch text eol=lf
+app/desktop/gemini_web_to_api/debateai-loopback.patch text eol=lf
+app/desktop/chatgpt_oracle/node/LICENSE.node text eol=lf

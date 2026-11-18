@@ -1,0 +1,20 @@
+# DebateAI / app
+
+The repository root [AGENTS.md](../AGENTS.md) is the canonical agent instruction.
+Follow it first; do not treat older continuation notes or dated snapshots as
+current runtime instructions.
+
+- Versioned source and necessary inputs live in app/; generated outputs
+  belong outside it, under DebateAI_Generated/.
+- Never delete private user data under %LOCALAPPDATA%/DebateAI, PostgreSQL
+  files, secrets, saved sessions or customizable playbooks.
+- Retain the live Python/Node/Desktop entry points, APIs, migrations, release
+  contracts and source assets. Static scanner results require verification.
+- Follow docs/DEBATEAI_CANONICAL_INDEX.md, docs/releasing.md and
+  docs/EVIDENCE.md for technical behavior and verification constraints.
+- Run targeted tests and fresh builds. Do not assert a signed release without
+  a new binary, verified signature and smoke test.
+- Root GitHub workflows may name a checkout folder source/; that alias is
+  not the former application source tree.
+- Preserve Git history and existing independent recovery copies. Avoid
+  duplicate stage directories, worktrees and unreviewed generated files.

@@ -1,5 +1,0 @@
-# B — separate implementation branch
-
-This is a derived handoff, not the missing original Prompt 3. Read the attached local assignment, `source/docs/IMPLEMENTATION_CONTINUATION.md`, and `source/docs/acceptance/coordination.json`. Until `LOCAL_DONE_WEB_ALLOWED` is confirmed on the actual private default, only read or prepare disjoint work. After the checkpoint, work on approved frontend, lab or docs-site tickets in a short-lived branch from the verified base. Use the ticket's current requirement and evidence, record missing original definitions, and keep local and hosted claims distinct.
-
-Do not change the default, merge or delete remote branches. Send A a PR with exact head, base, changed paths and test outputs. For files assigned to A, send a proposed interface or narrow patch rather than a competing implementation. Never place private logs, app state, credentials, recordings or browser files in the PR. Do not claim human review, real Windows hardware or CI execution without direct evidence.

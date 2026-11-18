@@ -2,6 +2,6 @@
 /backend/ @ErpeUser
 /desktop/ @ErpeUser
 /.github/ @ErpeUser
-/source/backend/ @ErpeUser
-/source/desktop/ @ErpeUser
-/source/.github/ @ErpeUser
+/app/backend/ @ErpeUser
+/app/desktop/ @ErpeUser
+/app/.github/ @ErpeUser

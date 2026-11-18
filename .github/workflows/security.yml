@@ -21,7 +21,7 @@ jobs:
     timeout-minutes: 20
     defaults:
       run:
-        working-directory: source/backend
+        working-directory: app/backend
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -40,7 +40,7 @@ jobs:
     timeout-minutes: 15
     defaults:
       run:
-        working-directory: source/frontend
+        working-directory: app/frontend
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -49,6 +49,45 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: source/frontend/package-lock.json
+          cache-dependency-path: app/frontend/package-lock.json
       - run: npm ci
       - run: npm audit --audit-level=high
+
+
+  docs-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/docs-site
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/docs-site/package-lock.json
+      - run: npm ci --ignore-scripts
+      # Fail visibly on unaddressed production dependency advisories.
+      # Avoid a forced major downgrade: any remediation needs a clean build.
+      - run: npm audit --omit=dev --audit-level=high
+
+  oracle-production:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: app/desktop/chatgpt_oracle
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: app/desktop/chatgpt_oracle/package-lock.json
+      - run: npm ci --ignore-scripts
+      - run: npm audit --omit=dev --audit-level=high

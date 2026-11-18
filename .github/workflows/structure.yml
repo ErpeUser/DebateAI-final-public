@@ -99,7 +99,7 @@ jobs:
           sentrux plugin list
 
       - name: Rules check
-        working-directory: head/source
+        working-directory: head/app
         run: |
           # Sentrux 0.5.7 has no per-path max_file_lines exception and applies
           # the constraint to tracked JSON, so the two generated lockfiles
@@ -135,19 +135,19 @@ jobs:
         if: ${{ !cancelled() && steps.plugins.conclusion == 'success' }}
         run: |
           set -euo pipefail
-          if [ ! -d base/source ]; then
+          if [ ! -d base/app ]; then
             # No comparison point (first push, force push, or manual dispatch).
             # Fall back to the committed baseline rather than skipping the gate
             # entirely, which is what let master drift unmeasured.
             echo "No base checkout for this event; gating against the committed baseline."
-            cd head/source && sentrux gate .
+            cd head/app && sentrux gate .
             exit 0
           fi
-          # --save writes base/source/.sentrux/baseline.json, replacing the committed
+          # --save writes base/app/.sentrux/baseline.json, replacing the committed
           # one in this throwaway checkout only.
-          sentrux gate --save base/source
-          cp base/source/.sentrux/baseline.json head/source/.sentrux/baseline.json
-          cd head/source && sentrux gate .
+          sentrux gate --save base/app
+          cp base/app/.sentrux/baseline.json head/app/.sentrux/baseline.json
+          cd head/app && sentrux gate .
 
       - name: Explain the result in the run summary
         if: failure()

@@ -1,33 +1,53 @@
-# Local GUI evidence may display personal provider/profile information.
-/evidence/gui-capture/
+# Permanent source in app/ is versioned. Generated and runtime are independent artifacts.
+/DebateAI_Generated/
+/runtime/
+/.codex/
+/.agents/
 
-# Generated and machine-local state is never part of the source snapshot.
+# Transient Python/Node dependencies, builds and test outputs.
 __pycache__/
 *.pyc
-.env
+*.pyo
+*.log
+.DS_Store
 node_modules/
 dist/
 build/
 release-assets/
+coverage/
 .vite/
-*.log
-.DS_Store
-pgdata/
-desktop/pgsql/
-desktop/ffmpeg/
-source/desktop/pgsql/
-source/desktop/ffmpeg/
-.release-venv/
-.venv/
-.tmp/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
-coverage/
+.release-venv/
+.venv/
+.tmp/
 
-# Internal marketing strategy and per-machine agent state.
+# Credentials, databases and user data.
+.env
+.env.local
+.env.production
+.env.*.local
+pgdata/
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+
+# Downloaded native development resources.
+/app/desktop/pgsql/
+/app/desktop/ffmpeg/
+/app/desktop/cliproxyapi/
+/app/desktop/gemini_web_to_api/gemini-web-to-api.exe
+/app/desktop/chatgpt_oracle/node/*
+!/app/desktop/chatgpt_oracle/node/LICENSE.node
+/app/desktop/chatgpt_oracle/node_modules/
+/app/backend/models/
+
+# Machine-only tool profiles.
 marketing/
-.agents/
 .claude/
 skills-lock.json
 .worktrees/
+
+.test-account-*/
