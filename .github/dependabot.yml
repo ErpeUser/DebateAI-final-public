@@ -1,32 +1,33 @@
 version: 2
 updates:
-  # Versioned SHA-pinned actions must still be reviewed; no unattended merges.
+  # Keep the policy visible without creating a branch fan-out in the public
+  # mirror. Security advisories remain handled by GitHub's security service.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "pip"
     directory: "/app/backend"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "pip"
     directory: "/app/desktop"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "npm"
     directory: "/app/frontend"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
     groups:
       frontend-nonmajor:
         update-types: ["minor", "patch"]
@@ -36,7 +37,7 @@ updates:
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 0
     groups:
       docs-nonmajor:
         update-types: ["minor", "patch"]
@@ -45,10 +46,10 @@ updates:
     directory: "/app/desktop/chatgpt_oracle"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 0
 
   - package-ecosystem: "npm"
     directory: "/app/release-signing-worker"
     schedule:
       interval: "monthly"
-    open-pull-requests-limit: 2
+    open-pull-requests-limit: 0
