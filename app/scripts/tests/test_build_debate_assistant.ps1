@@ -26,6 +26,8 @@ Assert-True ($contract.PythonConstraints -eq (Join-Path $expectedRoot "desktop\c
     "Windows release dependencies are not constrained"
 Assert-True (Test-Path -LiteralPath $contract.PythonConstraints -PathType Leaf) `
     "Windows release dependency constraints are missing"
+Assert-True ($contract.Venv -eq (Join-Path ([IO.Path]::GetFullPath((Join-Path $expectedRoot ".."))) "DebateAI_Generated\dependencies\python\release-venv")) `
+    "Release venv must be regenerated under disposable Generated"
 Assert-True ($contract.ModelDownloader -eq (Join-Path $expectedRoot "backend\scripts\download_models.py")) `
     "Build duplicated or bypassed the model downloader"
 Assert-True ($contract.PostgresDownloader -eq (Join-Path $expectedRoot "desktop\scripts\download_pg.py")) `
@@ -34,12 +36,19 @@ Assert-True ($contract.FfmpegDownloader -eq (Join-Path $expectedRoot "desktop\sc
     "Build duplicated or bypassed the ffmpeg downloader"
 Assert-True ($contract.SmokeTest -eq (Join-Path $expectedRoot "desktop\scripts\smoke_test.py")) `
     "Build does not use the existing desktop smoke test"
-Assert-True ($contract.Artifact -eq (Join-Path $expectedRoot "dist\DebateAI-windows-x64.zip")) `
-    "Debate bundle artifact name drifted"
-Assert-True ($contract.CanonicalSmokeArtifact -eq (Join-Path $expectedRoot "dist\.debate-smoke\DebateAI-windows-x64.zip")) `
-    "Archive smoke test does not stage the canonical Windows filename"
-Assert-True ($contract.StageRoot -eq (Join-Path $expectedRoot "build\release-stage")) `
-    "Release candidate is not isolated in the staging directory"
+$generatedRoot = [IO.Path]::GetFullPath((Join-Path $expectedRoot "../DebateAI_Generated"))
+Assert-True ($contract.Artifact -eq (Join-Path $generatedRoot "build\releases\DebateAI-windows-x64.zip")) `
+    "Bundle archive must stay inside disposable Generated"
+Assert-True ($contract.Bundle -eq (Join-Path $generatedRoot "build\releases\DebateAI")) `
+    "Built bundle must stay inside disposable Generated"
+Assert-True ($contract.CanonicalSmokeArtifact -eq (Join-Path $generatedRoot "build\.debate-smoke\DebateAI-windows-x64.zip")) `
+    "Archive smoke test must be disposable"
+Assert-True ($contract.StageRoot -eq (Join-Path $generatedRoot "build\release-stage")) `
+    "Release candidate is not isolated in disposable staging"
+Assert-True ($contract.NpmCache -eq (Join-Path $generatedRoot "cache\npm")) `
+    "Npm download cache must be disposable"
+Assert-True ($contract.PipCache -eq (Join-Path $generatedRoot "cache\pip")) `
+    "Python package cache must be disposable"
 Assert-True ($contract.StagedBundle -eq (Join-Path $contract.StageRoot "DebateAI")) `
     "Staged bundle contract drifted"
 Assert-True ($contract.StagedArtifact -eq (Join-Path $contract.StageRoot "DebateAI-windows-x64.zip")) `

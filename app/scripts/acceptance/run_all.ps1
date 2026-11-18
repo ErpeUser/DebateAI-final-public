@@ -10,7 +10,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $repo = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '../../..'))
 if (-not $Python) {
-    $localPython = Join-Path $repo 'app/.release-venv/Scripts/python.exe'
+    $localPython = Join-Path $repo 'DebateAI_Generated/dependencies/python/release-venv/Scripts/python.exe'
     if (Test-Path -LiteralPath $localPython -PathType Leaf) { $Python = $localPython }
 }
 if (-not $Python) {

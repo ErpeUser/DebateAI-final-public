@@ -11,23 +11,51 @@ the source that uses them.
 ## Layout
 
 - app/ - versionable application source, tests, configuration and docs
-- DebateAI_Generated/runtime/DebateAI/ - locally verified Windows binary bundle,
+- runtime/DebateAI/ - locally verified Windows binary bundle,
   including its required _internal/ directory (not committed to Git)
-- DebateAI_Generated/ - unversioned generated outputs: runtime, downloads,
-  build products, caches and test reports (ignored by Git); keep the verified
-  bundle until a replacement has been smoke-tested
-- .github/workflows/ - GitHub automation
+- DebateAI_Generated/ - OPTIONAL, deletable build caches, dependencies and reports
+- .git/ - Git history and references stored inside the repository root
+- app/scripts/workspace_refs.py - stable path auditor (run with --strict)
+- Start-DebateAI.cmd - starts the installed release or verifies and installs a signed update; developer source-build fallback when no update channel is configured
+- app/docs/generated-workspace.md - recovery and build documentation
+- app/docs/ORDNERBAUM_AKTUELL.md - regenerated physical folder tree
+- app/docs/ORDNERSTRUKTUR_ZIELBILD.md - proposed improvements, not yet migrated
+- .github/workflows/ - root GitHub Actions (including the blocking repository-layout check)
+- .github/CODEOWNERS, .github/dependabot.yml - reviews and dependency-update policy
+- app/docs/github-repository.md - GitHub settings, CI, structure gate and known billing limitations
 - %LOCALAPPDATA%/DebateAI/ - private user sessions, settings and database
   (outside this repository and never considered build cache)
 
+## Start and recover
+
+Double-click `Start-DebateAI.cmd` or run `runtime/DebateAI/DebateAI.exe`.
+The installed application runs without `DebateAI_Generated/` and needs no
+Python, npm or downloads. `Start-DebateAI.ps1 -Check` checks required files
+without starting the application or accessing the network. If the verified
+runtime is missing and DEBATEAI_UPDATE_DESCRIPTOR_URL / DEBATEAI_UPDATE_ASSET_URL
+are configured, the starter downloads only a correctly signed and hashed release.
+Otherwise it can rebuild from source (needs Python 3.12, Node.js 24, network and
+build toolchain). Both paths install only after a passing smoke test.
+`-Offline` forbids network recovery; `-Rebuild` explicitly chooses the source build.
+
+For the removable workspace audit run
+`python app/scripts/workspace_refs.py --strict`; add `--initialize
+--write-report` only if you want to regenerate optional cache folders.
+See `app/docs/generated-workspace.md` for safeguards and limitations.
+Legacy pointer checkouts remain readable during migration, but new checkouts
+use the normal internal `.git/` directory.
+
 ## Build and verification
 
+- Repository layout: `python app/scripts/verify_repository_layout.py` (read-only)
+- CI-compatible source checkout: `python app/scripts/workspace_refs.py --source-only --strict`
+- GitHub config: `app/docs/github-repository.md` (private repository; hosted jobs currently blocked by account billing)
 - Python 3.12, Node.js 24
 - Backend: cd app/backend; python -m pip install -r requirements.txt
 - Frontend: cd app/frontend; npm ci; npm test; npm run build
 - Docs: cd app/docs-site; npm ci; npm test; npm run build
 - Windows desktop smoke: python app/desktop/scripts/smoke_test.py
-  --bundle DebateAI_Generated/runtime/DebateAI
+  --bundle runtime/DebateAI
 - Release source and configuration: app/scripts/, app/desktop/debateai.spec,
   .github/workflows/.
 

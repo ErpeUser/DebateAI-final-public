@@ -23,12 +23,20 @@ coverage/
 .venv/
 .tmp/
 
-# Credentials, databases and user data.
+# Secrets, local environment variants and user databases (all folders).
+# Only safe, explicitly non-secret templates belong in version control.
 .env
-.env.local
-.env.production
-.env.*.local
+.env.*
+!.env.example
+!.env.sample
+!.env.template
+*.env
+*.key
+*.pem
+*.p12
+*.pfx
 pgdata/
+*.db
 *.sqlite
 *.sqlite3
 *.db-wal
@@ -44,10 +52,18 @@ pgdata/
 /app/desktop/chatgpt_oracle/node_modules/
 /app/backend/models/
 
-# Machine-only tool profiles.
-marketing/
+# Machine-only tool profiles, IDEs and local analysis outputs.
+/marketing/
 .claude/
-skills-lock.json
+/skills-lock.json
 .worktrees/
+.superpowers/
+graphify-out/
+.idea/
+.vscode/
+*.code-workspace
+.tox/
+.nox/
+.cache/
 
 .test-account-*/

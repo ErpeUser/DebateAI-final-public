@@ -3,11 +3,11 @@
 Run from the existing repository root:
 
 ```powershell
-powershell -NoProfile -File .\source\scripts\acceptance\run_all.ps1 -Profile Full
+powershell -NoProfile -File .\app\scripts\acceptance\run_all.ps1 -Profile Full
 ```
 
 `-Python` selects an existing Python environment. The wrapper first uses the
-checkout's `DebateAI_Generated/.release-venv/Scripts/python.exe`, then Python 3.12. Worktrees
+checkout's `DebateAI_Generated/dependencies/python/release-venv/Scripts/python.exe`, then Python 3.12. Worktrees
 without their own environment can explicitly use the original checkout's venv.
 Python entry: `python app/scripts/acceptance/run.py --profile Full`.
 

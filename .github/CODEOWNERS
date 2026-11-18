@@ -1,7 +1,22 @@
-# Security-sensitive paths require owner review
-/backend/ @ErpeUser
-/desktop/ @ErpeUser
+# Canonical repository paths. GitHub only reads CODEOWNERS from the root
+# .github/, root, or docs/; app/.github/ contains RELEASE NOTES, not Actions.
+# CODEOWNERS requests owner review. It is not branch protection on its own.
+
 /.github/ @ErpeUser
+/.gitignore @ErpeUser
+/.gitattributes @ErpeUser
+/AGENTS.md @ErpeUser
+/Start-DebateAI.cmd @ErpeUser
+/Start-DebateAI.ps1 @ErpeUser
+
+/app/AGENTS.md @ErpeUser
 /app/backend/ @ErpeUser
+/app/frontend/ @ErpeUser
 /app/desktop/ @ErpeUser
-/app/.github/ @ErpeUser
+/app/ai/ @ErpeUser
+/app/scripts/ @ErpeUser
+/app/release-signing-worker/ @ErpeUser
+/app/docs-site/ @ErpeUser
+/app/site/ @ErpeUser
+/app/docs/ @ErpeUser
+/app/.github/release-notes/ @ErpeUser

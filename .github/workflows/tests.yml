@@ -14,6 +14,25 @@ permissions:
   contents: read
 
 jobs:
+  workspace-windows:
+    runs-on: windows-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
+      - name: Source checkout must not need Generated or bundled Windows executables
+        shell: pwsh
+        run: python app/scripts/workspace_refs.py --source-only --strict | Out-Null
+      - name: Verify startup and rollback-safe build path contracts
+        shell: pwsh
+        run: |
+          & ./app/scripts/tests/test_start_debateai.ps1
+          & ./app/scripts/tests/test_build_debate_assistant.ps1
+
   backend:
     runs-on: ubuntu-latest
     timeout-minutes: 20

@@ -20,6 +20,7 @@ function Get-RepositoryRoot {
 
 function Get-DesktopBuildContract {
     param([string]$RepositoryRoot)
+    $generatedRoot = [IO.Path]::GetFullPath((Join-Path $RepositoryRoot "../DebateAI_Generated") )
     return [pscustomobject]@{
         Frontend = Join-Path $RepositoryRoot "frontend"
         ModelDownloader = Join-Path $RepositoryRoot "backend\scripts\download_models.py"
@@ -29,14 +30,16 @@ function Get-DesktopBuildContract {
         Spec = Join-Path $RepositoryRoot "desktop\debateai.spec"
         SmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_test.py"
         ArchiveSmokeTest = Join-Path $RepositoryRoot "desktop\scripts\smoke_update_archive.py"
-        Bundle = Join-Path $RepositoryRoot "dist\DebateAI"
-        Artifact = Join-Path $RepositoryRoot "dist\DebateAI-windows-x64.zip"
-        StageRoot = Join-Path $RepositoryRoot "build\release-stage"
-        StagedBundle = Join-Path $RepositoryRoot "build\release-stage\DebateAI"
-        StagedArtifact = Join-Path $RepositoryRoot "build\release-stage\DebateAI-windows-x64.zip"
-        PyInstallerWork = Join-Path $RepositoryRoot "build\pyinstaller-release"
-        CanonicalSmokeArtifact = Join-Path $RepositoryRoot "dist\.debate-smoke\DebateAI-windows-x64.zip"
-        Venv = Join-Path $RepositoryRoot ".release-venv"
+        Bundle = Join-Path $generatedRoot "build\releases\DebateAI"
+        Artifact = Join-Path $generatedRoot "build\releases\DebateAI-windows-x64.zip"
+        StageRoot = Join-Path $generatedRoot "build\release-stage"
+        StagedBundle = Join-Path $generatedRoot "build\release-stage\DebateAI"
+        StagedArtifact = Join-Path $generatedRoot "build\release-stage\DebateAI-windows-x64.zip"
+        PyInstallerWork = Join-Path $generatedRoot "build\pyinstaller-release"
+        CanonicalSmokeArtifact = Join-Path $generatedRoot "build\.debate-smoke\DebateAI-windows-x64.zip"
+        Venv = Join-Path $generatedRoot "dependencies\python\release-venv"
+        NpmCache = Join-Path $generatedRoot "cache\npm"
+        PipCache = Join-Path $generatedRoot "cache\pip"
         PythonConstraints = Join-Path $RepositoryRoot "desktop\constraints-windows-py312.txt"
     }
 }
@@ -159,7 +162,7 @@ function Invoke-DebateDesktopBuild {
     Push-Location $repoRoot
     try {
         Invoke-Checked "Install frontend dependencies" {
-            & npm ci --prefix $contract.Frontend
+            & npm ci --prefix $contract.Frontend --cache $contract.NpmCache
         }
         Invoke-Checked "Build frontend" {
             & npm run build --prefix $contract.Frontend
@@ -176,7 +179,8 @@ function Invoke-DebateDesktopBuild {
             & $venvPython -m pip install `
                 -c $contract.PythonConstraints `
                 -r (Join-Path $repoRoot "backend\requirements.txt") `
-                -r (Join-Path $repoRoot "desktop\requirements.txt")
+                -r (Join-Path $repoRoot "desktop\requirements.txt") `
+                --cache-dir $contract.PipCache
         }
 
         if ($SkipDownloads) {
@@ -215,7 +219,7 @@ function Invoke-DebateDesktopBuild {
                 Copy-Item -LiteralPath $nodeCommand.Source -Destination (Join-Path $oracleNodeRoot "node.exe") -Force
             }
             Invoke-Checked "Install pinned ChatGPT Oracle package" {
-                & npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund
+                & npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund --cache $contract.NpmCache
             }
             $oracleCli = Join-Path $oracleRoot "node_modules\@steipete\oracle\dist\bin\oracle-cli.js"
             if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) {

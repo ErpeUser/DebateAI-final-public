@@ -30,6 +30,7 @@ function Test-TcpPort {
 
 function Resolve-BackendPython {
     $candidates = @(
+        (Join-Path $repoRoot "../DebateAI_Generated/dependencies/python/release-venv/Scripts/python.exe"),
         (Join-Path $repoRoot ".venv\Scripts\python.exe"),
         (Join-Path $repoRoot ".release-venv\Scripts\python.exe")
     )

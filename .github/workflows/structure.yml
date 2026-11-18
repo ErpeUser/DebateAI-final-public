@@ -11,9 +11,10 @@ name: Structure
 # worse than what came before it?" With no comparison point available it falls
 # back to the committed baseline rather than skipping the gate.
 #
-# Keep the job non-blocking until the absolute rules are green on Linux and
-# a hosted run has executed them. A local Ubuntu run found pre-existing rule
-# violations; the relative regression check still runs and reports separately.
+# The separate repository-layout job below is BLOCKING on every PR/push and
+# verifies source locations, ignore rules and tracked-file hygiene. Sentrux is
+# still advisory because its baseline has inherited findings; changing that
+# unrelated policy requires a hosted baseline and explicit review.
 
 on:
   pull_request:
@@ -40,6 +41,24 @@ env:
   SENTRUX_SHA256: 3237f80fe20d54aad4deefa8a143f0d60543bb5d2d6ad891eb42432f155725a6
 
 jobs:
+  repository-layout:
+    name: Repository layout and tracked-file hygiene
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.12"
+      - name: Verify canonical source layout, tracked files and secrets
+        run: python app/scripts/verify_repository_layout.py
+      - name: Verify source checkout independent of runtime and Generated
+        run: python app/scripts/workspace_refs.py --source-only --strict > /dev/null
+      - name: Validate layout guard and Git ignore contracts
+        run: python -m unittest discover -s app/scripts/tests -p test_repository_layout.py -v
+
   sentrux:
     name: Sentrux structural gate
     runs-on: ubuntu-latest
