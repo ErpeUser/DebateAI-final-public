@@ -4,15 +4,21 @@
 
 Permanent assets:
 - `app/` contains the versioned product source, pinned dependency contracts, prompts, update keys, CI tests and build scripts.
-- `runtime/DebateAI/` is the complete Windows PyInstaller onedir release. `_internal/` is **inseparable** from the EXEs, including bundled Python libraries, PostgreSQL, FFmpeg, models, frontend and optional web bridges.
-- `.git/` is the internal Git history and reference database at the repository root. Legacy checkouts with a pointer file remain readable during migration, but new checkouts use this ordinary `.git/` directory.
+- `runtime/DebateAI/` is the canonical installed Windows release path. The
+  complete onedir bundle (EXEs plus inseparable `_internal/`, PostgreSQL,
+  FFmpeg, models and frontend) is installed there and preserved as a recovery
+  copy at `DebateAI_Generated/archive/installed-release-2026-11-19/`.
+- The root `.git` is currently a small text pointer to the protected Git database in the adjacent Coding audit, not a Git database directory. Preserve the audit to retain local history; full recreation of the canonical internal Git layout requires an explicit restore.
 - `%LOCALAPPDATA%/DebateAI/` is **private user data** (databases, sessions, preferences). Never move or clean it automatically.
 
-`DebateAI_Generated/` contains disposable build products, release staging, npm/pip caches, temporary downloads and reports only. It can be deleted **after closing all build/test processes**, without preventing an existing installed EXE from starting.
+`DebateAI_Generated/` normally contains disposable build products, release staging, npm/pip caches, temporary downloads and reports. **Current exception:** `archive/installed-release-2026-11-19/` preserves a complete Windows release, copied from `runtime/DebateAI/` during the source-only audit. This archive is not a disposable cache and must never be automatically deleted. The installed standalone app is currently available at `runtime/DebateAI/` and can be restored from the archive with `Start-DebateAI.ps1 -RestoreArchived -NoLaunch`.
 
 ## Normal startup
 
-Double-click `Start-DebateAI.cmd` or launch `runtime/DebateAI/DebateAI.exe` directly. When the release is complete, the application starts **without** Python, Node, Git, network access or Generated. Check without starting:
+The launcher normally starts `runtime/DebateAI/DebateAI.exe`. The installed
+path has passed the bundle smoke test. When the release is complete, the
+application starts **without** Python, Node, Git, network access or Generated.
+Check without starting:
 
 ```powershell
 powershell -NoProfile -ExecutionPolicy Bypass -File .\Start-DebateAI.ps1 -Check

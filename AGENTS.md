@@ -3,9 +3,9 @@
 Current versioned source lives under app/, NOT under historical source/.
 See app/README.md and app/docs/DEBATEAI_CANONICAL_INDEX.md for detailed
 implementation context. Canonical installed bundle location is runtime/DebateAI/;
-the previously installed bundle was relocated during the 2026-11-19 source-only
-audit into DebateAI_Generated/archive/installed-release-2026-11-19/.
-It remains recoverable, but runtime/DebateAI/ is not presently launch-ready.
+the previously installed bundle was preserved during the 2026-11-19 source-only
+audit in DebateAI_Generated/archive/installed-release-2026-11-19/ and has now
+been restored to runtime/DebateAI with a passing bundle smoke test.
 
 The root .github/workflows/ must remain for GitHub Actions.
 The repository layout and tracked-file hygiene contract is defined in
