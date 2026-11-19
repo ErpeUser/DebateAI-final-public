@@ -9,6 +9,10 @@ $scriptPath = Join-Path $PSScriptRoot "..\build_debate_assistant.ps1"
 Assert-True (Test-Path -LiteralPath $scriptPath -PathType Leaf) `
     "Debate assistant build script is missing"
 
+$buildSource = Get-Content -LiteralPath $scriptPath -Raw
+Assert-True ($buildSource.Contains("Remove-OracleDevelopmentFiles")) `
+    "Oracle development files are not pruned before packaging"
+
 . $scriptPath
 
 Assert-True (Test-Python312Version "Python 3.12.10") "Python 3.12 was rejected"

@@ -90,6 +90,22 @@ function Assert-DownloadAssets {
     }
 }
 
+function Remove-OracleDevelopmentFiles {
+    param([string]$OracleRoot)
+    $nodeModules = Join-Path $OracleRoot "node_modules"
+    if (-not (Test-Path -LiteralPath $nodeModules -PathType Container)) {
+        return
+    }
+    $removed = 0
+    foreach ($pattern in @("*.map", "*.ts", "*.mts", "*.cts")) {
+        foreach ($file in @(Get-ChildItem -LiteralPath $nodeModules -Recurse -File -Filter $pattern -Force)) {
+            Remove-Item -LiteralPath $file.FullName -Force
+            $removed++
+        }
+    }
+    Write-Host "[build] Pruned $removed Oracle development files from the desktop bundle input"
+}
+
 function Publish-ReleaseCandidate {
     param(
         [pscustomobject]$Contract,
@@ -221,6 +237,7 @@ function Invoke-DebateDesktopBuild {
             Invoke-Checked "Install pinned ChatGPT Oracle package" {
                 & npm ci --prefix $oracleRoot --ignore-scripts --no-audit --no-fund --cache $contract.NpmCache
             }
+            Remove-OracleDevelopmentFiles -OracleRoot $oracleRoot
             $oracleCli = Join-Path $oracleRoot "node_modules\@steipete\oracle\dist\bin\oracle-cli.js"
             if (-not (Test-Path -LiteralPath $oracleCli -PathType Leaf)) {
                 throw "ChatGPT Oracle CLI is missing after npm ci: $oracleCli"
