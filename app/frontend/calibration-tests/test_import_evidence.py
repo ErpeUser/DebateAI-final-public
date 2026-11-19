@@ -2,7 +2,6 @@
 import json
 import os
 import shutil
-from pathlib import Path
 import re
 import unittest
 from playwright.sync_api import sync_playwright
