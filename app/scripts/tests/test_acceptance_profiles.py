@@ -92,9 +92,10 @@ class EntryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='acceptance space ') as tmp:
             root=Path(tmp)
             (root/'app/scripts').mkdir(parents=True)
-            proc=self.call(root,'--profile','Report','--output',root/'reports')
+            out=root/'DebateAI_Generated/reports/acceptance/new output'
+            proc=self.call(root,'--profile','Report','--output',out)
             self.assertEqual(2,proc.returncode,proc.stderr)
-            report=json.loads((root/'reports/acceptance-report.json').read_text())
+            report=json.loads((out/'acceptance-report.json').read_text())
             self.assertFalse(report['product_accepted'])
             self.assertEqual([],report['results'])
             self.assertFalse((root/'app/.ai').exists())
@@ -103,8 +104,8 @@ class EntryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root=Path(tmp)
             (root/'app/scripts').mkdir(parents=True)
-            out=root/'evidence-old'
-            out.mkdir()
+            out=root/'DebateAI_Generated/reports/acceptance/evidence-old'
+            out.mkdir(parents=True)
             (out/'keep').write_text('original')
             proc=self.call(root,'--profile','Report','--output',out)
             self.assertEqual(2,proc.returncode)
@@ -136,7 +137,7 @@ class EntryTests(unittest.TestCase):
         entry=SCRIPTS/'acceptance/run_all.ps1'
         self.assertTrue(entry.is_file(),'PowerShell entry not implemented')
         with tempfile.TemporaryDirectory(prefix='acceptance path ') as tmp:
-            out=Path(tmp)/'new output'
+            out=Path(tmp)/'DebateAI_Generated/reports/acceptance/new output'
             proc=subprocess.run([shell,'-NoProfile','-File',str(entry),'-Profile','Report','-Python',sys.executable,'-OutputDirectory',str(out)],capture_output=True,text=True,timeout=25)
             self.assertEqual(2,proc.returncode,proc.stderr)
             self.assertFalse(json.loads((out/'acceptance-report.json').read_text())['product_accepted'])
