@@ -1,15 +1,14 @@
- # Plan: Open-items remediation
+# Open-items Remediation Implementation Plan
+
+> For agentic workers: execute the tasks in order, keep the test ledger current, and do not claim completion without fresh evidence.
 
 ## Goal
 
-Make the public checkout pass every reproducible open-item gate while keeping
-private evidence and production release credentials outside the repository.
+Make the public checkout pass every reproducible open-item gate while keeping private evidence and production release credentials outside the repository.
 
 ## Architecture and tech stack
 
-The changes touch Python unittest contracts, PowerShell release checks, GitHub
-Actions YAML, Markdown status records, and existing npm workspaces. No runtime
-dependency or product API is introduced.
+The changes touch Python unittest contracts, PowerShell release checks, GitHub Actions YAML, Markdown status records, and existing npm workspaces. No runtime dependency or product API is introduced.
 
 ## Global constraints
 
@@ -20,20 +19,18 @@ dependency or product API is introduced.
 
 ## Tasks
 
-- [ ] Keep the V3 matrix test active for authorized private evidence and skip it
-   with an explicit reason in the public checkout.
-- [ ] Pin the calibration browser job to ubuntu-24.04.
-- [ ] Make the startup PowerShell contract end with explicit exit 0 after success.
-- [ ] Fix stale documentation links and refresh the status register.
-- [ ] Run targeted tests, builds, layout guards, and source-only checks.
-- [ ] Commit to main, push, and fetch workflow status for the exact new SHA.
+- [x] Keep the V3 matrix test active for authorized private evidence and skip it with an explicit reason in the public checkout.
+- [x] Pin the calibration browser job to ubuntu-24.04.
+- [x] Make the startup PowerShell contract end with explicit exit 0 after success.
+- [x] Fix stale documentation links and refresh the status register.
+- [x] Run targeted tests, builds, layout guards, and source-only checks.
+- [x] Commit to main and publish the verified tree through the authorized GitHub write path.
+- [ ] Obtain a fresh green GitHub run for the delivered SHA; an empty run/status response remains unverified.
 
 ## Spec and TDD steps
 
-1. Run the V3 matrix test before the change and capture the missing-private-file
-   failure.
-2. Add the optional-path skip, then run the same test and an authorized matrix
-   fixture check.
+1. Run the V3 matrix test before the change and capture the missing-private-file failure.
+2. Add the optional-path skip, then run the same test and an authorized matrix fixture check.
 3. Pin the browser runner and make the PowerShell success exit explicit.
 4. Run layout, source-only, docs, frontend, Oracle, and audit checks.
 5. Update status documentation only from the resulting evidence.
