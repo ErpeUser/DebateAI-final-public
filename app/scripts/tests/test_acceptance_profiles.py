@@ -136,8 +136,10 @@ class EntryTests(unittest.TestCase):
         if not shell: self.skipTest('Native PowerShell unavailable')
         entry=SCRIPTS/'acceptance/run_all.ps1'
         self.assertTrue(entry.is_file(),'PowerShell entry not implemented')
-        with tempfile.TemporaryDirectory(prefix='acceptance path ') as tmp:
-            out=Path(tmp)/'DebateAI_Generated/reports/acceptance/new output'
+        generated=SCRIPTS.parents[1]/'DebateAI_Generated'/'reports'/'acceptance'
+        generated.mkdir(parents=True, exist_ok=True)
+        with tempfile.TemporaryDirectory(prefix='acceptance path ', dir=generated) as tmp:
+            out=Path(tmp)
             proc=subprocess.run([shell,'-NoProfile','-File',str(entry),'-Profile','Report','-Python',sys.executable,'-OutputDirectory',str(out)],capture_output=True,text=True,timeout=25)
             self.assertEqual(2,proc.returncode,proc.stderr)
             self.assertFalse(json.loads((out/'acceptance-report.json').read_text())['product_accepted'])
