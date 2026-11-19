@@ -3,6 +3,7 @@ param(
     [switch]$Check,
     [switch]$NoLaunch,
     [switch]$Rebuild,
+    [switch]$RestoreArchived,
     [switch]$Offline,
     [string]$Python = ""
 )
@@ -16,6 +17,7 @@ $Installed = Join-Path $Runtime "DebateAI"
 $Exe = Join-Path $Installed "DebateAI.exe"
 $Builder = Join-Path $Repo "app/scripts/build_debate_assistant.ps1"
 $Smoke = Join-Path $Repo "app/desktop/scripts/smoke_test.py"
+$ArchivedBundle = Join-Path $Repo "DebateAI_Generated/archive/installed-release-2026-11-19/DebateAI"
 
 function Test-ReleaseBundle {
     param([string]$Path)
@@ -128,7 +130,18 @@ if ($Check) {
     exit 1
 }
 
-if ($Rebuild -or -not (Test-ReleaseBundle $Installed)) {
+if ($RestoreArchived) {
+    if ($Offline) {
+        throw "-Offline cannot be combined with -RestoreArchived."
+    }
+    if (-not (Test-ReleaseBundle $ArchivedBundle)) {
+        throw "Archived release is incomplete: $ArchivedBundle"
+    }
+    $script:SelectedPython = Find-Python312
+    Write-Output "Restoring archived Windows release: $ArchivedBundle"
+    Install-VerifiedBuild -Source $ArchivedBundle
+}
+elseif ($Rebuild -or -not (Test-ReleaseBundle $Installed)) {
     if ($Offline) {
         throw "No complete release (or -Rebuild requested); -Offline forbids network recovery."
     }

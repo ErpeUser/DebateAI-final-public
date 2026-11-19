@@ -11,6 +11,8 @@ Assert ($source.Contains("recover_release.py")) "Starter does not use the signed
 Assert ($source.Contains("DEBATEAI_UPDATE_DESCRIPTOR_URL")) "Descriptor endpoint is not explicitly configured"
 Assert ($source.Contains("DEBATEAI_UPDATE_ASSET_URL")) "Asset endpoint is not explicitly configured"
 Assert ($source.Contains("Install-VerifiedBuild")) "Installer must keep smoke and rollback path"
+Assert ($source.Contains("RestoreArchived")) "Archived release restore path is missing"
+Assert ($source.Contains("installed-release-2026-11-19/DebateAI")) "Archived bundle path is not explicit"
 Assert ($source.Contains("app/desktop/release_signing_keys.json")) "Trust keys must be anchored in versioned source"
 Assert ($source.Contains('--keys $keyPath')) "Recovery must pass the pinned key path explicitly"
 Assert ($source.Contains("Signed release")) "Signed recovery status must be visible"
