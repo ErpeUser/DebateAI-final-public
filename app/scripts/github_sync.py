@@ -76,10 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     dirty = bool(command("git", "status", "--porcelain"))
     command("git", "fetch", "--prune", args.remote)
     branches = gh_json(repository, "branches?per_page=100")
-    pull_requests = gh_json(
-        repository,
-        f"pulls?state=open&base={default_branch}&per_page=100",
-    )
+    pull_requests = gh_json(repository, "pulls?state=open&per_page=100")
     non_default = [
         {"name": branch["name"], "sha": branch["commit"]["sha"]}
         for branch in branches if branch.get("name") != default_branch
@@ -121,7 +118,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Non-default branches: {len(non_default)}")
         for branch in non_default:
             print(f"  - {branch['name']} {branch['sha'][:12]}")
-        print(f"Open pull requests targeting {default_branch}: {len(open_prs)}")
+        print(f"Open pull requests: {len(open_prs)}")
         for pr in open_prs:
             marker = "draft" if pr["draft"] else "open"
             print(f"  - #{pr['number']} [{marker}] {pr['title']} ({pr['head']})")

@@ -62,7 +62,7 @@ python app/scripts/github_sync.py --pull --strict
 ```
 
 The command fetches and prunes remote refs, checks the GitHub default branch,
-lists every other remote branch and every open pull request targeting `main`,
+lists every other remote branch and every open pull request,
 then performs an ff-only pull when the checkout is clean. The command returns
 non-zero while candidates remain so the agent must inspect them before the
 update is considered complete.

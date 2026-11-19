@@ -40,7 +40,7 @@ python app/scripts/github_sync.py --pull --strict
 ```
 
 This fetches and prunes remote refs, verifies the GitHub default branch, lists
-all other branches and open pull requests targeting `main`, and then performs
+all other branches and open pull requests, and then performs
 an ff-only pull when the checkout is clean. A non-zero result means candidates
 still need review.
 
