@@ -102,12 +102,16 @@ def main(argv: list[str] | None = None) -> int:
         "non_default_branches": non_default,
         "open_pull_requests": open_prs,
         "pulled": False,
+        "blocked_pull": False,
     }
     if args.pull:
         if dirty:
             raise RuntimeError("Refusing to pull with uncommitted local changes")
-        command("git", "pull", "--ff-only", args.remote, default_branch)
-        result["pulled"] = True
+        if args.strict and (non_default or open_prs):
+            result["blocked_pull"] = True
+        else:
+            command("git", "pull", "--ff-only", args.remote, default_branch)
+            result["pulled"] = True
 
     if args.as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
@@ -115,6 +119,8 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Repository: {repository}")
         print(f"Default branch: {default_branch}")
         print(f"Pulled: {'yes' if result['pulled'] else 'no'}")
+        if result["blocked_pull"]:
+            print("Pull blocked until candidates are reviewed")
         print(f"Non-default branches: {len(non_default)}")
         for branch in non_default:
             print(f"  - {branch['name']} {branch['sha'][:12]}")
