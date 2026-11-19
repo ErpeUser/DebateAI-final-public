@@ -55,7 +55,10 @@ jobs:
       - run: python scripts/download_models.py
       - run: python -m pytest -q
       - name: Repository safety and rename contracts
-        run: python -m unittest discover -s ../scripts/tests -p 'test_*.py' -v
+        working-directory: ${{ github.workspace }}
+        env:
+          PYTHONPATH: ${{ github.workspace }}/app
+        run: python -m unittest discover -s app/scripts/tests -p 'test_*.py' -v
       - name: Independent data identity
         run: python -m unittest discover -s ../desktop/tests -p test_debateai_identity.py -v
       - name: Desktop release contract
