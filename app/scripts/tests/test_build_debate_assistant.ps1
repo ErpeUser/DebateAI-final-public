@@ -155,3 +155,4 @@ try {
 }
 
 Write-Output "Debate assistant desktop build contract: OK"
+exit 0

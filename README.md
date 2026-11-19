@@ -21,7 +21,7 @@ the source that uses them.
 - app/docs/generated-workspace.md - recovery and build documentation
 - app/docs/HISTORIE.md - consolidated project history and provenance
 - app/docs/VISION.md - owner-approved product vision
-- app/docs/OFFENE_PUNKTE.md - unresolved work and acceptance gaps
+- app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md - unresolved work and acceptance gaps
 - .github/workflows/ - root GitHub Actions (including the blocking repository-layout check)
 - .github/CODEOWNERS, .github/dependabot.yml - ownership and dependency-update policy
 - app/scripts/github_sync.py - default-branch pull and incoming-branch/PR audit

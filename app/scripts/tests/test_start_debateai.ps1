@@ -98,3 +98,4 @@ sys.exit(5 if (bundle / "DebateAI.exe").read_text().strip() == "unhealthy" else 
     Remove-Item -LiteralPath $tmp -Recurse -Force -ErrorAction SilentlyContinue
 }
 Write-Output "DebateAI startup/recovery contracts: OK"
+exit 0

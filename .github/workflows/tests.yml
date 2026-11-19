@@ -110,7 +110,10 @@ jobs:
           JS
 
   calibration-browser:
-    runs-on: ubuntu-latest
+    # Playwright's pinned browser bundle does not support the moving
+    # ubuntu-latest image (currently 26.04). Keep the laboratory on the
+    # supported 24.04 runner until the dependency explicitly adds support.
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
