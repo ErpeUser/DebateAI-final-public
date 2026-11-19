@@ -41,8 +41,11 @@ python app/scripts/github_sync.py --pull --strict
 
 This fetches and prunes remote refs, verifies the GitHub default branch, lists
 all other branches and open pull requests, and then performs
-an ff-only pull when the checkout is clean. A non-zero result means candidates
-still need review.
+an ff-only pull when the checkout is clean. After the pull it classifies the
+changed paths. Backend, frontend, desktop, AI or launcher changes rebuild and
+smoke-test the Windows bundle. Launcher changes also verify the installed
+bundle. A recognized browser-extension change must have a package build entry
+and is rebuilt. A non-zero result means candidates still need review.
 
 For each candidate, inspect commits, changed files, tests and freshness. Apply
 a standalone fix with a reviewed cherry-pick, combine complementary changes

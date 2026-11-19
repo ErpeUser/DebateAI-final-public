@@ -59,6 +59,7 @@ REQUIRED_FILES = frozenset({
     "app/scripts/workspace_refs.py",
     "app/scripts/generated_paths.py",
     "app/scripts/github_sync.py",
+    "app/scripts/tests/test_github_sync.py",
     "app/scripts/verify_repository_layout.py",
 })
 IGNORED_COMPONENTS = frozenset({

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import re
 import subprocess
@@ -20,6 +21,25 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPOSITORY = "ErpeUser/DebateAI-final-public"
+
+EXTENSION_PATH_RE = re.compile(
+    r"(^|/)(browser-extension|web-extension|extension|webext)(/|$)",
+    re.IGNORECASE,
+)
+DESKTOP_PREFIXES = (
+    "app/backend/",
+    "app/frontend/",
+    "app/desktop/",
+    "app/ai/",
+    "app/.env.example",
+    "app/docker-compose",
+    "app/scripts/build_debate_assistant.ps1",
+    "app/scripts/recover_release.py",
+    "app/scripts/setup_debate_assistant.ps1",
+    "Start-DebateAI.cmd",
+    "Start-DebateAI.ps1",
+)
+SHORTCUT_PREFIXES = ("Start-DebateAI.", "app/desktop/launcher.py")
 
 
 def command(*args: str, check: bool = True) -> str:
@@ -55,6 +75,81 @@ def gh_json(repository: str, endpoint: str, *, paginate: bool = False):
     if paginate and payload and isinstance(payload[0], list):
         return [item for page in payload for item in page]
     return payload
+
+
+def changed_impact(paths: list[str]) -> dict[str, object]:
+    """Classify generated-client work required by a pulled source change."""
+    extension_paths = [path for path in paths if EXTENSION_PATH_RE.search(path)]
+    desktop_paths = [
+        path for path in paths
+        if path.startswith(DESKTOP_PREFIXES)
+    ]
+    shortcut_paths = [
+        path for path in paths
+        if path.startswith(SHORTCUT_PREFIXES)
+    ]
+    return {
+        "changed_paths": paths,
+        "extension_paths": extension_paths,
+        "desktop_paths": desktop_paths,
+        "shortcut_paths": shortcut_paths,
+        "extension_action": "rebuild-required" if extension_paths else "none",
+        "desktop_action": "rebuild-required" if desktop_paths else "none",
+        "shortcut_action": "verify-after-build" if shortcut_paths else "none",
+    }
+
+
+def run_affected_build(impact: dict[str, object]) -> dict[str, object]:
+    """Rebuild and smoke-test generated desktop/extension outputs."""
+    desktop_paths = impact["desktop_paths"]
+    extension_paths = impact["extension_paths"]
+    commands: list[str] = []
+    statuses: list[str] = []
+    if desktop_paths:
+        if os.name != "nt":
+            statuses.append("desktop-skipped-non-windows")
+        else:
+            script = ROOT / "Start-DebateAI.ps1"
+            commands.append(
+                "powershell.exe -NoProfile -ExecutionPolicy Bypass "
+                f"-File {script} -Rebuild -NoLaunch"
+            )
+            command(
+                "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                "-File", str(script), "-Rebuild", "-NoLaunch",
+            )
+            statuses.append("desktop-rebuilt-and-smoke-tested")
+            if impact["shortcut_paths"]:
+                command(
+                    "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
+                    "-File", str(script), "-Check",
+                )
+                statuses.append("launcher-verified")
+    if extension_paths:
+        candidates = (
+            ROOT / "browser-extension",
+            ROOT / "web-extension",
+            ROOT / "extension",
+            ROOT / "app" / "browser-extension",
+            ROOT / "app" / "web-extension",
+            ROOT / "app" / "extension",
+        )
+        extension_root = next(
+            (path for path in candidates if (path / "package.json").is_file()),
+            None,
+        )
+        if extension_root is None:
+            raise RuntimeError(
+                "Extension changes were pulled, but no package.json build entry "
+                "exists in a recognized extension directory."
+            )
+        npm = "npm.cmd" if os.name == "nt" else "npm"
+        command(npm, "run", "build", "--prefix", str(extension_root))
+        commands.append(f"{npm} run build --prefix {extension_root}")
+        statuses.append("extension-rebuilt")
+    if not statuses:
+        return {"status": "not-needed", "command": ""}
+    return {"status": "+".join(statuses), "command": " && ".join(commands)}
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -110,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
         "pulled": False,
         "blocked_pull": False,
     }
+    before_pull = command("git", "rev-parse", "HEAD")
     if args.pull:
         if dirty:
             raise RuntimeError("Refusing to pull with uncommitted local changes")
@@ -119,6 +215,18 @@ def main(argv: list[str] | None = None) -> int:
             command("git", "pull", "--ff-only", args.remote, default_branch)
             result["pulled"] = True
 
+    after_pull = command("git", "rev-parse", "HEAD")
+    changed = []
+    if before_pull != after_pull:
+        changed = command(
+            "git", "diff", "--name-only", f"{before_pull}..{after_pull}"
+        ).splitlines()
+    impact = changed_impact(changed)
+    result["impact"] = impact
+    result["affected_build"] = (
+        run_affected_build(impact) if result["pulled"] else {"status": "not-run", "command": ""}
+    )
+
     if args.as_json:
         print(json.dumps(result, ensure_ascii=False, indent=2))
     else:
@@ -127,6 +235,10 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Pulled: {'yes' if result['pulled'] else 'no'}")
         if result["blocked_pull"]:
             print("Pull blocked until candidates are reviewed")
+        print(f"Desktop impact: {impact['desktop_action']}")
+        print(f"Extension impact: {impact['extension_action']}")
+        print(f"Shortcut impact: {impact['shortcut_action']}")
+        print(f"Affected build: {result['affected_build']['status']}")
         print(f"Non-default branches: {len(non_default)}")
         for branch in non_default:
             print(f"  - {branch['name']} {branch['sha'][:12]}")

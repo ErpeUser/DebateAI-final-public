@@ -63,9 +63,13 @@ python app/scripts/github_sync.py --pull --strict
 
 The command fetches and prunes remote refs, checks the GitHub default branch,
 lists every other remote branch and every open pull request,
-then performs an ff-only pull when the checkout is clean. The command returns
-non-zero while candidates remain so the agent must inspect them before the
-update is considered complete.
+then performs an ff-only pull when the checkout is clean. After a successful
+pull it classifies changed paths. Backend, frontend, desktop, AI or launcher
+changes trigger the Windows bundle rebuild and smoke test. Launcher changes
+also run the installed-bundle check. A recognized browser-extension change
+must have a package build entry and is rebuilt. The command returns non-zero
+while candidates remain so the agent must inspect them before the update is
+considered complete.
 
 For each listed branch or pull request, inspect its commits, changed files,
 tests and freshness against `main`. Apply a standalone fix with a reviewed
