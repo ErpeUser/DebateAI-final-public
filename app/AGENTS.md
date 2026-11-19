@@ -18,3 +18,10 @@ current runtime instructions.
   not the former application source tree.
 - Preserve Git history and existing independent recovery copies. Avoid
   duplicate stage directories, worktrees and unreviewed generated files.
+- GitHub work uses the public repository `ErpeUser/DebateAI-final-public` on
+  its standard `main` branch. Work directly on `main`, commit and push there,
+  and do not create feature branches or pull requests for agent changes.
+- Before pulling, run `python app/scripts/github_sync.py --pull --strict`.
+  Review every listed non-`main` branch and open pull request, then apply,
+  combine or supersede candidates on `main` after tests. Never blindly merge,
+  close or delete candidates.

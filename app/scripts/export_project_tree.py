@@ -11,6 +11,8 @@ from datetime import datetime
 import os
 from pathlib import Path
 
+from generated_paths import ensure_output_path
+
 ROOT = Path(__file__).resolve().parents[2]
 SKIP = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
         "node_modules", ".git", ".venv", ".release-venv"}
@@ -111,15 +113,18 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=16)
     parser.add_argument("--full", action="store_true",
                         help="Include hidden caches and all runtime files")
-    parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--output", type=Path,
+        default=None,
+        help="Optional report path below DebateAI_Generated/reports/provenance",
+    )
     args = parser.parse_args()
     if args.depth < 1 or args.limit < 1:
         parser.error("--depth and --limit must be positive")
     output = render(max_depth=args.depth, max_entries=args.limit,
                     full=args.full)
     if args.output:
-        target = args.output.resolve()
-        target.parent.mkdir(parents=True, exist_ok=True)
+        target = ensure_output_path(args.output, "provenance")
         target.write_text(output, encoding="utf-8")
         print(f"Gespeichert: {target}")
     else:

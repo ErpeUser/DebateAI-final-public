@@ -31,6 +31,7 @@ APP_DIRECTORIES = frozenset({
     "docs", "docs-site", "frontend", "release-signing-worker",
     "scripts", "site", "tools",
 })
+PRIVATE_GENERATED_PATHS = frozenset({"app/docs/acceptance"})
 REQUIRED_FILES = frozenset({
     ".gitignore",
     ".gitattributes",
@@ -56,6 +57,8 @@ REQUIRED_FILES = frozenset({
     "app/docs-site/worker.js",
     "app/docs-site/package-lock.json",
     "app/scripts/workspace_refs.py",
+    "app/scripts/generated_paths.py",
+    "app/scripts/github_sync.py",
     "app/scripts/verify_repository_layout.py",
 })
 IGNORED_COMPONENTS = frozenset({
@@ -104,6 +107,9 @@ def validate_paths(paths: Iterable[str]) -> list[str]:
             errors.add(f"Non-canonical or unsafe file path: {path}")
             continue
         parts = path.split("/")
+        if any(path == prefix or path.startswith(prefix + "/")
+               for prefix in PRIVATE_GENERATED_PATHS):
+            errors.add(f"Private/generated evidence must stay outside source: {path}")
         if any(part in {"", ".", ".."} or part.endswith((" ", ".")) for part in parts):
             errors.add(f"Non-canonical file path: {path}")
             continue

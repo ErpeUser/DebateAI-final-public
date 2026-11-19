@@ -20,6 +20,7 @@ from acceptance.catalog import PROFILES, build_plan, isolated_environment
 from acceptance.execution import redact, run_steps
 from acceptance.inventory import read_inventory
 from acceptance.reporting import summarize, write_reports
+from generated_paths import ensure_output_path, output_dir
 
 
 @contextmanager
@@ -56,7 +57,10 @@ def git(root, *args):
 def provenance(root):
     head = git(root, 'rev-parse', 'HEAD').decode('ascii', errors='replace').strip()
     origin = git(root, 'remote', 'get-url', 'origin').decode('utf-8', errors='replace').strip()
-    canonical = bool(re.fullmatch(r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)ErpeUser/DebateAI(?:\.git)?/?', origin))
+    canonical = bool(re.fullmatch(
+        r'(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)'
+        r'ErpeUser/DebateAI(?:-final-public)?(?:\.git)?/?', origin
+    ))
     return {'source_head': head if re.fullmatch(r'[0-9a-f]{40}', head) else None,
             'canonical_origin': canonical, 'private_status_reverified_online': False,
             'dirty': bool(git(root, 'status', '--porcelain')),
@@ -93,9 +97,11 @@ def main(argv=None):
     current = provenance(root)
     try:
         profile = resume_profile(args.resume, current) if args.resume else args.profile
-        parent = root / 'DebateAI_Generated/reports/acceptance'
-        output = args.output.absolute() if args.output else parent / (
+        parent = output_dir('acceptance', root)
+        output = ensure_output_path(
+            args.output if args.output else parent / (
             datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%SZ-') + uuid.uuid4().hex[:8])
+            , 'acceptance', root)
         safe_path(output)
         safe_path(parent)
         parent.mkdir(parents=True, exist_ok=True)

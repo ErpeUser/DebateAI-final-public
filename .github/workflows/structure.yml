@@ -6,7 +6,7 @@ name: Structure
 # Gating a change against `.sentrux/baseline.json` charges it for inherited debt
 # it did not cause, which is noise rather than a gate. So this builds a throwaway
 # baseline from what the change branched from - the PR's base commit, or for a
-# push the previous master commit - and compares the head against it. The
+# push the previous main commit - and compares the head against it. The
 # question it answers is the useful one: "does this change make the structure
 # worse than what came before it?" With no comparison point available it falls
 # back to the committed baseline rather than skipping the gate.
@@ -18,12 +18,12 @@ name: Structure
 
 on:
   pull_request:
-  # This repository merges locally and pushes trains straight to master, so
-  # PR-only coverage meant the gate never evaluated the branch it protects
+  # This repository commits locally and pushes directly to main, so
+  # push coverage must evaluate the branch it protects
   # (ALP-266). No schedule: structure only moves when code moves, and
   # SENTRUX_VERSION is pinned, so a timer would re-measure unchanged code.
   push:
-    branches: [master, main]
+    branches: [main]
   workflow_dispatch: {}
 
 permissions:
@@ -76,11 +76,11 @@ jobs:
           ref: ${{ github.event.pull_request.base.sha }}
           path: base
 
-      # A push's "base" is where master stood before it, so the gate asks the
+      # A push's "base" is where main stood before it, so the gate asks the
       # same question for a merge train that it asks for a PR. Skipped when the
       # before-SHA is the null commit (first push, or a force push whose parent
       # is gone), and the gate step falls back to the committed baseline.
-      - name: Check out the previous master commit
+      - name: Check out the previous main commit
         if: >-
           github.event_name == 'push' &&
           github.event.before != '0000000000000000000000000000000000000000'
@@ -157,7 +157,7 @@ jobs:
           if [ ! -d base/app ]; then
             # No comparison point (first push, force push, or manual dispatch).
             # Fall back to the committed baseline rather than skipping the gate
-            # entirely, which is what let master drift unmeasured.
+            # entirely, which is what let main drift unmeasured.
             echo "No base checkout for this event; gating against the committed baseline."
             cd head/app && sentrux gate .
             exit 0
@@ -175,6 +175,6 @@ jobs:
             echo "### Sentrux reported a problem"
             echo
             echo "The rules check reports absolute violations, including inherited debt."
-            echo "The gate step reports changes relative to the PR base or previous master commit."
+            echo "The gate step reports changes relative to the PR base or previous main commit."
             echo "Read the failing step's output to distinguish findings from an execution error."
           } >> "$GITHUB_STEP_SUMMARY"

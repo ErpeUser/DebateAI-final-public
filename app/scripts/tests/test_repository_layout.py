@@ -86,6 +86,7 @@ class RepositoryLayoutTests(unittest.TestCase):
             "app/backend/__pycache__/main.pyc",
             "app/scripts/.pytest_cache/cache",
             "app/scripts/graphify-out/graph.json",
+            "app/docs/acceptance/coordination.json",
         )
         for path in ignored:
             with self.subTest(ignored=path):

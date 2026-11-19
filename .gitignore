@@ -4,6 +4,14 @@
 /.codex/
 /.agents/
 
+# Local evidence and generated reports must never be published from app/.
+/app/docs/acceptance/
+**/.test-artifacts/
+**/.test-artifacts-*/
+**/artifacts/
+**/benchmark-results/
+**/test-results/
+
 # Transient Python/Node dependencies, builds and test outputs.
 __pycache__/
 *.pyc

@@ -1,117 +1,54 @@
-# GitHub Repository: Ordnerstruktur, Automatisierung und Sicherheit
+# GitHub repository and local output contract
 
-Stand: 18.11.2026. Dieses Dokument unterscheidet **auf GitHub aktivierte**
-Einstellungen von **vorbereiteten** Checks, die erst nach einer erfolgreichen
-Veröffentlichung auf einem Branch laufen.
+The public source repository is `ErpeUser/DebateAI-final-public` with
+`main` as its default branch. The Windows checkout remains the canonical
+private working copy. Public Git contains source, safe documentation, tests,
+and build inputs. Runtime bundles, Generated output, acceptance evidence,
+credentials, transcripts, databases, browser sessions and user data stay out
+of Git.
 
-## Kanonische Projektstruktur
+## Generated output
 
-- `/.github/workflows/`: GitHub Actions für Tests, Struktur, Sicherheit,
-  Website und manuell ausgelöste Desktop-Releases. Der Unterordner
-  `app/.github/release-notes/` ist **versionierte Produktinformation**,
-  kein GitHub-Workflow-Ort.
-- `/app/`: sämtliche Programmquellen und Build-Eingaben; insbesondere
-  `backend/`, `frontend/`, `desktop/`, `site/`, `docs-site/`,
-  `scripts/`, `ai/`, `docs/` und `release-signing-worker/`.
-- `/Start-DebateAI.*`: versionierter Windows-Start-/Recovery-Einstieg.
-- `/runtime/`: lauffähige, lokal installierte PyInstaller-`onedir`-Runtime
-  inklusive `_internal`. In Git **ignoriert**, niemals als Quelle behandeln.
-- `/DebateAI_Generated/`: beliebig neu erzeugbare Build-/Dependency-Caches,
-  Downloads und Reports. In Git **ignoriert**, niemals zwingende Quelle.
-- `/.git/`: internes Git-Verzeichnis des Checkouts. Ein alter Pointer-Checkout
-  kann während der Migration gelesen werden, gehört aber nicht zum finalen
-  öffentlichen Baum.
-- `%LOCALAPPDATA%/DebateAI`: private lokale Datenbanken, Sessions und
-  Einstellungen; vollständig außerhalb von Git.
+Build products, dependency caches, release staging, screenshots, provenance
+reports and acceptance runs belong below `DebateAI_Generated/`. The canonical
+subfolders are defined in `app/scripts/generated_paths.py`:
 
-Eine automatische Pfadprüfung liegt unter
-`app/scripts/verify_repository_layout.py`. Sie prüft die aktuelle Git-Index-
-und Arbeitskopie auf verpflichtende Quelldateien, gültige Root-Verzeichnisse,
-Groß-/Kleinschreibungskollisionen, irrtümlich versionierte Laufzeitdateien,
-Geheimnisse und Datenbanken. Fehlende versionierte Dateien und unerwartete
-Root-Verzeichnisse sind Fehler, keine Warnungen. Die Prüfung lädt nichts
-herunter und fasst die Runtime nicht an.
+- `build/` for build and release staging
+- `dependencies/` for local release environments
+- `cache/` for package and tool caches
+- `reports/acceptance/` for local acceptance runs
+- `reports/benchmarks/` for benchmark exports
+- `reports/provenance/` for workspace and folder-tree reports
+- `reports/screenshots/` for local captures
+- `tmp/` for disposable intermediate files
 
-## GitHub Actions / Repository-Regeln
+The layout guard fails when private acceptance evidence is tracked under
+`app/docs/acceptance/` or when generated files appear in the public source
+tree. `.gitignore` is a second line of defence and never replaces the guard.
 
-- **Structure → repository-layout:** regulärer, blockierender Job für
-  Pull Requests und Pushes auf `master` und `main`. Führt die Pfadprüfung, den
-  `--source-only`-Checkouttest und Regressionstests aus.
-- **Structure → sentrux:** zusätzlicher, weiterhin **beratender** Job
-  (`continue-on-error`), weil die historische Metrik-Baseline Altlasten
-  enthält. Er ist kein Ersatz für die blockierende Pfadprüfung.
-- **tests:** getrennte Backend-, Frontend-, Browser- und Windows-
-  Starter-/Buildvertragstests.
-- **security:** Python/Pip-, npm- und weitere festgelegte Audits.
-- **docs-site-build:** validiert `app/site` plus `app/docs-site`;
-  kein unkontrolliertes Live-Deployment.
-- **Desktop release:** weiterhin `workflow_dispatch` mit explizitem Tag,
-  Commit und Plattformen. Keine automatische Veröffentlichung bei Push.
-- `/.github/CODEOWNERS`: echte Pfade im `app/`-Monorepo sowie Root-
-  Guardrails; beantragt Owner-Review für relevante Änderungen.
-- `/.github/PULL_REQUEST_TEMPLATE.md`: Checkliste für Struktur, Schutz
-  privater Daten, Signaturen, Tests und offene E2E-Grenzen.
-- `/.github/dependabot.yml`: dokumentierte Update-Ziele für Actions, Python-
-  Anforderungen und die getrennten npm-Lockfile-Verzeichnisse. Automatische
-  Version-Update-PRs bleiben im öffentlichen Mirror deaktiviert, damit keine
-  Dependabot-Branchflut entsteht. Sicherheitsmeldungen bleiben bei GitHub.
+## Direct-main agent workflow
 
-## Verifizierte GitHub-Einstellungen
+Agents work directly on a checked-out `main`, commit the requested change,
+and push `main` to `origin`. They do not create feature branches, routine
+worktrees or pull requests.
 
-| Einstellung | Ergebnis |
-|---|---|
-| Final public mirror | **öffentlich**, Standardbranch `main` |
-| Private canonical checkout | **privat**, historischer Standardbranch `master` |
-| Workflow-Berechtigungen | `read`; Workflows dürfen PR-Reviews nicht automatisch genehmigen |
-| Actions-Quelle | Aktiviert; **vollständige Commit-SHA-Pins für Actions erforderlich** |
-| Dependabot-Warnungen | aktiviert |
-| Automatische Dependabot-Sicherheitsupdates | aktiviert (PRs, kein Auto-Merge) |
-| Nach Merge aufgeräumte PR-Branches | aktiviert |
-| PR-Branches aktualisierbar | aktiviert |
-| Automatisches Merge | bleibt deaktiviert |
-| Branch-Protection/Rulesets | **nicht verfügbar**: API HTTP 403, GitHub Pro oder öffentliches Repository erforderlich |
-
-**GitHub-Plan-Grenze:** Die privaten und öffentlichen Repositorys können mit dem aktuellen
-Tarif keine serverseitig erzwungene `master`- oder `main`-Branch-Protection über REST
-nutzen. Die CI-Prüfungen **scheitern sichtbar**, wenn Regeln gebrochen
-werden, können aber ohne Branch-Protection einen berechtigten direkten Push
-nicht grundsätzlich verhindern. Das Repository wird zur Behebung **nicht
-öffentlich gestellt**. Bei einem späteren Upgrade sollten die erforderlichen
-Statuschecks `Repository layout and tracked-file hygiene`, `backend`,
-`frontend` und `security` erst nach nachgewiesenen grünen Runs als
-Required Checks konfiguriert werden.
-
-**Aktuelle Konto-/Runner-Sperre (18.11.2026):** GitHub Actions startete die
-letzten Jobs gar nicht. GitHub meldet: `The job was not started because
-recent account payments have failed or your spending limit needs to be
-increased.` Das lässt sich nicht durch YAML beheben. Unter
-**GitHub → Settings → Billing & licensing** die Zahlungen und das
-Actions-Budget prüfen. Erst danach laufen Hosted CI und Release-Jobs
-tatsächlich. Diese Einschränkung berührt nicht den lokalen Windows-Start.
-
-## Gitignore, Quellen und sichere Veröffentlichung
-
-`.gitignore` ignoriert Runtime, Generated, Paketinstallationen,
-Python-/Node-Caches, `.env`-Varianten, lokale Datenbankdateien und
-Schlüsselcontainer. Die öffentlichen `app/desktop/release_signing_keys.json`,
-beide Quell-Websites, `.env.example`, Lockfiles und versionierte Skripte
-bleiben im Git-Index. `.gitignore` entfernt **niemals** bereits versionierte
-Dateien; existierende Secrets in Git müssen gesondert gesperrt und ihre
-Schlüssel ersetzt werden. Im geprüften aktuellen Git-Index fanden sich
-keine solchen Dateien.
-
-Vor einem PR oder Merge:
+Before a GitHub pull or push, run:
 
 ```powershell
-py -3.12 app/scripts/verify_repository_layout.py
-py -3.12 app/scripts/workspace_refs.py --source-only --strict
-py -3.12 -m unittest discover -s app/scripts/tests -p test_repository_layout.py -v
-py -3.12 -m unittest discover -s app/scripts/tests -p 'test_*.py' -q
-git diff --check
+python app/scripts/github_sync.py --pull --strict
 ```
 
-Beim Aufnehmen von Änderungen nicht `git add -f` auf ignorierte Ordner
-anwenden. GitHub- und lokale Versionen über Pull Requests vergleichen.
-Keine Git-Historie, Backups, Datenbank oder laufende EXE bei CI-Reparaturen
-löschen. Ein Release erfordert weiterhin die eigene signierte
-Multi-Plattform-Release-Abnahme.
+This fetches and prunes remote refs, verifies the GitHub default branch, lists
+all other branches and open pull requests targeting `main`, and then performs
+an ff-only pull when the checkout is clean. A non-zero result means candidates
+still need review.
+
+For each candidate, inspect commits, changed files, tests and freshness. Apply
+a standalone fix with a reviewed cherry-pick, combine complementary changes
+in one local commit, or keep the newest compatible implementation when it
+supersedes an older one. Resolve conflicts on `main`, test the result, and
+record the disposition. Never blindly merge every candidate, close or delete
+someone else's branch, or force-push.
+
+GitHub Actions still validate pushes and can validate community pull requests.
+They do not create commits, approve reviews, or publish local private data.

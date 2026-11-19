@@ -11,25 +11,32 @@ the source that uses them.
 ## Layout
 
 - app/ - versionable application source, tests, configuration and docs
-- runtime/DebateAI/ - locally verified Windows binary bundle,
-  including its required _internal/ directory (not committed to Git)
-- DebateAI_Generated/ - OPTIONAL, deletable build caches, dependencies and reports
-- .git/ - Git history and references stored inside the repository root
+- runtime/DebateAI/ - canonical installed Windows bundle path (currently a source-only empty placeholder);
+  the former complete binary bundle including _internal/ is preserved at
+  DebateAI_Generated/archive/installed-release-2026-11-19/
+- DebateAI_Generated/ - generated caches, dependencies, reports and a PROTECTED historical
+  Windows bundle under archive/installed-release-2026-11-19/ (do NOT delete that archive)
+- .git - small pointer to the protected Git history in the adjacent Coding audit (do not delete that audit)
 - app/scripts/workspace_refs.py - stable path auditor (run with --strict)
 - Start-DebateAI.cmd - starts the installed release or verifies and installs a signed update; developer source-build fallback when no update channel is configured
 - app/docs/generated-workspace.md - recovery and build documentation
-- app/docs/ORDNERBAUM_AKTUELL.md - regenerated physical folder tree
-- app/docs/ORDNERSTRUKTUR_ZIELBILD.md - proposed improvements, not yet migrated
+- app/docs/HISTORIE.md - consolidated project history and provenance
+- app/docs/VISION.md - owner-approved product vision
+- app/docs/OFFENE_PUNKTE.md - unresolved work and acceptance gaps
 - .github/workflows/ - root GitHub Actions (including the blocking repository-layout check)
-- .github/CODEOWNERS, .github/dependabot.yml - reviews and dependency-update policy
+- .github/CODEOWNERS, .github/dependabot.yml - ownership and dependency-update policy
+- app/scripts/github_sync.py - default-branch pull and incoming-branch/PR audit
 - app/docs/github-repository.md - GitHub settings, CI, structure gate and known billing limitations
 - %LOCALAPPDATA%/DebateAI/ - private user sessions, settings and database
   (outside this repository and never considered build cache)
 
 ## Start and recover
 
-Double-click `Start-DebateAI.cmd` or run `runtime/DebateAI/DebateAI.exe`.
-The installed application runs without `DebateAI_Generated/` and needs no
+The normal launcher is `Start-DebateAI.cmd` and its installed-release path is
+`runtime/DebateAI/DebateAI.exe`. Currently the release is archived inside
+`DebateAI_Generated/archive/installed-release-2026-11-19/` rather than installed;
+restore the complete bundle to runtime/DebateAI or explicitly rebuild before launching.
+Once restored, the installed application runs without the disposable caches and needs no
 Python, npm or downloads. `Start-DebateAI.ps1 -Check` checks required files
 without starting the application or accessing the network. If the verified
 runtime is missing and DEBATEAI_UPDATE_DESCRIPTOR_URL / DEBATEAI_UPDATE_ASSET_URL
@@ -49,7 +56,7 @@ use the normal internal `.git/` directory.
 
 - Repository layout: `python app/scripts/verify_repository_layout.py` (read-only)
 - CI-compatible source checkout: `python app/scripts/workspace_refs.py --source-only --strict`
-- GitHub config: `app/docs/github-repository.md` (private repository; hosted jobs currently blocked by account billing)
+- GitHub config: `app/docs/github-repository.md` (public repository and direct-main workflow)
 - Python 3.12, Node.js 24
 - Backend: cd app/backend; python -m pip install -r requirements.txt
 - Frontend: cd app/frontend; npm ci; npm test; npm run build
