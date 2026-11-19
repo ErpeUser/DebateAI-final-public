@@ -6,6 +6,7 @@
 
 # Local evidence and generated reports must never be published from app/.
 /app/docs/acceptance/
+/app/.ai/
 **/.test-artifacts/
 **/.test-artifacts-*/
 **/artifacts/

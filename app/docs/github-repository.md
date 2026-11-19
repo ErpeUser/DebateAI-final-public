@@ -4,7 +4,8 @@ The public source repository is `ErpeUser/DebateAI-final-public` with
 `main` as its default branch. The Windows checkout remains the canonical
 private working copy. Public Git contains source, safe documentation, tests,
 and build inputs. Runtime bundles, Generated output, acceptance evidence,
-credentials, transcripts, databases, browser sessions and user data stay out
+internal `.ai` status material, credentials, transcripts, databases, browser
+sessions and user data stay out
 of Git.
 
 ## Generated output

@@ -31,7 +31,7 @@ APP_DIRECTORIES = frozenset({
     "docs", "docs-site", "frontend", "release-signing-worker",
     "scripts", "site", "tools",
 })
-PRIVATE_GENERATED_PATHS = frozenset({"app/docs/acceptance"})
+PRIVATE_GENERATED_PATHS = frozenset({"app/docs/acceptance", "app/.ai"})
 REQUIRED_FILES = frozenset({
     ".gitignore",
     ".gitattributes",
