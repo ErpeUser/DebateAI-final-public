@@ -43,12 +43,18 @@ def repository_from_remote(remote: str) -> str:
     return value
 
 
-def gh_json(repository: str, endpoint: str):
+def gh_json(repository: str, endpoint: str, *, paginate: bool = False):
     path = f"repos/{repository}"
     if endpoint:
         path += f"/{endpoint}"
-    raw = command("gh", "api", path)
-    return json.loads(raw)
+    arguments = ["gh", "api"]
+    if paginate:
+        arguments.extend(["--paginate", "--slurp"])
+    arguments.append(path)
+    payload = json.loads(command(*arguments))
+    if paginate and payload and isinstance(payload[0], list):
+        return [item for page in payload for item in page]
+    return payload
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -75,8 +81,8 @@ def main(argv: list[str] | None = None) -> int:
         )
     dirty = bool(command("git", "status", "--porcelain"))
     command("git", "fetch", "--prune", args.remote)
-    branches = gh_json(repository, "branches?per_page=100")
-    pull_requests = gh_json(repository, "pulls?state=open&per_page=100")
+    branches = gh_json(repository, "branches?per_page=100", paginate=True)
+    pull_requests = gh_json(repository, "pulls?state=open&per_page=100", paginate=True)
     non_default = [
         {"name": branch["name"], "sha": branch["commit"]["sha"]}
         for branch in branches if branch.get("name") != default_branch
