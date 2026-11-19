@@ -2,7 +2,7 @@ name: docs-site-build
 
 on:
   push:
-    branches: [master]
+    branches: [master, main]
     paths:
       - "app/docs-site/**"
       - "app/docs/**"

@@ -25,6 +25,14 @@ SECRET_PATTERNS = (
     re.compile(r"\bsk-[A-Za-z0-9]{20,}\b"),
     re.compile(r"\bxox[baprs]-[A-Za-z0-9-]{20,}\b"),
 )
+CREDENTIAL_ASSIGNMENT_PATTERN = re.compile(
+    r"(?im)\b(?:api[_-]?key|access[_-]?token|client[_-]?secret|password|database_url)"
+    r"\s*(?:=|:)\s*['\"]([^'\"]{4,})['\"]"
+)
+SAFE_FIXTURE_MARKERS = (
+    "example", "fixture", "placeholder", "dummy", "one-time", "temporary",
+    "unused", "localhost", "127.0.0.1", "acceptance",
+)
 
 
 def _finding(rule: str, path: Path, root: Path) -> dict[str, str]:
@@ -49,20 +57,51 @@ def _is_env_file(path: Path) -> bool:
     return name.startswith(".env") and name not in ENV_ALLOWLIST
 
 
-def _scan_text(path: Path) -> bool:
+def _scan_text(path: Path) -> set[str]:
     try:
         data = path.read_bytes()
     except OSError:
-        return False
+        return set()
     if len(data) > 4 * 1024 * 1024 or b"\x00" in data:
-        return False
+        return set()
     text = data.decode("utf-8", errors="ignore")
-    return any(pattern.search(text) for pattern in SECRET_PATTERNS)
+    rules: set[str] = set()
+    if any(pattern.search(text) for pattern in SECRET_PATTERNS):
+        rules.add("secret_marker")
+    relative_parts = {part.casefold() for part in path.parts}
+    filename = path.name.casefold()
+    is_fixture = (
+        "tests" in relative_parts
+        or filename.startswith("test_")
+        or ".test." in filename
+        or filename == "admin-preview.mjs"
+    )
+    if not is_fixture and not _is_env_file(path):
+        for line in text.splitlines():
+            match = CREDENTIAL_ASSIGNMENT_PATTERN.search(line)
+            if not match:
+                continue
+            remainder = line[match.end():].lstrip()
+            if remainder.startswith(("+", ".")):
+                continue
+            value = match.group(1).casefold()
+            if not any(marker in value for marker in SAFE_FIXTURE_MARKERS):
+                rules.add("credential_assignment")
+                break
+    return rules
 
 
 def audit(repo_root: Path) -> dict[str, object]:
     root = Path(repo_root).resolve()
     findings: list[dict[str, str]] = []
+    git_entry = root / ".git"
+    if git_entry.is_file():
+        try:
+            pointer = git_entry.read_text(encoding="utf-8-sig").strip().lower()
+        except OSError:
+            pointer = ""
+        if pointer.startswith("gitdir:"):
+            findings.append(_finding("external_git_pointer", git_entry, root))
     if not (root / "LICENSE").is_file():
         findings.append(_finding("missing_root_license", root / "LICENSE", root))
     app_license = root / "app" / "LICENSE"
@@ -86,8 +125,8 @@ def audit(repo_root: Path) -> dict[str, object]:
             findings.append(_finding("binary_artifact", path, root))
         if _is_env_file(path):
             findings.append(_finding("local_config_path", path, root))
-        if _scan_text(path):
-            findings.append(_finding("secret_marker", path, root))
+        for rule in _scan_text(path):
+            findings.append(_finding(rule, path, root))
 
     unique = {(item["rule"], item["path"]): item for item in findings}
     ordered = [unique[key] for key in sorted(unique)]

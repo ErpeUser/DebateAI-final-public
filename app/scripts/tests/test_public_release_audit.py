@@ -56,6 +56,22 @@ class PublicReleaseAuditTests(unittest.TestCase):
         report = audit_module.audit(root)
         self.assertIn("missing_root_license", {item["rule"] for item in report["findings"]})
 
+    def test_external_git_pointer_fails(self):
+        root = self.make_repo()
+        (root / ".git").write_text("gitdir: ../private-metadata\n", encoding="utf-8")
+        report = audit_module.audit(root)
+        self.assertIn("external_git_pointer", {item["rule"] for item in report["findings"]})
+
+    def test_literal_credential_assignment_fails_without_exposing_value(self):
+        root = self.make_repo()
+        value = "super-secret-value"
+        (root / "app" / "config.py").write_text(
+            f'API_KEY = "{value}"\n', encoding="utf-8"
+        )
+        report = audit_module.audit(root)
+        self.assertIn("credential_assignment", {item["rule"] for item in report["findings"]})
+        self.assertNotIn(value, json.dumps(report))
+
 
 if __name__ == "__main__":
     unittest.main()

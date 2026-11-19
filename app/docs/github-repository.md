@@ -35,7 +35,7 @@ herunter und fasst die Runtime nicht an.
 ## GitHub Actions / Repository-Regeln
 
 - **Structure → repository-layout:** regulärer, blockierender Job für
-  Pull Requests und Pushes auf `master`. Führt die Pfadprüfung, den
+  Pull Requests und Pushes auf `master` und `main`. Führt die Pfadprüfung, den
   `--source-only`-Checkouttest und Regressionstests aus.
 - **Structure → sentrux:** zusätzlicher, weiterhin **beratender** Job
   (`continue-on-error`), weil die historische Metrik-Baseline Altlasten
@@ -51,15 +51,17 @@ herunter und fasst die Runtime nicht an.
   Guardrails; beantragt Owner-Review für relevante Änderungen.
 - `/.github/PULL_REQUEST_TEMPLATE.md`: Checkliste für Struktur, Schutz
   privater Daten, Signaturen, Tests und offene E2E-Grenzen.
-- `/.github/dependabot.yml`: regelmäßige Update-PRs für Actions, Python-
-  Anforderungen und die vier getrennten npm-Lockfile-Verzeichnisse;
-  keine automatische Zusammenführung der Updates.
+- `/.github/dependabot.yml`: dokumentierte Update-Ziele für Actions, Python-
+  Anforderungen und die getrennten npm-Lockfile-Verzeichnisse. Automatische
+  Version-Update-PRs bleiben im öffentlichen Mirror deaktiviert, damit keine
+  Dependabot-Branchflut entsteht. Sicherheitsmeldungen bleiben bei GitHub.
 
 ## Verifizierte GitHub-Einstellungen
 
 | Einstellung | Ergebnis |
 |---|---|
-| Repository | **privat**, Standardbranch `master` |
+| Final public mirror | **öffentlich**, Standardbranch `main` |
+| Private canonical checkout | **privat**, historischer Standardbranch `master` |
 | Workflow-Berechtigungen | `read`; Workflows dürfen PR-Reviews nicht automatisch genehmigen |
 | Actions-Quelle | Aktiviert; **vollständige Commit-SHA-Pins für Actions erforderlich** |
 | Dependabot-Warnungen | aktiviert |
@@ -69,8 +71,8 @@ herunter und fasst die Runtime nicht an.
 | Automatisches Merge | bleibt deaktiviert |
 | Branch-Protection/Rulesets | **nicht verfügbar**: API HTTP 403, GitHub Pro oder öffentliches Repository erforderlich |
 
-**GitHub-Plan-Grenze:** Das private Repository kann mit dem aktuellen
-Tarif keine serverseitig erzwungene `master`-Branch-Protection über REST
+**GitHub-Plan-Grenze:** Die privaten und öffentlichen Repositorys können mit dem aktuellen
+Tarif keine serverseitig erzwungene `master`- oder `main`-Branch-Protection über REST
 nutzen. Die CI-Prüfungen **scheitern sichtbar**, wenn Regeln gebrochen
 werden, können aber ohne Branch-Protection einen berechtigten direkten Push
 nicht grundsätzlich verhindern. Das Repository wird zur Behebung **nicht

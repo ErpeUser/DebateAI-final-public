@@ -23,7 +23,7 @@ on:
   # (ALP-266). No schedule: structure only moves when code moves, and
   # SENTRUX_VERSION is pinned, so a timer would re-measure unchanged code.
   push:
-    branches: [master]
+    branches: [master, main]
   workflow_dispatch: {}
 
 permissions:
