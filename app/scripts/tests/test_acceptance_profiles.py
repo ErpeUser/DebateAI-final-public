@@ -139,7 +139,7 @@ class EntryTests(unittest.TestCase):
         generated=SCRIPTS.parents[1]/'DebateAI_Generated'/'reports'/'acceptance'
         generated.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(prefix='acceptance path ', dir=generated) as tmp:
-            out=Path(tmp)
+            out=Path(tmp)/'new output'
             proc=subprocess.run([shell,'-NoProfile','-File',str(entry),'-Profile','Report','-Python',sys.executable,'-OutputDirectory',str(out)],capture_output=True,text=True,timeout=25)
             self.assertEqual(2,proc.returncode,proc.stderr)
             self.assertFalse(json.loads((out/'acceptance-report.json').read_text())['product_accepted'])
