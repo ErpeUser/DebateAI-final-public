@@ -6,12 +6,14 @@ Permanent assets:
 - `app/` contains the versioned product source, pinned dependency contracts, prompts, update keys, CI tests and build scripts.
 - `runtime/DebateAI/` is the canonical installed Windows release path. The
   complete onedir bundle (EXEs plus inseparable `_internal/`, PostgreSQL,
-  FFmpeg, models and frontend) is installed there and preserved as a recovery
-  copy at `DebateAI_Generated/archive/installed-release-2026-11-19/`.
+  FFmpeg, models and frontend) is installed there.
 - The root `.git` is currently a small text pointer to the protected Git database in the adjacent Coding audit, not a Git database directory. Preserve the audit to retain local history; full recreation of the canonical internal Git layout requires an explicit restore.
 - `%LOCALAPPDATA%/DebateAI/` is **private user data** (databases, sessions, preferences). Never move or clean it automatically.
 
-`DebateAI_Generated/` normally contains disposable build products, release staging, npm/pip caches, temporary downloads and reports. **Current exception:** `archive/installed-release-2026-11-19/` preserves a complete Windows release, copied from `runtime/DebateAI/` during the source-only audit. This archive is not a disposable cache and must never be automatically deleted. The installed standalone app is currently available at `runtime/DebateAI/` and can be restored from the archive with `Start-DebateAI.ps1 -RestoreArchived -NoLaunch`.
+`DebateAI_Generated/` contains disposable build products, release staging,
+npm/pip caches, temporary downloads and reports. It may be absent when no
+build or report is active. The installed standalone app is available at
+`runtime/DebateAI/` and does not depend on Generated.
 
 ## Normal startup
 

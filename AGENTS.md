@@ -3,9 +3,7 @@
 Current versioned source lives under app/, NOT under historical source/.
 See app/README.md and app/docs/DEBATEAI_CANONICAL_INDEX.md for detailed
 implementation context. Canonical installed bundle location is runtime/DebateAI/;
-the previously installed bundle was preserved during the 2026-11-19 source-only
-audit in DebateAI_Generated/archive/installed-release-2026-11-19/ and has now
-been restored to runtime/DebateAI with a passing bundle smoke test.
+it was restored from the source-only audit and passes the bundle smoke test.
 
 The root .github/workflows/ must remain for GitHub Actions.
 The repository layout and tracked-file hygiene contract is defined in
@@ -14,9 +12,8 @@ app/scripts/tests/test_repository_layout.py. Run these guards before
 staging or publishing changes. GitHub Actions are allowed to remain advisory
 only for Sentrux metrics; the repository-layout job must fail on violations.
 Never bypass or soften the layout gate merely to make CI green.
-DebateAI_Generated/ is normally a disposable build/dependency/cache workspace.
-EXCEPTION: archive/installed-release-2026-11-19/ preserves the prior native
-Windows bundle, including _internal, and must NOT be deleted automatically.
+DebateAI_Generated/ is a disposable build/dependency/cache workspace and may
+be absent. Recreate only the needed subdirectories with the pinned scripts.
 Git history and agent state are separately preserved in the sibling Coding audit;
 never treat those unique records as downloadable dependencies.
 Credentials, source code, and private user data remain outside Generated.

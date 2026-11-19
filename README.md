@@ -12,10 +12,9 @@ the source that uses them.
 
 - app/ - versionable application source, tests, configuration and docs
 - runtime/DebateAI/ - canonical installed Windows bundle path, restored and
-  smoke-tested from the preserved archive; the recovery copy remains at
-  DebateAI_Generated/archive/installed-release-2026-11-19/
-- DebateAI_Generated/ - generated caches, dependencies, reports and a PROTECTED historical
-  Windows bundle under archive/installed-release-2026-11-19/ (do NOT delete that archive)
+  smoke-tested
+- DebateAI_Generated/ - disposable generated caches, dependencies, reports and
+  build outputs. It may be absent between builds.
 - .git - small pointer to the protected Git history in the adjacent Coding audit (do not delete that audit)
 - app/scripts/workspace_refs.py - stable path auditor (run with --strict)
 - Start-DebateAI.cmd - starts the installed release or verifies and installs a signed update; developer source-build fallback when no update channel is configured
@@ -34,8 +33,7 @@ the source that uses them.
 
 The normal launcher is `Start-DebateAI.cmd` and its installed-release path is
 `runtime/DebateAI/DebateAI.exe`. The complete bundle is installed and the
-preserved archive remains available for `Start-DebateAI.ps1 -RestoreArchived`.
-The installed application runs without the disposable caches and needs no
+application runs without disposable caches and needs no
 Python, npm or downloads. `Start-DebateAI.ps1 -Check` checks required files
 without starting the application or accessing the network. If the verified
 runtime is missing and DEBATEAI_UPDATE_DESCRIPTOR_URL / DEBATEAI_UPDATE_ASSET_URL
