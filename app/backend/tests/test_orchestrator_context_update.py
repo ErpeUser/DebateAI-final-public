@@ -220,5 +220,43 @@ class UpdateMeetingContextTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(get_live_orchestrator(orchestrator.session_id))
 
 
+    async def test_stale_strategic_cycle_is_discarded_before_persisting(self):
+        orchestrator = object.__new__(AgentOrchestrator)
+        orchestrator.session_id = uuid4()
+        orchestrator._agent_configs = {}
+        orchestrator.directives = []
+        orchestrator.doc_summaries = ""
+        orchestrator.speakers = []
+        orchestrator.active_questions = []
+        orchestrator._transcript_revision = 2
+        orchestrator._debate_revision = 4
+        orchestrator._active_claim_id = "claim-current"
+        orchestrator.activity = MagicMock()
+        orchestrator.activity.cycle_finished = AsyncMock()
+        orchestrator._send_synthesis_update = AsyncMock()
+        orchestrator._send_signal_insights = AsyncMock()
+
+        stale_cycle = ({"summary": "old"}, [{"title": "stale"}])
+        with patch(
+            "app.services.agents.orchestrator.run_strategic_signals_cycle",
+            new=AsyncMock(return_value=stale_cycle),
+        ):
+            accepted = await orchestrator._handle_strategic_signals_cycle(
+                "old transcript", 1
+            )
+
+        self.assertFalse(accepted)
+        orchestrator._send_synthesis_update.assert_not_awaited()
+        orchestrator._send_signal_insights.assert_not_awaited()
+        orchestrator.activity.cycle_finished.assert_awaited_once_with(
+            "strategic_signals",
+            {
+                "kind": "stale",
+                "detail": "A newer transcript revision superseded this cycle.",
+                "items": 0,
+            },
+        )
+
+
 if __name__ == "__main__":
     unittest.main()
