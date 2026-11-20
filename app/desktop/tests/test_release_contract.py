@@ -608,6 +608,11 @@ class ReleaseContractTests(unittest.TestCase):
 
 
 class NodeBundleLicenseContractTests(unittest.TestCase):
+    def test_local_rebuild_includes_chatgpt_web_oracle(self):
+        launcher = (ROOT.parent / "Start-DebateAI.ps1").read_text(encoding="utf-8")
+        self.assertIn("-IncludeOracle", launcher)
+        self.assertIn("ProgramFiles", launcher)
+
     def test_gemini_patch_is_normalized_for_clean_git_checkout(self):
         # git apply rejects CRLF inside unified patch context. The former
         # source/-scoped .gitattributes rule did not cover app/ after migration.

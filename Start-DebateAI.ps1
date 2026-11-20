@@ -179,6 +179,26 @@ if ($Rebuild -or -not (Test-ReleaseBundle $Installed)) {
         if (-not (Test-Path -LiteralPath $Builder -PathType Leaf)) {
             throw "Versioned build script missing: $Builder"
         }
+        $nodeDirectories = @()
+        $nodeCommand = Get-Command "node.exe" -CommandType Application -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($nodeCommand) {
+            $nodeDirectories += Split-Path -Parent $nodeCommand.Source
+        }
+        foreach ($programFiles in @(
+            [Environment]::GetEnvironmentVariable("ProgramFiles"),
+            [Environment]::GetEnvironmentVariable("ProgramFiles(x86)")
+        )) {
+            if ($programFiles) {
+                $nodeDirectories += Join-Path $programFiles "nodejs"
+            }
+        }
+        $nodeDirectory = $nodeDirectories |
+            Where-Object { Test-Path -LiteralPath (Join-Path $_ "node.exe") } |
+            Select-Object -First 1
+        if ($nodeDirectory -and ($env:PATH -notlike "*$nodeDirectory*")) {
+            $env:PATH = "$nodeDirectory;$env:PATH"
+        }
         if (-not (Get-Command "npm.cmd" -ErrorAction SilentlyContinue) -or
             -not (Get-Command "node.exe" -ErrorAction SilentlyContinue)) {
             throw "Node.js 24 and npm are needed for a source rebuild."
@@ -188,7 +208,7 @@ if ($Rebuild -or -not (Test-ReleaseBundle $Installed)) {
             throw "Node.js 24 is required to rebuild; found $nodeVersion"
         }
         Write-Output "No signed release channel selected; building from versioned source."
-        & $Builder -Python $script:SelectedPython
+        & $Builder -Python $script:SelectedPython -IncludeOracle
         if ($LASTEXITCODE -ne 0) {
             throw "Source build failed; installed runtime was not replaced."
         }
