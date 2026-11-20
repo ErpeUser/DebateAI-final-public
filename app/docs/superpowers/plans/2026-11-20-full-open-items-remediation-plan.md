@@ -80,6 +80,6 @@
 
 ### Task 9: External-only gates and final ledger
 
-**Files:** `app/docs/OFFENE_PUNKTE.md`, `EVIDENCE.md`, `FINAL_STATUS_AND_OPEN_ITEMS.md` only after evidence.
+**Files:** `app/docs/OFFENE_PUNKTE.md` for current gaps and `app/docs/HISTORIE.md` for dated evidence only after evidence.
 
 **Acceptance:** mark only verifiable local items complete; preserve explicit blockers for signing, hardware/provider, private ledger, human ratings, billing, separate repositories, and operator cutover. Run full available test matrix, layout/source guards, review diff, commit to `main`, push through the authorized GitHub write path, and fast-forward the local checkout.

@@ -19,9 +19,9 @@ the source that uses them.
 - app/scripts/workspace_refs.py - stable path auditor (run with --strict)
 - Start-DebateAI.cmd - starts the installed release or verifies and installs a signed update; developer source-build fallback when no update channel is configured
 - app/docs/generated-workspace.md - recovery and build documentation
-- app/docs/HISTORIE.md - consolidated project history and provenance
 - app/docs/VISION.md - owner-approved product vision
-- app/docs/OFFENE_PUNKTE.md - maintained open items, verification gaps and dated historical evidence
+- app/docs/OFFENE_PUNKTE.md - maintained current open items and verification gaps
+- app/docs/HISTORIE.md - consolidated historical visions, decisions and provenance
 - .github/workflows/ - root GitHub Actions (including the blocking repository-layout check)
 - .github/CODEOWNERS, .github/dependabot.yml - ownership and dependency-update policy
 - app/scripts/github_sync.py - default-branch pull and incoming-branch/PR audit

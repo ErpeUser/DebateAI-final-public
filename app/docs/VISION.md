@@ -163,7 +163,7 @@ Abnahmekriterien für den Debattenkern sind insbesondere:
 - **Transparenz und Datenhaltung:** erkennbare lokale/externe Providerwege, verlässliche Quellenlinks, keine als sicher präsentierten ungesicherten Behauptungen, nachvollziehbare Audio-Löschung und Erhalt von Transkript/Argumentgedächtnis.
 - **Release und Betrieb:** reproduzierbare Tests, vorhandene CI-Logs statt als grün interpretierter Runner-Ausfälle, echte Windows-Build-/GUI-Abnahme, sichere Installation, Signatur/Hashes, Datenmigration, Update und Rollback. Offene Signatur-/Hardware-/Provider-Gates bleiben sichtbar.
 
-Der bestehende Acceptance- und Release-Kontext (unter anderem A22/Human-Rating, Windows-Audio, CI-Provisionierung, Authenticode/Distribution) ist bislang **nicht vollständig abgenommen**. Siehe [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md), den datierten Geschichtsvermerk, den datierten Visionssnapshot und [historischen Evidenzanhang](OFFENE_PUNKTE.md#historische-evidenz-2026-11-18).
+Der bestehende Acceptance- und Release-Kontext (unter anderem A22/Human-Rating, Windows-Audio, CI-Provisionierung, Authenticode/Distribution) ist bislang **nicht vollständig abgenommen**. Siehe [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md), den datierten Geschichtsvermerk, den datierten Visionssnapshot und [historischen Evidenzanhang](HISTORIE.md#historische-evidenz-2026-11-18).
 
 **Bewusste Nicht-Ziele:** automatische KI-Sprache im Gespräch, ein allgemeiner Team-Meeting-Dienst als Hauptidentität, primär mobile oder macOS-Veröffentlichung, ungeprüfte Vollautomatik von Modellwechseln, ungefragte öffentliche Releases, stille Cloudnutzung und das Ausgeben experimenteller Technik als fertig.
 
@@ -181,6 +181,18 @@ Diese Optionen sind **keine aktuellen Produktentscheidungen**. Sie bleiben direk
 
 **Ältere verworfene oder zurückgestellte Richtung:** Allgemeiner self-hosted Meeting-Assistent als gleichrangiges Hauptprodukt, automatische Mehrsprachigkeit als V1-Versprechen und Docker-first als Standarddistribution sind aufgrund der Eigentümerantworten **nicht mehr gleichrangig**. Sie werden nicht aus der Historie gelöscht, sind aber kein Auftrag, das Leitziel zu verwässern.
 
+## 14. Konsolidierte Zielergänzungen aus früheren Eigentümerbeschreibungen
+
+Frühere Beschreibungen mit dem Wunsch nach einem vollständig online testbaren System, fortlaufender Verbesserung, Audio- und Videomaterial sowie mehreren Prüfmethoden werden hier als langfristiger Zielrahmen zusammengeführt. Sie ändern den verbindlichen Local-First-Vorrang nicht.
+
+- **Online-Betrieb:** Eine aktivierte Cloud-Umgebung darf ChatGPT-, Gemini- und weitere Provider-Sitzungen für kontrollierte Tests, Replays und Vergleiche persistent bereitstellen. Anbieter, Kosten, Datenklassen und Anmeldestatus bleiben sichtbar.
+- **Online-Training:** Kuratierte Transkripte, Audio- und Videofälle dürfen in einem ausdrücklich gestarteten Trainings- oder Anpassungslauf ausgewertet werden. Kein stilles allgemeines Training, kein automatisches Überschreiben der produktiven Konfiguration und kein ungeprüftes Übernehmen eines Modellgewinners.
+- **Ständige Verbesserung:** Fortschritt entsteht durch Audio-Replays, Video-Evaluationsfälle, feste Regressionstests, Blind-A/B-Vergleiche, Latenz- und Ressourcenmessung, menschliche Bewertungen, Nutzerfeedback und die nachvollziehbare Pflege von Argumentgedächtnis und Playbooks.
+- **Audio und Video:** Das Labor soll unveränderte Audio- und Videofälle wiedergeben oder einlesen können, deren Transkripte, Sprecherzuordnung und rhetorische Ergebnisse vergleichen und die Herkunft jedes Ergebnisses speichern. Die produktive Videoanalyse bleibt nach Qualität, Latenz und Zusatznutzen gestuft.
+- **Methodenmix:** Lokale Live-Inferenz, optionale Cloud-Tiefe, Webrecherche, Replay, A/B-Tests, Mehrturn-Benchmarks, ASR-Metriken, Human-Rating und belastbare Windows-Hardwaretests werden als getrennte, kombinierbare Prüfpfade behandelt.
+
+Diese Ergänzungen beschreiben das gewünschte Ausbauziel. Ob persönliches Modelltraining als dauerhaftes Produktfeature angeboten wird, bleibt die in Abschnitt 13 dokumentierte offene Variante.
+
 ---
 
-**Quellen und Vorrang:** Präzisierende Eigentümerantworten auf 50 Visionsfragen vom 19.11.2026 einschließlich der individuellen Ergänzungen; ältere den datierten Visionssnapshot, bisherige VISION.md, den datierten Geschichtsvermerk und [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md). **Die Vision beschreibt, was gewollt ist; der aktuelle Code- und Abnahmestand muss separat belegt werden.**
+**Quellen und Vorrang:** Präzisierende Eigentümerantworten auf 50 Visionsfragen vom 19.11.2026 einschließlich der individuellen Ergänzungen; ältere den datierten Visionssnapshot, bisherige VISION.md, den datierten Geschichtsvermerk in [HISTORIE.md](HISTORIE.md) und [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md). **Die Vision beschreibt, was gewollt ist; der aktuelle Code- und Abnahmestand muss separat belegt werden.**

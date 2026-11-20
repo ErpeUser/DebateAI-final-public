@@ -46,6 +46,10 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Produktvertrag',
+          items: ['vision', 'offene_punkte', 'historie'],
+        },
+        {
           label: 'Referenz',
           items: [
             'websocket-protocol',

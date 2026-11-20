@@ -1,7 +1,7 @@
-// Copies ../docs/*.md into src/content/docs/ for Starlight.
-// The repo docs/ folder stays plain GitHub-flavored markdown (the source of
-// truth); this derives the required frontmatter title from each file's H1 and
-// rewrites cross-links from "foo.md" to relative page URLs.
+// Derives ../docs/*.md into the ignored Starlight build staging directory.
+// The repo docs/ folder is the only editorial source. The staging directory is
+// removed after a normal build, so the Docs-Site never owns a second document
+// copy.
 import { copyFileSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 

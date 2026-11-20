@@ -30,4 +30,7 @@ writeFileSync(join(out, 'llms-full.txt'),
   '> Every page of /docs/ concatenated as plain\n' +
   '> markdown. Overview and key facts: /llms.txt\n\n' +
   sections.join('\n\n---\n\n') + '\n');
+// Content under src/content/docs is a build staging area derived from app/docs.
+// Remove it so the repository keeps a single editorial document source.
+rmSync(join(root, 'src', 'content', 'docs'), { recursive: true, force: true });
 console.log('Assembled', out, `(llms-full.txt: ${names.length} docs)`);

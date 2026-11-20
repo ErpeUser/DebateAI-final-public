@@ -39,7 +39,7 @@ Runtime data-root selection is side-effect-free and never searches, copies or se
 
 ## Documentation and cleanup policy
 
-app/docs/windows-final-recovery.md is the current Windows runbook; the formerly separate evidence/status registers are consolidated into app/docs/OFFENE_PUNKTE.md, including the dated historical status. A new app/docs/DEBATEAI_CANONICAL_INDEX.md links current contracts and marks dated audits and plans as historical. Dated release pages and provenance files remain, but active pages, URLs, examples and generated metadata use DebateAI.
+app/docs/windows-final-recovery.md is the current Windows runbook; current gaps are maintained in app/docs/OFFENE_PUNKTE.md and dated historical evidence is consolidated in app/docs/HISTORIE.md. A new app/docs/DEBATEAI_CANONICAL_INDEX.md links current contracts and marks dated audits and plans as historical. Dated release pages and provenance files remain, but active pages, URLs, examples and generated metadata use DebateAI.
 
 ## Verification
 
