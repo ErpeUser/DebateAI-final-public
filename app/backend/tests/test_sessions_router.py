@@ -1,7 +1,7 @@
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, call, patch
+from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import uuid4
 
 from app.routers.sessions import delete_session, update_session
@@ -61,9 +61,12 @@ class DeleteSessionTests(unittest.IsolatedAsyncioTestCase):
         session = _session("completed")
         db = AsyncMock()
         db.get.return_value = session
-        document_result = AsyncMock()
+        # SQLAlchemy's AsyncSession.execute is awaitable, while the returned
+        # Result exposes synchronous scalars().all(). Model that boundary
+        # directly so the test does not accidentally invent an async result.
+        document_result = MagicMock()
         document_result.scalars.return_value.all.return_value = ["files/one", "files/two"]
-        db.execute.side_effect = [document_result, AsyncMock()]
+        db.execute.side_effect = [document_result, MagicMock()]
 
         with (
             patch("app.routers.sessions.delete_uploaded_file", new_callable=AsyncMock) as delete_file,

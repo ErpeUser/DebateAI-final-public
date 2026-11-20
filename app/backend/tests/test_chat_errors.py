@@ -108,6 +108,10 @@ class ChatBriefingOwnerTests(unittest.IsolatedAsyncioTestCase):
         )
         protect = AsyncMock(side_effect=lambda _db, _session_ids, text: text)
         with (
+            patch(
+                "app.services.briefing_synthesis.get_session_synthesis",
+                new=AsyncMock(return_value=None),
+            ),
             patch("app.routers.chat.generate_text", new=AsyncMock(return_value="Done")),
             patch("app.routers.chat.shield.protect_text_for_sessions", new=protect),
             patch(
