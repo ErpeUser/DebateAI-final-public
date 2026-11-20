@@ -15,7 +15,7 @@ class PiiIndexBoundTests(unittest.TestCase):
         second = uuid.uuid4()
         vault._remember_plaintext("Alice Example", "PERSON", first, now=100000)
         vault._remember_plaintext("Bob Example", "PERSON", second, now=100000)
-        self.assertEqual({"Alice Example", "Bob Example"}, {value for value, _ in vault.known_plaintext_values()})
+        self.assertEqual({"Alice Example", "Bob Example"}, {value for value, _ in vault.known_plaintext_values(now=100000)})
         vault.forget(first)
         self.assertEqual({"Bob Example"}, {value for value, _ in vault.known_plaintext_values()})
         self.assertEqual("Alice Example", redaction.redact_text("Alice Example"))
