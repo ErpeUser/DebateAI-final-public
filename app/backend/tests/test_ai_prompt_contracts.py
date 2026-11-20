@@ -49,3 +49,13 @@ class ResearchOptOutTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+class LivePromptQualityContractTests(unittest.TestCase):
+    def test_live_prompt_requires_spoken_answer_and_honest_support(self):
+        path = ai_config.ai_directory() / "debate_live_v2.txt"
+        prompt = path.read_text(encoding="utf-8")
+        self.assertIn("hoechstens 25 Woertern", prompt)
+        self.assertIn("stuetzt die Antwort mit dem staerksten ehrlichen Grund", prompt)
+        self.assertIn("argumentiert niemals dagegen", prompt)
+        self.assertIn("keine Fakten", prompt)
+        self.assertIn("Negationen", prompt)

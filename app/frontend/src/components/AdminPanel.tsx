@@ -24,6 +24,8 @@ import ProviderOnboardingCard from "./ProviderOnboardingCard";
 import AboutCard from "./AboutCard";
 import DebateSettingsCard from "./DebateSettingsCard";
 import AIConfigurationCard from "./AIConfigurationCard";
+import QualityLabCard from "./QualityLabCard";
+import VideoEvalCard from "./VideoEvalCard";
 import { DE, germanAgent } from "../i18n/de";
 
 const TYPE_BADGES: Record<string, { label: string; color: string }> = {
@@ -69,13 +71,14 @@ const AGENT_SECTIONS: { slugs: string[]; title: string; blurb: string }[] = [
   },
 ];
 
-export type AdminTab = "agents" | "transcription" | "privacy" | "keys" | "about";
+export type AdminTab = "agents" | "transcription" | "privacy" | "keys" | "labor" | "about";
 
 const TABS: { id: AdminTab; label: string; hint: string }[] = [
   { id: "agents", ...DE.admin.tabs.agents },
   { id: "transcription", ...DE.admin.tabs.transcription },
   { id: "privacy", ...DE.admin.tabs.privacy },
   { id: "keys", ...DE.admin.tabs.keys },
+  { id: "labor", label: "Labor", hint: "A/B-Vergleich, Promptqualität und Videolink-Analyse" },
   { id: "about", ...DE.admin.tabs.about },
 ];
 
@@ -912,6 +915,11 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
                   void api.getPrivacyConfig().then(setPrivacy).catch(() => {});
                 }}
               />
+            </div>
+
+            <div className={activeTab === "labor" ? "space-y-4" : "hidden"}>
+              <QualityLabCard models={models} />
+              <VideoEvalCard />
             </div>
 
             <div className={activeTab === "about" ? "" : "hidden"}>
