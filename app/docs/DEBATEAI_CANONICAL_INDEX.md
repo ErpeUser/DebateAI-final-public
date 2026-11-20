@@ -9,6 +9,7 @@ requirement.
 
 - [Product vision](VISION.md) — owner-approved current goal and consolidated target extensions.
 - [Open items](OFFENE_PUNKTE.md) — maintained P0–P3 backlog and current verification limits.
+- [Static-analysis baseline](static-analysis.md) — bounded Knip, dependency-cruiser and deptry report; findings are triage-only until reviewed.
 - [History and provenance](HISTORIE.md) — earlier visions, research decisions, reconciliation and dated evidence; not current release acceptance.
 - [Quickstart](quickstart.md) — supported desktop, Docker and local setup.
 - [Architecture](architecture.md) — current frontend, backend and WebSocket boundaries.

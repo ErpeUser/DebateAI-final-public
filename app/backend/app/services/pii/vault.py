@@ -22,7 +22,9 @@ import hashlib
 import logging
 import re
 import threading
+import time
 import uuid
+from collections import OrderedDict
 from dataclasses import dataclass, field
 
 from cryptography.fernet import Fernet, InvalidToken
@@ -99,22 +101,51 @@ PII_LOG_SCRUB_MIN_LENGTH = 5
 # Every plaintext value this process has minted or decrypted, with its
 # category. The egress tripwire (services/pii/egress.py) checks outbound
 # prompts against it; the log scrubber gets the same values.
-_plaintext_seen: dict[str, str] = {}
+MAX_PLAINTEXT_INDEX_ENTRIES = 8192
+PLAINTEXT_INDEX_TTL_SECONDS = 60 * 60
+_plaintext_seen: OrderedDict[str, tuple[str, float, set[uuid.UUID]]] = OrderedDict()
 
 
-def _remember_plaintext(value: str, category: str) -> None:
+def _sweep_plaintext_index(*, now: float | None = None) -> None:
+    now = time.monotonic() if now is None else now
+    cutoff = now - PLAINTEXT_INDEX_TTL_SECONDS
+    expired = [value for value, (_, seen_at, _) in _plaintext_seen.items() if seen_at < cutoff]
+    for value in expired:
+        _plaintext_seen.pop(value, None)
+    while len(_plaintext_seen) > max(1, MAX_PLAINTEXT_INDEX_ENTRIES):
+        _plaintext_seen.popitem(last=False)
+
+
+def _remember_plaintext(
+    value: str,
+    category: str,
+    session_id: uuid.UUID | None = None,
+    *,
+    now: float | None = None,
+) -> None:
     value = value.strip()
     if not value:
         return
     register_secret(value, min_length=PII_LOG_SCRUB_MIN_LENGTH)
     with _lock:
-        _plaintext_seen.setdefault(value, category)
+        _sweep_plaintext_index(now=now)
+        current = _plaintext_seen.pop(value, None)
+        sessions = set(current[2]) if current else set()
+        if session_id is not None:
+            sessions.add(session_id)
+        _plaintext_seen[value] = (
+            current[0] if current else category,
+            time.monotonic() if now is None else now,
+            sessions,
+        )
+        _sweep_plaintext_index(now=now)
 
 
-def known_plaintext_values() -> list[tuple[str, str]]:
+def known_plaintext_values(*, now: float | None = None) -> list[tuple[str, str]]:
     """(value, category) for every vault value seen by this process."""
     with _lock:
-        return list(_plaintext_seen.items())
+        _sweep_plaintext_index(now=now)
+        return [(value, category) for value, (category, _, _) in _plaintext_seen.items()]
 
 
 def _category_of(token: str) -> str:
@@ -128,10 +159,14 @@ def _decrypt_with(fernet: Fernet, ciphertext: str) -> str | None:
         return None
 
 
-def decrypt(ciphertext: str, category: str = "") -> str:
+def decrypt(
+    ciphertext: str,
+    category: str = "",
+    session_id: uuid.UUID | None = None,
+) -> str:
     value = _decrypt_with(_get_fernet(), ciphertext)
     if value is not None:
-        _remember_plaintext(value, category)
+        _remember_plaintext(value, category, session_id)
         return value
     logger.warning("A PII vault entry could not be decrypted; master key changed?")
     return ""
@@ -210,7 +245,7 @@ async def migrate_legacy_entries(db: AsyncSession) -> int:
             row.value_hmac = canonical_digest
             row.value_encrypted = canonical_ciphertext
             migrated += 1
-        _remember_plaintext(plaintext, row.category)
+        _remember_plaintext(plaintext, row.category, row.session_id)
     if migrated:
         await db.flush()
     forget()
@@ -282,7 +317,10 @@ async def reveal_map(db: AsyncSession, session_id: uuid.UUID) -> dict[str, str]:
     vault = await _ensure_loaded(db, session_id)
     with _lock:
         items = list(vault.by_token.items())
-    return {token: decrypt(ciphertext, _category_of(token)) for token, ciphertext in items}
+    return {
+        token: decrypt(ciphertext, _category_of(token), session_id)
+        for token, ciphertext in items
+    }
 
 
 async def entry_count(db: AsyncSession, session_id: uuid.UUID) -> int:
@@ -294,6 +332,18 @@ def forget(session_id: uuid.UUID | None = None) -> None:
     """Drop cached state: one session (on delete) or everything (tests)."""
     with _lock:
         _vaults.invalidate(session_id)
+        if session_id is None:
+            _plaintext_seen.clear()
+        else:
+            for value, (category, seen_at, sessions) in list(_plaintext_seen.items()):
+                sessions.discard(session_id)
+                if not sessions:
+                    _plaintext_seen.pop(value, None)
+                    from app.services.redaction import forget_secret
+
+                    forget_secret(value)
+                else:
+                    _plaintext_seen[value] = (category, seen_at, sessions)
 
 
 def reset_keys_for_tests() -> None:

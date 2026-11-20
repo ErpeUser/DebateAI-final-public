@@ -194,9 +194,10 @@
           using Silero VAD and WeSpeaker ResNet152 embeddings, and every
           transcript line gets a speaker label. Point the transcriber at local
           ONNX Whisper or Parakeet models, the agents at a self-hosted
-          OpenAI-compatible server, and the interim captions at the on-device
-          Parakeet captioner, and the entire pipeline runs offline with no API
-          key -- Privacy First keeps every stage running. Plaud has
+          OpenAI-compatible server, and, when interim captions are needed,
+          explicitly select the experimental on-device Parakeet captioner. In
+          that configuration the entire pipeline can run offline with no API
+          key -- Privacy First keeps every selected stage running. Plaud has
           no equivalent: PCWorld's review of the Note Pro states plainly that
           you cannot run its AI locally.
         </p>

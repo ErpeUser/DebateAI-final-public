@@ -78,7 +78,7 @@
             "name": "Does my meeting audio leave my machine?",
             "acceptedAnswer": {
               "@type": "Answer",
-              "text": "Only where you route it. Voice activity detection and speaker diarization always run locally, and a fresh install uses built-in local batch transcription. Agent models stay unselected until you choose Google, OpenAI, or a self-hosted OpenAI-compatible server such as Ollama or LM Studio. With the PII Shield on, audio is held to a local model outright, because audio cannot be tokenized. Recordings and transcripts stay on your server."
+              "text": "Only where you route it. Voice activity detection and speaker diarization always run locally, and a fresh install uses built-in local batch transcription with German as the desktop default. Agent models stay unselected until you choose Google, OpenAI, or a self-hosted OpenAI-compatible server such as Ollama or LM Studio. With the PII Shield on, audio is held to a local model outright, because audio cannot be tokenized; live captions are off unless you explicitly choose the experimental local Parakeet captioner. Recordings and transcripts stay on your server."
             }
           },
           {
@@ -257,7 +257,7 @@
       <div class="feature-row shield-row">
         <div class="feature-copy">
           <h3>Audio never leaves while the shield is on</h3>
-          <p>Audio cannot be tokenized, so the shield holds transcription to a local model and switches off cloud live captions. Cloud text models stay available, because they only ever receive tokens. Uploaded documents are read on this machine and never sent as files. Privacy First decides where processing happens; the shield decides what any model, local or cloud, gets to read. Local transcription is rougher than cloud, so the optional Transcript Refiner sends the tokenized transcript to any text model to fix punctuation, casing and mishearings, and keeps a rewrite only if it carries exactly the original tokens.</p>
+          <p>Audio cannot be tokenized, so the shield holds transcription to a local model and switches off cloud live captions. Cloud text models stay available, because they only ever receive tokens. With the shield on, supported <code>.txt</code>, <code>.md</code> and <code>.docx</code> uploads are parsed on this machine into a bounded local excerpt; unsupported formats are rejected rather than uploaded. With the shield off, document summarization may use the configured Gemini Files API. Privacy First decides where processing happens; the shield decides what any model, local or cloud, gets to read. Local transcription is rougher than cloud, so the optional Transcript Refiner sends the tokenized transcript to any text model to fix punctuation, casing and mishearings, and keeps a rewrite only if it carries exactly the original tokens.</p>
         </div>
         <div class="feature-visual">
           <picture>
@@ -346,7 +346,7 @@
       <div class="feature-row">
         <div class="feature-copy">
           <h3>Provider-routed models, on your keys</h3>
-          <p>Mix Google Gemini and OpenAI per agent, transcribe fully offline with local ONNX Whisper and Parakeet, or point the agents at any number of your own OpenAI-compatible servers -- Ollama, LM Studio, vLLM, LiteLLM -- where every model an endpoint serves appears by name in each agent's picker, and run the whole pipeline with no key from anyone. Privacy First judges the destination, so an endpoint on your own machine or LAN keeps the agents running with the switch on; only cloud providers stay blocked.</p>
+          <p>Mix Google Gemini and OpenAI per agent, transcribe fully offline with local ONNX Whisper and Parakeet, or point the agents at any number of your own OpenAI-compatible servers -- Ollama, LM Studio, vLLM, LiteLLM -- where every model an endpoint serves appears by name in each agent's picker. A completely offline run requires local batch transcription, an explicitly selected experimental local live-caption model when interim captions are needed, and a self-hosted text endpoint for the analysis agents; the default audio gateway and document path may use cloud providers when you choose them. Privacy First judges the destination, so an endpoint on your own machine or LAN keeps the agents running with the switch on; only cloud providers stay blocked.</p>
         </div>
         <div class="feature-visual">
           <picture>

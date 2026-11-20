@@ -298,6 +298,15 @@ cleared) rather than removed
 | --- | --- | --- |
 | POST | `/api/chat` | Ask questions over selected sessions' settled briefings, non-dismissed insights, and speaker-attributed transcripts; briefings guide interpretation while transcripts ground facts and quotations |
 
+Chat applies bounded processing before a provider call: at most 20 selected
+sessions, 128 speakers, 500 newest transcript entries, and 100 newest active
+insights per session are read from the database. The assembled prompt is capped
+at 60,000 characters, including the eight-message conversation history. A
+provider reply over 64,000 characters returns HTTP `413` and is never sent
+through the PII reveal path. Session-scoped JSON responses are buffered for
+PII substitution only up to 8 MiB; a declared or observed larger response also
+returns HTTP `413` before any bytes are exposed.
+
 ### Diagnostics (`routers/diagnostics.py`)
 
 | Method | Path | Purpose |

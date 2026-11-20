@@ -182,9 +182,10 @@
           and they keep running with the switch on, while only cloud providers
           stay blocked. So a fully local setup, local ONNX transcription plus a
           self-hosted OpenAI-compatible model (Ollama, LM Studio, vLLM,
-          LiteLLM; any number of endpoints, each model listed by name), now
-          runs end to end with Privacy First on. Interim captions default to
-          the cloud audio gateway, but they can run on-device through the
+          LiteLLM; any number of endpoints, each model listed by name), can
+          run end to end with Privacy First on when the experimental local
+          captioner is selected for interim captions. Interim captions default
+          to the cloud audio gateway, but they can run on-device through the
           local Parakeet captioner, so nothing has to leave the machine. If
           you would rather bring
           your own cloud key, the middle setting is local transcription with

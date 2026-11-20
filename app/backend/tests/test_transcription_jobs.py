@@ -60,5 +60,25 @@ class TranscriptionJobTests(unittest.TestCase):
             )
 
 
+
+class TranscriptionJobRetentionTests(unittest.TestCase):
+    def tearDown(self):
+        transcription_jobs._jobs.clear()
+
+    def test_sweep_retains_active_and_expires_terminal_jobs(self):
+        active_id = uuid.uuid4()
+        active = transcription_jobs.create_job(active_id, "audio_import", "model", 1)
+        active.start()
+        active._last_touched = 10.0
+        session_id = uuid.uuid4()
+        job = transcription_jobs.create_job(session_id, "audio_import", "model", 1)
+        job.complete()
+        job._finished_at = 10.0
+        removed = transcription_jobs.sweep_jobs(now=100.0, terminal_ttl_seconds=60.0)
+        self.assertEqual(1, removed)
+        self.assertIsNone(transcription_jobs.get_job(session_id))
+        self.assertIs(transcription_jobs.get_job(active_id), active)
+
+
 if __name__ == "__main__":
     unittest.main()

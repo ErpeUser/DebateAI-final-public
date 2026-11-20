@@ -51,12 +51,46 @@ class _BufferedSender:
         self.reveal = reveal
         self.start_message = None
         self.body_parts: list[bytes] = []
+        self.buffered_bytes = 0
         self.passthrough = False
         self.rejected = False
+
+    async def _reject_oversized(self):
+        self.rejected = True
+        error_body = b'{"detail":"JSON response exceeds the PII reveal buffer limit"}'
+        headers = [
+            (b"content-type", b"application/json"),
+            (b"content-length", str(len(error_body)).encode("latin-1")),
+        ]
+        await self.send({
+            "type": "http.response.start",
+            "status": 413,
+            "headers": headers,
+        })
+        await self.send({
+            "type": "http.response.body",
+            "body": error_body,
+            "more_body": False,
+        })
 
     async def __call__(self, message):
         kind = message["type"]
         if kind == "http.response.start" and _is_revealable(message):
+            raw_length = next(
+                (
+                    value
+                    for key, value in message.get("headers", [])
+                    if key.decode("latin-1").lower() == "content-length"
+                ),
+                None,
+            )
+            try:
+                declared_length = int(raw_length) if raw_length is not None else None
+            except (TypeError, ValueError):
+                declared_length = None
+            if declared_length is not None and declared_length > MAX_BUFFERED_JSON_BYTES:
+                await self._reject_oversized()
+                return
             self.start_message = message
             return
         if kind == "http.response.start":
@@ -67,28 +101,14 @@ class _BufferedSender:
             await self.send(message)
             return
         body = message.get("body", b"")
-        if sum(map(len, self.body_parts)) + len(body) > MAX_BUFFERED_JSON_BYTES:
+        if self.buffered_bytes + len(body) > MAX_BUFFERED_JSON_BYTES:
             # Do not hold an unbounded response in memory just to substitute
             # tokens.  The response has not been exposed yet, so return a
             # deterministic client error and discard the remainder.
-            self.rejected = True
-            error_body = b'{"detail":"JSON response exceeds the PII reveal buffer limit"}'
-            headers = [
-                (b"content-type", b"application/json"),
-                (b"content-length", str(len(error_body)).encode("latin-1")),
-            ]
-            await self.send({
-                "type": "http.response.start",
-                "status": 413,
-                "headers": headers,
-            })
-            await self.send({
-                "type": "http.response.body",
-                "body": error_body,
-                "more_body": False,
-            })
+            await self._reject_oversized()
             return
         self.body_parts.append(body)
+        self.buffered_bytes += len(body)
         if message.get("more_body"):
             return
         revealed = await self.reveal(b"".join(self.body_parts))

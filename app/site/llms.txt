@@ -31,14 +31,20 @@ Key facts:
 - Diarization: Silero VAD + WeSpeaker ResNet152 speaker embeddings (local, ONNX)
 - Transcription: Gemini Flash, OpenAI batch audio models, or fully offline
   ONNX Whisper/Parakeet; interim live captions come from Gemini Live or
-  OpenAI Realtime by default, or run on-device with the local Parakeet
-  captioner
+  OpenAI Realtime by default, or run on-device with the experimental local
+  Parakeet captioner. The desktop default is German; choose another
+  supported language or auto-detection explicitly in Transcription & Audio.
 - Text analysis: Google, OpenAI, or any number of self-hosted
   OpenAI-compatible endpoints (Ollama, LM Studio, vLLM, LiteLLM), with
   every served model listed by name in the pickers -- so a deployment can
-  run end to end with no cloud key. Privacy First judges the destination,
-  so an on-prem endpoint (loopback or LAN) keeps the analysis agents
-  running with the switch on while cloud providers stay blocked.
+  run end to end with no cloud key when local transcription, optional local
+  live captions, and a self-hosted text endpoint are all selected. Privacy
+  First judges the destination, so an on-prem endpoint (loopback or LAN)
+  keeps the analysis agents running with the switch on while cloud providers
+  stay blocked. With the PII Shield on, supported TXT/Markdown/DOCX files
+  become bounded local excerpts; unsupported formats are rejected instead of
+  silently uploaded. With the shield off, document summarization may use the
+  configured Gemini Files API.
 - Agents: ten seeded agents -- an audio gateway, six live agents
   (consolidated analyst every 40s, objection handler every 10s over the last
   90s, synthesizer, opportunity specialist, strategic signals every 45s, and

@@ -338,15 +338,17 @@
           DebateAI's analysis agents can run against a self-hosted
           OpenAI-compatible server (Ollama, LM Studio, vLLM, LiteLLM) -- add
           as many endpoints as you like, and every served model appears by
-          name in the pickers -- so with local ONNX transcription the whole
-          pipeline works with the network off and no key from anyone. Our Privacy First switch now knows that too:
+          name in the pickers -- so with local ONNX transcription and an
+          explicitly selected local live-caption model, the whole pipeline can
+          work with the network off and no key from anyone. Our Privacy First switch now knows that too:
           it judges the destination rather than the vendor, so agents pointed
           at an endpoint on your own machine or LAN keep running with the
           switch on while only cloud providers stay blocked. A fully local
-          DebateAI now runs end to end with Privacy First on -- interim
-          live captions default to the cloud audio gateway, but they can also
-          run on-device through the local Parakeet captioner, so there is no
-          cloud caveat left. To compare other zero-cloud setups, see
+          DebateAI can run end to end with Privacy First on when the
+          experimental local live-caption model is selected -- interim live
+          captions default to the cloud audio gateway, but they can also run
+          on-device through the local Parakeet captioner. To compare other
+          zero-cloud setups, see
           <a href="/open-source-meeting-assistants/">the other open-source options</a>.
         </p>
       </div>

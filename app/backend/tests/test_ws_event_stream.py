@@ -318,5 +318,17 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("transcript", (await buffer.get())["type"])
 
 
+    def test_idle_sweep_is_bounded_by_max_journals(self):
+        from app.services import ws_event_stream
+
+        ws_event_stream._journals.clear()
+        for index in range(6):
+            ws_event_stream._journals[str(index)] = SessionEventJournal(str(index))
+            ws_event_stream._journals[str(index)]._last_touch = 0
+        removed = ws_event_stream.sweep_idle_journals(now=100, idle_ttl_seconds=60, max_journals=3)
+        self.assertEqual(6, removed)
+        self.assertEqual({}, ws_event_stream._journals)
+
+
 if __name__ == "__main__":
     unittest.main()

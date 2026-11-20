@@ -29,6 +29,8 @@ from __future__ import annotations
 import logging
 import re
 import threading
+import time
+from collections import OrderedDict
 
 REDACTED = "[redacted]"
 
@@ -36,7 +38,9 @@ REDACTED = "[redacted]"
 # stay covered by the header and bearer shapes below.
 MIN_REGISTERED_LENGTH = 16
 
-_known: set[str] = set()
+MAX_REGISTERED_SECRETS = 4096
+REGISTERED_SECRET_TTL_SECONDS = 60 * 60
+_known: OrderedDict[str, float] = OrderedDict()
 _exempt: set[str] = set()
 _lock = threading.Lock()
 
@@ -70,7 +74,22 @@ _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
 )
 
 
-def register_secret(value: str | bytes | None, *, min_length: int = MIN_REGISTERED_LENGTH) -> None:
+def _sweep_known(*, now: float | None = None) -> None:
+    now = time.monotonic() if now is None else now
+    cutoff = now - REGISTERED_SECRET_TTL_SECONDS
+    expired = [value for value, seen_at in _known.items() if seen_at < cutoff]
+    for value in expired:
+        _known.pop(value, None)
+    while len(_known) > max(1, MAX_REGISTERED_SECRETS):
+        _known.popitem(last=False)
+
+
+def register_secret(
+    value: str | bytes | None,
+    *,
+    min_length: int = MIN_REGISTERED_LENGTH,
+    now: float | None = None,
+) -> None:
     """Remember a plaintext secret so any later text carrying it is scrubbed.
 
     ``min_length`` exists for the PII vault, whose values (a name, a phone
@@ -86,7 +105,10 @@ def register_secret(value: str | bytes | None, *, min_length: int = MIN_REGISTER
     with _lock:
         if value in _exempt:
             return
-        _known.add(value)
+        _sweep_known(now=now)
+        _known.pop(value, None)
+        _known[value] = time.monotonic() if now is None else now
+        _sweep_known(now=now)
 
 
 def exempt_from_redaction(value: str | None) -> None:
@@ -102,7 +124,7 @@ def exempt_from_redaction(value: str | None) -> None:
         return
     with _lock:
         _exempt.add(value)
-        _known.discard(value)
+        _known.pop(value, None)
 
 
 def clear_registered_secrets() -> None:
@@ -112,17 +134,27 @@ def clear_registered_secrets() -> None:
         _exempt.clear()
 
 
-def registered_secret_count() -> int:
+def forget_secret(value: str | None) -> None:
+    """Remove a value from the process scrubber after its owning scope is gone."""
+    if not value:
+        return
     with _lock:
+        _known.pop(value.strip(), None)
+
+
+def registered_secret_count(*, now: float | None = None) -> int:
+    with _lock:
+        _sweep_known(now=now)
         return len(_known)
 
 
-def redact_text(text: str | None) -> str:
+def redact_text(text: str | None, *, now: float | None = None) -> str:
     """Return ``text`` with every known or key-shaped secret masked."""
     if not text:
         return "" if text is None else text
     result = str(text)
     with _lock:
+        _sweep_known(now=now)
         known = sorted(_known, key=len, reverse=True)
     for value in known:
         if value in result:

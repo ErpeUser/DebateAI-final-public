@@ -225,9 +225,11 @@
           (<code>backend/app/services/custom_endpoints.py</code>,
           <code>backend/app/services/llm_endpoint.py</code>). Point the
           agents at a model served on your own box or your LAN, use local
-          ONNX transcription, and the entire pipeline -- capture,
-          diarization, transcription, live captions, agents -- runs with no
-          API key from anyone and no packet leaving your network.
+          ONNX transcription, and, if interim captions are needed, explicitly
+          select the experimental local Parakeet captioner. The entire
+          pipeline -- capture, diarization, transcription, live captions,
+          agents -- can then run with no API key from anyone and no packet
+          leaving your network.
         </p>
         <p>
           Privacy First mode is the enforcement mechanism rather than a

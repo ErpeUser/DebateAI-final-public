@@ -56,7 +56,10 @@ export default function BatchTranscriptionCard({ models, localOnly = false, lock
   const liveIsLocal = liveModel ? runsLocally(liveModel) : false;
   const livePreviewOff = Boolean(config?.live_preview_model_id && localOnly && !liveIsLocal);
   const hasLocalLiveModel = liveModels.some((model) => runsLocally(model));
-  const language = config?.language ?? "auto";
+  // The seeded desktop/runtime contract is German. Keep the loading fallback
+  // aligned with that contract so the UI never briefly advertises auto-detect
+  // while the settings request is in flight.
+  const language = config?.language ?? "de";
   const languageName = (code: string) =>
     config?.language_options.find((option) => option.code === code)?.name ?? code;
   const languageWarnings = [
@@ -172,12 +175,12 @@ export default function BatchTranscriptionCard({ models, localOnly = false, lock
           </label>
           <select
             id="transcription-language"
-            value={config?.language ?? "auto"}
+            value={config?.language ?? "de"}
             disabled={!config || saving}
             onChange={(event) => void update({ language: event.target.value })}
             className="w-full rounded border border-brand-light-gray-1 bg-surface px-3 py-1.5 text-sm text-brand-dark-gray transition-colors focus:border-brand-teal disabled:cursor-not-allowed disabled:bg-brand-light-gray-2"
           >
-            {(config?.language_options ?? [{ code: "auto", name: "Automatisch erkennen" }]).map((option) => (
+            {(config?.language_options ?? [{ code: "de", name: "Deutsch" }]).map((option) => (
               <option key={option.code} value={option.code}>
                 {option.name}
               </option>

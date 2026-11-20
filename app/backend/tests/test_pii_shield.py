@@ -23,7 +23,10 @@ from app.services.pii.recognizers import (  # noqa: E402
     ADDRESS, CARD, EMAIL, IP, ORG, PERSON, PHONE, SSN,
     RosterEntry, Span, find_patterns, find_roster, normalize_value, resolve_spans,
 )
-from app.services.pii.reveal_middleware import PiiRevealMiddleware  # noqa: E402
+from app.services.pii.reveal_middleware import (  # noqa: E402
+    MAX_BUFFERED_JSON_BYTES,
+    PiiRevealMiddleware,
+)
 from app.services.pii.ws import RevealingWebSocket  # noqa: E402
 
 ALL = set(shield.CATEGORIES)
@@ -439,6 +442,50 @@ class EgressTests(unittest.IsolatedAsyncioTestCase):
             sent = []
             await PiiRevealMiddleware(app)({"type": "http", "path": path, "method": "GET"}, None, lambda m: _collect(sent, m))
             self.assertEqual(sent[-1]["body"], payload)
+
+    async def test_middleware_rejects_json_with_oversized_declared_length(self):
+        sid = uuid.uuid4()
+        oversized = 8 * 1024 * 1024 + 1
+
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [
+                    (b"content-type", b"application/json"),
+                    (b"content-length", str(oversized).encode()),
+                ],
+            })
+            await send({"type": "http.response.body", "body": b"x", "more_body": True})
+
+        sent = []
+        scope = {"type": "http", "path": f"/api/sessions/{sid}/transcripts", "method": "GET"}
+        await PiiRevealMiddleware(app)(scope, None, lambda m: _collect(sent, m))
+
+        self.assertEqual(413, sent[0]["status"])
+        self.assertIn(b"buffer limit", sent[-1]["body"])
+
+    async def test_middleware_rejects_json_that_crosses_buffer_limit(self):
+        sid = uuid.uuid4()
+
+        async def app(scope, receive, send):
+            await send({
+                "type": "http.response.start",
+                "status": 200,
+                "headers": [(b"content-type", b"application/json")],
+            })
+            await send({
+                "type": "http.response.body",
+                "body": b"x" * (MAX_BUFFERED_JSON_BYTES + 1),
+                "more_body": False,
+            })
+
+        sent = []
+        scope = {"type": "http", "path": f"/api/sessions/{sid}/transcripts", "method": "GET"}
+        await PiiRevealMiddleware(app)(scope, None, lambda m: _collect(sent, m))
+
+        self.assertEqual(413, sent[0]["status"])
+        self.assertIn(b"buffer limit", sent[-1]["body"])
 
     async def test_websocket_proxy_reveals_json_and_delegates_the_rest(self):
         sid = uuid.uuid4()

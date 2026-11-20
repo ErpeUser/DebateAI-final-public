@@ -1,0 +1,9 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "include": ["files", "dependencies", "devDependencies", "unlisted", "binaries", "unresolved", "cycles"],
+  "ignore": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/generated/**", "runtime/**", "DebateAI_Generated/**", "public/**"],
+  "ignoreUnresolved": ["^virtual:", "^astro:", "^@astrojs/", "^@/"],
+  "entry": ["*.{js,mjs}", "src/**/*.{astro,js,mjs,ts}"],
+  "project": ["**/*.{astro,js,mjs,ts}"],
+  "ignoreFiles": ["src/content/docs/generated/**"]
+}

@@ -14,6 +14,7 @@ from typing import Any
 COALESCIBLE_TYPES = {"interim_transcript", "audio_level"}
 DEFAULT_JOURNAL_MAX_BYTES = 2 * 1024 * 1024
 DEFAULT_JOURNAL_IDLE_TTL_SECONDS = 60 * 60
+DEFAULT_MAX_JOURNALS = 4096
 
 
 def _payload(event: dict[str, Any]) -> dict[str, Any]:
@@ -313,6 +314,7 @@ def sweep_idle_journals(
     *,
     now: float | None = None,
     idle_ttl_seconds: float = DEFAULT_JOURNAL_IDLE_TTL_SECONDS,
+    max_journals: int = DEFAULT_MAX_JOURNALS,
 ) -> int:
     """Release replay buffers that have no active websocket owner."""
     now = time.monotonic() if now is None else now
@@ -322,6 +324,15 @@ def sweep_idle_journals(
         if journal.active_connections == 0
         and now - journal._last_touch >= idle_ttl_seconds
     ]
+    if len(_journals) - len(expired) > max(1, max_journals):
+        remaining = [
+            (journal._last_touch, key)
+            for key, journal in _journals.items()
+            if key not in set(expired) and journal.active_connections == 0
+        ]
+        remaining.sort()
+        needed = len(_journals) - len(expired) - max(1, max_journals)
+        expired.extend(key for _, key in remaining[:needed])
     for key in expired:
         _journals.pop(key, None)
     return len(expired)

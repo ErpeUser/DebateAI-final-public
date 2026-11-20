@@ -102,9 +102,12 @@ row that Admin -> Agents edits
 The **Meeting language** picker on the same tab sets one workspace-wide
 language for transcription, stored as the `transcription.language` app
 setting (`PATCH /api/diagnostics/transcription/config` with `language`).
-It is either `auto` (the default) or an ISO 639-1 code from the list in
-`backend/app/services/transcription_language.py`. An unknown code is
-rejected with HTTP 400.
+The desktop/runtime default is German (`de`), matching the German Debate
+Copilot contract. You can explicitly choose `auto` or an ISO 639-1 code from
+the list in `backend/app/services/transcription_language.py`. An unknown code
+is rejected with HTTP 400. Existing saved choices are preserved when the
+application starts; the default only applies when the setting is missing (or
+when the legacy automatic default is migrated).
 
 Each transcriber that can use the language receives it:
 

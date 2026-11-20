@@ -421,7 +421,7 @@
       <div class="feature-row">
         <div class="feature-copy">
           <h3>Locked to local models while the shield is on</h3>
-          <p>While the shield is on, <code>transcription_runtime.audio_lock_reason</code> locks audio to local models the way Privacy First does, but for audio alone. A cloud batch transcriber is coerced to a local model; a cloud live-caption gateway is paused, and the live call says &ldquo;Live captions off: PII Shield&rdquo; rather than going quiet. Cloud text models stay available throughout, because text is tokens by the time they see it. Uploaded documents are read on this machine and never sent as files. The Privacy tab reports each row as it stands, including a cloud gateway that is configured but paused.</p>
+          <p>While the shield is on, <code>transcription_runtime.audio_lock_reason</code> locks audio to local models the way Privacy First does, but for audio alone. A cloud batch transcriber is coerced to a local model; a cloud live-caption gateway is paused, and the live call says &ldquo;Live captions off: PII Shield&rdquo; rather than going quiet. Cloud text models stay available throughout, because text is tokens by the time they see it. Supported <code>.txt</code>, <code>.md</code>, <code>.markdown</code> and <code>.docx</code> documents are parsed on this machine into bounded excerpts; unsupported formats are rejected while the shield is on. The Privacy tab reports each row as it stands, including a cloud gateway that is configured but paused.</p>
         </div>
         <div class="feature-visual">
           <figure class="shot">
@@ -537,7 +537,7 @@ grep -rl "reveal_" backend/app/services/agents backend/app/services/llm.py
       <div class="feature-row reverse">
         <div class="feature-copy">
           <h3>Different switches, and the difference matters</h3>
-          <p>Privacy First keeps everything on this machine and turns off anything that needs an outside call. The PII Shield decides what any model, local or cloud, gets to read. They compose. A configuration many teams will land on is shield on with cloud text models: frontier-model analysis quality, and no name ever leaves. A fully local team turns both on and loses nothing the shield offers.</p>
+          <p>Privacy First keeps everything on this machine and turns off anything that needs an outside call. The PII Shield decides what any model, local or cloud, gets to read. They compose. A configuration many teams will land on is shield on with cloud text models: frontier-model analysis quality, and no name ever leaves. A fully local team turns both on and, when interim captions are needed, selects the experimental local captioner; it loses nothing the shield offers.</p>
         </div>
         <div class="feature-visual">
           <figure class="shot">
@@ -582,7 +582,7 @@ grep -rl "reveal_" backend/app/services/agents backend/app/services/llm.py
             <tr>
               <td>Uploaded documents</td>
               <td>Read on this machine</td>
-              <td>Read on this machine, never sent as files</td>
+              <td>Supported text/Markdown/DOCX files become bounded local excerpts; unsupported formats are rejected</td>
             </tr>
             <tr>
               <td>Default</td>

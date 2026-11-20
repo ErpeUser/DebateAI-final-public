@@ -8,7 +8,15 @@ import httpx
 from fastapi import HTTPException
 from google.genai import errors as genai_errors
 
-from app.routers.chat import ChatIn, ChatMessage, chat
+from app.routers.chat import (
+    MAX_CHAT_INSIGHTS_PER_SESSION,
+    MAX_CHAT_REPLY_CHARS,
+    MAX_CHAT_SPEAKERS_PER_SESSION,
+    MAX_CHAT_TRANSCRIPT_ENTRIES_PER_SESSION,
+    ChatIn,
+    ChatMessage,
+    chat,
+)
 
 GOOGLE_MODEL = "gemini-3.5-flash"
 OPENAI_MODEL = "gpt-5.4-mini"
@@ -62,6 +70,31 @@ def _openai_status_error(status: int, message: str) -> httpx.HTTPStatusError:
 
 
 class ChatBriefingOwnerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_chat_queries_are_bounded_before_prompt_assembly(self):
+        statements = []
+        db = _db_mock()
+
+        async def execute(statement):
+            statements.append(str(statement.compile(compile_kwargs={"literal_binds": True})))
+            result = MagicMock()
+            result.scalars.return_value.all.return_value = []
+            result.scalar_one_or_none.return_value = None
+            return result
+
+        db.execute = AsyncMock(side_effect=execute)
+        with (
+            patch("app.services.briefing_synthesis.get_session_synthesis", new=AsyncMock(return_value=None)),
+            patch("app.routers.chat.generate_text", new=AsyncMock(return_value="Done")),
+            patch("app.routers.chat.shield.protect_text_for_sessions", new=AsyncMock(side_effect=lambda _db, _ids, text: text)),
+            patch("app.routers.chat.shield.reveal_text", new=AsyncMock(side_effect=lambda _db, _id, text, **_kwargs: text)),
+        ):
+            await chat(_body(GOOGLE_MODEL), db=db)
+
+        sql = "\n".join(statements)
+        self.assertIn(f"LIMIT {MAX_CHAT_SPEAKERS_PER_SESSION}", sql)
+        self.assertIn(f"LIMIT {MAX_CHAT_TRANSCRIPT_ENTRIES_PER_SESSION}", sql)
+        self.assertIn(f"LIMIT {MAX_CHAT_INSIGHTS_PER_SESSION}", sql)
+
     async def test_chat_uses_the_normalized_synthesis_in_its_prompt(self):
         raw_owner = str(uuid4())
         raw_synthesis = _synthesis(raw_owner)
@@ -222,6 +255,15 @@ class ChatProviderErrorTests(unittest.IsolatedAsyncioTestCase):
         ):
             with self.assertRaises(TypeError):
                 await chat(_body(GOOGLE_MODEL), db=_db_mock())
+
+    async def test_chat_rejects_an_oversized_provider_reply(self):
+        oversized = "x" * (MAX_CHAT_REPLY_CHARS + 1)
+        with patch("app.routers.chat.generate_text", new=AsyncMock(return_value=oversized)):
+            with self.assertRaises(HTTPException) as ctx:
+                await chat(_body(GOOGLE_MODEL), db=_db_mock())
+
+        self.assertEqual(413, ctx.exception.status_code)
+        self.assertIn("response exceeds", ctx.exception.detail)
 
 
 if __name__ == "__main__":

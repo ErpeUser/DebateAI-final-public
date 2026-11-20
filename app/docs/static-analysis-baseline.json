@@ -1,0 +1,1266 @@
+{
+  "gating": "baseline_only",
+  "generated_from": {
+    "branch": "main",
+    "commit": "7883bb3a2d6e05e4fcb9435e6e0c7e240774a6f8",
+    "repository": "ErpeUser/DebateAI-final-public"
+  },
+  "schema_version": 1,
+  "scope": {
+    "excluded": [
+      "app/desktop/chatgpt_oracle",
+      "node_modules",
+      "dist",
+      "build",
+      "generated",
+      "runtime",
+      "DebateAI_Generated"
+    ],
+    "javascript": [
+      "app/frontend",
+      "app/docs-site",
+      "app/release-signing-worker"
+    ],
+    "python": [
+      "app/backend",
+      "app/desktop"
+    ]
+  },
+  "tools": [
+    {
+      "command": [
+        "app/scripts/static-analysis/node_modules/knip/bin/knip.js",
+        "--directory",
+        ".",
+        "--config",
+        "../scripts/static-analysis/knip.frontend.json",
+        "--reporter",
+        "json",
+        "--no-config-hints"
+      ],
+      "cwd": "app/frontend",
+      "exit_code": 0,
+      "result": {
+        "issue_count": 0,
+        "issues": []
+      },
+      "status": "clean",
+      "tool": "knip",
+      "version": "6.46.1"
+    },
+    {
+      "command": [
+        "app/scripts/static-analysis/node_modules/knip/bin/knip.js",
+        "--directory",
+        ".",
+        "--config",
+        "../scripts/static-analysis/knip.docs-site.json",
+        "--reporter",
+        "json",
+        "--no-config-hints"
+      ],
+      "cwd": "app/docs-site",
+      "exit_code": 0,
+      "result": {
+        "issue_count": 0,
+        "issues": []
+      },
+      "status": "clean",
+      "tool": "knip",
+      "version": "6.46.1"
+    },
+    {
+      "command": [
+        "app/scripts/static-analysis/node_modules/knip/bin/knip.js",
+        "--directory",
+        ".",
+        "--config",
+        "../scripts/static-analysis/knip.release-worker.json",
+        "--reporter",
+        "json",
+        "--no-config-hints"
+      ],
+      "cwd": "app/release-signing-worker",
+      "exit_code": 0,
+      "result": {
+        "issue_count": 0,
+        "issues": []
+      },
+      "status": "clean",
+      "tool": "knip",
+      "version": "6.46.1"
+    },
+    {
+      "command": [
+        "app/scripts/static-analysis/node_modules/dependency-cruiser/bin/dependency-cruiser.mjs",
+        "--config",
+        "app/scripts/static-analysis/dependency-cruiser.config.cjs",
+        "--exclude",
+        "(^|/)(node_modules|dist|dist-site|\\.astro|build|generated|runtime|DebateAI_Generated)",
+        "--output-type",
+        "json",
+        "app/frontend/src",
+        "app/docs-site/src",
+        "app/docs-site/*.mjs",
+        "app/docs-site/*.js",
+        "app/release-signing-worker/src",
+        "app/release-signing-worker/*.mjs",
+        "app/release-signing-worker/*.js"
+      ],
+      "cwd": ".",
+      "exit_code": 0,
+      "result": {
+        "dependencies": 295,
+        "modules": 97,
+        "rule_counts": {
+          "error": 0,
+          "ignore": 0,
+          "info": 0,
+          "warn": 0
+        },
+        "tool_issues": [],
+        "violations": []
+      },
+      "status": "clean",
+      "tool": "dependency-cruiser",
+      "version": "18.8.0"
+    },
+    {
+      "scopes": [
+        {
+          "command": [
+            "<python>",
+            "-m",
+            "deptry",
+            "app/backend",
+            "--requirements-files",
+            "app/backend/requirements.txt,app/backend/requirements-sortformer.txt",
+            "--requirements-files-dev",
+            "app/backend/requirements-test.txt",
+            "--extend-exclude",
+            "app/backend/tests",
+            "--json-output",
+            "<temporary-output>",
+            "--no-ansi"
+          ],
+          "exit_code": 1,
+          "result": {
+            "issue_count": 68,
+            "issues": [
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/config.py",
+                  "line": 3
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/ai_config.py",
+                  "line": 11
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/ask.py",
+                  "line": 13
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/chat.py",
+                  "line": 8
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/credentials.py",
+                  "line": 2
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/debate_review.py",
+                  "line": 9
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/debate_settings.py",
+                  "line": 8
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/diagnostics.py",
+                  "line": 6
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/dossiers.py",
+                  "line": 11
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/endpoints.py",
+                  "line": 9
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/models.py",
+                  "line": 2
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/native_audio.py",
+                  "line": 13
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/pii_shield.py",
+                  "line": 17
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/privacy.py",
+                  "line": 2
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/retranscribe.py",
+                  "line": 6
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/transcripts.py",
+                  "line": 5
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/updates.py",
+                  "line": 6
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'starlette' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/routers/updates.py",
+                  "line": 9
+                },
+                "module": "starlette"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/schemas.py",
+                  "line": 5
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/agents/consolidated_analyst.py",
+                  "line": 14
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/agents/objection_handler.py",
+                  "line": 18
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/agents/synthesizer.py",
+                  "line": 13
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/argument_graph.py",
+                  "line": 17
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/batch_transcriber.py",
+                  "line": 10
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/batch_transcriber.py",
+                  "line": 11
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/briefing_synthesis.py",
+                  "line": 14
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/custom_endpoints.py",
+                  "line": 24
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/debate_contracts.py",
+                  "line": 5
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/debate_learning.py",
+                  "line": 9
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/debate_research.py",
+                  "line": 20
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/debate_research.py",
+                  "line": 21
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/debate_review.py",
+                  "line": 16
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/experimental_debate.py",
+                  "line": 12
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'docx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 12,
+                  "file": "app/backend/app/services/file_parsing.py",
+                  "line": 57
+                },
+                "module": "docx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/gemini_files.py",
+                  "line": 9
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/gemini_live.py",
+                  "line": 3
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/gemini_live.py",
+                  "line": 4
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/llm.py",
+                  "line": 21
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/llm.py",
+                  "line": 22
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/llm.py",
+                  "line": 23
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/llm.py",
+                  "line": 24
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/openai_transcriber.py",
+                  "line": 26
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/provider_capabilities.py",
+                  "line": 10
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/provider_errors.py",
+                  "line": 16
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/provider_errors.py",
+                  "line": 18
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/provider_health.py",
+                  "line": 12
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 13,
+                  "file": "app/backend/app/services/provider_health.py",
+                  "line": 45
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'starlette' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/request_guard.py",
+                  "line": 39
+                },
+                "module": "starlette"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'starlette' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/request_guard.py",
+                  "line": 40
+                },
+                "module": "starlette"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'starlette' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/request_guard.py",
+                  "line": 41
+                },
+                "module": "starlette"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'torch' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 16,
+                  "file": "app/backend/app/services/sortformer_diarizer.py",
+                  "line": 245
+                },
+                "module": "torch"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/app/services/subscription_oauth.py",
+                  "line": 13
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'pydantic' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/app/services/transcript_refiner.py",
+                  "line": 27
+                },
+                "module": "pydantic"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'google' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 9,
+                  "file": "app/backend/app/services/video_eval_pipeline.py",
+                  "line": 340
+                },
+                "module": "google"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'nemo_toolkit' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements-sortformer.txt",
+                  "line": null
+                },
+                "module": "nemo_toolkit"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'uvicorn' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "uvicorn"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'asyncpg' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "asyncpg"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'python-multipart' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "python-multipart"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'google-genai' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "google-genai"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'python-docx' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "python-docx"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'Pillow' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "Pillow"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'google-cloud-speech' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/backend/requirements.txt",
+                  "line": null
+                },
+                "module": "google-cloud-speech"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'benchmark_debate_copilot' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/scripts/benchmark_blind_pair.py",
+                  "line": 22
+                },
+                "module": "benchmark_debate_copilot"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/scripts/benchmark_debate_copilot.py",
+                  "line": 27
+                },
+                "module": "httpx"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'scipy' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 13,
+                  "file": "app/backend/scripts/diarizer_ab.py",
+                  "line": 331
+                },
+                "module": "scipy"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'install_sortformer' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/scripts/start_backend.py",
+                  "line": 8
+                },
+                "module": "install_sortformer"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'video_eval_batch' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/backend/scripts/video_eval_autotune.py",
+                  "line": 23
+                },
+                "module": "video_eval_batch"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'httpx' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 8,
+                  "file": "app/backend/scripts/video_eval_batch.py",
+                  "line": 19
+                },
+                "module": "httpx"
+              }
+            ]
+          },
+          "scope": "backend",
+          "status": "findings",
+          "version": "deptry 0.25.1"
+        },
+        {
+          "command": [
+            "<python>",
+            "-m",
+            "deptry",
+            "app/desktop",
+            "--requirements-files",
+            "app/desktop/requirements.txt",
+            "--extend-exclude",
+            "app/desktop/tests",
+            "--json-output",
+            "<temporary-output>",
+            "--no-ansi"
+          ],
+          "exit_code": 1,
+          "result": {
+            "issue_count": 22,
+            "issues": [
+              {
+                "error": {
+                  "code": "DEP003",
+                  "message": "'app' imported but it is a transitive dependency"
+                },
+                "location": {
+                  "column": 5,
+                  "file": "app/desktop/debateai_desktop/chatgpt_web_login.py",
+                  "line": 46
+                },
+                "module": "app"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'webview' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 12,
+                  "file": "app/desktop/debateai_desktop/gemini_web_login.py",
+                  "line": 71
+                },
+                "module": "webview"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'asyncpg' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 20,
+                  "file": "app/desktop/debateai_desktop/pg.py",
+                  "line": 275
+                },
+                "module": "asyncpg"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'webview' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 16,
+                  "file": "app/desktop/launcher.py",
+                  "line": 471
+                },
+                "module": "webview"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'PIL' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 5,
+                  "file": "app/desktop/launcher.py",
+                  "line": 824
+                },
+                "module": "PIL"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'uvicorn' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 12,
+                  "file": "app/desktop/launcher.py",
+                  "line": 1230
+                },
+                "module": "uvicorn"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'pillow' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/desktop/requirements.txt",
+                  "line": null
+                },
+                "module": "pillow"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'pyinstaller' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/desktop/requirements.txt",
+                  "line": null
+                },
+                "module": "pyinstaller"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'PyAudioWPatch' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/desktop/requirements.txt",
+                  "line": null
+                },
+                "module": "PyAudioWPatch"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'fastembed' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/desktop/requirements.txt",
+                  "line": null
+                },
+                "module": "fastembed"
+              },
+              {
+                "error": {
+                  "code": "DEP002",
+                  "message": "'pywebview' defined as a dependency but not used in the codebase"
+                },
+                "location": {
+                  "column": null,
+                  "file": "app/desktop/requirements.txt",
+                  "line": null
+                },
+                "module": "pywebview"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'cryptography' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/build_platform_manifest.py",
+                  "line": 11
+                },
+                "module": "cryptography"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'cryptography' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/build_platform_manifest.py",
+                  "line": 12
+                },
+                "module": "cryptography"
+              },
+              {
+                "error": {
+                  "code": "DEP003",
+                  "message": "'app' imported but it is a transitive dependency"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/build_platform_manifest.py",
+                  "line": 17
+                },
+                "module": "app"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'build_release_manifest' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/build_platform_manifest.py",
+                  "line": 23
+                },
+                "module": "build_release_manifest"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'PIL' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/make_icons.py",
+                  "line": 10
+                },
+                "module": "PIL"
+              },
+              {
+                "error": {
+                  "code": "DEP003",
+                  "message": "'app' imported but it is a transitive dependency"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 25
+                },
+                "module": "app"
+              },
+              {
+                "error": {
+                  "code": "DEP003",
+                  "message": "'app' imported but it is a transitive dependency"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 31
+                },
+                "module": "app"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'cryptography' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 38
+                },
+                "module": "cryptography"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'cryptography' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 39
+                },
+                "module": "cryptography"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'desktop' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 1,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 42
+                },
+                "module": "desktop"
+              },
+              {
+                "error": {
+                  "code": "DEP001",
+                  "message": "'desktop' imported but missing from the dependency definitions"
+                },
+                "location": {
+                  "column": 13,
+                  "file": "app/desktop/scripts/smoke_update_archive.py",
+                  "line": 209
+                },
+                "module": "desktop"
+              }
+            ]
+          },
+          "scope": "desktop",
+          "status": "findings",
+          "version": "deptry 0.25.1"
+        }
+      ],
+      "status": "findings",
+      "tool": "deptry",
+      "version": "deptry 0.25.1"
+    }
+  ]
+}

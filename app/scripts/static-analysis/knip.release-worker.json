@@ -1,0 +1,8 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "include": ["files", "dependencies", "devDependencies", "unlisted", "binaries", "unresolved", "cycles"],
+  "ignore": ["**/node_modules/**", "**/dist/**", "**/build/**", "**/generated/**", "runtime/**", "DebateAI_Generated/**"],
+  "entry": ["*.{js,mjs,ts}", "src/**/*.{js,mjs,ts}"],
+  "project": ["**/*.{js,mjs,ts}"],
+  "ignoreFiles": ["dist/**"]
+}

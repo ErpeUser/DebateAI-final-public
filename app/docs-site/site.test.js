@@ -88,6 +88,40 @@ test('first-run copy describes explicit provider-aware model selection', () => {
   assert.match(html, /Recommended/i);
 });
 
+test('active locality and language copy follows the implementation claim matrix', () => {
+  const claimMatrix = read('../docs/website-claim-matrix.md');
+  const configuration = read('../docs/configuration.md');
+  const releaseNotes = read('../backend/app/release_notes.py');
+  const comparison = read('../site/open-source-meeting-assistants/index.html');
+  const privacy = read('../site/private-meeting-ai/index.html');
+
+  assert.match(claimMatrix, /Documents without the PII Shield/);
+  assert.match(claimMatrix, /experimental, CPU-heavy/);
+  assert.match(configuration, /desktop\/runtime default is German \(`de`\)/i);
+  assert.doesNotMatch(configuration, /`auto` \(the default\)/i);
+  assert.match(releaseNotes, /desktop Debate Copilot starts on German/i);
+  assert.match(html, /supported <code>\.txt<\/code>, <code>\.md<\/code> and <code>\.docx<\/code> uploads are parsed/i);
+  assert.match(html, /A completely offline run requires local batch transcription/i);
+  assert.doesNotMatch(html, /Uploaded documents are read on this machine and never sent as files/i);
+  assert.match(comparison, /Conditional -- local ONNX transcription and diarization/i);
+  assert.doesNotMatch(comparison, /A fully local DebateAI runs end to end with Privacy First on/i);
+  assert.match(privacy, /supported <code>\.txt<\/code>, <code>\.md<\/code>, <code>\.markdown<\/code> and <code>\.docx<\/code>/i);
+  assert.doesNotMatch(privacy, /Uploaded documents are read on this machine and never sent as files/i);
+});
+
+test('active website pages do not promise an offline pipeline by default', () => {
+  const staleClaims = [
+    /A fully local DebateAI runs end to end/i,
+    /DebateAI(?: now)? runs end to end with Privacy First/i,
+    /DebateAI[^.]{0,180}(?:whole|entire) pipeline runs/i,
+    /there is no cloud caveat left/i,
+  ];
+  for (const [path, content] of customerContent) {
+    if (/\/releases\//i.test(path)) continue;
+    for (const pattern of staleClaims) assert.doesNotMatch(content, pattern, path);
+  }
+});
+
 test('network failures keep the email valid and show an actionable retry', async () => {
   let submit;
   const emailAttributes = new Map();

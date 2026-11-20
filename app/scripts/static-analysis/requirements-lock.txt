@@ -1,0 +1,6 @@
+# Generated with Python 3.12 / pip freeze for the pinned deptry analyzer.
+click==8.5.1
+deptry==0.25.1
+packaging==26.3
+requirements-parser==0.13.1
+tomli==2.5.0

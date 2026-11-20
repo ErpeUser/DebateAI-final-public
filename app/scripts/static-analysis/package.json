@@ -1,0 +1,15 @@
+{
+  "name": "debateai-static-analysis-tools",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Pinned, read-only tools used to measure DebateAI dependency and module-boundary debt.",
+  "license": "UNLICENSED",
+  "engines": {
+    "node": "24.x",
+    "npm": ">=11 <12"
+  },
+  "dependencies": {
+    "dependency-cruiser": "18.8.0",
+    "knip": "6.46.1"
+  }
+}

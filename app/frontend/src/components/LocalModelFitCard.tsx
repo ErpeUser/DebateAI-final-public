@@ -395,8 +395,9 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
         <p className="font-body text-xs leading-relaxed text-brand-gray">
           Um einen Agenten mit einem lokalen Modell auszufuehren, waehle ihn zusaetzlich im Bereich
           Agenten aus. Die hier gesetzten Budgets gelten pro Modell und werden nur verwendet, wenn der
-          Agent dieses Modell nutzt. Fuer Live-Zwischentitel gibt es derzeit keine lokale Option; dafuer
-          ist ein Streaming-Modell in der Cloud erforderlich.
+          Agent dieses Modell nutzt. Fuer Live-Zwischentitel ist neben dem Cloud-Gateway auch der
+          experimentelle lokale Parakeet-Untertitler verfuegbar. Er ist CPU-intensiv;
+          pruefe den Eignungstest und waehle ihn unter Transkription &amp; Audio explizit.
         </p>
       </div>
     </div>

@@ -130,6 +130,25 @@ class ChatPromptTests(unittest.TestCase):
         self.assertIn("NEW_BRIEF", prompt)
         self.assertIn("[truncated]", prompt)
 
+    def test_total_prompt_budget_includes_conversation_history(self):
+        sessions = [session_data(
+            "Huge transcript",
+            [("Alice", "T" * 80_000)],
+            briefing="BRIEF",
+            insights="INSIGHT",
+        )]
+        messages = [
+            {"role": "user", "content": "old question " + "x" * 7_900},
+            {"role": "assistant", "content": "old answer " + "y" * 7_900},
+            {"role": "user", "content": "latest question"},
+        ]
+
+        prompt = build_chat_prompt(sessions, messages, budget=1_000)
+
+        self.assertLessEqual(len(prompt), 1_000)
+        self.assertIn("latest question", prompt)
+        self.assertIn("[truncated]", prompt)
+
     def test_briefing_formatter_keeps_settled_sections_clusters_and_notes(self):
         synthesis = SimpleNamespace(
             status="completed",

@@ -162,7 +162,11 @@ async def session_ledger(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
         )
     ).scalars().all()
     entries = [
-        {"category": row.category, "ordinal": row.ordinal, "value": vault.decrypt(row.value_encrypted)}
+        {
+            "category": row.category,
+            "ordinal": row.ordinal,
+            "value": vault.decrypt(row.value_encrypted, row.category, row.session_id),
+        }
         for row in rows
     ]
     if entries:

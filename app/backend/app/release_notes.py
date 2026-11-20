@@ -20,10 +20,11 @@ RELEASE_NOTES: list[dict] = [
         "title": "Meetings in more languages, transcribed on your machine",
         "body": """Debate AI no longer assumes your meetings are in English.
 
-- Admin -> Transcription & Audio has a Meeting language setting. It starts on
-  Detect automatically; pick a language and on-device Whisper, Gemini and
-  OpenAI all use it, for the saved transcript and live captions. Models
-  transcribe what is said and never translate it.
+- Admin -> Transcription & Audio has a Meeting language setting. The German
+  desktop Debate Copilot starts on German; choose another supported language
+  or Detect automatically when the meeting needs it. On-device Whisper,
+  Gemini and OpenAI all use the selected value for the saved transcript and
+  live captions. Models transcribe what is said and never translate it.
 - Parakeet v3 is a new on-device model for 25 European languages, including
   German, French, Spanish, Italian, Polish and Russian. It detects which one
   is spoken, and it also powers a new experimental live-caption option,
@@ -40,9 +41,10 @@ RELEASE_NOTES: list[dict] = [
   noise, and Whisper's non-English silence phrases are filtered like the
   English ones.
 
-Nothing to migrate. The meeting language starts on Detect automatically, so
-transcription behaves as before until you change it, and new models download
-only when you select one or run the fit test.""",
+Existing saved language choices are preserved. A fresh desktop setup starts
+on German and an older automatic-detection default is migrated to German;
+choose Detect automatically explicitly when that is the intended behavior.
+New models download only when you select one or run the fit test.""",
     },
     {
         "version": "0.6.5",

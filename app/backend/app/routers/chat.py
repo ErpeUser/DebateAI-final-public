@@ -25,6 +25,19 @@ router = APIRouter(prefix="/api/chat", tags=["chat"])
 CONTEXT_BUDGET_CHARS = 60000
 MAX_CHAT_HISTORY_MESSAGES = 8
 MAX_CHAT_MESSAGE_CHARS = 8000
+# The database query limits intentionally sit below the prompt budget.  They
+# protect the worker before Python materializes a long-lived session, while
+# the prompt builder still applies a deterministic character budget across all
+# layers and chat history.
+MAX_CHAT_HISTORY_CHARS = 12000
+MAX_CHAT_SPEAKERS_PER_SESSION = 128
+MAX_CHAT_TRANSCRIPT_ENTRIES_PER_SESSION = 500
+MAX_CHAT_INSIGHTS_PER_SESSION = 100
+MAX_CHAT_REPLY_CHARS = 64000
+# Section headings and separators are part of the hard prompt budget. Reserve
+# a small deterministic margin so layer truncation does not remove the newest
+# session merely because those labels were added after the content budget.
+CHAT_CONTEXT_OVERHEAD_CHARS = 160
 BRIEFING_FIELDS = (
     "top_outcomes",
     "client_objectives",
@@ -148,6 +161,52 @@ def _layer_blocks(sessions_data: list[dict], key: str, remaining: int) -> tuple[
     return "\n\n".join(blocks), remaining
 
 
+def _conversation_block(messages: list[dict], budget: int) -> str:
+    """Return recent history within ``budget``, preserving the latest turn.
+
+    Chat history is untrusted user data and can be much larger than the
+    meeting context.  Building it separately lets the caller reserve space
+    for the brief while ensuring that a pathological history cannot push the
+    final prompt over its hard character ceiling.
+    """
+    prefix = "# Conversation\n"
+    suffix = "\nAssistant:"
+    budget = max(1, budget)
+    available = max(0, budget - len(prefix) - len(suffix))
+    selected: list[str] = []
+    truncated = False
+    for message in reversed(messages):
+        line = f"{message['role'].capitalize()}: {message['content']}"
+        if len(line) <= available:
+            selected.append(line)
+            available -= len(line) + (1 if selected else 0)
+            if available <= 0:
+                break
+            continue
+        truncated = True
+        if not selected:
+            marker = "[truncated]"
+            keep = max(0, available - len(marker) - 1)
+            role = f"{message['role'].capitalize()}: "
+            line = role + message["content"][:max(0, keep - len(role))] + marker
+            selected.append(line[:available])
+        break
+    if truncated and selected:
+        marker = "[truncated]"
+        # Keep the marker visible when older history was omitted, without
+        # displacing the most recent message.
+        if not selected[0].endswith(marker):
+            selected.insert(0, marker)
+    selected.reverse()
+    body = "\n".join(selected)
+    result = f"{prefix}{body}{suffix}"
+    if len(result) <= budget:
+        return result
+    # Account for separators introduced by the marker and line joins.
+    keep = max(1, budget - len(suffix))
+    return result[: max(0, keep - len("[truncated]"))] + "[truncated]" + suffix
+
+
 def build_chat_prompt(
     sessions_data: list[dict],
     messages: list[dict],
@@ -155,7 +214,10 @@ def build_chat_prompt(
 ) -> str:
     """Assemble brief-first meeting context plus bounded conversation history."""
     messages = messages[-MAX_CHAT_HISTORY_MESSAGES:]
-    remaining = budget
+    budget = max(1, int(budget))
+    conversation_budget = min(budget, MAX_CHAT_HISTORY_CHARS)
+    conversation = _conversation_block(messages, conversation_budget)
+    remaining = max(0, budget - len(conversation) - 2 - CHAT_CONTEXT_OVERHEAD_CHARS)
     sections: list[str] = []
     for heading, key in (
         ("Meeting Briefings (primary context)", "briefing"),
@@ -167,10 +229,17 @@ def build_chat_prompt(
             sections.append(f"# {heading}\n\n{content}")
         if remaining <= 0:
             break
-
-    conversation = "\n".join(f"{m['role'].capitalize()}: {m['content']}" for m in messages)
-    sections.append(f"# Conversation\n{conversation}\nAssistant:")
-    return "\n\n".join(sections)
+    context = "\n\n".join(sections)
+    if not context:
+        return conversation[:budget]
+    prompt = f"{context}\n\n{conversation}"
+    if len(prompt) <= budget:
+        return prompt
+    available = max(0, budget - len(conversation) - 2)
+    if available <= 0:
+        return conversation[:budget]
+    context = context[: max(0, available - len("[truncated]"))] + "[truncated]"
+    return f"{context}\n\n{conversation}"[:budget]
 
 
 @router.post("")
@@ -186,17 +255,25 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         if not session:
             raise HTTPException(404, f"Session not found: {session_id}")
 
-        speakers_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+        speakers_result = await db.execute(
+            select(Speaker)
+            .where(Speaker.session_id == session_id)
+            .order_by(Speaker.id)
+            .limit(MAX_CHAT_SPEAKERS_PER_SESSION)
+        )
         speaker_names = {str(s.id): s.name for s in speakers_result.scalars().all()}
 
         entries_result = await db.execute(
             select(TranscriptEntry)
             .where(TranscriptEntry.session_id == session_id)
-            .order_by(TranscriptEntry.sequence)
+            .order_by(TranscriptEntry.sequence.desc())
+            .limit(MAX_CHAT_TRANSCRIPT_ENTRIES_PER_SESSION)
         )
+        entries = list(entries_result.scalars().all())
+        entries.reverse()
         lines = [
             (speaker_names.get(str(e.speaker_id), "Unknown"), e.text)
-            for e in entries_result.scalars().all()
+            for e in entries
         ]
 
         synthesis = await briefing_synthesis.get_session_synthesis(session_id)
@@ -204,9 +281,11 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         insights_result = await db.execute(
             select(Question)
             .where(Question.session_id == session_id, Question.dismissed.is_(False))
-            .order_by(Question.created_at)
+            .order_by(Question.created_at.desc(), Question.id.desc())
+            .limit(MAX_CHAT_INSIGHTS_PER_SESSION)
         )
-        insights = insights_result.scalars().all()
+        insights = list(insights_result.scalars().all())
+        insights.reverse()
 
         started = session.started_at or session.created_at
         sessions_data.append({
@@ -266,6 +345,10 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         raise provider_error_to_http(
             provider_for(body.model_id), e, context="Chat failed"
         ) from e
+    if not isinstance(reply, str):
+        reply = str(reply)
+    if len(reply) > MAX_CHAT_REPLY_CHARS:
+        raise HTTPException(413, "Chat response exceeds the configured size limit")
     # Not session-scoped in the path, so the reveal middleware cannot see it.
     for data in sessions_data:
         session_id = data["session_id"]
