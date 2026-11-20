@@ -81,8 +81,8 @@ Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree o
 
 ### P2.11 Parallele Migrationsstarts
 
-- **Status:** PostgreSQL-Advisory-Lock und ein isolierter Paralleltest sind vorhanden. Fehler-/Retry-Matrix eines absichtlich scheiternden Runners und die vollständige Legacy-Datenbankmatrix fehlen.
-- **Benötigt:** reproduzierbarer Failure-/Retry-Test, frische und Legacy-Schemata, exakt ein Alembic-Head und sichtbarer Fehlerstatus ohne halb angewendetes Schema.
+- **Status:** PostgreSQL-Advisory-Lock und ein isolierter Paralleltest sind vorhanden. Der neue Regressionstest bestätigt, dass der Lock nach einem scheiternden Runner freigegeben wird und ein zweiter Lauf erneut starten kann. Offen bleiben die vollständige Failure-/Retry-Matrix und die Legacy-Datenbankmatrix.
+- **Benötigt:** reproduzierbarer Failure-/Retry-Test mit realem Datenbankrunner, frische und Legacy-Schemata, exakt ein Alembic-Head und sichtbarer Fehlerstatus ohne halb angewendetes Schema.
 
 ### P2.12 Prozessweite Journale und PII-Scrub-Indizes
 
