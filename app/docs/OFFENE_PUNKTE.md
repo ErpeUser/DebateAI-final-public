@@ -2,7 +2,7 @@
 
 Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der aktuelle Zielstand ist `9c384608de5da7b452161fa77419a8dfec3ddaed`. Für exakt diesen SHA sind `tests` (Run `44683868162`) und `security` (Run `44683868692`) erfolgreich. Backend (`136113534407`), Frontend (`136113534355`), PostgreSQL-Grenzen (`136113533830`), Windows-Workspace (`136113534082`) und Browser-Kalibrierung (`136113534053`) sind grün; der Security-Lauf bestätigt Python (`136113472352`), Frontend (`136113472615`), Docs-Production (`136113472850`) und Oracle-Production (`136113472513`). Der Structure-Gesamtlauf `44683868125` bleibt wegen geerbter absoluter Sentrux-Verstöße rot (`136113438257`), während der Layout-Job `136113438480` erfolgreich ist und der relative Vergleich `No degradation detected` meldet. Lokal auf dem autorisierten Windows-Gerät bestehen die Frontend-Tests mit 371/371 und der Produktionsbuild. Die öffentliche Quellenstrategie ist entschieden: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und Hardwareabnahme bleiben getrennte externe Gates.
+**Aktueller geprüfter Code-/CI-Stand:** Der aktuelle Zielstand ist `9c384608de5da7b452161fa77419a8dfec3ddaed`. Für exakt diesen SHA sind `tests` (Run `44683868162`) und `security` (Run `44683868692`) erfolgreich. Backend (`136113534407`), Frontend (`136113534355`), PostgreSQL-Grenzen (`136113533830`), Windows-Workspace (`136113534082`) und Browser-Kalibrierung (`136113534053`) sind grün; der Security-Lauf bestätigt Python (`136113472352`), Frontend (`136113472615`), Docs-Production (`136113472850`) und Oracle-Production (`136113472513`). Der Structure-Gesamtlauf `44683868125` bleibt wegen geerbter absoluter Sentrux-Verstöße rot (`136113438257`), während der Layout-Job `136113438480` erfolgreich ist und der relative Vergleich `No degradation detected` meldet. Lokal auf dem autorisierten Windows-Gerät bestehen die Frontend-Tests mit 371/371 und der Produktionsbuild. Die öffentliche Quellenstrategie ist entschieden: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und Hardwareabnahme bleiben getrennte externe Gates. Die stale-cycle-Regression (`test_stale_strategic_cycle_is_discarded_before_persisting`) ist im Backend-Job `136113534407` enthalten; der Overlay-Snapshot-Test und der Frontend-Build sind im Frontend-Job `136113534355` sowie lokal mit 371/371 Tests nachgewiesen.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
@@ -36,16 +36,6 @@ Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree o
 
 - **Status:** Claim-Matrix, Privacy-/Locality-Texte und die aktive Linkprüfung sind im Code abgeglichen. Offen bleibt nur der distributable Snapshot: jeder aktive Link und jedes Asset muss im veröffentlichten Paket vorhanden sein oder aus den Seiten entfernt werden.
 - **Benötigt:** frischer Site-Asset-Scan, Docs-Site-Test/Build und ein veröffentlichter oder ausdrücklich als nicht-produktiv markierter Snapshot.
-
-### P1.8 Zwei Debattenrollen im Live-Modus
-
-- **Status:** Codepfad und Stale-Guard sind vorhanden; die neue Regression deckt das Verwerfen einer überholten Strategic-Signals-Runde ab. Der Zielstand braucht noch den exakten CI-Nachweis.
-- **Benötigt:** grüner Backend-Testlauf auf dem neuen Ziel-SHA einschließlich `test_stale_strategic_cycle_is_discarded_before_persisting`, danach Provider-/Lastmessung für den realen Live-Betrieb.
-
-### P1.9 Drei aktuelle Alternativen im Standard-Live-Overlay
-
-- **Status:** Standardpfad normalisiert drei eindeutige Optionen; der Overlay-Pollingpfad verwirft jetzt verspätete Antworten älterer Transcript-/Claim-/Recommendation-Revisions. Die neue Frontend-Regression braucht noch den exakten CI-Nachweis.
-- **Benötigt:** Frontend-Test/Build auf dem neuen Ziel-SHA und ein Browserlauf, der Turnwechsel, stale response und Sessionwechsel beobachtet.
 
 ### P1.10 A/B- und Sprachlabor als zugängliches Produktfeature
 
