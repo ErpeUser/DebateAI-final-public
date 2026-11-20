@@ -537,6 +537,13 @@ async def lifespan(app: FastAPI):
             async with async_session() as db:
                 await sync_subscription_bridge(db)
                 await db.commit()
+                from app.routers.gemini_web import preferred_web_model
+                from app.services.ai_config import ensure_gemini_web_route
+                from app.services.subscription_bridge import gemini_web_models
+
+                selected_web_model = preferred_web_model(gemini_web_models())
+                if selected_web_model:
+                    ensure_gemini_web_route(selected_web_model)
         except Exception as exc:
             logging.getLogger(__name__).warning(
                 "Optional provider discovery unavailable (%s); local backend remains ready",

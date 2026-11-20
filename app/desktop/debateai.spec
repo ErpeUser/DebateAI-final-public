@@ -3,7 +3,12 @@ import os
 import sys
 from pathlib import Path
 
-from PyInstaller.utils.hooks import collect_data_files, collect_submodules, copy_metadata
+from PyInstaller.utils.hooks import (
+    collect_all,
+    collect_data_files,
+    collect_submodules,
+    copy_metadata,
+)
 
 repo = Path(SPECPATH).resolve().parent
 
@@ -53,6 +58,23 @@ datas = [
     (str(repo / "desktop" / "assets"), "assets"),
     (str(repo / "desktop" / "release_signing_keys.json"), "."),
 ]
+
+# Sortformer is optional during development, but once its local Torch/NeMo
+# assets are installed the desktop bundle must carry the complete runtime.
+# Both packages load modules and native libraries dynamically, so importing
+# only the backend package would leave the packaged Enhanced diarizer broken.
+_optional_binaries = []
+for _optional_package in ("torch", "torchvision", "torchaudio", "cuda", "lightning", "lightning_fabric", "nemo"):
+    try:
+        _package_datas, _package_binaries, _package_hidden = collect_all(
+            _optional_package
+        )
+    except Exception as exc:
+        print(f"DebateAI spec: optional {_optional_package} runtime not collected: {exc}")
+    else:
+        datas += _package_datas
+        _optional_binaries += _package_binaries
+        hidden += _package_hidden
 for _migration in (repo / "backend" / "alembic" / "versions").glob("*.py"):
     datas.append((str(_migration), "alembic/versions"))
 # Present only after desktop/scripts/download_ffmpeg.py runs (Windows/Linux
@@ -137,6 +159,7 @@ a = Analysis(
     [str(repo / "desktop" / "launcher.py")],
     pathex=[str(repo / "backend"), str(repo / "desktop")],
     datas=datas,
+    binaries=_optional_binaries,
     hiddenimports=hidden,
 )
 

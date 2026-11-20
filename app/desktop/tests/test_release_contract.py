@@ -608,6 +608,10 @@ class ReleaseContractTests(unittest.TestCase):
 
 
 class NodeBundleLicenseContractTests(unittest.TestCase):
+    def test_sortformer_dependencies_are_collected_for_local_desktop_builds(self):
+        self.assertIn('for _optional_package in ("torch", "torchvision", "torchaudio", "cuda", "lightning", "lightning_fabric", "nemo")', SPEC)
+        self.assertIn("collect_all(", SPEC)
+
     def test_local_rebuild_includes_chatgpt_web_oracle(self):
         launcher = (ROOT.parent / "Start-DebateAI.ps1").read_text(encoding="utf-8")
         self.assertIn("-IncludeOracle", launcher)

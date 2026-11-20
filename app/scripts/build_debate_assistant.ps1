@@ -208,6 +208,14 @@ function Invoke-DebateDesktopBuild {
             Invoke-Checked "Download CLIProxyAPI" { & $venvPython $contract.CLIProxyDownloader }
         }
 
+        Invoke-Checked "Install local Sortformer runtime" {
+            & $venvPython (Join-Path $repoRoot "backend\scripts\install_sortformer.py")
+        }
+        Invoke-Checked "Reconcile Sortformer dependency pins" {
+            & $venvPython -m pip install --no-cache-dir `
+                -r (Join-Path $repoRoot "backend\requirements-sortformer.txt")
+        }
+
         Invoke-Checked "Build pinned Gemini Web bridge" {
             & (Join-Path $repoRoot "desktop\gemini_web_to_api\build.ps1") -RepositoryRoot $repoRoot
         }

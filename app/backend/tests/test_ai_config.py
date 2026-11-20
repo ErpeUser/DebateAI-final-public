@@ -15,6 +15,7 @@ from app.services.ai_config import (
     live_research_deadline_seconds,
     deep_analysis_models,
     ensure_gemini_cli_route,
+    ensure_gemini_web_route,
     max_parallel_analyses,
     list_prompt_versions,
     provider_configuration,
@@ -266,6 +267,33 @@ class AiConfigurationTests(unittest.TestCase):
             route["model_id"],
         )
         self.assertEqual("Gemini CLI OAuth (gemini-3.8-flash-high, High)", route["label"])
+
+    def test_gemini_web_route_tracks_the_model_the_account_actually_serves(self):
+        save_provider_configuration({
+            "routes": [
+                {
+                    "id": "gemini_web",
+                    "label": "Gemini-Webproxy (Google AI Pro)",
+                    "provider": "google-web",
+                    "model_id": "endpoint:gemini-web:gemini-3.1-pro",
+                    "enabled": True,
+                    "reasoning_effort": "high",
+                }
+            ],
+            "fallback_enabled": True,
+        })
+
+        migrated = ensure_gemini_web_route("gemini-deeper-analysis")
+
+        route = migrated["routes"][0]
+        self.assertEqual(
+            "endpoint:gemini-web:gemini-deeper-analysis",
+            route["model_id"],
+        )
+        self.assertEqual(
+            "Gemini-Webproxy (gemini-deeper-analysis, High)",
+            route["label"],
+        )
 
     def test_adaptive_topic_reuse_and_parallelism_are_runtime_settings(self):
         save_provider_configuration({
