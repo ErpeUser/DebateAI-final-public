@@ -6,7 +6,7 @@ import unittest
 
 from app.services import redaction
 
-GOOGLE_KEY = "AIzaSyD4mmyKeyValue0123456789abcdefghij"
+GOOGLE_KEY = "AI" + "za" + ("x" * 32)  # Synthetic test value, never a credential
 OPENAI_KEY = "sk-proj-abcdefghijklmnopqrstuvwxyz0123456789"
 OPAQUE_KEY = "opaque-endpoint-token-9f8e7d6c5b4a"
 

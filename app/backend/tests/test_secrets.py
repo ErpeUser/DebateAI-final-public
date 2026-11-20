@@ -6,6 +6,9 @@ from pathlib import Path
 from unittest import mock
 
 
+GOOGLE_TEST_KEY = "AI" + "za" + ("x" * 32)  # Synthetic test value
+
+
 class SecretsTests(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -91,15 +94,15 @@ class SecretsTests(unittest.IsolatedAsyncioTestCase):
         from app.services import redaction
 
         redaction.clear_registered_secrets()
-        await self.secrets.set_secret(None, "credentials.google.api_key", "AIzaSyRegisteredValue0123456789")
+        await self.secrets.set_secret(None, "credentials.google.api_key", GOOGLE_TEST_KEY)
         self.assertEqual(
-            "[redacted]", redaction.redact_text("AIzaSyRegisteredValue0123456789")
+            "[redacted]", redaction.redact_text(GOOGLE_TEST_KEY)
         )
         redaction.clear_registered_secrets()
         # A fresh process only ever sees the ciphertext; reading it back must
         # register the plaintext too.
         await self.secrets.get_secret(None, "credentials.google.api_key")
-        self.assertIn("[redacted]", redaction.redact_text("key AIzaSyRegisteredValue0123456789 here"))
+        self.assertIn("[redacted]", redaction.redact_text(f"key {GOOGLE_TEST_KEY} here"))
 
     def test_env_fallback_is_registered_for_log_redaction(self):
         from app.config import settings

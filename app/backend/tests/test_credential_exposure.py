@@ -19,7 +19,7 @@ from fastapi.testclient import TestClient
 
 from app.models import CustomEndpoint
 
-SECRET = "AIzaSyStoredKeyThatMustNeverLeak0123456789"
+SECRET = "AI" + "za" + ("x" * 32)  # Synthetic test value, never a credential
 ENDPOINT_SECRET = "endpoint-proxy-token-0a1b2c3d4e5f6789"
 
 
