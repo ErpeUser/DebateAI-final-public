@@ -1,6 +1,6 @@
 # DebateAI Arbeitsstrang B – Prompt-Matrix
 
-Basis-SHA: `445ee4a6eb5d1fb271e485aa132a6031e2b26db1`  
+Basis-SHA: `445ee4a6eb5d1fb271e485aa132a6031e2b26db1`
 Branch: `feat/prelive-prompt-quality`
 
 Die Matrix beschreibt die zur Laufzeit verwendeten Promptressourcen und die

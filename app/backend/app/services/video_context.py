@@ -211,6 +211,13 @@ def _render_unit(unit: _Unit) -> str:
     return unit.text
 
 
+def _budget_unit(unit: _Unit) -> str:
+    """Include provenance labels when reserving provider context budget."""
+
+    prefix = " ".join(value for value in (unit.timestamp, unit.speaker) if value)
+    return f"{prefix}: {unit.text}" if prefix else unit.text
+
+
 def segment_context(
     source: str | Iterable[Mapping[str, Any] | str],
     *,
@@ -232,7 +239,8 @@ def segment_context(
     carry_limit = max(overlap, min(max(0, budget // 2), 64))
     units: list[_Unit] = []
     for unit in _split_units(source):
-        units.extend(_split_oversized(unit, budget))
+        prefix = " ".join(value for value in (unit.timestamp, unit.speaker) if value)
+        units.extend(_split_oversized(unit, budget, f"{prefix}: " if prefix else ""))
     chunks: list[ContextChunk] = []
     cursor = 0
     while cursor < len(units):
@@ -240,7 +248,7 @@ def segment_context(
         used = 0
         index = cursor
         while index < len(units):
-            cost = estimate_tokens(_render_unit(units[index]))
+            cost = estimate_tokens(_budget_unit(units[index]))
             if selected and used + cost > budget:
                 break
             selected.append(units[index])
@@ -260,7 +268,7 @@ def segment_context(
         carry: list[_Unit] = []
         carry_cost = 0
         for unit in reversed(selected):
-            cost = estimate_tokens(_render_unit(unit))
+            cost = estimate_tokens(_budget_unit(unit))
             if carry and carry_cost + cost > carry_limit:
                 break
             if not carry and cost > carry_limit:
@@ -297,8 +305,10 @@ def classify_error(error: Any) -> ErrorKind:
         return ErrorKind.MESSAGE_TOO_LARGE
     if any(token in normalized for token in ("context window", "maximum context", "context length", "context is full", "context full", "too many tokens")):
         return ErrorKind.CONTEXT_FULL
-    if any(token in normalized for token in ("provider access", "log in", "login", "sign in", "session expired", "token expired", "unauthorized", "authentication", "forbidden", "access denied", "provider unavailable")):
-        return ErrorKind.LOGIN_REQUIRED if any(token in normalized for token in ("log in", "login", "sign in", "session expired", "token expired")) else ErrorKind.PROVIDER_ACCESS
+    if any(token in normalized for token in ("login required", "session expired", "token expired", "reauthenticate", "authentication required")):
+        return ErrorKind.LOGIN_REQUIRED
+    if any(token in normalized for token in ("provider access", "log in", "login", "sign in", "unauthorized", "authentication", "forbidden", "access denied", "provider unavailable")):
+        return ErrorKind.PROVIDER_ACCESS
     if any(token in text for token in ("malformed", "invalid json", "json decode")):
         return ErrorKind.MALFORMED_RESPONSE
     if any(token in text for token in ("truncated", "finish_reason=length", "incomplete response")):
