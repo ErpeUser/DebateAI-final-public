@@ -1,6 +1,6 @@
 # DebateAI – Offene Punkte
 
-Stand: 2026-11-19. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der aktuelle Tree, ein Acceptance-Bericht oder ein erreichbarer GitHub-Nachweis ihn nicht abschließend belegt. Historische Erledigung wird nicht als aktuelle Abnahme ausgegeben.
+Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der aktuelle Tree, ein Acceptance-Bericht oder ein erreichbarer GitHub-Nachweis ihn nicht abschließend belegt. Historische Erledigung wird nicht als aktuelle Abnahme ausgegeben.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
@@ -149,13 +149,10 @@ Stand: 2026-11-19. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 ### P3.3 Diese Konsolidierungsdokumente als laufende Quelle pflegen
 
 - **Problem:** Historie, Vision und Restarbeiten waren über viele Einzeldateien verteilt; neue Belege können den Stand ändern.
-- **Status:** diese drei Dateien wurden auf einem separaten Prüf-Branch angelegt; Master ist unverändert.
-- **Nächste Handlung:** nach Review nur mit Commit-/Test-/Releasebeleg aktualisieren, erledigte Punkte entfernen, ungeklärte Alternativen erhalten.
-- **Fertigstellungsnachweis:** jede Änderung verweist auf Commit, PR, Pfad oder frischen Prüflauf; Diff bleibt auf HISTORIE.md, VISION.md und OFFENE_PUNKTE.md beschränkt.
-- **Quelle:** Nutzerauftrag; Branch docs/project-consolidation-2026-11-19.
-
-## Ergänzende Auditbefunde (priorisiert)
-
+- **Status:** offen; die frühere Angabe eines separaten Prüf-Branches und unveränderten Masters ist historische Provenienz und beschreibt nicht den aktuellen Public-Stand. `main` zeigt inzwischen auf `791f864de8025aed4cfe5848f0e9e5b4d7402865` und enthält die Backlog-Pflege.
+- **Nächste Handlung:** Nach jeder Review nur mit Commit-/Test-/Releasebeleg aktualisieren, erledigte Punkte nicht als offen weiterführen und ungeklärte Alternativen erhalten.
+- **Fertigstellungsnachweis:** Jede Änderung verweist auf Commit, PR, Pfad oder frischen Prüflauf; der aktuelle Branch-/HEAD-Stand ist im Dokument datiert und der Diff bleibt auf zulässige Dokumentdateien beschränkt.
+- **Quelle:** Nutzerauftrag; historischer Branch `docs/project-consolidation-2026-11-19`; aktueller Public-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`.
 ### P1.6 Aktive Dokumentations-, Link- und Branchreferenzen konsolidieren
 
 - **Kategorie:** **Docs-Drift**
