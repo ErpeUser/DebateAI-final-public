@@ -404,19 +404,57 @@ class DefaultGeminiTranscriber:
             "end_seconds, speaker und text."
         )
         client = genai.Client(api_key=self.api_key)
-        try:
-            response = await asyncio.to_thread(
-                client.models.generate_content,
+        response_schema = {
+            "type": "object",
+            "properties": {
+                "segments": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "start_seconds": {"type": "number"},
+                            "end_seconds": {"type": "number"},
+                            "speaker": {"type": "string"},
+                            "text": {"type": "string"},
+                        },
+                        "required": ["start_seconds", "end_seconds", "speaker", "text"],
+                    },
+                }
+            },
+            "required": ["segments"],
+        }
+
+        def request():
+            # The current Interactions API accepts a public YouTube URI directly
+            # and exposes structured response_format.  Older google-genai
+            # versions in existing DebateAI bundles retain generate_content;
+            # keep a compatibility fallback without downloading the video.
+            interactions = getattr(client, "interactions", None)
+            create = getattr(interactions, "create", None) if interactions is not None else None
+            if callable(create):
+                return create(
+                    model=self.model,
+                    input=[
+                        {"type": "video", "uri": url, "mime_type": "video/mp4"},
+                        {"type": "text", "text": prompt},
+                    ],
+                    response_format=response_schema,
+                )
+            return client.models.generate_content(
                 model=self.model,
                 contents=[types.Part.from_uri(file_uri=url, mime_type="video/mp4"), prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
+                    response_schema=response_schema,
                     temperature=0,
                 ),
             )
+
+        try:
+            response = await asyncio.to_thread(request)
         except Exception as exc:
             raise VideoJobError("gemini_failed", "Gemini konnte das Video nicht transkribieren.") from exc
-        raw = str(getattr(response, "text", "") or "").strip()
+        raw = str(getattr(response, "output_text", "") or getattr(response, "text", "") or "").strip()
         try:
             payload = json.loads(raw)
         except (TypeError, ValueError) as exc:
