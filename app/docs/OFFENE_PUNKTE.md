@@ -2,6 +2,8 @@
 
 Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheidungen, Nachweise und Freigabegates. Historische Evidenz und frühere Zielstände stehen gesammelt in [HISTORIE.md](HISTORIE.md). Ein Punkt bleibt offen, wenn der aktuelle Tree, ein Acceptance-Bericht oder ein erreichbarer GitHub-Nachweis ihn nicht abschließend belegt.
 
+**Aktueller Implementierungsstand:** Auf `main` steht `da9de9197025b674fad34ea9bebd7644d549a802` (Folgeänderung zu `91e2425056bb85a7450d4d4aa6eb19549011a200`). Der aktuelle GitHub-Testlauf `44663366611` ist einschließlich Backend, Frontend, Windows-Workspace, browserbasierter Calibration und `postgres-boundaries` erfolgreich; Security `44663366718` ist erfolgreich. Der Structure-Lauf `44663366566` bleibt wegen der bereits dokumentierten absoluten Sentrux-Baseline rot, während sein Regressionsvergleich erfolgreich war. Die früheren `EVIDENCE.md`- und `FINAL_STATUS_AND_OPEN_ITEMS.md`-Dateien wurden mit `54ed295` in die datierten Konsolidierungsabschnitte und diese Aufgabenliste überführt und aus dem Tree entfernt.
+
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
 ### P0.1 GitHub Actions tatsächlich ausführen
@@ -149,7 +151,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 ### P3.3 Diese Konsolidierungsdokumente als laufende Quelle pflegen
 
 - **Problem:** Historie, Vision und Restarbeiten waren über viele Einzeldateien verteilt; neue Belege können den Stand ändern.
-- **Status:** offen; die frühere Angabe eines separaten Prüf-Branches und unveränderten Masters ist historische Provenienz und beschreibt nicht den aktuellen Public-Stand. `main` enthält die Remediation und die Backlog-Pflege; die frühere Code-Evidenz bezog sich auf `b7e1b7d692034937139b23921a784c6c4e19cc98`. Die aktuelle Branch-SHA muss bei jeder Fortschreibung frisch geprüft werden.
+- **Status:** laufende Pflege; die frühere Angabe eines separaten Prüf-Branches und unveränderten Masters ist historische Provenienz und beschreibt nicht den aktuellen Public-Stand. `main` enthält die Remediation und die Backlog-Pflege; aktueller Stand ist `da9de9197025b674fad34ea9bebd7644d549a802`. Die aktuelle Branch-SHA sowie die zugehörigen Actions-Runs müssen bei jeder Fortschreibung frisch geprüft werden.
+- **Aktueller Nachweis:** `EVIDENCE.md` und `FINAL_STATUS_AND_OPEN_ITEMS.md` sind seit `54ed295` entfernt; die Inhalte liegen in `app/docs/HISTORIE.md` und dieser Datei. Der aktuelle Diff umfasst neben den Remediation-Commits ausschließlich diese Backlog-Fortschreibung.
 - **Nächste Handlung:** Nach jeder Review nur mit Commit-/Test-/Releasebeleg aktualisieren, erledigte Punkte nicht als offen weiterführen und ungeklärte Alternativen erhalten.
 - **Fertigstellungsnachweis:** Jede Änderung verweist auf Commit, PR, Pfad oder frischen Prüflauf; der aktuelle Branch-/HEAD-Stand ist im Dokument datiert und der Diff bleibt auf zulässige Dokumentdateien beschränkt.
 - **Quelle:** Nutzerauftrag; historischer Branch `docs/project-consolidation-2026-11-19`; belegter Codecommit `b7e1b7d692034937139b23921a784c6c4e19cc98`.
@@ -186,7 +189,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **VISION-GAP**
 - **Istzustand:** `app/backend/app/services/agents/orchestrator.py:283-287` erlaubt im `_DEBATE_LIVE_AGENTS`-Set nur `audio_gateway`, `objection_handler` und `consolidated_analyst`. `_is_enabled` unterdrückt außerhalb dieses Sets liegende Slugs (`:934-935,1045`), obwohl `strategic_signals` separat definiert (`:704`) und als eigener Loop gestartet wird (`:1468-1469,5047+`). Die VISION verlangt in `:21-26` parallel bezogene Argument- und Strategie-Rollen.
-- **Status:** teilweise implementiert; eine strategische Rolle ist im Debate-Live-Modus code-seitig ausgeschlossen.
+- **Status:** teilweise umgesetzt: `strategic_signals` ist seit `91e2425` in der Debate-Live-Allowlist aktiv; der Zyklus trägt Kontextdaten und verwirft überholte Ergebnisse vor der Persistierung. Ein dedizierter CI-Test für die gemeinsame Turn-/Revisions-ID von Argument- und Strategieausgabe sowie Provider-/Lastmessung fehlt noch.
+- **Aktueller Nachweis:** Backend- und Regressionssuite in `44663366611` erfolgreich; die aktivierte Rolle und der Stale-Guard stehen in `app/backend/app/services/agents/orchestrator.py` und `app/backend/app/services/agents/strategic_signals.py`.
 - **Sollzustand:** Argument- und Strategie-Rolle liefern im selben aktuellen Turn-/Revisionskontext verwertbare Ergebnisse, ohne alte Ergebnisse zu überschreiben.
 - **Minimalste Lösung:** Die Live-Allowlist und den Strategie-Loop in einen begrenzten, messbaren Debattenpfad integrieren; Turn-/Revision-IDs und Cancellation explizit durchreichen und die Ausgabe bei fehlendem Modell klar kennzeichnen.
 - **Nutzen:** Der Kernanspruch „strategisch über den Gesprächsverlauf“ wird im Hauptszenario wirksam statt nur in optionalen Meeting-Pfaden.
@@ -200,7 +204,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **VISION-GAP**
 - **Istzustand:** `app/frontend/src/components/DebateOverlay.tsx:42-49` leitet im Standardmodus nur `answer` und höchstens `secondary` ab. Drei `strategy_options` werden erst im optionalen `experimental_debateai`-Zweig (`:99-112`) gerendert. `app/backend/app/services/debate_settings.py:64-81` setzt `pipeline_mode` standardmäßig auf `standard`. Die VISION fordert in `:26-31` drei kurze, unterschiedliche und möglichst direkt aussprechbare Alternativen.
-- **Status:** teilweise implementiert; der Standardpfad erfüllt die Drei-Karten-Anforderung nicht.
+- **Status:** teilweise umgesetzt: `91e2425` normalisiert im Standardpfad drei eindeutige Optionen mit sprechbaren, faktenfreien Fallbacks und rendert sie im Overlay; der experimentelle Vier-Karten-Pfad bleibt kompatibel. Ein dedizierter Standard-UI-/Reducer-Test für Turnwechsel und sichtbare Veraltung fehlt noch.
+- **Aktueller Nachweis:** `app/backend/app/services/agents/objection_handler.py`, `app/backend/app/services/agents/orchestrator.py` und `app/frontend/src/components/DebateOverlay.tsx`; Frontend-Suite in `44663366611` erfolgreich.
 - **Sollzustand:** Der Standard-Live-Modus zeigt drei aktuelle, unterscheidbare Vorschläge, mindestens einen davon direkt sprechbar, mit sichtbarem Turn-/Revisionsbezug und Veraltungshinweis.
 - **Minimalste Lösung:** Antwortvertrag und Reducer so erweitern, dass der Standardpfad drei validierte Alternativen erhält; Overlay rendert sie als gleichwertige Karten und behält den bestehenden experimentellen Pfad kompatibel.
 - **Nutzen:** Der zentrale Aha-Moment ist im normalen Produktpfad verfügbar und nicht an einen optionalen Modus gebunden.
@@ -257,7 +262,7 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `app/backend/tests/test_insight_commit_postgres.py` und `test_provisional_transcripts_postgres.py` sind über `skipUnless` an PostgreSQL-Umgebungsvariablen gebunden. `.github/workflows/tests.yml:30-65` startet keinen PostgreSQL-Service und setzt keine `DEBATEAI_TEST_POSTGRES_*`-Variablen. Ein grüner Backend-Job belegt damit die SQLite-/Mock-Abdeckung, nicht die DB-Constraints, Concurrency- und Migrationsgrenzen.
-- **Status:** bestätigt; die Tests sind im Standard-CI ohne explizite PostgreSQL-Bereitstellung überspringbar.
+- **Status:** umgesetzt für den aktuellen CI-Vertrag (`91e2425`): Der Job `postgres-boundaries` startet einen isolierten PostgreSQL-16.4-Alpine-Service, validiert die Acceptance-Datenbank und führt Insight-, Provisional-Transcript- sowie parallele Migrationstests aus. Run `44663366611`, Job `postgres-boundaries` ist erfolgreich; lokale Läufe ohne Abhängigkeiten bleiben weiterhin nicht ausführbar.
 - **Sollzustand:** Die produktionsnahe PostgreSQL-Schicht wird in einem isolierten CI-Job oder sichtbar markierten Nightly-Lauf mit Migrationen und den beiden Testdateien geprüft.
 - **Minimalste Lösung:** Einen versionierten PostgreSQL-Service/Container mit Testdatenbank und expliziten Variablen ergänzen; Skip-Zählung im Log als Gate sichtbar machen.
 - **Nutzen:** Datenintegritäts- und Race-Bedingungen werden vor Release geprüft statt nur simuliert.
@@ -301,7 +306,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `app/backend/app/routers/chat.py:184-215` lädt für bis zu 20 Sitzungen vollständige Speaker-, TranscriptEntry- und Insight-Mengen in Python, bevor `build_chat_prompt` auf 60.000 Zeichen kürzt. Zusätzlich puffert `app/backend/app/services/pii/reveal_middleware.py:49-79` jede session-scoped JSON-Antwort vollständig in `body_parts`, bevor die Reveal-Verarbeitung beginnt; ein Größenlimit oder Streaming-/Pagination-Schutz ist nicht erkennbar.
-- **Status:** teilweise umgesetzt (Commit `9a72a2a`); der Reveal-Pfad weist Antworten über 8 MiB kontrolliert mit HTTP 413 zurück. SQL-Limits/Pagination und ein Lastbudget für den Chat bleiben offen.
+- **Status:** weiter teilweise umgesetzt: Der Reveal-Pfad weist Antworten über 8 MiB kontrolliert mit HTTP 413 zurück; `91e2425` begrenzt zusätzlich Sessions, Segmente, Transcripts, Fragen, Dokumente, Direktiven, Speaker und Knowledge-Listen per sicheren `limit`-Defaults und ergänzt passende Indizes. Der Chat-Prompt lädt weiterhin keine SQL-seitig priorisierte Teilmenge und besitzt noch kein vollständiges Cursor-/Lastbudget.
+- **Aktueller Nachweis:** Bounded-Listen und Alembic-Revision `033_list_query_indexes.py`; Backend-/PostgreSQL-Suite `44663366611` erfolgreich.
 - **Sollzustand:** Datenbankabfrage, Promptaufbau und PII-Reveal sind bei großen Sitzungen begrenzt, paginiert oder liefern kontrollierte 413-/Truncation-Signale.
 - **Minimalste Lösung:** Brief-first/Latest-Limits bereits in SQL anwenden, Transkriptseiten explizit begrenzen und den Reveal-Pfad mit einer definierten Maximalgröße versehen; große Antworten nicht doppelt vollständig im Worker halten.
 - **Nutzen:** Stabilere Antwortzeiten und geringeres OOM-/Worker-Restart-Risiko bei langen Sitzungen oder parallelen Anfragen.
@@ -345,7 +351,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** Bestätigter Architekturpfad für mehr als einen Uvicorn-Worker: `app/backend/app/services/agents/orchestrator.py:718-745` hält `_live_orchestrators` im Prozessspeicher, `app/backend/app/services/ws_event_stream.py:268-282` `_journals` ebenfalls. REST-/WebSocket-Pfade (`app/backend/app/routers/sessions.py:78-80,130-136`; `transcripts.py:22,121`; `debate_review.py:28,202`) greifen auf denselben Prozesszustand zu. Ein WS-Worker A kann deshalb den Live-State für REST-Worker B nicht sehen; Overlay-, Context- und Directive-Operationen werden dort zu No-ops oder veralteten Antworten.
-- **Status:** bestätigt für einen Multiworker-Start; ob der produktive Deploymentvertrag mehrere Worker zulässt, ist separat zu verifizieren.
+- **Status:** teilweise umgesetzt (`91e2425`): Die offiziellen Startpfade erzwingen `BACKEND_WORKERS=1` beziehungsweise `--workers 1` und lehnen abweichende Werte ab; Tests und Dokumentation sind aktualisiert. Ein gemeinsamer Redis-/DB-State-Adapter und ein Zwei-Worker-Produktionsnachweis bleiben offen.
+- **Aktueller Nachweis:** `app/backend/scripts/start_backend.py`, `setup_windows_gpu.ps1`, `app/docs/deployment.md`, `app/docs/quickstart.md`; Starttests im grünen Lauf `44663366611`.
 - **Sollzustand:** Live-State, Journale und Steuerbefehle funktionieren deterministisch über Workergrenzen oder der Startvertrag erzwingt nachweislich einen Single-Worker-/Sticky-Session-Betrieb.
 - **Minimalste Lösung:** Gemeinsamen Redis-/DB-Journal- und State-Adapter mit Session-/Revision-IDs einführen oder Multiworker im produktiven Start explizit blockieren und den Grund dokumentieren.
 - **Nutzen:** Verhindert stille Ausfälle von Overlay, Live-Transkript und Steuerung beim Skalieren oder hinter einem Load-Balancer.
@@ -374,7 +381,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** Mehrere GET-Endpunkte liefern ungebremste Vollmengen: `app/backend/app/routers/sessions.py:72-75` alle Sessions, `:141-148` alle Segmente, `app/backend/app/routers/transcripts.py:56-72` alle Transcript-Einträge/Revisionsdaten, `questions.py:14-19` alle Fragen und `knowledge.py:59-72,128-136` alle Quellen/Records. `app/frontend/src/hooks/useSession.ts:116-142` startet zusätzlich mehrere Voll-GETs pro ausgewählter Session.
-- **Status:** begründete Optimierung; ein Produktionsausfall ist nicht bewiesen, die lineare Payload-/DB-/Renderlast ist im Code sichtbar.
+- **Status:** teilweise umgesetzt (`91e2425`): Alle geprüften Vollmengen-Endpunkte haben nun kompatible, begrenzte Array-Antworten mit stabilen Tie-Breaker-Sortierungen und die wichtigsten Composite-Indizes. Echte Cursor-Fortsetzung, UI-Seitenabruf und SQL-seitige Chat-Priorisierung bleiben offen; ein Produktionsausfall ist weiterhin nicht bewiesen.
+- **Aktueller Nachweis:** Routeränderungen in `app/backend/app/routers/{sessions,transcripts,questions,knowledge,directives,documents,speakers}.py`, Migration `033_list_query_indexes.py`; CI-Run `44663366611` erfolgreich.
 - **Sollzustand:** Listen haben stabile Cursor-/Limit-Parameter, maximale Antwortgrößen und lazy geladene Details; alte Clients bleiben über begrenzte Defaults kompatibel.
 - **Minimalste Lösung:** Cursor oder `limit`/`before` mit sicheren Obergrenzen ergänzen, nach Session-/Zeitindex sortieren und Frontend auf erste Seite plus Detailabruf umstellen.
 - **Nutzen:** Kontrollierbare Latenz und Speichernutzung bei lang lebenden Workspaces, großen Transkripten und vielen Sessions.
@@ -389,7 +397,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `app/backend/app/main.py:411-442` führt `create_all`/rohe `ALTER`-Schritte sowie Alembic-Stamp/Upgrade innerhalb jedes App-Lifespans aus. Ein Datenbank-Advisory-Lock oder ein anderer Single-Runner-Schutz ist im geprüften Pfad nicht nachweisbar; bei parallelem Start mehrerer Worker können doppelte Änderungen oder konkurrierende Stamps entstehen.
 - **Aktueller Nachweis:** Der aktuelle Remediation-Stand serialisiert die komplette Schema-Sequenz auf PostgreSQL mit `pg_advisory_lock(hashtext('debateai.schema'))`; SQLite bleibt beim bestehenden lokalen Pfad.
-- **Status:** teilweise umgesetzt; der PostgreSQL-Lock ist im Code vorhanden, ein Zwei-Worker-Startup-Test auf einer isolierten Datenbank fehlt weiterhin.
+- **Status:** weitgehend umgesetzt (`91e2425`): Der PostgreSQL-Advisory-Lock bleibt aktiv und ein isolierter paralleler Startup-Test prüft nun genau einen Alembic-Head. Der Fehler-/Retry-Fall eines absichtlich scheiternden Runners und die vollständige Legacy-Matrix bleiben offen.
+- **Aktueller Nachweis:** `app/backend/tests/test_schema_migrations_postgres.py`; Job `postgres-boundaries` im grünen Run `44663366611`.
 - **Sollzustand:** Genau ein idempotenter Migrationsrunner arbeitet pro Datenbank; parallele App-Starts warten oder erkennen den aktuellen Head ohne Duplicate-/Lock-Fehler.
 - **Minimalste Lösung:** Migrationen aus dem Lifespan in einen expliziten Job verschieben oder per DB-Advisory-Lock serialisieren; Startup-/Legacy-Matrix testen.
 - **Nutzen:** Verhindert schwer reproduzierbare Startfehler und Schema-Halbzustände beim Skalieren oder bei Recovery.
@@ -404,7 +413,8 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** Bestätigter Codepfad ohne erkennbaren Lifecycle: `app/backend/app/services/ws_event_stream.py:268-282` hält globale `_journals`; ein `SessionEventJournal` speichert bis zu 512 Events und 512 State-Events (`:64-82,123-128`). `app/backend/app/services/pii/ws.py:120-131` räumt beim WebSocket-Schließen Buffer und Tasks, aber nicht das globale Journal auf. Zusätzlich halten `app/backend/app/services/pii/vault.py:99-117` globale `_plaintext_seen`-Werte und `app/backend/app/services/pii/redaction.py:39-40,73-90` `_known`-Secrets prozessweit; `vault.forget(session_id):293-297` invalidiert nur den DB-Transaktionscache. `app/backend/app/services/transcription_jobs.py:91-130` hält abgeschlossene/fehlgeschlagene Jobobjekte ebenfalls ohne TTL im globalen `_jobs`.
 - **Aktueller Nachweis:** `9a72a2a` ergänzt beim Session-Delete `forget_session` für `_journals` und `_jobs`; Vault-/Redaction-Indizes bleiben als separater TTL-/LRU-Restpunkt offen.
-- **Status:** teilweise umgesetzt (Commit `9a72a2a`): Session-Löschen entfernt jetzt das globale WebSocket-Journal und den Transcription-Job-Eintrag. Globale Vault-/Redaction-Scrub-Indizes besitzen weiterhin keinen sessionweisen TTL-/LRU-Lifecycle; Langzeitwirkung bleibt zu messen.
+- **Status:** weiter teilweise umgesetzt: Session-Löschen entfernt Journal-/Job-Referenzen; `91e2425` ergänzt für WebSocket-Journale ein 2-MiB-Bytebudget, Idle-TTL-Sweep und Generation-Release bei WebSocket-Schließen. Globale Vault-/Redaction-Scrub-Indizes und abgeschlossene Jobs außerhalb des Löschpfads besitzen noch keinen vollständigen sessionweisen TTL-/LRU-Lifecycle.
+- **Aktueller Nachweis:** `app/backend/app/services/ws_event_stream.py`, `app/backend/app/services/pii/ws.py` und `app/backend/tests/test_ws_event_stream.py`; die zugehörigen Regressionstests sind in `44663366611` enthalten.
 - **Sollzustand:** Journale, Scrub-Indizes und Jobstatus haben einen begrenzten, sessionbewussten Lebenszyklus mit TTL/LRU oder persistiertem Replay; Session-Löschung entfernt sensible Indizes, ohne zulässiges Reconnect-Replay zu brechen.
 - **Minimalste Lösung:** TTL/LRU- und Session-Cleanup für globale Strukturen ergänzen, Größen-/Alter-Metriken ausgeben und Löschpfade mit Egress-Scrubbing sowie P1.14 koordinieren; bei notwendigem Replay auf DB/Redis ausweichen.
 - **Nutzen:** Begrenzt Prozessspeicher und die Lebensdauer sensibler Klartext-/Tokenreferenzen und macht Multi-Session-/Multiworker-Verhalten kontrollierbarer.
