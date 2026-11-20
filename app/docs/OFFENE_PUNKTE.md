@@ -149,15 +149,15 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 ### P3.3 Diese Konsolidierungsdokumente als laufende Quelle pflegen
 
 - **Problem:** Historie, Vision und Restarbeiten waren über viele Einzeldateien verteilt; neue Belege können den Stand ändern.
-- **Status:** offen; die frühere Angabe eines separaten Prüf-Branches und unveränderten Masters ist historische Provenienz und beschreibt nicht den aktuellen Public-Stand. `main` zeigt inzwischen auf `791f864de8025aed4cfe5848f0e9e5b4d7402865` und enthält die Backlog-Pflege.
+- **Status:** offen; die frühere Angabe eines separaten Prüf-Branches und unveränderten Masters ist historische Provenienz und beschreibt nicht den aktuellen Public-Stand. `main` zeigt aktuell auf `b7e1b7d692034937139b23921a784c6c4e19cc98` und enthält die Remediation sowie die Backlog-Pflege.
 - **Nächste Handlung:** Nach jeder Review nur mit Commit-/Test-/Releasebeleg aktualisieren, erledigte Punkte nicht als offen weiterführen und ungeklärte Alternativen erhalten.
 - **Fertigstellungsnachweis:** Jede Änderung verweist auf Commit, PR, Pfad oder frischen Prüflauf; der aktuelle Branch-/HEAD-Stand ist im Dokument datiert und der Diff bleibt auf zulässige Dokumentdateien beschränkt.
-- **Quelle:** Nutzerauftrag; historischer Branch `docs/project-consolidation-2026-11-19`; aktueller Public-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`.
+- **Quelle:** Nutzerauftrag; historischer Branch `docs/project-consolidation-2026-11-19`; aktueller Public-HEAD `b7e1b7d692034937139b23921a784c6c4e19cc98`.
 ### P1.6 Aktive Dokumentations-, Link- und Branchreferenzen konsolidieren
 
 - **Kategorie:** **Docs-Drift**
 - **Istzustand:** Bestätigt am aktuellen `main`-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`: `app/docs-site/site.test.js:7-11,50-51` liest `app/docs/README.md`, die Datei fehlt; der aktuelle Docs-Site-Lauf `44640619661`, Job `135970434379`, bricht mit `ENOENT` ab und überspringt den Build. `app/docs-site/sync-docs.mjs:10` und `app/docs-site/astro.config.mjs:34` verweisen weiterhin auf das alte Repository `ErpeUser/DebateAI`; `sync-docs.mjs:72` erwartet zusätzlich `app/docs/architecture.svg`, während nur `app/docs/architecture/backchannel-architecture.svg` vorhanden ist. `assemble.mjs:15-22` und der Testvertrag erwarten außerdem mehrere nicht vorhandene Dokumente (unter anderem `api-keys.md`, `agents.md`, `audio-pipeline.md`, `DESKTOP_FINAL.md`, `CODEX_ACCEPTANCE_2026-11-12.md`, `HISTORIE.md` und `DEBATE_AI_VISION_FINAL.md`). Der Test enthält nach dem ersten Fehler weitere alte Erwartungen (`site.test.js:196-201`, altes `/blob/master/LICENSE`). Aktive Anleitungen verwenden `DebateAI.git`, `cd source` und `master`/`origin/master` (`app/README.md:167-179,251-253`; `app/docs/releasing.md:12-18,56-61`; `app/docs/deployment.md:216-220,373-381`), obwohl `AGENTS.md:48-49` den Public-Stand auf `ErpeUser/DebateAI-final-public`/`main` festlegt; die Quickstart-Kommandos setzen fälschlich den Clone-Root statt `app/` voraus (`app/docs/quickstart.md:60-64,122-178,201-210`) und nennen Python 3.11+, während README/Buildpfade 3.12 verlangen. `app/site/index.html:260` behauptet lokale Dokumentverarbeitung, obwohl `app/backend/app/routers/documents.py:79-100` im normalen Pfad Gemini Files nutzt. Zusätzlich widersprechen `AGENTS.md:36-38` und `README.md:18`/`app/docs/generated-workspace.md:10` beim `.git`-Recovery-Vertrag.
-- **Aktueller Nachweis:** Die genannten Driftpfade wurden in `c7e94fe` auf vorhandene Dokumente, `ErpeUser/DebateAI-final-public`, `main` und den `app/`-Layoutvertrag umgestellt; Report und Tests stehen unter `.superpowers/sdd/2026-11-20-full-open-items/task-1-report.md`.
+- **Aktueller Nachweis:** Die genannten Driftpfade wurden in `c7e94fe` auf vorhandene Dokumente, `ErpeUser/DebateAI-final-public`, `main` und den `app/`-Layoutvertrag umgestellt. Der frühere interne Orchestrierungsbericht wurde vor dem aktuellen Layout-Gate aus dem Tree entfernt; der Commit und die ausgeführten Tests sind die maßgebliche Evidenz.
 - **Status:** weitgehend umgesetzt (Commit `c7e94fe`); die CI-Fehlfunktion wurde durch einen konsistenten vorhandenen Dokumentvertrag behoben. `npm test` (171 Tests), `npm run build` (20 Dokumentseiten) und der Repository-Layout-Test (11 Tests) liefen erfolgreich. Externe Veröffentlichungs-/Provider-Gates bleiben separat offen.
 - **Sollzustand:** Aktive Dokumentation, Site-Tests und Sync-/Build-Skripte beziehen sich ausschließlich auf vorhandene Ziele und den kanonischen `app/`-/`main`-Stand. Historische Pfade und Produktbeschreibungen sind datiert bzw. korrekt eingegrenzt.
 - **Minimalste Lösung:** Einen kanonischen Dokumentationsindex festlegen: erwartete Dateien wiederherstellen oder Sync, Assemble, Tests und Inhaltslinks auf die tatsächlich vorhandenen Dokumente umstellen; Asset-Pfad und Repository-URL gemeinsam korrigieren. Clone-/Branch-/Python-Anweisungen und lokale-vs.-Cloud-Dokumentverarbeitung synchronisieren; alte Quellen nur als historische Provenienz markieren.
@@ -166,20 +166,20 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 - **Risiken und Abhängigkeiten:** Historische Provenienz, Starlight-Slugs und veröffentlichte URLs dürfen nicht versehentlich verschwinden; Sync, Assemble, Site-Test und Quickstart müssen gemeinsam angepasst werden.
 - **Akzeptanzkriterium:** Erfüllt für den geprüften Stand: Link-/Pfadscan sowie `cd app/docs-site && npm test && npm run build` liefen erfolgreich; aktive Anweisungen verwenden den `app/`-/`main`-Vertrag. Externe Hosting-/Release-Claims bleiben separat offen.
 - **Befundvertrauen:** **hoch**
-- **Quelle:** Commit `c7e94fe`; Report `.superpowers/sdd/2026-11-20-full-open-items/task-1-report.md`; `app/docs-site/site.test.js`; `app/docs-site/sync-docs.mjs`; `app/docs-site/assemble.mjs`; `app/docs-site/astro.config.mjs`.
+- **Quelle:** Commit `c7e94fe`; `app/docs-site/site.test.js`; `app/docs-site/sync-docs.mjs`; `app/docs-site/assemble.mjs`; `app/docs-site/astro.config.mjs`.
 ### P1.7 Evidenzregister und aktuelle CI-Aussagen auf einen Stand bringen
 
 - **Kategorie:** **Docs-Drift**
-- **Istzustand:** Bestätigt widersprüchlich: `app/docs/EVIDENCE.md:44,52-54` und `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22` mischen historische private-Repository-/`master`-Angaben und alte Auditwerte mit aktuellen Aussagen. Für den aktuellen Public-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865` sind `tests`-Run `44640619666` und `security`-Run `44640619738` erfolgreich; im Security-Lauf sind die Jobs `python`, `frontend`, `docs-production` und `oracle-production` erfolgreich. `docs-site-build`-Run `44640619661` ist fehlgeschlagen (Job `135970434379`, `site.test.js`/`ENOENT`); `Structure`-Run `44640619779` ist insgesamt erfolgreich, enthält aber einen fehlgeschlagenen Sentrux-Job `135970435078`, weil `continue-on-error` den Strukturfehler nicht zum Workflow-Fehler macht.
+- **Istzustand:** Bestätigt widersprüchlich: `app/docs/EVIDENCE.md:44,52-54` und `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22` mischen historische private-Repository-/`master`-Angaben und alte Auditwerte mit aktuellen Aussagen. Für den aktuellen Public-HEAD `b7e1b7d692034937139b23921a784c6c4e19cc98` liefen der Backend-/Frontend-/Browser-Testlauf `44647807154` sowie Security `44647809103` erfolgreich; der Tests-Lauf weist 2.158 bestandene und 16 übersprungene Backend-Tests aus. Der aktuelle Structure-Run `44647805682` besteht im Repository-Layout-Job, blockiert aber im Sentrux-Rules-Job wegen geerbter `max_cycles`, `max_cc`, `max_fn_lines` und großer Dateien. Die aktiven Evidenzdokumente selbst sind damit noch nicht vollständig auf diesen Stand konsolidiert.
 - **Status:** bestätigt widersprüchlich; aktuelle Run-/Jobdaten sind verfügbar, die aktiven Dokumente wurden noch nicht auf diesen Stand konsolidiert.
 - **Sollzustand:** Aktive Statusabschnitte nennen nur Werte mit Commit-SHA, Run-/Job-ID und Zeitpunkt. Ältere Auditwerte bleiben sichtbar historisch; ein grüner Gesamtworkflow darf advisory- oder übersprungene Teilprüfungen nicht als vollständige Freigabe darstellen.
-- **Minimalste Lösung:** EVIDENCE und FINAL_STATUS in datierte Abschnitte für `791f864` und historische Stände trennen; jede Zahl mit Run-/Job-ID verknüpfen und Docs-Site-/Sentrux-Fehler explizit ausweisen. Security-Passes nur für die vier tatsächlich erfolgreichen Jobs behaupten.
+- **Minimalste Lösung:** EVIDENCE und FINAL_STATUS in datierte Abschnitte für `b7e1b7d` und historische Stände trennen; jede Zahl mit Run-/Job-ID verknüpfen und Docs-Site-/Sentrux-Fehler explizit ausweisen. Security-Passes nur für die tatsächlich erfolgreichen Jobs behaupten.
 - **Nutzen:** Freigabeentscheidungen beruhen auf nachvollziehbarer, nicht widersprüchlicher Evidenz.
 - **Aufwand:** **S**
 - **Risiken und Abhängigkeiten:** Ein späterer Run kann den Status ändern; deshalb darf der Text keinen zeitlosen Pass-Claim enthalten und muss Workflow-/Jobgrenzen erklären.
 - **Akzeptanzkriterium:** Ein Review findet in den aktiven Abschnitten keine widersprüchlichen Repo-/Branch-/Auditstände; jede CI-/Auditzahl ist auf genau einen Commit sowie sichtbaren Run/Job zurückführbar, und ein Sentrux-Fehler ist im Summary als advisory oder blockierend erkennbar.
 - **Befundvertrauen:** **hoch**
-- **Quelle:** `app/docs/EVIDENCE.md:44,52-54`; `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22`; Actions `44640619661`, `44640619666`, `44640619738`, `44640619779`, Jobs `135970434379`, `135970435078`; HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`.
+- **Quelle:** `app/docs/EVIDENCE.md:44,52-54`; `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22`; Actions `44647807154`, `44647809103`, `44647805682`; Jobs `135994751160`, `135994751783`; HEAD `b7e1b7d692034937139b23921a784c6c4e19cc98`.
 ### P1.8 Zwei Debattenrollen im Live-Modus tatsächlich aktivieren
 
 - **Kategorie:** **VISION-GAP**
@@ -241,14 +241,14 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `app/backend/app/routers/chat.py:223-242` akzeptiert bis zu 20 `session_ids`, schützt aber jede Nutzernachricht ausschließlich mit `shield.protect_text(db, body.session_ids[0], ...)`. `shield.session_roster` ist in `app/backend/app/services/pii/shield.py:191-207` strikt sitzungsgebunden. Ein geschützter Name/Term, der nur in Session 2 bekannt ist, kann damit in einer Multi-Session-Frage vor dem Provider-Aufruf ungeschützt bleiben.
 - **Aktueller Nachweis:** `9a72a2a` verwendet `protect_text_for_sessions`; Roster-Einträge aller ausgewählten Sitzungen werden in einem primären, deterministischen Vault-Namespace geschützt.
-- **Status:** umgesetzt (Commit `9a72a2a`); der Chat-Roster wird über alle ausgewählten Sitzungen vereinigt und Regressionstests decken den zweiten Sitzungswert ab. Eine vollständige Backend-Testausführung war lokal wegen fehlendem `sqlalchemy` nicht möglich.
+- **Status:** umgesetzt (Commit `9a72a2a`); der Chat-Roster wird über alle ausgewählten Sitzungen vereinigt und Regressionstests decken den zweiten Sitzungswert ab. Der aktuelle CI-Testlauf `44647807154` auf `b7e1b7d` lief mit installierten Backend-Abhängigkeiten erfolgreich durch (2.158 Tests bestanden, 16 übersprungen); der Multi-Session-Test ist darin enthalten.
 - **Sollzustand:** Jede ausgewählte Session trägt ihren Vault-/Roster-Schutz zum gemeinsamen Prompt bei, ohne Token-Namensräume oder Reveal-Zuordnung zu vermischen.
 - **Minimalste Lösung:** Einen unionsweiten, read-only Roster/Vault-Scope für die User-Nachricht verwenden oder Multi-Session-Chat auf einen gemeinsamen Schutzscope begrenzen; Namespace-/Reveal-Tests ergänzen.
 - **Nutzen:** Verhindert, dass ein Klartextwert aus einer zweiten ausgewählten Sitzung an ein externes Modell gelangt.
 - **Aufwand:** **M**
 - **Risiken und Abhängigkeiten:** Token-Kollisionen, Rückauflösung und Transaktionsdauer über bis zu 20 Sitzungen müssen kontrolliert werden.
-- **Akzeptanzkriterium:** `test_multi_session_protection_uses_the_union_of_selected_rosters` bildet den Session-2-Fall auf Codeebene ab; der CI-Lauf mit installierten Backend-Abhängigkeiten muss Provider-Prompt und Rückauflösung noch bestätigen.
-- **Befundvertrauen:** **hoch** für die Codeabweichung, **mittel** für die noch nicht ausgeführte End-to-End-Reproduktion.
+- **Akzeptanzkriterium:** `test_multi_session_protection_uses_the_union_of_selected_rosters` und `ChatBriefingOwnerTests.test_multi_session_chat_protects_against_all_selected_sessions` bilden den Session-2-Fall ab; der CI-Lauf `44647807154` bestätigt den vollständigen Backend-Testlauf. Ein Provider-E2E-Test mit echten externen Antworten bleibt bewusst außerhalb dieses lokalen Vertrags.
+- **Befundvertrauen:** **hoch** für die Code- und Regressionsevidenz, **mittel-hoch** für die weiterhin nicht real-providerbasierte E2E-Abdeckung.
 - **Quelle:** `app/backend/app/routers/chat.py:223-242`; `app/backend/app/services/pii/shield.py:191-207,248-268`.
 
 ### P1.13 PostgreSQL-Grenztests in CI tatsächlich ausführen
@@ -270,15 +270,15 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `.github/workflows/structure.yml` markiert den `sentrux`-Job mit `continue-on-error: true`. Im Lauf `44628692440` (HEAD `faa68958`) schlug der `Rules check`-Schritt fehl; die Auswertung meldete neben `max_file_lines` auch `max_cycles`, `max_cc` und `max_fn_lines`. Der Gesamtworkflow blieb trotzdem `success`, weil der separate Repository-Layout-Job erfolgreich war.
 - **Aktueller Nachweis:** Seit `9a72a2a` enthält der Job kein `continue-on-error`; die Rules-Check-Allowlist entscheidet damit über den Jobstatus.
-- **Status:** umgesetzt im Workflow (Commit `9a72a2a`); `continue-on-error` wurde entfernt. Der Sentrux-Job ist bei nicht erlaubten Verstößen blockierend; ein aktueller Remote-Run wurde in dieser Runde nicht behauptet.
+- **Status:** umgesetzt im Workflow (Commit `9a72a2a`); `continue-on-error` wurde entfernt. Im aktuellen Remote-Run `44647805682` auf `b7e1b7d` bestand der Repository-Layout-Job, während der Sentrux-Rules-Job wegen geerbter `max_cycles`, `max_cc`, `max_fn_lines` und zusätzlicher großer Dateien blockierte; der Vergleichsschritt meldete zugleich „No degradation detected“.
 - **Sollzustand:** Policy und Status unterscheiden klar zwischen blockierendem Layout-Gate und zugelassener struktureller Schuld; ein unerwarteter Verstoß darf nicht wie ein vollständig grüner Qualitätslauf erscheinen.
 - **Minimalste Lösung:** Entweder die zugelassenen Regeln als versionierte Allowlist im Run-Summary ausweisen oder Sentrux bei neuen/unerwarteten Befunden blockierend machen; FINAL_STATUS darf nur den differenzierten Status melden.
 - **Nutzen:** CI-Signale werden für Review und Release nicht überinterpretiert.
 - **Aufwand:** **S**
 - **Risiken und Abhängigkeiten:** Eine Policy-Änderung kann bestehende Branches blockieren; Baseline- und Lockfile-Ausnahmen müssen reproduzierbar bleiben.
-- **Akzeptanzkriterium:** Der Workflow behandelt den Job-Fehler nicht mehr als grünen Gesamtstatus; die vorhandene Rules-Check-Allowlist bleibt der einzige zulässige Ausnahmeweg. Ein aktueller Remote-Run muss die Policy noch bestätigen.
+- **Akzeptanzkriterium:** Der Workflow behandelt den Job-Fehler nicht mehr als grünen Gesamtstatus; die vorhandene Rules-Check-Allowlist bleibt der einzige zulässige Ausnahmeweg. Run `44647805682` bestätigt diese Policy mit einem sichtbaren `failure` für den Sentrux-Job und einem erfolgreichen Layout-Job.
 - **Befundvertrauen:** **hoch**
-- **Quelle:** `.github/workflows/structure.yml` (`sentrux`-Job und Rules-Check); Run `44628692440`, Jobstatus `Sentrux structural gate=failure`, Gesamtstatus `success`.
+- **Quelle:** `.github/workflows/structure.yml` (`sentrux`-Job und Rules-Check); Run `44647805682`, Jobs `135994751160` (Layout, success) und `135994751783` (Sentrux, failure).
 
 ### P2.7 Produktionsstart nicht standardmäßig mit Uvicorn-Reload ausführen
 
