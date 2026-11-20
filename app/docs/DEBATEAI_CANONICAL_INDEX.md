@@ -7,8 +7,8 @@ requirement.
 
 ## Maintained contract
 
-- [Repository evidence register](EVIDENCE.md) — current verification limits and retained provenance.
-- [Status, history and open gates](FINAL_STATUS_AND_OPEN_ITEMS.md) — dated evidence and unresolved work; Git remains the detailed implementation history.
+- [Open items and consolidated evidence](OFFENE_PUNKTE.md) — maintained P0–P3 backlog and current verification limits.
+- [Dated evidence, 18 November 2026](OFFENE_PUNKTE.md#historische-evidenz-2026-11-18) and [status, 19 November 2026](OFFENE_PUNKTE.md#historischer-status-2026-11-19) — preserved historical build, test, release and provenance records; not current release acceptance.
 - [Quickstart](quickstart.md) — supported desktop, Docker and local setup.
 - [Architecture](architecture.md) — current frontend, backend and WebSocket boundaries.
 - [Configuration](configuration.md) — canonical `DEBATEAI_*` variables and explicitly configured update endpoints.

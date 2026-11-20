@@ -163,7 +163,7 @@ Abnahmekriterien für den Debattenkern sind insbesondere:
 - **Transparenz und Datenhaltung:** erkennbare lokale/externe Providerwege, verlässliche Quellenlinks, keine als sicher präsentierten ungesicherten Behauptungen, nachvollziehbare Audio-Löschung und Erhalt von Transkript/Argumentgedächtnis.
 - **Release und Betrieb:** reproduzierbare Tests, vorhandene CI-Logs statt als grün interpretierter Runner-Ausfälle, echte Windows-Build-/GUI-Abnahme, sichere Installation, Signatur/Hashes, Datenmigration, Update und Rollback. Offene Signatur-/Hardware-/Provider-Gates bleiben sichtbar.
 
-Der bestehende Acceptance- und Release-Kontext (unter anderem A22/Human-Rating, Windows-Audio, CI-Provisionierung, Authenticode/Distribution) ist bislang **nicht vollständig abgenommen**. Siehe [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md), den datierten Geschichtsvermerk, den datierten Visionssnapshot und [EVIDENCE.md](EVIDENCE.md).
+Der bestehende Acceptance- und Release-Kontext (unter anderem A22/Human-Rating, Windows-Audio, CI-Provisionierung, Authenticode/Distribution) ist bislang **nicht vollständig abgenommen**. Siehe [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md), den datierten Geschichtsvermerk, den datierten Visionssnapshot und [historischen Evidenzanhang](OFFENE_PUNKTE.md#historische-evidenz-2026-11-18).
 
 **Bewusste Nicht-Ziele:** automatische KI-Sprache im Gespräch, ein allgemeiner Team-Meeting-Dienst als Hauptidentität, primär mobile oder macOS-Veröffentlichung, ungeprüfte Vollautomatik von Modellwechseln, ungefragte öffentliche Releases, stille Cloudnutzung und das Ausgeben experimenteller Technik als fertig.
 

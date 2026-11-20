@@ -11,7 +11,7 @@ current runtime instructions.
 - Retain the live Python/Node/Desktop entry points, APIs, migrations, release
   contracts and source assets. Static scanner results require verification.
 - Follow docs/DEBATEAI_CANONICAL_INDEX.md, docs/releasing.md and
-  docs/EVIDENCE.md for technical behavior and verification constraints.
+  docs/OFFENE_PUNKTE.md for open gates, dated evidence and verification constraints.
 - Run targeted tests and fresh builds. Do not assert a signed release without
   a new binary, verified signature and smoke test.
 - Root GitHub workflows may name a checkout folder source/; that alias is
