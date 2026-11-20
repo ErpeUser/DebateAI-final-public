@@ -58,7 +58,7 @@ hash. The historical ledger is not modified by this command.
 ## Resume
 
 ```powershell
-powershell -NoProfile -File .\source\scripts\automation\resume_debateai.ps1 -State .\evidence\acceptance\RUN\resume.json
+powershell -NoProfile -File .\app\scripts\automation\resume_debateai.ps1 -State .\evidence\acceptance\RUN\resume.json
 ```
 
 Resume only revalidates a fixed profile on the recorded clean commit; it never
