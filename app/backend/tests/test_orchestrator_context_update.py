@@ -81,6 +81,7 @@ class UpdateMeetingContextTests(unittest.IsolatedAsyncioTestCase):
                 "audio_gateway",
                 "objection_handler",
                 "consolidated_analyst",
+                "strategic_signals",
             },
             active,
         )

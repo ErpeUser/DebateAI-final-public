@@ -4743,7 +4743,7 @@ class AgentOrchestrator:
                 "config_generation": generation_context.config_generation,
                 "generation_id": generation_context.generation_id,
             })
-            if self._experimental_mode:
+            if getattr(self, "_experimental_mode", False):
                 return self._experimentalize_recommendation(value)
             return value.model_copy(update={
                 "strategy_options": normalize_standard_strategies(value),
