@@ -469,12 +469,14 @@ async def _run_schema_migrations() -> None:
     Alembic code continues to use its normal short-lived connections.
     """
     lock_conn = await engine.connect()
+    locked = False
     try:
         if lock_conn.dialect.name == "postgresql":
             await lock_conn.execute(text("SELECT pg_advisory_lock(hashtext('debateai.schema'))"))
+            locked = True
         await _run_schema_migrations_unlocked()
     finally:
-        if lock_conn.dialect.name == "postgresql":
+        if locked:
             await lock_conn.execute(text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))"))
         await lock_conn.close()
 
