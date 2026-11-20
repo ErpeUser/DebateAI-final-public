@@ -390,6 +390,19 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 - **Befundvertrauen:** **mittel**
 - **Quelle:** `app/backend/app/main.py:411-442`; Alembic-Migrationspfad; PostgreSQL-Gate P1.13.
 
+### P2.12 Prozessweite Journale und PII-Scrub-Indizes begrenzen
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** Bestätigter Codepfad ohne erkennbaren Lifecycle: `app/backend/app/services/ws_event_stream.py:268-282` hält globale `_journals`; ein `SessionEventJournal` speichert bis zu 512 Events und 512 State-Events (`:64-82,123-128`). `app/backend/app/services/pii/ws.py:120-131` räumt beim WebSocket-Schließen Buffer und Tasks, aber nicht das globale Journal auf. Zusätzlich halten `app/backend/app/services/pii/vault.py:99-117` globale `_plaintext_seen`-Werte und `app/backend/app/services/pii/redaction.py:39-40,73-90` `_known`-Secrets prozessweit; `vault.forget(session_id):293-297` invalidiert nur den DB-Transaktionscache. `app/backend/app/services/transcription_jobs.py:91-130` hält abgeschlossene/fehlgeschlagene Jobobjekte ebenfalls ohne TTL im globalen `_jobs`.
+- **Status:** bestätigter Codepfad; tatsächliche Langzeit-RAM- und Retention-Auswirkung ist zu messen.
+- **Sollzustand:** Journale, Scrub-Indizes und Jobstatus haben einen begrenzten, sessionbewussten Lebenszyklus mit TTL/LRU oder persistiertem Replay; Session-Löschung entfernt sensible Indizes, ohne zulässiges Reconnect-Replay zu brechen.
+- **Minimalste Lösung:** TTL/LRU- und Session-Cleanup für globale Strukturen ergänzen, Größen-/Alter-Metriken ausgeben und Löschpfade mit Egress-Scrubbing sowie P1.14 koordinieren; bei notwendigem Replay auf DB/Redis ausweichen.
+- **Nutzen:** Begrenzt Prozessspeicher und die Lebensdauer sensibler Klartext-/Tokenreferenzen und macht Multi-Session-/Multiworker-Verhalten kontrollierbarer.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** Zu frühes Entfernen kann Reconnects, PII-Egress-Scrubbing oder Debuggability beeinträchtigen; TTL, Replay-Fenster und Datenschutzretention müssen gemeinsam festgelegt werden.
+- **Akzeptanzkriterium:** Ein Langzeittest mit 10.000 abgeschlossenen Sessions hält RAM und globale Indexgrößen unter einem definierten Budget; Session-Löschung entfernt die zugehörigen PII-Indizes, und ein zulässiger Reconnect erhält den vereinbarten Event-/Statusstand.
+- **Befundvertrauen:** **hoch** für die globalen Strukturen, **mittel** für die Betriebswirkung.
+- **Quelle:** `app/backend/app/services/ws_event_stream.py:64-82,123-128,268-282`; `app/backend/app/services/pii/ws.py:120-131`; `app/backend/app/services/pii/vault.py:99-117,293-305`; `app/backend/app/services/pii/redaction.py:39-40,73-90`; `app/backend/app/services/transcription_jobs.py:91-130`; P1.14.
 ### P3.4 Abhängigkeiten und Modulgrenzen mit bewusst begrenzten Static-Analysis-Gates erfassen
 
 - **Kategorie:** **TECH-IMPROVEMENT**
