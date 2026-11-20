@@ -2,16 +2,16 @@
 
 Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der letzte vollständig geprüfte Hauptstand vor der laufenden Regressionserweiterung ist `eb7a64990243c2e01d7f8212ba3ab83158fddb01`. Für genau diesen SHA sind `tests` (Run `44680308314`) und `security` (Run `44680308315`) erfolgreich; der Structure-Gesamtlauf `44680308253` ist wegen geerbter absoluter Sentrux-Verstöße rot, während der Layout-Job `136101840244` und der relative Vergleich `No degradation detected` erfolgreich sind. Die neue Regressionserweiterung liegt in den Commits `06bd7b2`, `24d44dd`, `8711036`, `25c2398`, `f773092`, `d7f1b71` und `2d0cbc4`; für diesen neuen Zielstand müssen die Actions noch frisch abgeschlossen werden. Die öffentliche Quellenstrategie ist entschieden: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und Hardwareabnahme bleiben getrennte externe Gates.
+**Aktueller geprüfter Code-/CI-Stand:** Der aktuelle Zielstand ist `9c384608de5da7b452161fa77419a8dfec3ddaed`. Für exakt diesen SHA sind `tests` (Run `44683868162`) und `security` (Run `44683868692`) erfolgreich. Backend (`136113534407`), Frontend (`136113534355`), PostgreSQL-Grenzen (`136113533830`), Windows-Workspace (`136113534082`) und Browser-Kalibrierung (`136113534053`) sind grün; der Security-Lauf bestätigt Python (`136113472352`), Frontend (`136113472615`), Docs-Production (`136113472850`) und Oracle-Production (`136113472513`). Der Structure-Gesamtlauf `44683868125` bleibt wegen geerbter absoluter Sentrux-Verstöße rot (`136113438257`), während der Layout-Job `136113438480` erfolgreich ist und der relative Vergleich `No degradation detected` meldet. Lokal auf dem autorisierten Windows-Gerät bestehen die Frontend-Tests mit 371/371 und der Produktionsbuild. Die öffentliche Quellenstrategie ist entschieden: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und Hardwareabnahme bleiben getrennte externe Gates.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
 ### P0.1 GitHub-Actions-Gesamtgate
 
-- **Status:** teilweise nachgewiesen; für `eb7a649` sind Tests und Security grün, der Structure-Gesamtlauf bleibt wegen absoluter, geerbter Sentrux-Schulden rot.
-- **Offen:** Actions für den neuen Zielstand abwarten und anschließend die verbleibenden absoluten Findings entweder im Code abbauen oder als bewusst akzeptierte Qualitätsverschuldung mit Owner und Termin entscheiden.
+- **Status:** teilweise nachgewiesen; für `9c384608` sind Tests und Security grün, der Structure-Gesamtlauf bleibt wegen absoluter, geerbter Sentrux-Schulden rot.
+- **Offen:** Die verbleibenden absoluten Findings entweder im Code abbauen oder als bewusst akzeptierte Qualitätsverschuldung mit Owner und Termin entscheiden.
 - **Fertigstellungsnachweis:** grüner Structure-Gesamtlauf ohne absolute Findings oder eine datierte, verantwortete Ausnahmeentscheidung; Tests/Security müssen weiterhin auf exakt demselben SHA grün sein.
-- **Quelle:** Runs `44680308253`, `44680308314`, `44680308315`; Sentrux-Job `136101840095`.
+- **Quelle:** Runs `44683868125`, `44683868162`, `44683868692`; Sentrux-Job `136113438257`.
 
 ### P0.2 Signiertes produktives Windows-Release
 
