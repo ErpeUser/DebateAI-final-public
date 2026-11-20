@@ -54,6 +54,10 @@ class SourceCandidate:
 @dataclass
 class VideoEvalArtifact:
     schema_version: int = 1
+    # Additive schema marker for link-first artifacts.  ``schema_version`` is
+    # retained for consumers of the original batch JSON; new jobs expose the
+    # richer fields below and set ``artifact_schema_version`` to 2.
+    artifact_schema_version: int = 1
     video_id: str = ""
     source_url: str = ""
     # Provenance and reproducibility metadata from the video-list ingestion.
@@ -73,6 +77,9 @@ class VideoEvalArtifact:
     verified_sources: list[dict[str, Any]] = field(default_factory=list)
     rhetorical_profile: dict[str, Any] = field(default_factory=dict)
     eval_cases: list[dict[str, Any]] = field(default_factory=list)
+    rhetorical_evidence: dict[str, Any] = field(default_factory=dict)
+    argument_evidence: dict[str, Any] = field(default_factory=dict)
+    provenance: dict[str, Any] = field(default_factory=dict)
     improvement_notes: list[str] = field(default_factory=list)
     privacy: dict[str, Any] = field(default_factory=lambda: {
         "audio_uploaded_to_google_cloud": True,

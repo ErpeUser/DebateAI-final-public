@@ -32,6 +32,11 @@ from app.services.video_eval_pipeline import (
     update_style_profile,
     transcribe_with_google_cloud,
 )
+from app.services.video_eval_jobs import (
+    _artifact_from_segments,
+    probe_video_source,
+    retrieve_subtitles,
+)
 
 
 async def _public_https(url: str) -> bool:
@@ -246,6 +251,31 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
         fallback="video-unknown",
     )
     with tempfile.TemporaryDirectory(prefix="debateai-video-") as temp_dir:
+        page_url = str(
+            item.get("video_page_url")
+            or item.get("video_page")
+            or item.get("page_url")
+            or item.get("source_url")
+            or ""
+        ).strip()
+        if page_url:
+            # Link-first path: inspect metadata and subtitle tracks without
+            # downloading the video.  The API job is the consent-aware route
+            # for Gemini when no subtitle is available; this CLI keeps the
+            # same default and fails clearly rather than uploading silently.
+            probe = await probe_video_source(page_url, language=language)
+            segments, subtitle_meta = await retrieve_subtitles(probe, language=language)
+            if not segments:
+                raise ValueError(
+                    "Kein Transkript verfügbar; bestätige Gemini über /api/video-eval/jobs/{id}/consent"
+                )
+            artifact = _artifact_from_segments(probe, segments, subtitle_meta)
+            artifact_path = output_dir / f"{video_id}.json"
+            artifact_path.parent.mkdir(parents=True, exist_ok=True)
+            artifact_path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            if style_profile:
+                update_style_profile(style_profile, artifact.get("rhetorical_profile") or {})
+            return artifact_path
         media_path = await _resolve_media_path(
             item,
             Path(temp_dir),
