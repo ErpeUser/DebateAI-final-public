@@ -251,6 +251,6 @@ Aktuelle Kommandos und Releasebedingungen stehen in [releasing.md](releasing.md)
 ## Herkunft und geschützte Nachweise
 
 - Die historische V6-Vision stammt aus `d07a658:source/docs/DEBATE_AI_VISION_FINAL.md`.
-- Die privaten technischen Fortschritts- und Acceptance-Protokolle unter `app/.ai/` bleiben außerhalb des öffentlichen Dokumentvertrags. Ihre geprüften, nicht personenbezogenen Entscheidungen sind in den Abschnitten oben zusammengefasst.
+- Die früheren privaten technischen Fortschritts- und Acceptance-Protokolle wurden in die historische Zusammenfassung überführt und aus dem aktiven Projektbaum entfernt. Die unabhängige Audit-Kopie bleibt außerhalb des Projekts geschützt.
 - Lokale Providerprofile, Transkripte, Audiodaten, Credentials, Runtime-Dateien und private Evidence bleiben außerhalb dieser drei redaktionellen Quellen.
 - `RESEARCH_DE.md` und `RECONCILIATION_MATRIX_DE.md` sind in diese Historie eingearbeitet und werden nicht mehr als eigenständige Quellen gepflegt.

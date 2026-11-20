@@ -60,7 +60,7 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 - **Status:** offen; einzelne A-Items sind nachgewiesen, die Gesamtfreigabe fehlt.
 - **Nächste Handlung:** jeden Punkt auf aktuellen app-Pfad abbilden, Status nur mit frischem Beleg ändern, alte source-Pfade als Historie markieren.
 - **Fertigstellungsnachweis:** versionierter Ledger mit Status, Quelle, Test/Manuell-Nachweis, Rest-Risiko und Verantwortungsentscheidung; keine Default-Ratings.
-- **Quelle:** app/.ai/MASTER_276_STATUS.json im privaten Master; app/scripts/acceptance/reporting.py; [historische Evidenz vom 18.11.2026](HISTORIE.md#historische-evidenz-2026-11-18).
+- **Quelle:** [HISTORIE.md](HISTORIE.md#historischer-status-2026-11-19); app/scripts/acceptance/reporting.py; der private Ledger ist im geschützten Audit archiviert.
 
 ### P1.3 A22/Human-Rating unabhängig abnehmen
 
