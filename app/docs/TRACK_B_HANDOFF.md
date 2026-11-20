@@ -123,3 +123,23 @@ durch den vorschlagenden Judge und kontinuierliche Auditdaten.
    zu überschreiben.
 6. Persönliche Promptdateien und Playbooks bleiben updatefest; keine Seed-/Reset-
    Routine darf sie still ersetzen.
+
+## Nachpr?fung und Korrekturcommit (20.11.2026)
+
+Die urspr?ngliche Lieferung deckt **nicht** alle Punkte des umfangreichen B-Auftrags ab.
+Die Lab-Backendrouten, der vollst?ndige ASR-Vergleich (WER/CER/RTF ?ber alle
+verf?gbaren Modelle), echte Live-/Holdout-Benchmarkdaten und die End-to-End-
+Integration mit A stehen weiterhin aus. Der UI-Vertrag ersetzt keinen
+funktionsf?higen Jobdienst. Es wurden keine Cloudmodelle kostenpflichtig aufgerufen.
+
+In der Nachpr?fung wurden konkrete Schutzl?cken behoben:
+- Fehlende Qualit?tsdimensionen auf einer Vergleichsseite verhindern eine
+  Freigabe, statt als impliziter Nullwert in den Mittelwert einzugehen.
+- Eine einzelne Raterbewertung hat keine messbare ?bereinstimmung (null).
+- Eine produktive ?bernahme aus dem A/B-Labor ist bei Gleichstand oder
+  ungeeigneten Antworten deaktiviert und erfordert eine zus?tzliche Best?tigung.
+
+Gezielte Nachtests: 9 Backend-Optimierungstests und 6 Frontend-Labortests
+bestanden. Der Repository-Layout-Guard meldete 1101 zul?ssige Dateien.
+Nicht verifizierte gr??ere Test- und Produktionsbuilds werden nicht als
+bestanden ausgegeben.

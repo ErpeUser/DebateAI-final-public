@@ -19,4 +19,5 @@ test("rater agreement is the normalized absolute distance across submitted ratin
   assert.equal(raterAgreement([{ naturalness: 5 }, { naturalness: 3 }]), 0.5);
   assert.equal(raterAgreement([{ naturalness: 5, strength: 4 }, { naturalness: 5, strength: 4 }]), 1);
   assert.equal(raterAgreement([]), null);
+  assert.equal(raterAgreement([{ naturalness: 5 }]), null);
 });

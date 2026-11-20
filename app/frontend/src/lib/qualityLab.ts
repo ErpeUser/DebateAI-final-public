@@ -31,7 +31,7 @@ export function isRatingComplete(rating: QualityRating): boolean {
 
 /** Agreement on a 1–5 scale, normalized to 0…1; ignores missing dimensions. */
 export function raterAgreement(ratings: RaterRating[]): number | null {
-  if (ratings.length < 2) return ratings.length === 1 ? 1 : null;
+  if (ratings.length < 2) return null;
   const dimensions: Array<keyof QualityRating> = ["naturalness", "strength", "precision", "source_honesty", "usability"];
   const pairs: number[] = [];
   for (const dimension of dimensions) {

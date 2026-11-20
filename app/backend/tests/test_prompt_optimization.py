@@ -135,3 +135,18 @@ class PromptOptimizationStoreTests(unittest.TestCase):
             path.write_text("user edited prompt", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "user"):
                 store.apply("answer", "candidate", "reason", base, base, OptimizationPolicy(), approved_by_user=True, user_managed=True)
+
+
+class MissingScoreRegressionTests(unittest.TestCase):
+    def test_missing_candidate_quality_metric_cannot_masquerade_as_zero(self):
+        baseline = [EvaluationResult("holdout", "holdout", {"naturalness": 0.8, "factuality": 0.9, "source_honesty": 0.9})]
+        candidate = [EvaluationResult("holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9})]
+        decision = compare_evaluations(baseline, candidate)
+        self.assertFalse(decision.approved)
+        self.assertTrue(any("naturalness" in reason for reason in decision.reasons))
+
+    def test_missing_baseline_metric_cannot_create_false_quality_gain(self):
+        baseline = [EvaluationResult("holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9})]
+        candidate = [EvaluationResult("holdout", "holdout", {"naturalness": 0.9, "factuality": 0.9, "source_honesty": 0.9})]
+        decision = compare_evaluations(baseline, candidate)
+        self.assertFalse(decision.approved)

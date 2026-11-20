@@ -160,6 +160,12 @@ def compare_evaluations(
         if not before or not after:
             continue
         for metric in _QUALITY_METRICS:
+            if any(metric in row.metrics for row in split_values[split]["baseline"]) != any(metric in row.metrics for row in split_values[split]["candidate"]):
+                reasons.append(f"{split} {metric} fehlt auf einer Bewertungsseite.")
+                continue
+            if any(metric in row.metrics for row in split_values[split]["baseline"]) and any(metric not in row.metrics for row in split_values[split]["baseline"] + split_values[split]["candidate"]):
+                reasons.append(f"{split} {metric} ist nicht in allen Bewertungsf?llen vorhanden.")
+                continue
             delta = after.get(metric, 0.0) - before.get(metric, 0.0)
             if delta < -policy.max_quality_regression:
                 reasons.append(f"{split} {metric} regressiert um {delta:.3f}.")
