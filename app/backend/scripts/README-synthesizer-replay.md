@@ -48,7 +48,7 @@ From `backend/`:
 ```
 python scripts/synthesizer_replay.py payload
 python scripts/synthesizer_replay.py prefix
-python scripts/synthesizer_replay.py scale --baseline origin/master
+python scripts/synthesizer_replay.py scale --baseline origin/main
 ```
 
 - `payload` — input-token totals, baseline vs working tree

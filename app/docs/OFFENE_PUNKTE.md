@@ -125,7 +125,7 @@ Stand: 2026-11-20. Diese Datei enthält ausschließlich aktuell offene Entscheid
 ### P2.5 Historische Pfade und Quellenverweise trennen
 
 - **Problem:** Einige Dokumente verweisen noch auf source-Pfade, während aktive Quelle app ist. Das ist für historische Provenienz zulässig, für aktuelle Buildanweisungen aber missverständlich.
-- **Status:** Kanonischer Index wurde umgestellt, nicht alle historischen/operativen Texte sind bereinigt.
+- **Status:** umgesetzt für aktive Referenzen: Die beiden noch veralteten operativen Beispiele verwenden jetzt den kanonischen `app/`-Pfad und `origin/main`; historische `source`-/`master`-Verweise in `HISTORIE.md` bleiben ausdrücklich als Provenienz gekennzeichnet.
 - **Nächste Handlung:** aktive Befehle/Links auf app aktualisieren, historische Pfade mit Datum/Commit kennzeichnen.
 - **Fertigstellungsnachweis:** Link-/Pfadscan ohne aktive falsche source-Referenz, historische Quellenliste erhalten.
 - **Quelle:** 9db4446; app/docs/DEBATEAI_CANONICAL_INDEX.md; app/docs/README.md.
