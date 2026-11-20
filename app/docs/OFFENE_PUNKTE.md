@@ -2,7 +2,7 @@
 
 Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der letzte verhaltensändernde Code-Stand ist `fc30df0e494a8dbe19fb755f3c47f8d6b1849df8`; alle danach folgenden `main`-Commits ändern ausschließlich diese Evidenzdatei. Für diesen Codebaum ist der docs-only CI-Lauf `44688338806` vollständig grün: Backend (`136127967526`), Frontend (`136127967556`), PostgreSQL-Grenzen (`136127967773`), Windows-Workspace (`136127967674`) und Browser-Kalibrierung (`136127967117`). Security `44688338796` und Docs-Site-Build `44688338801` sind ebenfalls erfolgreich. Der Structure-Gesamtlauf `44688338727` bleibt wegen geerbter absoluter Sentrux-Verstöße rot (`136127902481`), während der Layout-Job (`136127902234`) erfolgreich ist und der relative Vergleich `No degradation detected` meldet. Lokal auf dem autorisierten Windows-Gerät bestehen die Frontend-Tests mit 371/371 und der Produktionsbuild; der neue Migrationslock-Test besteht isoliert mit `1 passed` unter transientem `jiwer`-Stub. Die öffentliche Quellenstrategie ist entschieden: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und Hardwareabnahme bleiben getrennte externe Gates.
+**Aktueller geprüfter Code-/CI-Stand:** Der letzte verhaltensändernde Code-Stand ist `c18f3f4` und liegt auf `main`/`origin/main`. Lokal auf dem autorisierten Windows-Gerät ist der installierte Desktop-Build mit Health `200`, ChatGPT-Web GPT-6/xhigh, Gemini-Web-Katalog, CUDA-Sortformer und bestandenem GPU-Benchmark geprüft. Die relevanten Backend-Regressionen bestehen mit `77 passed`, die Desktop-Vertragsprüfungen mit `2 passed`, der Repository-Layout-Guard ist grün. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
@@ -21,7 +21,7 @@ Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree o
 
 ### P0.3 Reale Windows-/Audio-/GUI-/Provider-Abnahme
 
-- **Status:** extern offen. CI und Laborverträge decken DOM, Mock-Audio und API-Verhalten ab; ein echter 120+-Sekunden-Mikrofon-/WASAPI-/Loopback-Lauf, Gerätewechsel, WebView2/DPI, Provider-Login/Kosten/Privacy und Neustart fehlen.
+- **Status:** teilweise nachgewiesen. Der installierte Windows-Build, WebView-Start, Backend-Health, ChatGPT-Web/Gemini-Web-Anmeldestatus, CUDA-Sortformer und ein echter GPU-Benchmark sind geprüft. Ein echter 120+-Sekunden-Mikrofon-/WASAPI-/Loopback-Lauf, Gerätewechsel, WebView2/DPI sowie eine kostenrelevante Provider-Abnahme bleiben extern offen.
 - **Benötigt:** frisches Windows-Gerät, reale Audiohardware, autorisierte Providerkonten und Rohmetriken für ASR, Latenz, CPU/RAM sowie Bildschirm-/Event-Evidenz.
 - **Blocker/Owner:** Operator-/Hardware-Owner; keine ungeprüften Logins oder Kostenaktionen auslösen.
 
@@ -81,7 +81,7 @@ Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree o
 
 ### P2.11 Parallele Migrationsstarts
 
-- **Status:** PostgreSQL-Advisory-Lock und ein isolierter Paralleltest sind vorhanden. Der neue Regressionstest bestätigt, dass der Lock nach einem scheiternden Runner freigegeben wird und ein zweiter Lauf erneut starten kann. Offen bleiben die vollständige Failure-/Retry-Matrix und die Legacy-Datenbankmatrix.
+- **Status:** PostgreSQL-Advisory-Lock, isolierter Paralleltest und die aktuelle Migrations-Regression sind grün. Offen bleiben die vollständige Failure-/Retry-Matrix und die Legacy-Datenbankmatrix.
 - **Benötigt:** reproduzierbarer Failure-/Retry-Test mit realem Datenbankrunner, frische und Legacy-Schemata, exakt ein Alembic-Head und sichtbarer Fehlerstatus ohne halb angewendetes Schema.
 
 ### P2.12 Prozessweite Journale und PII-Scrub-Indizes

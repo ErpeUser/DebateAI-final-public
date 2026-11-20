@@ -215,9 +215,10 @@ Notes:
 - The Windows and Linux bundles ship their own ffmpeg, so compressed audio
   imports (MP3, M4A) and browser-recorded voice-calibration clips work out
   of the box; only the macOS bundle needs a system `ffmpeg` on PATH.
-- The optional Sortformer (Enhanced) diarizer is not bundled; the desktop
-  app uses the built-in lightweight diarizer. Use the Docker setup if you
-  want Sortformer.
+- Windows desktop releases bundle the Enhanced Sortformer diarizer, Torch,
+  CUDA bindings, and the pinned NeMo runtime. The first-run calibration runs
+  a real GPU benchmark and unlocks Enhanced mode only after the local runtime
+  passes on that machine. Docker remains available for isolated deployments.
 
 ### Option 2: Local German Debate Copilot on Windows
 
