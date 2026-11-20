@@ -159,31 +159,29 @@ Stand: 2026-11-19. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 ### P1.6 Aktive Dokumentations-, Link- und Branchreferenzen konsolidieren
 
 - **Kategorie:** **Docs-Drift**
-- **Istzustand:** Bestätigt: `app/docs-site/site.test.js:7-10,50-51` liest `app/docs/README.md`, die Datei fehlt im aktuellen Tree. Der aktuelle Docs-Site-Lauf `44628692090` (HEAD `faa68958fc7c4eb8a6ac2914a81043901046cebd`, Job `135929255875`) bricht deshalb mit `ENOENT` ab; `npm run build` wird übersprungen. `sync-docs.mjs:12-19` und `assemble.mjs:12-27` behandeln `README.md` außerdem als Index. Ein interner Linkscan findet zusätzlich fehlende Ziele für `api-keys.md`, `agents.md`, `audio-pipeline.md`, `DESKTOP_FINAL.md`, `CODEX_ACCEPTANCE_2026-11-12.md`, `HISTORIE.md`, `DEBATE_AI_VISION_FINAL.md` sowie `app/architecture.svg`. Aktive Anleitungen verwenden daneben noch das alte Repository/den Pfad `DebateAI.git`, `cd source` (`app/README.md:248-252`) und mehrfach `master`/`origin/master` (`app/docs/releasing.md:11-18,56-60`), obwohl `AGENTS.md:48-49` `ErpeUser/DebateAI-final-public` auf `main` als Vertrag festlegt. `app/README.md:6-21` positioniert das Produkt weiterhin primär als Meeting-Assistent, während `VISION.md:5-17,148-157` den Debatten-Copilot als V1-Leitszenario festlegt. Auch bestehende Quellenangaben in `app/docs/OFFENE_PUNKTE.md:29,71,113` zeigen noch auf die gelöschten historischen Dateien. Zusätzlich widersprechen `AGENTS.md:36-38` (interner `.git`-Checkout) und `README.md:18`/`app/docs/generated-workspace.md:10` (externer Pointer) beim Recovery-Vertrag.
-- **Status:** bestätigt; der fehlende Docs-Site-Test ist reproduziert, die übrigen Ziele und Pfade sind per Tree/API als fehlend oder veraltet nachgewiesen.
-- **Sollzustand:** Aktive Dokumentation verweist ausschließlich auf vorhandene Ziele und den kanonischen `app/`-/`main`-Stand. Historische Dokumente und alte Pfade bleiben nur mit expliziter Datierung/Provenienz verlinkt. Produktbeschreibung und aktive UI-/Release-Hinweise geben den Debattenkern als V1-Hauptszenario wieder.
-- **Minimalste Lösung:** Einen kanonischen Dokumentationsindex festlegen: entweder die vom Docs-Site-Vertrag erwarteten Dateien wiederherstellen oder Sync-, Assemble-, Test- und Inhaltslinks konsistent auf die vorhandenen Dokumente umstellen. Aktive Clone-/Branchbefehle auf `ErpeUser/DebateAI-final-public`/`app`/`main` korrigieren und historische Verweise markieren; README-Claims gegen die Vision-Matrix prüfen.
-- **Nutzen:** Docs-Site-Builds werden wieder ausführbar, Onboarding- und Releaseanweisungen führen nicht in veraltete Pfade, und Soll-/Ist-Erwartungen stimmen überein.
+- **Istzustand:** Bestätigt am aktuellen `main`-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`: `app/docs-site/site.test.js:7-11,50-51` liest `app/docs/README.md`, die Datei fehlt; der aktuelle Docs-Site-Lauf `44640619661`, Job `135970434379`, bricht mit `ENOENT` ab und überspringt den Build. `app/docs-site/sync-docs.mjs:10` und `app/docs-site/astro.config.mjs:34` verweisen weiterhin auf das alte Repository `ErpeUser/DebateAI`; `sync-docs.mjs:72` erwartet zusätzlich `app/docs/architecture.svg`, während nur `app/docs/architecture/backchannel-architecture.svg` vorhanden ist. `assemble.mjs:15-22` und der Testvertrag erwarten außerdem mehrere nicht vorhandene Dokumente (unter anderem `api-keys.md`, `agents.md`, `audio-pipeline.md`, `DESKTOP_FINAL.md`, `CODEX_ACCEPTANCE_2026-11-12.md`, `HISTORIE.md` und `DEBATE_AI_VISION_FINAL.md`). Der Test enthält nach dem ersten Fehler weitere alte Erwartungen (`site.test.js:196-201`, altes `/blob/master/LICENSE`). Aktive Anleitungen verwenden `DebateAI.git`, `cd source` und `master`/`origin/master` (`app/README.md:167-179,251-253`; `app/docs/releasing.md:12-18,56-61`; `app/docs/deployment.md:216-220,373-381`), obwohl `AGENTS.md:48-49` den Public-Stand auf `ErpeUser/DebateAI-final-public`/`main` festlegt; die Quickstart-Kommandos setzen fälschlich den Clone-Root statt `app/` voraus (`app/docs/quickstart.md:60-64,122-178,201-210`) und nennen Python 3.11+, während README/Buildpfade 3.12 verlangen. `app/site/index.html:260` behauptet lokale Dokumentverarbeitung, obwohl `app/backend/app/routers/documents.py:79-100` im normalen Pfad Gemini Files nutzt. Zusätzlich widersprechen `AGENTS.md:36-38` und `README.md:18`/`app/docs/generated-workspace.md:10` beim `.git`-Recovery-Vertrag.
+- **Status:** bestätigt; die CI-Fehlfunktion und die fehlenden Ziele sind direkt belegt, weitere Drift ist per Tree- und Symbolprüfung nachgewiesen.
+- **Sollzustand:** Aktive Dokumentation, Site-Tests und Sync-/Build-Skripte beziehen sich ausschließlich auf vorhandene Ziele und den kanonischen `app/`-/`main`-Stand. Historische Pfade und Produktbeschreibungen sind datiert bzw. korrekt eingegrenzt.
+- **Minimalste Lösung:** Einen kanonischen Dokumentationsindex festlegen: erwartete Dateien wiederherstellen oder Sync, Assemble, Tests und Inhaltslinks auf die tatsächlich vorhandenen Dokumente umstellen; Asset-Pfad und Repository-URL gemeinsam korrigieren. Clone-/Branch-/Python-Anweisungen und lokale-vs.-Cloud-Dokumentverarbeitung synchronisieren; alte Quellen nur als historische Provenienz markieren.
+- **Nutzen:** Docs-Site-Builds werden wieder ausführbar, Onboarding und Releaseanweisungen führen nicht in falsche Pfade, und Datenschutz-/Produktversprechen stimmen mit dem Laufzeitpfad überein.
 - **Aufwand:** **M**
-- **Risiken und Abhängigkeiten:** Historische Provenienz und veröffentlichte Docs-URLs dürfen nicht versehentlich entfernt werden; Starlight-Slugs, Site-Sync und Release-Runbook müssen gemeinsam angepasst werden.
-- **Akzeptanzkriterium:** Ein interner Markdown-/HTML-Linkscan meldet auf dem aktuellen Commit keine fehlenden Ziele; `cd app/docs-site && npm test && npm run build` endet erfolgreich; aktive Anweisungen enthalten keine unbeabsichtigten `source`-/`master`-Pfade.
+- **Risiken und Abhängigkeiten:** Historische Provenienz, Starlight-Slugs und veröffentlichte URLs dürfen nicht versehentlich verschwinden; Sync, Assemble, Site-Test und Quickstart müssen gemeinsam angepasst werden.
+- **Akzeptanzkriterium:** Ein Link-/Pfadscan meldet auf dem aktuellen Commit keine unbeabsichtigten fehlenden Ziele; `cd app/docs-site && npm test && npm run build` endet erfolgreich; aktive Anweisungen enthalten keine unbeabsichtigten `source`-/`master`-Pfade und dokumentieren denselben Python-/Privacy-Default wie Code und Setup.
 - **Befundvertrauen:** **hoch**
-- **Quelle:** `app/docs-site/site.test.js:7-10,50-51`; `app/docs-site/sync-docs.mjs:12-19`; `app/docs-site/assemble.mjs:12-27`; `app/README.md:6-21,248-252`; `app/docs/releasing.md:11-18,56-60`; `app/docs/VISION.md:5-17,148-157`; Workflow-Run `44628692090`, Job `135929255875`.
-
+- **Quelle:** `app/docs-site/site.test.js:7-11,50-51,196-201`; `app/docs-site/sync-docs.mjs:10,31-32,72`; `app/docs-site/assemble.mjs:15-22`; `app/docs-site/astro.config.mjs:16,34`; `app/README.md:167-179,251-253`; `app/docs/quickstart.md:39-40,60-64,122-178,201-210`; `app/backend/app/routers/documents.py:79-100`; Run `44640619661`, Job `135970434379`, HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`.
 ### P1.7 Evidenzregister und aktuelle CI-Aussagen auf einen Stand bringen
 
 - **Kategorie:** **Docs-Drift**
-- **Istzustand:** Bestätigt widersprüchlich: `app/docs/EVIDENCE.md:44` führt 11 hohe Docs-Site- und 4 hohe Oracle-Befunde als offen, `:52-54` beschreibt noch das private Repository `ErpeUser/DebateAI` auf `origin/master` und alte fehlende CI-Schritte. `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-14,19-22` behauptet dagegen für einen geprüften Stand 0 High/Critical sowie erfolgreiche Läufe `44527239634/50/16`. Für den aktuellen öffentlichen HEAD `faa68958` sind über die Actions-API `tests` `44628692256` und `security` `44628692311` erfolgreich, `docs-site-build` `44628692090` fehlgeschlagen; `Structure` `44628692440` ist insgesamt erfolgreich, enthält aber einen fehlgeschlagenen Sentrux-Job. Die Zahlen selbst sind damit zeit-/commitabhängig und nicht als einheitlicher aktueller Freigabestand belegt.
-- **Status:** bestätigt widersprüchlich; der aktuelle Sicherheits-/CI-Inhalt muss gegen frische Logs erneut verifiziert werden.
-- **Sollzustand:** Aktive Statusabschnitte nennen nur Werte mit Commit-SHA, Run-/Job-ID und Zeitpunkt. Ältere Auditwerte sind sichtbar historisch und werden nicht als aktueller Blocker oder Pass dargestellt; der fehlgeschlagene Docs-Site-Run und nicht blockierende Strukturbefunde bleiben sichtbar.
-- **Minimalste Lösung:** EVIDENCE und FINAL_STATUS in datierte Abschnitte „historisch“/„aktueller HEAD“ trennen und pro Zahl die zugrunde liegende Run-/Job-ID ergänzen. Nicht über die Connector-Reichweite hinausgehende Aussagen als „nicht nachweisbar“ markieren.
+- **Istzustand:** Bestätigt widersprüchlich: `app/docs/EVIDENCE.md:44,52-54` und `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22` mischen historische private-Repository-/`master`-Angaben und alte Auditwerte mit aktuellen Aussagen. Für den aktuellen Public-HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865` sind `tests`-Run `44640619666` und `security`-Run `44640619738` erfolgreich; im Security-Lauf sind die Jobs `python`, `frontend`, `docs-production` und `oracle-production` erfolgreich. `docs-site-build`-Run `44640619661` ist fehlgeschlagen (Job `135970434379`, `site.test.js`/`ENOENT`); `Structure`-Run `44640619779` ist insgesamt erfolgreich, enthält aber einen fehlgeschlagenen Sentrux-Job `135970435078`, weil `continue-on-error` den Strukturfehler nicht zum Workflow-Fehler macht.
+- **Status:** bestätigt widersprüchlich; aktuelle Run-/Jobdaten sind verfügbar, die aktiven Dokumente wurden noch nicht auf diesen Stand konsolidiert.
+- **Sollzustand:** Aktive Statusabschnitte nennen nur Werte mit Commit-SHA, Run-/Job-ID und Zeitpunkt. Ältere Auditwerte bleiben sichtbar historisch; ein grüner Gesamtworkflow darf advisory- oder übersprungene Teilprüfungen nicht als vollständige Freigabe darstellen.
+- **Minimalste Lösung:** EVIDENCE und FINAL_STATUS in datierte Abschnitte für `791f864` und historische Stände trennen; jede Zahl mit Run-/Job-ID verknüpfen und Docs-Site-/Sentrux-Fehler explizit ausweisen. Security-Passes nur für die vier tatsächlich erfolgreichen Jobs behaupten.
 - **Nutzen:** Freigabeentscheidungen beruhen auf nachvollziehbarer, nicht widersprüchlicher Evidenz.
 - **Aufwand:** **S**
-- **Risiken und Abhängigkeiten:** Eine lokale npm-/Sicherheitsprüfung kann von den öffentlichen Actions abweichen; deshalb müssen Lockfile, Commit und Joblog gemeinsam referenziert werden.
-- **Akzeptanzkriterium:** Ein Review findet in den aktiven Abschnitten keine widersprüchlichen Repo-/Branch-/Auditstände; jede CI-/Audit-Zahl ist auf genau einen Commit und einen sichtbaren Run/Job zurückführbar.
-- **Befundvertrauen:** **hoch** für die Dokumentabweichung, **mittel** für den nicht lokal reproduzierten Security-Inhalt.
-- **Quelle:** `app/docs/EVIDENCE.md:44,52-54`; `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-14,19-22`; GitHub Actions `44628692090`, `44628692256`, `44628692311`, `44628692440`, HEAD `faa68958fc7c4eb8a6ac2914a81043901046cebd`.
-
+- **Risiken und Abhängigkeiten:** Ein späterer Run kann den Status ändern; deshalb darf der Text keinen zeitlosen Pass-Claim enthalten und muss Workflow-/Jobgrenzen erklären.
+- **Akzeptanzkriterium:** Ein Review findet in den aktiven Abschnitten keine widersprüchlichen Repo-/Branch-/Auditstände; jede CI-/Auditzahl ist auf genau einen Commit sowie sichtbaren Run/Job zurückführbar, und ein Sentrux-Fehler ist im Summary als advisory oder blockierend erkennbar.
+- **Befundvertrauen:** **hoch**
+- **Quelle:** `app/docs/EVIDENCE.md:44,52-54`; `app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md:13-22`; Actions `44640619661`, `44640619666`, `44640619738`, `44640619779`, Jobs `135970434379`, `135970435078`; HEAD `791f864de8025aed4cfe5848f0e9e5b4d7402865`.
 ### P1.8 Zwei Debattenrollen im Live-Modus tatsächlich aktivieren
 
 - **Kategorie:** **VISION-GAP**
@@ -323,6 +321,91 @@ Stand: 2026-11-19. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 - **Akzeptanzkriterium:** Axe-/DOM-Tests melden keine unbenannten Controls; Tab bleibt im Dialog, Escape schließt deterministisch und der Fokus landet wieder auf dem auslösenden Element.
 - **Befundvertrauen:** **hoch**
 - **Quelle:** `app/frontend/src/components/PiiShieldCard.tsx:213-221,222-231,287-294`; `app/frontend/src/components/ConfirmProvider.tsx:75-113`.
+
+
+### P1.14 Löschpfad für externe, lokale und Browser-Artefakte vollständig machen
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** Bestätigter Codepfad: `app/backend/app/routers/sessions.py:232-248` löscht Session-/Document-Zeilen per Cascade (`app/backend/app/models.py:33`), lokale Session-Audios und den Shield-Zustand, sammelt aber die Gemini-File-URIs nicht und ruft `delete_uploaded_file` nicht auf. Das ist bei Einzel-Dokumentlöschung in `app/backend/app/routers/documents.py:117-126` vorgesehen, beim Session-Löschen jedoch nicht. Zusätzlich legt `app/frontend/src/components/PostCall/MeetingChat.tsx:76-80,136` Chatverläufe in `window.sessionStorage` ab und entfernt sie nur über „Reset“; `app/frontend/src/App.tsx:770-806` löscht beim Session-Delete den Browsercache nicht.
+- **Status:** bestätigt für den Löschpfad; die tatsächliche Provider-Retention ist ohne Gemini-Provider-Test zu verifizieren.
+- **Sollzustand:** Session-Löschung entfernt oder queued alle zugehörigen externen Dateien, lokale Artefakte und clientseitige Chatkopien; fehlgeschlagene externe Löschungen bleiben sichtbar und wiederholbar.
+- **Minimalste Lösung:** Vor der DB-Cascade URIs und lokale Pfade erfassen, eine idempotente Cleanup-/Outbox-Operation mit Retry und Auditstatus ausführen und den Session-Cache im Frontend beim Löschen leeren oder in einem Privacy-Modus deaktivieren.
+- **Nutzen:** Verhindert unbeabsichtigte PII-/Kosten-Retention bei Sitzungsende und macht Löschfehler nachvollziehbar.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** Provider-Delete-Limits, Retry-/Idempotenzregeln und Offline-Löschung müssen mit Datenschutz- und Exportverträgen abgestimmt werden.
+- **Akzeptanzkriterium:** Ein Integrationstest legt eine Session mit Gemini-Datei-URI und Chatcache an, löscht sie und weist Provider-Delete bzw. sichtbaren Retrystatus, entfernte lokale Artefakte sowie keinen verbleibenden Browsercache nach.
+- **Befundvertrauen:** **hoch** für den Codepfad, **mittel** für die externe Providerwirkung.
+- **Quelle:** `app/backend/app/routers/sessions.py:232-248`; `app/backend/app/routers/documents.py:117-126`; `app/backend/app/models.py:33`; `app/frontend/src/components/PostCall/MeetingChat.tsx:76-80,136`; `app/frontend/src/App.tsx:770-806`.
+
+### P1.15 Live-State und WebSocket-Journale für Multiworker-Betrieb absichern
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** Bestätigter Architekturpfad für mehr als einen Uvicorn-Worker: `app/backend/app/services/agents/orchestrator.py:718-745` hält `_live_orchestrators` im Prozessspeicher, `app/backend/app/services/ws_event_stream.py:268-282` `_journals` ebenfalls. REST-/WebSocket-Pfade (`app/backend/app/routers/sessions.py:78-80,130-136`; `transcripts.py:22,121`; `debate_review.py:28,202`) greifen auf denselben Prozesszustand zu. Ein WS-Worker A kann deshalb den Live-State für REST-Worker B nicht sehen; Overlay-, Context- und Directive-Operationen werden dort zu No-ops oder veralteten Antworten.
+- **Status:** bestätigt für einen Multiworker-Start; ob der produktive Deploymentvertrag mehrere Worker zulässt, ist separat zu verifizieren.
+- **Sollzustand:** Live-State, Journale und Steuerbefehle funktionieren deterministisch über Workergrenzen oder der Startvertrag erzwingt nachweislich einen Single-Worker-/Sticky-Session-Betrieb.
+- **Minimalste Lösung:** Gemeinsamen Redis-/DB-Journal- und State-Adapter mit Session-/Revision-IDs einführen oder Multiworker im produktiven Start explizit blockieren und den Grund dokumentieren.
+- **Nutzen:** Verhindert stille Ausfälle von Overlay, Live-Transkript und Steuerung beim Skalieren oder hinter einem Load-Balancer.
+- **Aufwand:** **L**
+- **Risiken und Abhängigkeiten:** Event-Reihenfolge, Locking, Backpressure und Persistenzkosten; Single-Worker als Zwischenlösung begrenzt Skalierung.
+- **Akzeptanzkriterium:** Ein Zwei-Worker-Integrationstest sendet WS-Ereignis und REST-PATCH über unterschiedliche Worker und beobachtet denselben Session-/Revisionsstand sowie korrektes Overlay-Verhalten.
+- **Befundvertrauen:** **hoch** für die In-Process-Zustände, **mittel-hoch** für die betriebliche Auswirkung.
+- **Quelle:** `app/backend/app/services/agents/orchestrator.py:718-745`; `app/backend/app/services/ws_event_stream.py:268-282`; `app/backend/app/routers/sessions.py:78-80,130-136`; `app/backend/app/routers/transcripts.py:22,121`; `app/backend/app/routers/debate_review.py:28,202`.
+
+### P1.16 LAN-Origin-Vertrauen und Bind-Defaults explizit absichern
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** `app/backend/app/services/request_guard.py:96-114,121-146` akzeptiert private/link-local IP-Originen anhand syntaktischer Prüfung; `app/backend/scripts/start_backend.py:14-30` bindet direkt gestartet standardmäßig auf `0.0.0.0` und aktiviert ohne Gegenvariable `--reload`. Damit kann ein direkter, nicht auf Loopback begrenzter Start im privaten LAN Requests mit fremdem privatem Origin als vertrauenswürdig behandeln, sofern kein Instance-Token greift. Das ist eine konkrete Sicherheitsgrenze; die vorgesehene LAN-Nutzung und der Tokenzwang müssen im Deployment noch verifiziert werden.
+- **Status:** bestätigt für die genannte Startkonfiguration; Bedrohungswirkung im unterstützten Netzwerkmodell zu verifizieren.
+- **Sollzustand:** Nicht-Loopback-Zugriffe benötigen einen expliziten Allowlist-/Tokenpfad; Loopback-Desktop- und bewusst freigegebene LAN-Szenarien bleiben möglich. Reload ist nur Development-Opt-in.
+- **Minimalste Lösung:** Bind-Adresse und Origin-Allowlist standardmäßig restriktiv setzen, Instance-Token für jeden nicht lokalen Origin erzwingen und `BACKEND_RELOAD` auf ein explizites Development-Opt-in umstellen; Startvertrag und Tests anpassen.
+- **Nutzen:** Reduziert das Risiko zustandsändernder Requests aus fremden privaten Netzen und verhindert versehentliche Reload-/Watcher-Starts.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** Bestehende Remote-/Overlay-Szenarien, Browser-Origin-Semantik und Nutzerkonfigurationen; LAN-Kompatibilität muss mit expliziter Freigabe getestet werden.
+- **Akzeptanzkriterium:** Ein fremder privater Origin erhält ohne gültigen Token 403, Loopback bleibt funktionsfähig, explizite Allowlist funktioniert, und ein Start ohne Env enthält kein `--reload`.
+- **Befundvertrauen:** **mittel-hoch**; die Codeentscheidung ist belegt, die reale Angriffsfläche hängt vom Deployment ab.
+- **Quelle:** `app/backend/app/services/request_guard.py:96-146`; `app/backend/scripts/start_backend.py:14-30`; bestehender Punkt P2.7.
+
+### P2.10 Listen-, Transcript- und Knowledge-APIs mit Cursor-Pagination und Limits versehen
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** Mehrere GET-Endpunkte liefern ungebremste Vollmengen: `app/backend/app/routers/sessions.py:72-75` alle Sessions, `:141-148` alle Segmente, `app/backend/app/routers/transcripts.py:56-72` alle Transcript-Einträge/Revisionsdaten, `questions.py:14-19` alle Fragen und `knowledge.py:59-72,128-136` alle Quellen/Records. `app/frontend/src/hooks/useSession.ts:116-142` startet zusätzlich mehrere Voll-GETs pro ausgewählter Session.
+- **Status:** begründete Optimierung; ein Produktionsausfall ist nicht bewiesen, die lineare Payload-/DB-/Renderlast ist im Code sichtbar.
+- **Sollzustand:** Listen haben stabile Cursor-/Limit-Parameter, maximale Antwortgrößen und lazy geladene Details; alte Clients bleiben über begrenzte Defaults kompatibel.
+- **Minimalste Lösung:** Cursor oder `limit`/`before` mit sicheren Obergrenzen ergänzen, nach Session-/Zeitindex sortieren und Frontend auf erste Seite plus Detailabruf umstellen.
+- **Nutzen:** Kontrollierbare Latenz und Speichernutzung bei lang lebenden Workspaces, großen Transkripten und vielen Sessions.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** Sortier-/Cursorstabilität, Exportvollständigkeit und API-Kompatibilität; Datenbankindizes müssen geprüft werden.
+- **Akzeptanzkriterium:** Eine Fixture mit 10.000 Sessions und 100.000 Transcriptzeilen bleibt mit Seitenabruf unter festgelegtem p95-/Heap-Budget; UI lädt initial nur die erste Seite und kann vollständig weiterblättern.
+- **Befundvertrauen:** **hoch** für den API-Pfad, **mittel** für die Betriebswirkung.
+- **Quelle:** `app/backend/app/routers/sessions.py:72-75,141-148`; `app/backend/app/routers/transcripts.py:56-72`; `app/backend/app/routers/questions.py:14-19`; `app/backend/app/routers/knowledge.py:59-72,128-136`; `app/frontend/src/hooks/useSession.ts:116-142`.
+
+### P2.11 Parallele Migrationsstarts mit Locking verifizieren
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** `app/backend/app/main.py:411-442` führt `create_all`/rohe `ALTER`-Schritte sowie Alembic-Stamp/Upgrade innerhalb jedes App-Lifespans aus. Ein Datenbank-Advisory-Lock oder ein anderer Single-Runner-Schutz ist im geprüften Pfad nicht nachweisbar; bei parallelem Start mehrerer Worker können doppelte Änderungen oder konkurrierende Stamps entstehen.
+- **Status:** zu verifizieren; der Race ist aus dem Code plausibel, aber ohne parallelen Startup-Test nicht als Laufzeitfehler bestätigt.
+- **Sollzustand:** Genau ein idempotenter Migrationsrunner arbeitet pro Datenbank; parallele App-Starts warten oder erkennen den aktuellen Head ohne Duplicate-/Lock-Fehler.
+- **Minimalste Lösung:** Migrationen aus dem Lifespan in einen expliziten Job verschieben oder per DB-Advisory-Lock serialisieren; Startup-/Legacy-Matrix testen.
+- **Nutzen:** Verhindert schwer reproduzierbare Startfehler und Schema-Halbzustände beim Skalieren oder bei Recovery.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** Deployment-Reihenfolge, SQLite-Kompatibilität und bestehende Legacy-Upgrades.
+- **Akzeptanzkriterium:** Zwei parallele Starts auf frischer und Legacy-Datenbank enden ohne Duplicate-/Lock-Fehler, beide sehen exakt denselben Alembic-Head und ein fehlgeschlagener Runner bleibt sichtbar.
+- **Befundvertrauen:** **mittel**
+- **Quelle:** `app/backend/app/main.py:411-442`; Alembic-Migrationspfad; PostgreSQL-Gate P1.13.
+
+### P3.4 Abhängigkeiten und Modulgrenzen mit bewusst begrenzten Static-Analysis-Gates erfassen
+
+- **Kategorie:** **TECH-IMPROVEMENT**
+- **Istzustand:** Das Repository enthält mehrere JavaScript-/TypeScript-Projekte (`app/frontend`, `app/docs-site`, `app/desktop/chatgpt_oracle`) und Python-Abhängigkeitsdateien; der Backend-Orchestrator umfasst über 5.000 Zeilen (`app/backend/app/services/agents/orchestrator.py`) und P2.1 erfasst bereits Ruff-/Duplikatlast. Ein reproduzierbarer Baseline-Report für ungenutzte Abhängigkeiten und Modulzyklen ist nicht nachweisbar.
+- **Status:** begründete Optimierung, kein bestätigter ungenutzter Dependency-Befund.
+- **Sollzustand:** Ein versionierter Baseline-Report trennt echte Produktionsabhängigkeiten von dynamischen/Generator-/Release-Einstiegspunkten und macht neue Zyklen oder ungenutzte Imports im Änderungsumfang sichtbar.
+- **Minimalste Lösung:** Read-only-Baseline mit Knip (JS/TS-Dateien/Dependencies), deptry (Python-Missing/Unused/Transitive) und dependency-cruiser (JS/TS-Zyklen/Boundary-Regeln) erstellen; Konfiguration für dynamische Imports und generierte Pfade dokumentieren. Keine Gate-Verschärfung ohne bereinigte Baseline.
+- **Nutzen:** Weniger tote Abhängigkeiten, frühere Architekturdrift-Erkennung und kleinere, nachvollziehbare Refactorings.
+- **Aufwand:** **M**
+- **Risiken und Abhängigkeiten:** False Positives durch dynamische Imports, Calibration-/Release-Einstiegspunkte und zusätzliche CI-Zeit; Lizenz- und Regelwerksprüfung vor produktivem Gate.
+- **Akzeptanzkriterium:** Baseline ist im Repository dokumentiert, alle Findings sind triagiert, geänderte Dateien erzeugen keine untriagierten neuen Zyklen/Unused-Dependency-Befunde; ein Report nennt explizite Ausnahmen.
+- **Befundvertrauen:** **hoch** als Tool-/Prozesschance, nicht als Defekt.
+- **Quelle:** `app/frontend/package.json`; `app/docs-site/package.json`; `app/desktop/chatgpt_oracle/package.json`; `app/backend/requirements*.txt`; `app/backend/app/services/agents/orchestrator.py`; offizielle Dokumentation: https://knip.dev/explanations/how-knip-works, https://deptry.com/rules-violations/, https://github.com/sverweij/dependency-cruiser.
 
 ## Zugriffslücken und ausdrücklich nicht geprüfte Inhalte
 
