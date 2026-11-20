@@ -5055,6 +5055,60 @@ class AgentOrchestrator:
                 classify_error(e, self._get_model(TRANSCRIPT_REFINER_SLUG)),
             )
 
+    async def _handle_strategic_signals_cycle(
+        self,
+        transcript_window: str,
+        cycle_revision: int,
+    ) -> bool:
+        cycle = await run_strategic_signals_cycle(
+            self.session_id,
+            agent_configs=self._agent_configs,
+            transcript_window=transcript_window,
+            directives=self.directives,
+            doc_summaries=self.doc_summaries,
+            speakers=self.speakers,
+            active_questions=self.active_questions,
+            is_current=lambda: cycle_revision == getattr(self, "_transcript_revision", 0),
+        )
+        synthesis, signal_rows = cycle if cycle else (None, None)
+        if cycle_revision != getattr(self, "_transcript_revision", 0):
+            logger.info(
+                "[strategic_signals] Dropping stale cycle for transcript revision %s",
+                cycle_revision,
+            )
+            await self.activity.cycle_finished(
+                STRATEGIC_SIGNALS_SLUG,
+                {
+                    "kind": "stale",
+                    "detail": "A newer transcript revision superseded this cycle.",
+                    "items": 0,
+                },
+            )
+            return False
+        analysis_context = {
+            "claim_id": getattr(self, "_active_claim_id", "") or "",
+            "transcript_revision": getattr(self, "_transcript_revision", 0),
+            "generation_id": getattr(self, "_debate_revision", 0),
+        }
+        if synthesis:
+            await self._send_synthesis_update(synthesis, analysis_context)
+        filed = await self._send_signal_insights(signal_rows, analysis_context)
+        await self.activity.cycle_finished(
+            STRATEGIC_SIGNALS_SLUG,
+            {
+                "kind": "insights" if synthesis else "no_findings",
+                "detail": (
+                    f"Live strategic signals updated; {filed} filed as insights."
+                    if synthesis and filed
+                    else "Live strategic signals updated."
+                    if synthesis
+                    else "No strategic signal changed."
+                ),
+                "items": 1 if synthesis else 0,
+            },
+        )
+        return True
+
     async def _strategic_signals_loop(self):
         interval = self._get_interval(STRATEGIC_SIGNALS_SLUG, 45)
         # Do not add a full interval before the first signal snapshot.
@@ -5069,50 +5123,13 @@ class AgentOrchestrator:
                     logger.debug("[strategic_signals] Window unchanged, skipping cycle")
                 elif transcript_window != "(No recent transcript)":
                     cycle_revision = getattr(self, "_transcript_revision", 0)
-                    cycle = await run_strategic_signals_cycle(
-                        self.session_id,
-                        agent_configs=self._agent_configs,
-                        transcript_window=transcript_window,
-                        directives=self.directives,
-                        doc_summaries=self.doc_summaries,
-                        speakers=self.speakers,
-                        active_questions=self.active_questions,
-                        is_current=lambda: cycle_revision == getattr(self, "_transcript_revision", 0),
-                    )
-                    synthesis, signal_rows = cycle if cycle else (None, None)
-                    if cycle_revision != getattr(self, "_transcript_revision", 0):
-                        logger.info("[strategic_signals] Dropping stale cycle for transcript revision %s", cycle_revision)
-                        await self.activity.cycle_finished(
-                            STRATEGIC_SIGNALS_SLUG,
-                            {"kind": "stale", "detail": "A newer transcript revision superseded this cycle.", "items": 0},
-                        )
-                        await asyncio.sleep(interval)
-                        continue
-                    analysis_context = {
-                        "claim_id": getattr(self, "_active_claim_id", "") or "",
-                        "transcript_revision": getattr(self, "_transcript_revision", 0),
-                        "generation_id": getattr(self, "_debate_revision", 0),
-                    }
-                    if synthesis:
-                        await self._send_synthesis_update(synthesis, analysis_context)
-                    filed = await self._send_signal_insights(signal_rows, analysis_context)
-                    await self.activity.cycle_finished(
-                        STRATEGIC_SIGNALS_SLUG,
-                        {
-                            "kind": "insights" if synthesis else "no_findings",
-                            "detail": (
-                                f"Live strategic signals updated; {filed} filed as insights."
-                                if synthesis and filed
-                                else "Live strategic signals updated."
-                                if synthesis
-                                else "No strategic signal changed."
-                            ),
-                            "items": 1 if synthesis else 0,
-                        },
-                    )
-                    # Do not mark the window processed until the cycle has
-                    # completed, so transient provider errors are retried.
-                    last_window = transcript_window
+                    if await self._handle_strategic_signals_cycle(
+                        transcript_window,
+                        cycle_revision,
+                    ):
+                        # Do not mark the window processed until the cycle has
+                        # completed, so transient provider errors are retried.
+                        last_window = transcript_window
                 else:
                     await self.activity.cycle_finished(
                         STRATEGIC_SIGNALS_SLUG,
