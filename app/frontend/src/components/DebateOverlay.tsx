@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import * as api from "../services/api";
 import type { DebateOverlaySnapshot } from "../services/api";
+import { shouldAcceptDebateOverlaySnapshot } from "../lib/debateOverlaySnapshot.mjs";
 import { DE } from "../i18n/de";
 
 const confidenceLabel = { high: "hoch", medium: "mittel", low: "vorsichtig" } as const;
@@ -15,7 +16,7 @@ export default function DebateOverlay() {
     const refresh = async () => {
       try {
         const next = await api.getDebateOverlaySnapshot();
-        if (!stopped) setSnapshot(next);
+        if (!stopped) setSnapshot((current) => shouldAcceptDebateOverlaySnapshot(current, next) ? next : current);
       } catch {
         if (!stopped) setSnapshot({ active: false, session_id: "", recommendation: null });
       }
