@@ -85,7 +85,7 @@ class ChatBriefingOwnerTests(unittest.IsolatedAsyncioTestCase):
             ),
             patch("app.routers.chat.generate_text", new=generate),
             patch(
-                "app.routers.chat.shield.protect_text",
+                "app.routers.chat.shield.protect_text_for_sessions",
                 new=AsyncMock(side_effect=lambda _db, _session_id, text: text),
             ),
             patch(
@@ -98,6 +98,27 @@ class ChatBriefingOwnerTests(unittest.IsolatedAsyncioTestCase):
         prompt = generate.await_args.args[1]
         self.assertIn('"owner":"Maya Chen"', prompt)
         self.assertNotIn(raw_owner, prompt)
+
+    async def test_multi_session_chat_protects_against_all_selected_sessions(self):
+        first, second = uuid4(), uuid4()
+        body = ChatIn(
+            model_id=GOOGLE_MODEL,
+            session_ids=[first, second],
+            messages=[ChatMessage(role="user", content="Bob approved it")],
+        )
+        protect = AsyncMock(side_effect=lambda _db, _session_ids, text: text)
+        with (
+            patch("app.routers.chat.generate_text", new=AsyncMock(return_value="Done")),
+            patch("app.routers.chat.shield.protect_text_for_sessions", new=protect),
+            patch(
+                "app.routers.chat.shield.reveal_text",
+                new=AsyncMock(side_effect=lambda _db, _session_id, text, **_kwargs: text),
+            ),
+        ):
+            await chat(body, db=_db_mock())
+
+        protect.assert_awaited_once()
+        self.assertEqual([first, second], protect.await_args.args[1])
 
 
 class ChatProviderErrorTests(unittest.IsolatedAsyncioTestCase):

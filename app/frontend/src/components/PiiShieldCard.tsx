@@ -211,7 +211,9 @@ function TermsSection({ settings, saving, onApply }: { settings: PiiShieldSettin
         Projektcodes oder nie vorgestellte Personen. Die Suche erfolgt in jedem Gespräch wortgenau.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">
+        <label htmlFor="pii-protected-term" className="sr-only">Geschützten Begriff hinzufügen</label>
         <input
+          id="pii-protected-term"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); add(); } }}
@@ -285,6 +287,8 @@ function PreviewSection() {
     <section>
       <h4 className="font-body text-xs font-semibold uppercase tracking-wide text-brand-mid-gray">Satz testen</h4>
       <textarea
+        id="pii-preview-sample"
+        aria-label="Beispieltext für die PII-Vorschau"
         value={sample}
         onChange={(e) => setSample(e.target.value)}
         rows={3}

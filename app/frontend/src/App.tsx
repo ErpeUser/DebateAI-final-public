@@ -20,6 +20,7 @@ import { updateInterimText } from "./lib/interimTranscript";
 import { shouldResetMessageCursor } from "./lib/wsEventStream";
 import { hideActiveProvisionalRevisions, shouldRecoverTranscriptsFromStatus } from "./lib/sessionRefresh";
 import { webProviderStartupNeedsAttention } from "./lib/providerOnboarding";
+import { clearMeetingChatHistory } from "./lib/meetingChatStorage";
 import { DE } from "./i18n/de";
 import {
   emptyDebateState,
@@ -784,6 +785,7 @@ function MainApp() {
     });
     if (!ok) return;
     await api.deleteSession(activeSessionId);
+    clearMeetingChatHistory(activeSessionId);
     setActiveSessionId(null);
     if (!liveSessionIdRef.current) resetSessionRuntimeState();
     await refreshSessions();
@@ -798,6 +800,7 @@ function MainApp() {
       return;
     }
     await api.deleteSession(sessionId);
+    clearMeetingChatHistory(sessionId);
     if (sessionId === activeSessionId) {
       setActiveSessionId(null);
       if (!liveSessionIdRef.current) resetSessionRuntimeState();

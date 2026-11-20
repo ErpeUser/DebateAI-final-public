@@ -281,6 +281,50 @@ async def protect_text(
     return "".join(pieces)
 
 
+async def protect_text_for_sessions(
+    db: AsyncSession,
+    session_ids: list[uuid.UUID],
+    text: str | None,
+    *,
+    settings: ShieldSettings | None = None,
+) -> str:
+    """Protect chat input against every selected session's roster.
+
+    Tokens are stored in the first session's vault so the existing chat reveal
+    path can keep one deterministic namespace for user-entered text. The
+    selected sessions contribute only read-only roster entries; no second
+    session is mutated by this operation.
+    """
+    if not text or not session_ids:
+        return text or ""
+    settings = settings or await get_settings(db)
+    if not settings.enabled:
+        return text
+    unique_ids = list(dict.fromkeys(session_ids))
+    rosters: list[RosterEntry] = []
+    seen: set[tuple[str, str]] = set()
+    for session_id in unique_ids:
+        for entry in await session_roster(db, session_id, settings):
+            key = (entry.category, entry.value.casefold())
+            if key not in seen:
+                seen.add(key)
+                rosters.append(entry)
+    spans = await asyncio.to_thread(detect, text, rosters, settings)
+    if not spans:
+        return text
+    primary_session = unique_ids[0]
+    pieces: list[str] = []
+    cursor = 0
+    for span in spans:
+        token = await vault.token_for(db, primary_session, span.category, span.value)
+        pieces.append(text[cursor:span.start])
+        pieces.append(token)
+        cursor = span.end
+    pieces.append(text[cursor:])
+    invalidate_roster(primary_session)
+    return "".join(pieces)
+
+
 async def protect_name(db: AsyncSession, session_id: uuid.UUID, name: str | None) -> str:
     """A speaker's name is a person's name by definition: no detection needed.
 

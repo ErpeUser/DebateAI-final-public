@@ -39,7 +39,7 @@ Runtime data-root selection is side-effect-free and never searches, copies or se
 
 ## Documentation and cleanup policy
 
-source/docs/DESKTOP_FINAL.md is the current Windows runbook; source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md is the current evidence ledger. A new source/docs/DEBATEAI_CANONICAL_INDEX.md links current contracts and marks dated audits and plans as historical. Dated release pages and provenance files remain, but active pages, URLs, examples and generated metadata use DebateAI.
+app/docs/windows-final-recovery.md is the current Windows runbook; app/docs/FINAL_STATUS_AND_OPEN_ITEMS.md is the current evidence ledger. A new app/docs/DEBATEAI_CANONICAL_INDEX.md links current contracts and marks dated audits and plans as historical. Dated release pages and provenance files remain, but active pages, URLs, examples and generated metadata use DebateAI.
 
 ## Verification
 

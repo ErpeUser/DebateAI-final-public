@@ -22,7 +22,7 @@ EXPECTED_COMMAND = [
     "uvicorn",
     "app.main:app",
     "--host",
-    "0.0.0.0",
+    "127.0.0.1",
     "--port",
     "8000",
     "--ws-ping-timeout",
@@ -35,6 +35,29 @@ EXPECTED_COMMAND = [
 
 
 class BackendStartupTests(unittest.TestCase):
+    def test_native_start_defaults_to_loopback_without_reload(self):
+        with (
+            mock.patch.object(_start_backend, "ensure_sortformer_installed"),
+            mock.patch.object(_start_backend.os, "execvp") as execvp,
+            mock.patch.object(subprocess, "run", return_value=mock.Mock(returncode=0)),
+            mock.patch.dict(_start_backend.os.environ, {}, clear=True),
+        ):
+            _start_backend.main()
+
+        execvp.assert_called_once_with("uvicorn", EXPECTED_COMMAND)
+
+    def test_non_loopback_start_requires_instance_token(self):
+        with (
+            mock.patch.object(_start_backend, "ensure_sortformer_installed"),
+            mock.patch.dict(
+                _start_backend.os.environ,
+                {"BACKEND_HOST": "0.0.0.0"},
+                clear=True,
+            ),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "DEBATEAI_INSTANCE_TOKEN"):
+                _start_backend.main()
+
     def test_execs_uvicorn_without_reload(self):
         with (
             mock.patch.object(_start_backend, "ensure_sortformer_installed"),
@@ -73,6 +96,13 @@ class BackendStartupTests(unittest.TestCase):
         self.assertIn("--ws-ping-timeout 90", script)
         self.assertIn("--ws-max-queue 2048", script)
         self.assertIn("--ws-max-size 65536", script)
+
+    def test_compose_sets_non_loopback_listener_only_with_instance_token(self):
+        compose = (Path(__file__).resolve().parents[2] / "docker-compose.yml").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn("BACKEND_HOST: ${BACKEND_HOST:-0.0.0.0}", compose)
+        self.assertIn("DEBATEAI_INSTANCE_TOKEN: ${DEBATEAI_INSTANCE_TOKEN:?", compose)
 
 
 if __name__ == "__main__":

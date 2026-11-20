@@ -128,3 +128,9 @@ def get_job(
         if not job or (kind and job.kind != kind) or (job_id and job.id != job_id):
             return None
         return job
+
+
+def forget_session(session_id: uuid.UUID) -> None:
+    """Drop a deleted session's completed job snapshot from the process cache."""
+    with _jobs_lock:
+        _jobs.pop(session_id, None)

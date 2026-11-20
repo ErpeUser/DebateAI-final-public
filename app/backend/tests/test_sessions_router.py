@@ -1,10 +1,10 @@
 import unittest
 from datetime import datetime, timezone
 from types import SimpleNamespace
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, call, patch
 from uuid import uuid4
 
-from app.routers.sessions import update_session
+from app.routers.sessions import delete_session, update_session
 from app.schemas import SessionUpdate
 
 
@@ -54,6 +54,27 @@ class UpdateSessionStateTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(session.state, "active")
         self.assertIsNone(session.ended_at)
+
+
+class DeleteSessionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_deleting_session_removes_provider_files_after_local_commit(self):
+        session = _session("completed")
+        db = AsyncMock()
+        db.get.return_value = session
+        document_result = AsyncMock()
+        document_result.scalars.return_value.all.return_value = ["files/one", "files/two"]
+        db.execute.side_effect = [document_result, AsyncMock()]
+
+        with (
+            patch("app.routers.sessions.delete_uploaded_file", new_callable=AsyncMock) as delete_file,
+            patch("app.routers.sessions.shield.forget_session"),
+            patch("app.routers.sessions.run_in_threadpool", new_callable=AsyncMock),
+        ):
+            await delete_session(session.id, db=db)
+
+        self.assertEqual(1, db.commit.await_count)
+        self.assertEqual([call("files/one"), call("files/two")], delete_file.await_args_list)
+
 
 
 if __name__ == "__main__":

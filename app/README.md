@@ -11,7 +11,7 @@
   <a href="#features">Features</a> -
   <a href="#what-it-looks-like">Screenshots</a> -
   <a href="#architecture">Architecture</a> -
-  <a href="docs/README.md">Documentation</a>
+  <a href="docs/DEBATEAI_CANONICAL_INDEX.md">Documentation</a>
 </p>
 
 ---
@@ -164,14 +164,14 @@ meeting and no per-seat license.
 Sourced, dated comparisons against the tools people evaluate alongside it
 live at the external historical comparison hub below. These links are
 informational and are not runtime, update or download dependencies:
-[comparison hub](https://github.com/ErpeUser/DebateAI/blob/master/app/site/open-source-meeting-assistants/index.html),
+[comparison hub](https://github.com/ErpeUser/DebateAI-final-public/blob/main/app/site/open-source-meeting-assistants/index.html),
 which indexes the full set. The most common starting points:
 
-- [DebateAI vs Meetily](https://github.com/ErpeUser/DebateAI/blob/master/app/site/vs-meetily/index.html) -- the
+- [DebateAI vs Meetily](https://github.com/ErpeUser/DebateAI-final-public/blob/main/app/site/vs-meetily/index.html) -- the
   closest open-source, local-first alternative
-- [Otter alternative](https://github.com/ErpeUser/DebateAI/blob/master/app/site/otter-alternative/index.html) -- including
+- [Otter alternative](https://github.com/ErpeUser/DebateAI-final-public/blob/main/app/site/otter-alternative/index.html) -- including
   how Otter's Live Assist compares
-- [Granola alternative](https://github.com/ErpeUser/DebateAI/blob/master/app/site/granola-alternative/index.html) --
+- [Granola alternative](https://github.com/ErpeUser/DebateAI-final-public/blob/main/app/site/granola-alternative/index.html) --
   bot-free capture without the hosted backend
 
 ## Architecture
@@ -222,7 +222,7 @@ Notes:
 ### Option 2: Local German Debate Copilot on Windows
 
 For a fully local setup with German live transcription and no API key, install
-Docker Desktop, open PowerShell in the clone root, and run:
+Docker Desktop, open PowerShell in the clone's `app` directory, and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1
@@ -248,8 +248,8 @@ transcription with a self-hosted endpoint for the agents
 (see [Configuration](docs/configuration.md#self-hosted-endpoints)).
 
 ```bash
-git clone https://github.com/ErpeUser/DebateAI.git
-cd DebateAI/source
+git clone https://github.com/ErpeUser/DebateAI-final-public.git
+cd DebateAI-final-public/app
 cp .env.example .env   # set GEMINI_API_KEY (or add keys later in Admin -> Connections)
 docker compose up --build
 ```
@@ -271,15 +271,14 @@ Full setup options (local development, migrations, GPU validation) are in
 
 | Page | What it covers |
 | --- | --- |
+| [Canonical index](docs/DEBATEAI_CANONICAL_INDEX.md) | Maintained contract and historical boundaries |
 | [Quickstart](docs/quickstart.md) | Docker Compose, local development, migrations, tests |
-| [Getting API Keys](docs/api-keys.md) | Step-by-step Gemini and OpenAI key setup |
-| [Architecture](docs/architecture.md) | The live call path end to end, frontend and backend structure |
-| [Agent System](docs/agents.md) | Each agent's trigger and purpose, configuration and overrides |
-| [Audio Pipeline](docs/audio-pipeline.md) | Capture format, VAD/diarization, transcription routing, audio storage |
-| [WebSocket Protocol](docs/websocket-protocol.md) | Binary audio framing and every message type on `/ws/{session_id}` |
-| [REST API](docs/rest-api.md) | Endpoint reference for every router |
-| [Configuration](docs/configuration.md) | Settings, environment variables, credentials, model registry |
+| [Architecture](docs/architecture.md) | The live call path, frontend and backend structure |
+| [WebSocket Protocol](docs/websocket-protocol.md) | Binary audio framing and messages on `/ws/{session_id}` |
+| [REST API](docs/rest-api.md) | Endpoint reference for the routers |
+| [Configuration](docs/configuration.md) | Environment variables, credentials, model registry |
 | [Deployment](docs/deployment.md) | Compose services, GPU support, nginx proxying, startup behavior |
+| [Releasing](docs/releasing.md) | Build, signing, update and recovery procedures |
 
 ## Tech stack
 

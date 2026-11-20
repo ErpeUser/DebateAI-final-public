@@ -167,6 +167,8 @@ foreach ($value in @(
     "DebateAI-linux-x64.tar.gz",
     "run watch",
     "release view",
+    "origin/main",
+    "--ref main",
     "Windows x64 host is required",
     "finally"
 )) {
@@ -190,8 +192,10 @@ Assert-True $main.Contains('-Dockerfile (Join-Path $repoRoot "desktop\Dockerfile
     "Linux must use controller tooling while building the exact tagged source"
 Assert-True $main.Contains('worktree add --detach $sourceCheckout $tag.Commit') `
     "Release worktree must use the already-verified peeled commit"
-Assert-True $source.Contains('$sourceRoot = Join-Path $sourceCheckout "source"') `
+Assert-True $source.Contains('$sourceRoot = Join-Path $sourceCheckout "app"') `
     "Local builds must start in the tagged product directory"
+Assert-True (-not $source.Contains('git branch --show-current })[-1].Trim() -cne "master"')) `
+    "Release coordinator must use the public main branch"
 Assert-True $source.Contains('Join-Path $gitRoot ".github\workflows\desktop-release.yml"') `
     "The workflow must be loaded from the controller repository root"
 Assert-True $source.Contains('Join-Path $PSScriptRoot "..\desktop\scripts\smoke_test.py"') `

@@ -22,7 +22,7 @@ refused. See
 [Privacy First mode](configuration.md#privacy-first-local-only-mode) for the
 admission rule and what the mode covers.
 
-![Architecture diagram](../architecture.svg)
+![Architecture diagram](architecture.svg)
 
 ## The live call path
 
@@ -42,7 +42,7 @@ admission rule and what the mode covers.
    user while system-audio segments retain normal remote diarization.
 4. **Transcribe** -- `backend/app/services/batch_transcriber.py` wraps each
    diarized segment as WAV and transcribes it (Gemini Flash by default, or a
-   local ONNX model -- see [Audio Pipeline](audio-pipeline.md)). Low-energy
+   local ONNX model -- see [live call path](architecture.md#the-live-call-path)). Low-energy
    segments, known phantom phrases, and single-word outputs are filtered.
 5. **Persist and publish** -- transcript entries are saved to PostgreSQL and
    pushed to the browser as `transcript` WebSocket messages.
@@ -50,7 +50,7 @@ admission rule and what the mode covers.
    transcript text into a shared in-memory buffer that the text agents read
    on their own schedules. Insights come back to the browser as `question`,
    `insight_updated`, `insight_elevated`, and `question_answered` messages.
-   See [Agent System](agents.md).
+   See [agent orchestration](architecture.md#backend-key-files).
 
 ## The interim audio gateway
 

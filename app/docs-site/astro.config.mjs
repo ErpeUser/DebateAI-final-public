@@ -31,7 +31,7 @@ export default defineConfig({
         {
           icon: 'github',
           label: 'GitHub',
-          href: 'https://github.com/ErpeUser/DebateAI',
+          href: 'https://github.com/ErpeUser/DebateAI-final-public',
         },
       ],
       sidebar: [
@@ -42,20 +42,20 @@ export default defineConfig({
           items: [
             { label: 'Übersicht', link: '/' },
             'quickstart',
-            'api-keys',
             'architecture',
           ],
         },
         {
           label: 'Referenz',
           items: [
-            'agents',
-            'audio-pipeline',
             'websocket-protocol',
             'rest-api',
             'configuration',
             'deployment',
             'releasing',
+            'generated-workspace',
+            'github-repository',
+            'windows-final-recovery',
           ],
         },
       ],

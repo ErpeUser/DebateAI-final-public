@@ -9,12 +9,12 @@ delivered through a deployment-specific HTTPS update endpoint configured by the 
 | Target | Publication trigger | Result |
 | --- | --- | --- |
 | Docker Compose | Source commit or tag; users rebuild locally | Public source-built `backend` and `frontend` images; no container registry image is published |
-| Documentation site | Push to `master` changing site/docs inputs | Cloudflare deploy of the configured documentation, operator-console and update endpoints |
+| Documentation site | Push to `main` changing site/docs inputs | Cloudflare deploy of the configured documentation, operator-console and update endpoints |
 | Desktop | `scripts/release_desktop.ps1 -Version vX.Y.Z` after an annotated tag exists | Windows and Linux build locally while macOS builds in GitHub; each smoke-tested platform publishes to private R2 as soon as it finishes. The `desktop-release.yml` workflow's `platforms` input can instead build and publish any platform entirely inside GitHub when local egress to the R2 storage domain is blocked |
 
 The coordinator dispatches the macOS workflow and builds Windows before Linux.
 The protected macOS publication job is the only GitHub job with R2 credentials.
-A normal `master` push does not rebuild desktop bundles. GitHub releases keep
+A normal `main` push does not rebuild desktop bundles. GitHub releases keep
 source tags and notes only; they never contain executable files.
 
 ### Local Windows debate bundle (not a publication flow)
@@ -53,12 +53,12 @@ its [admin migration cutover](deployment.md#admin-identity-and-authorization-mig
 No executable hold commit is currently recorded in this repository. The previous
 placeholder SHA was removed because it does not exist in Git history. Before any
 live R2 catalog write or customer-link cutover, create a dedicated hold commit
-on `master`, record its real SHA in both runbooks, and verify:
+on `main`, record its real SHA in both runbooks, and verify:
 
 ```powershell
 git cat-file -e <hold-sha>^{commit}
-git merge-base --is-ancestor <hold-sha> origin/master
-if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/master.' }
+git merge-base --is-ancestor <hold-sha> origin/main
+if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/main.' }
 ```
 
 Stop until the Site workflow is green and the real hold is an ancestor. Do not
@@ -195,7 +195,7 @@ build, and smoke subprocesses; it restores only the R2 values for publication
 preflight and all six values around each explicit platform publisher call.
 Never print their values. It also requires Python 3.12, Node 24.x,
 authenticated `gh`, a reachable Docker engine reporting `linux/x86_64`, and
-clean `master` synchronized with `origin/master`.
+clean `main` synchronized with `origin/main`.
 
 ### Genesis key and stage-three cutover
 
@@ -354,7 +354,7 @@ is tagged and published.
 
 ### 1. Prepare and validate
 
-1. Start from clean `master`, synchronized with `origin/master`.
+1. Start from clean `main`, synchronized with `origin/main`.
 2. For a new version, confirm `vX.Y.Z` is unused locally, remotely, and in R2.
    If the annotated tag already exists, verify it and never move it.
 3. Update `.github/release-notes/vX.Y.Z.md`, the in-app version and release
@@ -395,7 +395,7 @@ tag.
 
 ### 2. Run the hybrid desktop release
 
-Run the coordinator from clean synchronized `master`:
+Run the coordinator from clean synchronized `main`:
 
 ```powershell
 & ./scripts/release_desktop.ps1 -Version vX.Y.Z -Confirm:$false
@@ -430,7 +430,7 @@ entirely inside GitHub by dispatching the desktop workflow directly with the
 `platforms` input:
 
 ```bash
-gh workflow run desktop-release.yml --ref master \
+gh workflow run desktop-release.yml --ref main \
     -f "release_ref=vX.Y.Z" -f "expected_commit=<peeled tag commit>" \
     -f "correlation_id=<32 hex>" -f "platforms=windows-x64 linux-x64"
 ```

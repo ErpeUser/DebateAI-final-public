@@ -455,25 +455,34 @@ async def _run_audio_pipeline(
             _receive_websocket_message(websocket, session_id)
         )
         native_receive_task = asyncio.create_task(native_audio_queue.get())
+        pending_capture_messages: deque[dict[str, Any] | None] = deque()
 
         while not state.stopped:
-            done, _ = await asyncio.wait(
-                {websocket_receive_task, native_receive_task},
-                return_when=asyncio.FIRST_COMPLETED,
-            )
-            if websocket_receive_task in done:
-                message = websocket_receive_task.result()
-                if message is not None:
-                    message["_capture_origin"] = "browser"
-                if message is not None:
+            if pending_capture_messages:
+                message = pending_capture_messages.popleft()
+            else:
+                done, _ = await asyncio.wait(
+                    {websocket_receive_task, native_receive_task},
+                    return_when=asyncio.FIRST_COMPLETED,
+                )
+                # Both tasks can complete in the same event-loop turn.  Keep
+                # every completed item; selecting one with ``if/else`` drops
+                # the other capture source and creates silent transcript gaps.
+                if native_receive_task in done:
+                    native_message = native_receive_task.result()
+                    if native_message is not None:
+                        native_message["_capture_origin"] = "native"
+                    pending_capture_messages.append(native_message)
+                    native_receive_task = asyncio.create_task(native_audio_queue.get())
+                if websocket_receive_task in done:
+                    browser_message = websocket_receive_task.result()
+                    if browser_message is not None:
+                        browser_message["_capture_origin"] = "browser"
+                    pending_capture_messages.append(browser_message)
                     websocket_receive_task = asyncio.create_task(
                         _receive_websocket_message(websocket, session_id)
                     )
-            else:
-                message = native_receive_task.result()
-                if message is not None:
-                    message["_capture_origin"] = "native"
-                native_receive_task = asyncio.create_task(native_audio_queue.get())
+                message = pending_capture_messages.popleft()
             if message is None:
                 break
 

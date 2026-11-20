@@ -15,12 +15,12 @@ your deployment for its current asset inventory.
   package-manager installer): `tar -xzf` it and run `DebateAI/DebateAI`.
 
 The complete German Windows install, provider-login, Ollama, audio, build,
-update and signing procedure is in the [final Windows runbook](DESKTOP_FINAL.md).
+update and signing procedure is in the [Windows recovery runbook](windows-final-recovery.md).
 
 The app runs from your system tray / menu bar and stores data per-user --
 `%LOCALAPPDATA%\DebateAI` on Windows,
 `~/Library/Application Support/DebateAI` on macOS,
-`~/.local/share/debateai` on Linux -- no Docker needed. Set a Gemini API key in Admin -> Connections on first run ([Getting API Keys](api-keys.md) shows how to create one in about two minutes). For the full self-hosted stack, use Docker Compose below.
+`~/.local/share/debateai` on Linux -- no Docker needed. Set a Gemini API key in Admin -> Connections on first run ([API credentials](configuration.md#api-credentials) shows how to create one in about two minutes). For the full self-hosted stack, use Docker Compose below.
 
 ### Keeping the desktop app up to date
 
@@ -37,11 +37,11 @@ the new one fails to start.
 ## Prerequisites
 
 - Docker with Docker Compose (the primary way to run the stack), or
-  Node 24.x / Python 3.11+ / PostgreSQL 16 for local development
+  Node 24.x / Python 3.12 / PostgreSQL 16 for local development
 - A Google Gemini API key for the default cloud transcription and analysis
   models. It is not required for the local German Debate Copilot setup below.
   An OpenAI key is optional and only needed for OpenAI-routed agents.
-  New to either provider? [Getting API Keys](api-keys.md) is a two-minute
+  New to either provider? [API credentials](configuration.md#api-credentials) is a two-minute
   walkthrough.
 - `ffmpeg` on `PATH` when running outside Docker, if you want compressed
   audio imports (MP3, M4A) or the browser-recorded voice profile and mic
@@ -57,7 +57,7 @@ API keys can be supplied two ways:
 
 ## Local German Debate Copilot on Windows (no API key)
 
-On Windows 11 with Docker Desktop, open PowerShell in the clone root and run:
+On Windows 11 with Docker Desktop, open PowerShell in the clone's `app` directory and run:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\scripts\setup_debate_assistant.ps1

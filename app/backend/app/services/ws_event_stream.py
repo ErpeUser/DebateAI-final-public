@@ -280,3 +280,13 @@ def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
 def latest_session_event(session_id: uuid.UUID | str, event_type: str) -> dict[str, Any] | None:
     journal = _journals.get(str(session_id))
     return journal.latest(event_type) if journal else None
+
+
+def forget_session(session_id: uuid.UUID | str) -> None:
+    """Release the in-process replay journal after a session is deleted.
+
+    Active websocket owners are closed by their route before a session can be
+    deleted. Removing the registry entry here prevents a deleted session's
+    bounded-but-sensitive replay history from surviving indefinitely.
+    """
+    _journals.pop(str(session_id), None)

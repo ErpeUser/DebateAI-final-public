@@ -48,6 +48,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const nextId = useRef(0);
   const confirmBtnRef = useRef<HTMLButtonElement>(null);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
 
   const confirm = useCallback(
     (opts: ConfirmOptions) =>
@@ -87,12 +89,32 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   // Focus the confirm button and wire Escape when a dialog opens.
   useEffect(() => {
     if (!dialog) return;
+    previousFocusRef.current = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
     confirmBtnRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") settle(false);
+      if (e.key !== "Tab") return;
+      const focusable = dialogRef.current?.querySelectorAll<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      if (!focusable?.length) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+    };
   }, [dialog, settle]);
 
   const danger = dialog?.tone !== "default";
@@ -103,6 +125,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
       {dialog && (
         <div
+          ref={dialogRef}
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
           role="dialog"
           aria-modal="true"

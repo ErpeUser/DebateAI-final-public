@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_db
 from app.services.pii import shield
 from app.services.secrets import data_dir
-from app.models import AgentConfig, CallSegment, DebateClaimRecord, Session, SessionAgentOverride, Speaker, TokenUsage
+from app.models import AgentConfig, CallSegment, DebateClaimRecord, Document, Session, SessionAgentOverride, Speaker, TokenUsage
 from app.schemas import (
     CallSegmentOut,
     EnhanceInsightsOut,
@@ -26,6 +26,7 @@ from app.schemas import (
 from app.services.agents.orchestrator import get_live_orchestrator, live_debate_snapshot
 from app.services.audio_echo import build_echo_cancelled_mix
 from app.services.briefing_synthesis import agent_model_id
+from app.services.gemini_files import delete_uploaded_file
 from app.services.llm import LLMModelNotSelected
 from app.services.meeting_context import normalize_meeting_type
 from app.services.speaker_revalidation import (
@@ -36,6 +37,8 @@ from app.services.speaker_revalidation import (
     summarize_run,
 )
 from app.services.token_usage import summarize_usage
+from app.services import transcription_jobs
+from app.services.ws_event_stream import forget_session as forget_event_journal
 
 logger = logging.getLogger(__name__)
 
@@ -234,10 +237,17 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     session = await db.get(Session, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
+    remote_files = list(
+        (await db.execute(
+            select(Document.gemini_file_uri).where(Document.session_id == session_id)
+        )).scalars().all()
+    )
     await db.execute(delete(DebateClaimRecord).where(DebateClaimRecord.session_id == session_id))
     await db.delete(session)
     await db.commit()
     shield.forget_session(session_id)
+    transcription_jobs.forget_session(session_id)
+    forget_event_journal(session_id)
     audio_root = (data_dir() / "audio").resolve()
     session_audio = (audio_root / str(session_id)).resolve()
     try:
@@ -246,6 +256,9 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
         logger.error("Refusing to delete audio outside the session root: %s", session_audio)
     else:
         await run_in_threadpool(shutil.rmtree, session_audio, True)
+    for remote_uri in remote_files:
+        if remote_uri:
+            await delete_uploaded_file(remote_uri)
 
 
 @router.post("/{session_id}/enhance-insights", response_model=EnhanceInsightsOut)

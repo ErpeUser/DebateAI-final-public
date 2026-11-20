@@ -213,10 +213,10 @@ approve or reject requests, reset passwords, sign out sessions, revoke users,
 or replace grants until step 6 explicitly ends the freeze. Recipient reads and
 downloads may continue.
 
-From the repository root, enter `source/docs-site/` and export the complete production database before applying any migration:
+From the repository root, enter `app/docs-site/` and export the complete production database before applying any migration:
 
 ```powershell
-cd source/docs-site
+cd app/docs-site
 $backupPath = $env:DEBATEAI_D1_BACKUP_PATH
 if ([string]::IsNullOrWhiteSpace($backupPath) -or -not [IO.Path]::IsPathRooted($backupPath)) {
     throw 'DEBATEAI_D1_BACKUP_PATH must be an absolute path in approved encrypted storage outside the repository.'
@@ -373,12 +373,12 @@ for rollback before the first new policy mutation.
 No executable hold commit is currently recorded in this repository. The previous
 placeholder SHA was removed because it does not exist in Git history. Before any
 live R2 catalog write or customer-link cutover, create a dedicated hold commit
-on `master`, record its real SHA in both runbooks, and verify:
+on `main`, record its real SHA in both runbooks, and verify:
 
 ```powershell
 git cat-file -e <hold-sha>^{commit}
-git merge-base --is-ancestor <hold-sha> origin/master
-if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/master.' }
+git merge-base --is-ancestor <hold-sha> origin/main
+if ($LASTEXITCODE -ne 0) { throw 'The recorded hold is not an ancestor of origin/main.' }
 ```
 
 Stop until the Site workflow is green and the real hold is an ancestor. Do not

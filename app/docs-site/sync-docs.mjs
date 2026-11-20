@@ -7,13 +7,15 @@ import { join } from 'node:path';
 
 const SRC = join(import.meta.dirname, '..', 'docs');
 const OUT = join(import.meta.dirname, 'src', 'content', 'docs');
-const REPO_URL = 'https://github.com/ErpeUser/DebateAI';
+const REPO_URL = 'https://github.com/ErpeUser/DebateAI-final-public';
 
 rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 for (const file of readdirSync(SRC).filter((f) => f.endsWith('.md'))) {
-  const slug = file === 'README.md' ? 'index' : file.replace(/\.md$/, '');
+  // The canonical index is the docs root. Keep its source filename descriptive
+  // while preserving the stable /docs/ URL expected by the site shell.
+  const slug = file === 'DEBATEAI_CANONICAL_INDEX.md' ? 'index' : file.replace(/\.md$/, '');
   let text = readFileSync(join(SRC, file), 'utf8');
 
   // Drop the GitHub-only wordmark banner; Starlight has its own header.

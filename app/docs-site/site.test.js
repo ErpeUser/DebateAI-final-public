@@ -8,7 +8,7 @@ const customerFiles = [
   '../docs/quickstart.md',
   '../docs/releasing.md',
   '../docs/deployment.md',
-  '../docs/README.md',
+  '../docs/DEBATEAI_CANONICAL_INDEX.md',
   '../AGENTS.md',
   '../site/index.html',
   '../site/private-meeting-ai/index.html',
@@ -195,11 +195,57 @@ test('historical release pages deep-link only their own entitled version', () =>
 
 test('public GitHub source, issue, license, and star links remain canonical', () => {
   const content = customerContent.map(([, value]) => value).join('\n');
-  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI(?:\.git)?["')\s]/i);
-  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI\/issues/i);
-  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI\/blob\/master\/LICENSE/i);
-  assert.match(read('../site/index.html'), /href="https:\/\/github\.com\/ErpeUser\/DebateAI"[^>]*>Star on GitHub/i);
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI-final-public(?:\.git)?["')\s]/i);
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI-final-public\/issues/i);
+  assert.match(content, /https:\/\/github\.com\/ErpeUser\/DebateAI-final-public\/blob\/main\/LICENSE/i);
+  assert.match(read('../site/index.html'), /href="https:\/\/github\.com\/ErpeUser\/DebateAI-final-public"[^>]*>Star on GitHub/i);
   assert.doesNotMatch(content, /talberthoule\/backchannel/i);
+});
+
+test('active docs use only checked-in pages and the canonical repository layout', () => {
+  const docs = new Set(readdirSync(new URL('../docs/', import.meta.url))
+    .filter((name) => name.endsWith('.md'))
+    .map((name) => name.replace(/\.md$/, '')));
+  const sourceFiles = [
+    '../README.md',
+    '../docs/DEBATEAI_CANONICAL_INDEX.md',
+    '../docs/quickstart.md',
+    '../docs/deployment.md',
+    '../docs/releasing.md',
+    '../site/index.html',
+  ];
+  for (const path of sourceFiles) {
+    const content = read(path);
+    for (const match of content.matchAll(/\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)/g)) {
+      const target = match[1];
+      if (/^(?:https?:|mailto:|\/|#)/i.test(target)) continue;
+      if (!target.endsWith('.md')) continue;
+      const resolved = new URL(target, new URL(path, import.meta.url));
+      const name = resolved.pathname.split('/').pop().replace(/\.md$/, '');
+      assert.ok(docs.has(name), `${path} references missing docs page ${target}`);
+    }
+    for (const match of content.matchAll(/(?:href|src)=["']([^"']*\/docs\/([^/#?]+)\/?)((?:[?#][^"']*)?)["']/g)) {
+      const target = match[2];
+      if (target === 'docs') continue;
+      assert.ok(docs.has(target === 'index' ? 'DEBATEAI_CANONICAL_INDEX' : target),
+        `${path} references missing docs page ${target}`);
+    }
+  }
+  for (const name of docs) {
+    const path = `../docs/${name}.md`;
+    const content = read(path);
+    for (const match of content.matchAll(/(?<!!)\[[^\]]+\]\(([^)#]+)(?:#[^)]+)?\)/g)) {
+      const target = match[1];
+      if (/^(?:https?:|mailto:|\/|#)/i.test(target) || !target.endsWith('.md')) continue;
+      const resolved = new URL(target, new URL(path, import.meta.url));
+      const targetName = resolved.pathname.split('/').pop().replace(/\.md$/, '');
+      assert.ok(docs.has(targetName), `${path} references missing docs page ${target}`);
+    }
+  }
+  const active = sourceFiles.map((path) => read(path)).join('\n');
+  assert.match(active, /ErpeUser\/DebateAI-final-public/);
+  assert.match(active, /\bmain\b/);
+  assert.doesNotMatch(active, /(?:cd|enter)\s+source\b|origin\/master|blob\/master/i);
 });
 
 // Adding a page to this site is never one file: it also has to reach the
@@ -301,7 +347,7 @@ test('rollout order documents a real hold gate before catalog publication', () =
   for (const runbook of [deployment, releasing]) {
     assert.match(runbook, /No executable hold commit is currently recorded/i);
     assert.match(runbook, /git cat-file -e <hold-sha>\^\{commit\}/);
-    assert.match(runbook, /git merge-base --is-ancestor <hold-sha> origin\/master/);
+    assert.match(runbook, /git merge-base --is-ancestor <hold-sha> origin\/main/);
     assert.doesNotMatch(runbook, /git merge-base --is-ancestor [0-9a-f]{40}/);
     assert.doesNotMatch(runbook, /git revert [0-9a-f]{40}/);
   }

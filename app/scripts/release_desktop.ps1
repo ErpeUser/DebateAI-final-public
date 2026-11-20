@@ -541,23 +541,23 @@ $oldPath = $env:PATH
 $tempRoot = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
 $temporary = Join-Path $tempRoot ("debateai-desktop-release-" + [guid]::NewGuid().ToString("N"))
 $sourceCheckout = Join-Path $temporary "checkout"
-$sourceRoot = Join-Path $sourceCheckout "source"
+$sourceRoot = Join-Path $sourceCheckout "app"
 $worktreeAdded = $false
 $failures = [Collections.Generic.List[string]]::new()
 $runUrls = [Collections.Generic.List[string]]::new()
 try {
     $env:PATH = "$(Split-Path -Parent $python);$oldPath"
-    if ((Invoke-Checked "Reading current branch" { & $script:Git branch --show-current })[-1].Trim() -cne "master") {
-        throw "Release coordinator must run from master"
+    if ((Invoke-Checked "Reading current branch" { & $script:Git branch --show-current })[-1].Trim() -cne "main") {
+        throw "Release coordinator must run from main"
     }
     if (@(Invoke-Checked "Checking working tree" { & $script:Git status --porcelain }).Count -ne 0) {
         throw "Release coordinator requires a clean working tree"
     }
-    Invoke-Checked "Fetching release refs" { & $script:Git fetch origin master --tags } | Out-Null
+    Invoke-Checked "Fetching release refs" { & $script:Git fetch origin main --tags } | Out-Null
     $head = (Invoke-Checked "Resolving controller commit" { & $script:Git rev-parse HEAD })[-1].Trim()
-    $remoteMaster = (Invoke-Checked "Resolving remote master" { & $script:Git rev-parse origin/master })[-1].Trim()
-    if ($head -cne $remoteMaster) {
-        throw "Local master is not synchronized with origin/master"
+    $remoteMain = (Invoke-Checked "Resolving remote main" { & $script:Git rev-parse origin/main })[-1].Trim()
+    if ($head -cne $remoteMain) {
+        throw "Local main is not synchronized with origin/main"
     }
     Invoke-Checked "Checking GitHub authentication" { & $script:Gh auth status } | Out-Null
     $repository = (Invoke-GhJson -Arguments @("repo", "view", "--json", "nameWithOwner")).nameWithOwner
@@ -603,7 +603,7 @@ try {
             $dispatchCorrelation = [guid]::NewGuid().ToString("N")
             $expectedDisplayTitle = "Desktop release $Version ($dispatchCorrelation)"
             Invoke-Checked "Dispatching macOS release" {
-                & $script:Gh workflow run desktop-release.yml --ref master `
+                & $script:Gh workflow run desktop-release.yml --ref main `
                     -f "release_ref=$Version" -f "expected_commit=$($tag.Commit)" `
                     -f "correlation_id=$dispatchCorrelation"
             } | Out-Null

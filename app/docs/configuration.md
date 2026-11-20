@@ -371,7 +371,7 @@ working.
 | `KNOWLEDGE_CONTEXT_CHAR_BUDGET` | 60000 | Max characters of knowledge context per prompt |
 
 Per-agent interval values stored in `agent_configs` rows override these
-defaults (see [Agent System](agents.md)).
+defaults (see [agent orchestration](architecture.md#backend-key-files)).
 
 ### Diarization
 

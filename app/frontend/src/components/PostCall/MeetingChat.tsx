@@ -6,6 +6,7 @@ import type { ModelInfo, Session } from "../../types";
 import * as api from "../../services/api";
 import { groupModels, optionLabel } from "../../lib/modelOptions";
 import { filterSessions, normalizeQuery } from "../../lib/sessionSearch";
+import { chatStorageKey, clearMeetingChatHistory } from "../../lib/meetingChatStorage";
 import { SEARCH_HINT } from "../SearchHint";
 
 interface MeetingChatProps {
@@ -18,15 +19,13 @@ interface ChatMsg {
 }
 
 const MAX_HISTORY_MESSAGES = 8;
-const CHAT_STORAGE_PREFIX = "debateai:meeting-chat:";
-
 function trimHistory(messages: ChatMsg[]): ChatMsg[] {
   return messages.slice(-MAX_HISTORY_MESSAGES);
 }
 
 function loadHistory(sessionId: string): ChatMsg[] {
   try {
-    const raw = window.sessionStorage.getItem(`${CHAT_STORAGE_PREFIX}${sessionId}`);
+    const raw = window.sessionStorage.getItem(chatStorageKey(sessionId));
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
@@ -75,7 +74,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
 
   useEffect(() => {
     window.sessionStorage.setItem(
-      `${CHAT_STORAGE_PREFIX}${session.id}`,
+      chatStorageKey(session.id),
       JSON.stringify(trimHistory(messages)),
     );
   }, [messages, session.id]);
@@ -133,7 +132,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
     setMessages([]);
     setInput("");
     setError(null);
-    window.sessionStorage.removeItem(`${CHAT_STORAGE_PREFIX}${session.id}`);
+    clearMeetingChatHistory(session.id);
   };
 
   const sessionCheckbox = (s: Session, removable = false) => (

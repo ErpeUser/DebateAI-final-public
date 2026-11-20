@@ -22,6 +22,7 @@ from app.services.pii import shield, vault
 
 _SESSION_PATH = re.compile(r"^/api/sessions/([0-9a-fA-F-]{36})(?:/|$)")
 _LIST_PATH = re.compile(r"^/api/sessions/?$")
+MAX_BUFFERED_JSON_BYTES = 8 * 1024 * 1024
 
 
 def _scope_target(scope) -> tuple[uuid.UUID | None, bool]:
@@ -51,6 +52,7 @@ class _BufferedSender:
         self.start_message = None
         self.body_parts: list[bytes] = []
         self.passthrough = False
+        self.rejected = False
 
     async def __call__(self, message):
         kind = message["type"]
@@ -59,10 +61,34 @@ class _BufferedSender:
             return
         if kind == "http.response.start":
             self.passthrough = True
+        if self.rejected:
+            return
         if kind != "http.response.body" or self.passthrough:
             await self.send(message)
             return
-        self.body_parts.append(message.get("body", b""))
+        body = message.get("body", b"")
+        if sum(map(len, self.body_parts)) + len(body) > MAX_BUFFERED_JSON_BYTES:
+            # Do not hold an unbounded response in memory just to substitute
+            # tokens.  The response has not been exposed yet, so return a
+            # deterministic client error and discard the remainder.
+            self.rejected = True
+            error_body = b'{"detail":"JSON response exceeds the PII reveal buffer limit"}'
+            headers = [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(error_body)).encode("latin-1")),
+            ]
+            await self.send({
+                "type": "http.response.start",
+                "status": 413,
+                "headers": headers,
+            })
+            await self.send({
+                "type": "http.response.body",
+                "body": error_body,
+                "more_body": False,
+            })
+            return
+        self.body_parts.append(body)
         if message.get("more_body"):
             return
         revealed = await self.reveal(b"".join(self.body_parts))

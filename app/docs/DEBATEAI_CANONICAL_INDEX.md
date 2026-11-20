@@ -17,8 +17,8 @@ requirement.
 
 ## Historical and migration-only records
 
-- [Archived Windows finalization plan (11 November 2026)](DESKTOP_FINAL.md) — obsolete `source/` instructions preserved for provenance, **not** current build commands.
-- [Codex acceptance audit (12 November 2026)](CODEX_ACCEPTANCE_2026-11-12.md) — dated historical evidence.
+- [Windows recovery notes (11 November 2026)](windows-final-recovery.md) — dated recovery guidance retained for provenance, **not** current build commands.
+- The 12 November 2026 Codex acceptance audit is retained in the historical evidence ledger.
 
 
 Legacy directory names, archive names, environment variables and request

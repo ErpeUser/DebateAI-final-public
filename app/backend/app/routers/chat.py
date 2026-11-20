@@ -238,7 +238,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         {
             "role": m.role,
             "content": _namespace_tokens(
-                await shield.protect_text(db, body.session_ids[0], m.content),
+                await shield.protect_text_for_sessions(db, body.session_ids, m.content),
                 first_namespace,
             ),
         }

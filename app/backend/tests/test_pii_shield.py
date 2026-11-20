@@ -247,6 +247,31 @@ class ShieldTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(revealed, text.replace("Sarah agreed", "Sarah Connor agreed"))
         audit.assert_awaited_once_with(sid, "test", 5)
 
+    async def test_multi_session_protection_uses_the_union_of_selected_rosters(self):
+        first, second = uuid.uuid4(), uuid.uuid4()
+        db = _fake_db()
+        rosters = {
+            first: [RosterEntry("Alice Example", PERSON)],
+            second: [RosterEntry("Bob Example", PERSON)],
+        }
+
+        async def roster(_db, session_id, _settings):
+            return rosters[session_id]
+
+        with (
+            patch.object(shield, "get_settings", AsyncMock(return_value=_enabled())),
+            patch.object(shield, "session_roster", new=roster),
+        ):
+            protected = await shield.protect_text_for_sessions(
+                db, [first, second], "Bob Example approved the plan."
+            )
+
+        self.assertEqual("[PERSON_1] approved the plan.", protected)
+        self.assertEqual(
+            {"[PERSON_1]": "Bob Example"},
+            await vault.reveal_map(db, first),
+        )
+
     async def test_existing_tokens_are_never_re_tokenized(self):
         spans = shield.detect("[PERSON_1] emailed [EMAIL_1] from a@b.co", [], _enabled())
         self.assertEqual([(s.category, s.text) for s in spans], [(EMAIL, "a@b.co")])
