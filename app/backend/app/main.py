@@ -408,7 +408,7 @@ def _schema_startup_action(
     return "upgrade" if "alembic_version" in tables else "adopt"
 
 
-async def _run_schema_migrations() -> None:
+async def _run_schema_migrations_unlocked() -> None:
     """Use Alembic normally; adopt old create_all databases once."""
     from alembic import command
     from alembic.config import Config
@@ -458,6 +458,25 @@ async def _run_schema_migrations() -> None:
                 text("INSERT INTO alembic_version (version_num) VALUES (:head)"),
                 {"head": head},
             )
+
+
+async def _run_schema_migrations() -> None:
+    """Serialize startup schema work when several workers share PostgreSQL.
+
+    SQLite has its own file locking and local desktop starts use one worker.
+    PostgreSQL advisory locks are session-scoped, so the lock connection stays
+    open for the complete migration/adoption sequence while the existing
+    Alembic code continues to use its normal short-lived connections.
+    """
+    lock_conn = await engine.connect()
+    try:
+        if lock_conn.dialect.name == "postgresql":
+            await lock_conn.execute(text("SELECT pg_advisory_lock(hashtext('debateai.schema'))"))
+        await _run_schema_migrations_unlocked()
+    finally:
+        if lock_conn.dialect.name == "postgresql":
+            await lock_conn.execute(text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))"))
+        await lock_conn.close()
 
 
 @asynccontextmanager

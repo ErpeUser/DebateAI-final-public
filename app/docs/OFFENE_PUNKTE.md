@@ -386,7 +386,8 @@ Stand: 2026-11-20. Priorisierung nach P0–P3. Ein Punkt bleibt offen, wenn der 
 
 - **Kategorie:** **TECH-IMPROVEMENT**
 - **Istzustand:** `app/backend/app/main.py:411-442` führt `create_all`/rohe `ALTER`-Schritte sowie Alembic-Stamp/Upgrade innerhalb jedes App-Lifespans aus. Ein Datenbank-Advisory-Lock oder ein anderer Single-Runner-Schutz ist im geprüften Pfad nicht nachweisbar; bei parallelem Start mehrerer Worker können doppelte Änderungen oder konkurrierende Stamps entstehen.
-- **Status:** zu verifizieren; der Race ist aus dem Code plausibel, aber ohne parallelen Startup-Test nicht als Laufzeitfehler bestätigt.
+- **Aktueller Nachweis:** Der aktuelle Remediation-Stand serialisiert die komplette Schema-Sequenz auf PostgreSQL mit `pg_advisory_lock(hashtext('debateai.schema'))`; SQLite bleibt beim bestehenden lokalen Pfad.
+- **Status:** teilweise umgesetzt; der PostgreSQL-Lock ist im Code vorhanden, ein Zwei-Worker-Startup-Test auf einer isolierten Datenbank fehlt weiterhin.
 - **Sollzustand:** Genau ein idempotenter Migrationsrunner arbeitet pro Datenbank; parallele App-Starts warten oder erkennen den aktuellen Head ohne Duplicate-/Lock-Fehler.
 - **Minimalste Lösung:** Migrationen aus dem Lifespan in einen expliziten Job verschieben oder per DB-Advisory-Lock serialisieren; Startup-/Legacy-Matrix testen.
 - **Nutzen:** Verhindert schwer reproduzierbare Startfehler und Schema-Halbzustände beim Skalieren oder bei Recovery.
