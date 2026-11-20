@@ -470,3 +470,6 @@ Whisper Base) wins as long as it keeps up. No `Local` entry sets
 `supports_text`, so text agents need a provider key, the legacy
 placeholder, or a self-hosted endpoint model. Add new models by appending to
 the registry.
+
+
+> **Local-First-Vertrag:** Die aktuelle Trennung zwischen lokaler ASR, lokalem Text-Endpoint, Cloud-Text und experimenteller Live-Caption ist in [local-first-text-contract.md](local-first-text-contract.md) versioniert.
