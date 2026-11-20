@@ -866,3 +866,80 @@ export const createGroup = (name: string) =>
   request<SessionGroup>("/groups", { method: "POST", body: JSON.stringify({ name }) });
 export const deleteGroup = (id: string) =>
   request<void>(`/groups/${id}`, { method: "DELETE" });
+
+// Quality / prompt laboratory ------------------------------------------------
+// The backend may be supplied by a later integration branch. These typed
+// calls deliberately surface an unavailable provider as an error instead of
+// presenting a mocked success to the operator.
+export interface QualityLabCandidate {
+  variant_id: string;
+  model_id: string;
+  prompt_version: string;
+  prompt_hash: string;
+  answer: string;
+  latency_ms: number;
+  cost_usd: number | null;
+  available: boolean;
+}
+
+export interface QualityLabRun {
+  run_id: string;
+  dataset_id: string;
+  holdout: boolean;
+  created_at: string;
+  input: { claim: string; context: string; allowed_sources: string[] };
+  candidates: QualityLabCandidate[];
+  blind_order: ("A" | "B")[];
+}
+
+export interface QualityLabRunRequest {
+  claim: string;
+  context: string;
+  allowed_sources: string[];
+  dataset_id?: string;
+  holdout?: boolean;
+  model_ids: string[];
+  prompt_variants?: string[];
+}
+
+export const runQualityLab = (payload: QualityLabRunRequest) =>
+  request<QualityLabRun>("/quality-lab/runs", { method: "POST", body: JSON.stringify(payload) });
+
+export const submitQualityLabRating = (runId: string, payload: Record<string, unknown>) =>
+  request<{ saved: boolean; agreement: number | null }>(`/quality-lab/runs/${encodeURIComponent(runId)}/ratings`, {
+    method: "POST", body: JSON.stringify(payload),
+  });
+
+export const applyQualityLabVariant = (runId: string, variantId: string) =>
+  request<{ applied: boolean; run_id: string; variant_id: string }>(`/quality-lab/runs/${encodeURIComponent(runId)}/apply`, {
+    method: "POST", body: JSON.stringify({ variant_id: variantId }),
+  });
+
+export const rollbackQualityLab = (runId: string) =>
+  request<{ rolled_back: boolean; run_id: string }>(`/quality-lab/runs/${encodeURIComponent(runId)}/rollback`, { method: "POST" });
+
+// Video-evaluation UI contract. A backend can implement these routes without
+// coupling the desktop UI to its worker or evidence persistence details.
+export type VideoEvalJobStatus = "queued" | "processing" | "awaiting_consent" | "completed" | "failed" | "cancelled";
+export interface VideoEvalJob {
+  id: string;
+  url: string;
+  status: VideoEvalJobStatus;
+  progress?: number;
+  step?: string;
+  error?: string | null;
+  has_subtitles?: boolean;
+  consent_required?: boolean;
+  artifact_available?: boolean;
+}
+
+export const createVideoEvalJob = (url: string) =>
+  request<VideoEvalJob>("/video-eval/jobs", { method: "POST", body: JSON.stringify({ url }) });
+export const getVideoEvalJob = (id: string) =>
+  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}`);
+export const consentVideoEvalJob = (id: string, approved: boolean) =>
+  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/consent`, { method: "POST", body: JSON.stringify({ approved }) });
+export const cancelVideoEvalJob = (id: string) =>
+  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+export const getVideoEvalArtifact = (id: string) =>
+  request<Record<string, unknown>>(`/video-eval/jobs/${encodeURIComponent(id)}/artifact`);
