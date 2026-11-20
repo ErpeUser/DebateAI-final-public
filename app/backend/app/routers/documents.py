@@ -2,7 +2,7 @@ import inspect
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -105,11 +105,18 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
 
 
 @router.get("", response_model=list[DocumentOut])
-async def list_documents(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_documents(
+    session_id: uuid.UUID,
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
     if await db.get(Session, session_id) is None:
         raise HTTPException(404, "Session not found")
     result = await db.execute(
-        select(Document).where(Document.session_id == session_id).order_by(Document.uploaded_at)
+        select(Document)
+        .where(Document.session_id == session_id)
+        .order_by(Document.uploaded_at, Document.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

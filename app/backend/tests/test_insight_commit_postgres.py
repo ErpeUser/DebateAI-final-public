@@ -19,26 +19,33 @@ from tests.test_insight_commit_retry import (
 POSTGRES_URL = os.environ.get('DEBATEAI_TEST_POSTGRES_URL', '')
 DATA_DIRECTORY = os.environ.get('DEBATEAI_TEST_POSTGRES_DATA_DIR', '')
 RUN_ID = os.environ.get('DEBATEAI_TEST_POSTGRES_RUN_ID', '')
+ALLOW_SHARED_CI = os.environ.get('DEBATEAI_TEST_POSTGRES_ALLOW_SHARED', '').lower() == 'true'
 
 
-@unittest.skipUnless(POSTGRES_URL and DATA_DIRECTORY and RUN_ID,
-                     'Owned temporary PostgreSQL cluster not configured')
+@unittest.skipUnless(
+    POSTGRES_URL and RUN_ID and (DATA_DIRECTORY or ALLOW_SHARED_CI),
+    'Owned temporary PostgreSQL cluster or explicit isolated CI database not configured',
+)
 class InsightPostgresTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         url = make_url(POSTGRES_URL)
         if url.host != '127.0.0.1' or url.database != 'debateai_acceptance_' + RUN_ID:
             raise RuntimeError('Refusing non-isolated PostgreSQL target')
-        expected = Path(DATA_DIRECTORY).resolve(strict=True)
-        marker = json.loads((expected / '.debateai-acceptance-cluster').read_text())
-        if marker != {'run_id': RUN_ID, 'database': url.database}:
-            raise RuntimeError('Temporary cluster ownership marker does not match')
+        if DATA_DIRECTORY:
+            expected = Path(DATA_DIRECTORY).resolve(strict=True)
+            marker = json.loads((expected / '.debateai-acceptance-cluster').read_text())
+            if marker != {'run_id': RUN_ID, 'database': url.database}:
+                raise RuntimeError('Temporary cluster ownership marker does not match')
+        elif not ALLOW_SHARED_CI:
+            raise RuntimeError('Refusing a PostgreSQL target without an explicit isolation contract')
         self.engine = create_async_engine(url, connect_args={'timeout': 5})
         self.addAsyncCleanup(self.engine.dispose)
-        # No schema or data writes until the real server's directory is verified.
-        async with self.engine.connect() as connection:
-            actual = await connection.scalar(text('SHOW data_directory'))
-            if Path(actual).resolve(strict=True) != expected:
-                raise RuntimeError('Connected PostgreSQL is not the owned test cluster')
+        if DATA_DIRECTORY:
+            # No schema or data writes until the real server's directory is verified.
+            async with self.engine.connect() as connection:
+                actual = await connection.scalar(text('SHOW data_directory'))
+                if Path(actual).resolve(strict=True) != expected:
+                    raise RuntimeError('Connected PostgreSQL is not the owned test cluster')
         async with self.engine.begin() as connection:
             await connection.run_sync(Base.metadata.create_all)
         self.factory = async_sessionmaker(self.engine, expire_on_commit=False)

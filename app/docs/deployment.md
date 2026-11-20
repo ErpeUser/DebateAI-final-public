@@ -151,7 +151,10 @@ history (`alembic upgrade head`), but the startup patching is part of
 current runtime behavior -- see [Quickstart](quickstart.md).
 
 `backend/scripts/start_backend.py` is the container entrypoint; it launches
-uvicorn (honoring `BACKEND_RELOAD`) after the database is reachable.
+uvicorn (honoring `BACKEND_RELOAD`) after the database is reachable. The
+runtime keeps `BACKEND_WORKERS=1` because live orchestrators, WebSocket
+journals and transcription jobs are process-local; multi-worker operation
+requires the shared-state adapter described in the open-items backlog.
 
 ## Data locations
 

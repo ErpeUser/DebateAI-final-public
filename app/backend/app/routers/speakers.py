@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,9 +34,16 @@ async def create_speaker(session_id: uuid.UUID, body: SpeakerCreate, db: AsyncSe
 
 
 @router.get("", response_model=list[SpeakerOut])
-async def list_speakers(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_speakers(
+    session_id: uuid.UUID,
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+        select(Speaker)
+        .where(Speaker.session_id == session_id)
+        .order_by(Speaker.created_at, Speaker.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

@@ -21,9 +21,22 @@ def _backend_host() -> str:
     return host
 
 
+def _backend_workers() -> int:
+    """Keep process-local live state safe until a shared adapter exists."""
+    raw = os.getenv("BACKEND_WORKERS", "1").strip() or "1"
+    try:
+        workers = int(raw)
+    except ValueError as exc:
+        raise RuntimeError("BACKEND_WORKERS must be the integer 1 until shared live state is available") from exc
+    if workers != 1:
+        raise RuntimeError("BACKEND_WORKERS must remain 1; multi-worker live state is not supported yet")
+    return workers
+
+
 def main() -> int:
     ensure_sortformer_installed(required=False)
     host = _backend_host()
+    workers = _backend_workers()
 
     command = [
         "uvicorn",
@@ -32,6 +45,8 @@ def main() -> int:
         host,
         "--port",
         "8000",
+        "--workers",
+        str(workers),
         "--ws-ping-timeout",
         "90",
         "--ws-max-queue",

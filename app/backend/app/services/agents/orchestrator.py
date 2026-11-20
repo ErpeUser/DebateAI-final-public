@@ -58,6 +58,7 @@ from app.services.agents.objection_handler import (
     ObjectionHandlerAgent,
     build_atomic_claims,
     normalize_experimental_strategies,
+    normalize_standard_strategies,
     _has_speakable_guidance,
 )
 from app.services.debate_contracts import DebateSource
@@ -284,6 +285,7 @@ _DEBATE_LIVE_AGENTS = {
     "audio_gateway",
     "objection_handler",
     "consolidated_analyst",
+    STRATEGIC_SIGNALS_SLUG,
 }
 
 _CHATGPT_WEB_ANALYST = "chatgpt-web:gpt-6"
@@ -3025,7 +3027,11 @@ class AgentOrchestrator:
 
             return True
 
-    async def _send_signal_insights(self, signal_rows: dict | None) -> int:
+    async def _send_signal_insights(
+        self,
+        signal_rows: dict | None,
+        context: dict[str, object] | None = None,
+    ) -> int:
         """Push this cycle's signal insight rows to the browser.
 
         New rows arrive as ordinary insights; a signal that aged into history,
@@ -3044,7 +3050,8 @@ class AgentOrchestrator:
         for message_type, rows in (("question", created), ("insight_updated", updated)):
             for row in rows:
                 try:
-                    await self.websocket.send_json({"type": message_type, "data": row})
+                    payload = {**row, "analysis_context": dict(context or {})}
+                    await self.websocket.send_json({"type": message_type, "data": payload})
                 except Exception as e:
                     logger.info(f"[strategic_signals] signal insight broadcast failed: {e}")
                     return len(created)
@@ -4727,8 +4734,7 @@ class AgentOrchestrator:
         generation_context = self._new_analysis_context(revision)
 
         def stamp_context(value: DebateRecommendation) -> DebateRecommendation:
-            value = self._experimentalize_recommendation(value)
-            return value.model_copy(update={
+            value = value.model_copy(update={
                 "session_id": value.session_id or str(self.session_id),
                 "claim_id": value.claim_id or generation_context.claim_id,
                 "transcript_revision": transcript_revision,
@@ -4736,6 +4742,11 @@ class AgentOrchestrator:
                 "directive_revision": generation_context.directive_revision,
                 "config_generation": generation_context.config_generation,
                 "generation_id": generation_context.generation_id,
+            })
+            if self._experimental_mode:
+                return self._experimentalize_recommendation(value)
+            return value.model_copy(update={
+                "strategy_options": normalize_standard_strategies(value),
             })
 
         def snapshot_is_current() -> bool:
@@ -5057,6 +5068,7 @@ class AgentOrchestrator:
                 if transcript_window == last_window:
                     logger.debug("[strategic_signals] Window unchanged, skipping cycle")
                 elif transcript_window != "(No recent transcript)":
+                    cycle_revision = getattr(self, "_transcript_revision", 0)
                     cycle = await run_strategic_signals_cycle(
                         self.session_id,
                         agent_configs=self._agent_configs,
@@ -5065,11 +5077,25 @@ class AgentOrchestrator:
                         doc_summaries=self.doc_summaries,
                         speakers=self.speakers,
                         active_questions=self.active_questions,
+                        is_current=lambda: cycle_revision == getattr(self, "_transcript_revision", 0),
                     )
                     synthesis, signal_rows = cycle if cycle else (None, None)
+                    if cycle_revision != getattr(self, "_transcript_revision", 0):
+                        logger.info("[strategic_signals] Dropping stale cycle for transcript revision %s", cycle_revision)
+                        await self.activity.cycle_finished(
+                            STRATEGIC_SIGNALS_SLUG,
+                            {"kind": "stale", "detail": "A newer transcript revision superseded this cycle.", "items": 0},
+                        )
+                        await asyncio.sleep(interval)
+                        continue
+                    analysis_context = {
+                        "claim_id": getattr(self, "_active_claim_id", "") or "",
+                        "transcript_revision": getattr(self, "_transcript_revision", 0),
+                        "generation_id": getattr(self, "_debate_revision", 0),
+                    }
                     if synthesis:
-                        await self._send_synthesis_update(synthesis)
-                    filed = await self._send_signal_insights(signal_rows)
+                        await self._send_synthesis_update(synthesis, analysis_context)
+                    filed = await self._send_signal_insights(signal_rows, analysis_context)
                     await self.activity.cycle_finished(
                         STRATEGIC_SIGNALS_SLUG,
                         {
@@ -5106,11 +5132,17 @@ class AgentOrchestrator:
                 )
             await asyncio.sleep(interval)
 
-    async def _send_synthesis_update(self, synthesis):
+    async def _send_synthesis_update(
+        self,
+        synthesis,
+        context: dict[str, object] | None = None,
+    ):
         try:
+            payload = _synthesis_payload(synthesis)
+            payload["analysis_context"] = dict(context or {})
             await self.websocket.send_json({
                 "type": "synthesis_updated",
-                "data": _synthesis_payload(synthesis),
+                "data": payload,
             })
         except Exception:
             pass

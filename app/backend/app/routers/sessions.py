@@ -3,7 +3,7 @@ import shutil
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, select
@@ -73,8 +73,11 @@ async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)
 
 
 @router.get("", response_model=list[SessionOut])
-async def list_sessions(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(Session).order_by(Session.created_at.desc()))
+async def list_sessions(
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(select(Session).order_by(Session.created_at.desc(), Session.id).limit(limit))
     return result.scalars().all()
 
 
@@ -142,11 +145,16 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
 
 
 @router.get("/{session_id}/segments", response_model=list[CallSegmentOut])
-async def list_segments(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_segments(
+    session_id: uuid.UUID,
+    limit: int = Query(500, ge=1, le=2000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(CallSegment)
         .where(CallSegment.session_id == session_id)
-        .order_by(CallSegment.segment_number)
+        .order_by(CallSegment.segment_number, CallSegment.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

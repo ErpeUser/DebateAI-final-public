@@ -25,6 +25,8 @@ EXPECTED_COMMAND = [
     "127.0.0.1",
     "--port",
     "8000",
+    "--workers",
+    "1",
     "--ws-ping-timeout",
     "90",
     "--ws-max-queue",
@@ -45,6 +47,14 @@ class BackendStartupTests(unittest.TestCase):
             _start_backend.main()
 
         execvp.assert_called_once_with("uvicorn", EXPECTED_COMMAND)
+
+    def test_multiworker_start_is_rejected_until_shared_state_exists(self):
+        with (
+            mock.patch.object(_start_backend, "ensure_sortformer_installed"),
+            mock.patch.dict(_start_backend.os.environ, {"BACKEND_WORKERS": "2"}, clear=True),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "BACKEND_WORKERS"):
+                _start_backend.main()
 
     def test_non_loopback_start_requires_instance_token(self):
         with (

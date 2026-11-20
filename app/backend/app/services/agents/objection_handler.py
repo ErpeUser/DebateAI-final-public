@@ -287,6 +287,84 @@ def _experimental_fallback_text(kind: str, recommendation: DebateRecommendation)
     return " ".join(text.split()), example if claim or example else example
 
 
+def normalize_standard_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
+    """Return three distinct, speakable options for the default live path."""
+    candidates = (
+        ("answer", "Sofortantwort", recommendation.answer_now or recommendation.counterargument),
+        ("counter_question", "Gegenfrage", recommendation.counter_question),
+        ("example", "Konkreter Gegenfall", recommendation.analogy or recommendation.counterargument),
+    )
+    existing = {
+        str(item.get("kind") or "").strip(): item
+        for item in (recommendation.strategy_options or [])
+        if isinstance(item, dict) and str(item.get("kind") or "").strip()
+    }
+    options: list[dict[str, Any]] = []
+    seen_text: set[str] = set()
+    for kind, title, fallback in candidates:
+        item = existing.get(kind) or {}
+        text = " ".join(str(item.get("text") or fallback or "").split())
+        if not text:
+            text = (
+                "Die Aussage braucht den konkreten Kontext, bevor wir sie verallgemeinern."
+                if kind != "counter_question"
+                else "Welcher konkrete Beleg trägt diese Aussage?"
+            )
+        folded = text.casefold()
+        if folded in seen_text:
+            continue
+        seen_text.add(folded)
+        options.append({
+            "id": str(item.get("id") or f"standard_{kind}"),
+            "kind": kind,
+            "title": str(item.get("title") or title),
+            "text": text,
+            "example": " ".join(str(item.get("example") or "").split()),
+            "rationale": " ".join(str(item.get("rationale") or "").split()),
+            "source_ids": list(item.get("source_ids") or []),
+            "confidence": str(item.get("confidence") or recommendation.confidence),
+            "speakable": kind in {"answer", "counter_question"},
+            "selected": False,
+            "rank": len(options) + 1,
+            "claim_id": recommendation.claim_id,
+            "claim_revision": recommendation.claim_revision,
+            "transcript_revision": recommendation.transcript_revision,
+            "generation_id": recommendation.generation_id,
+            "provisional": recommendation.provisional,
+        })
+    while len(options) < 3:
+        fallback_kind = ("context", "evidence", "tradeoff")[len(options) - 0]
+        text = (
+            "Lass uns den konkreten Kontext dieses Falls prüfen."
+            if fallback_kind == "context"
+            else "Welche Beobachtung würde diese Annahme bestätigen oder widerlegen?"
+            if fallback_kind == "evidence"
+            else "Welche Abwägung ist für diese Entscheidung entscheidend?"
+        )
+        if text.casefold() in seen_text:
+            break
+        seen_text.add(text.casefold())
+        options.append({
+            "id": f"standard_{fallback_kind}",
+            "kind": fallback_kind,
+            "title": fallback_kind.capitalize(),
+            "text": text,
+            "example": "",
+            "rationale": "Lokaler, faktenfreier Fallback für eine unvollständige Modellantwort.",
+            "source_ids": [],
+            "confidence": recommendation.confidence,
+            "speakable": True,
+            "selected": False,
+            "rank": len(options) + 1,
+            "claim_id": recommendation.claim_id,
+            "claim_revision": recommendation.claim_revision,
+            "transcript_revision": recommendation.transcript_revision,
+            "generation_id": recommendation.generation_id,
+            "provisional": recommendation.provisional,
+        })
+    return options[:3]
+
+
 def normalize_experimental_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
     """Return exactly four versioned moves with a safe example contract."""
     existing = recommendation.strategy_options or []

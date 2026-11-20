@@ -6,7 +6,7 @@ import json
 import uuid
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
 from sqlalchemy import delete, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,12 +57,16 @@ async def _source_out(source: KnowledgeSource, db: AsyncSession) -> KnowledgeSou
 
 
 @router.get("", response_model=list[KnowledgeSourceOut])
-async def list_sources(db: AsyncSession = Depends(get_db)):
+async def list_sources(
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(KnowledgeSource, func.count(KnowledgeRecord.id))
         .outerjoin(KnowledgeRecord, KnowledgeRecord.source_id == KnowledgeSource.id)
         .group_by(KnowledgeSource.id)
-        .order_by(KnowledgeSource.created_at)
+        .order_by(KnowledgeSource.created_at, KnowledgeSource.id)
+        .limit(limit)
     )
     out = []
     for source, count in result.all():
@@ -126,12 +130,17 @@ async def delete_source(source_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 # --- Records ---
 
 @router.get("/{source_id}/records", response_model=list[KnowledgeRecordOut])
-async def list_records(source_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_records(
+    source_id: uuid.UUID,
+    limit: int = Query(500, ge=1, le=2000),
+    db: AsyncSession = Depends(get_db),
+):
     await _get_source_or_404(source_id, db)
     result = await db.execute(
         select(KnowledgeRecord)
         .where(KnowledgeRecord.source_id == source_id)
-        .order_by(KnowledgeRecord.title, KnowledgeRecord.created_at)
+        .order_by(KnowledgeRecord.title, KnowledgeRecord.created_at, KnowledgeRecord.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

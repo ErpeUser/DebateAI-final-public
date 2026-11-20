@@ -175,7 +175,7 @@ Backend:
 cd backend
 pip install -r requirements.txt
 python scripts/download_models.py   # fetches the VAD and speaker-embedding ONNX models
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+BACKEND_WORKERS=1 uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 1 --reload
 ```
 
 For local backend runs, set `DATABASE_URL` if your PostgreSQL host differs

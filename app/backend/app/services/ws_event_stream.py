@@ -4,12 +4,16 @@ from __future__ import annotations
 
 import asyncio
 import copy
+import json
+import time
 import uuid
 from collections import OrderedDict, deque
 from typing import Any
 
 
 COALESCIBLE_TYPES = {"interim_transcript", "audio_level"}
+DEFAULT_JOURNAL_MAX_BYTES = 2 * 1024 * 1024
+DEFAULT_JOURNAL_IDLE_TTL_SECONDS = 60 * 60
 
 
 def _payload(event: dict[str, Any]) -> dict[str, Any]:
@@ -70,15 +74,21 @@ class SessionEventJournal:
         *,
         max_events: int = 512,
         max_state_events: int = 512,
+        max_bytes: int = DEFAULT_JOURNAL_MAX_BYTES,
     ) -> None:
         self.session_id = str(session_id)
         self.max_events = max(1, max_events)
         self.max_state_events = max(1, max_state_events)
+        self.max_bytes = max(1024, max_bytes)
         self.server_epoch = uuid.uuid4().hex
         self._sequence = 0
         self._generation = 0
+        self._active_connections = 0
+        self._last_touch = time.monotonic()
         self._events: deque[dict[str, Any]] = deque(maxlen=self.max_events)
         self._state: OrderedDict[tuple[str, str], dict[str, Any]] = OrderedDict()
+        self._event_bytes = 0
+        self._state_bytes = 0
 
     @property
     def sequence(self) -> int:
@@ -86,7 +96,35 @@ class SessionEventJournal:
 
     def open_generation(self) -> int:
         self._generation += 1
+        self._active_connections += 1
+        self._last_touch = time.monotonic()
         return self._generation
+
+    def close_generation(self, generation: int) -> None:
+        if generation <= self._generation and self._active_connections:
+            self._active_connections -= 1
+        self._last_touch = time.monotonic()
+
+    @property
+    def active_connections(self) -> int:
+        return self._active_connections
+
+    @property
+    def buffered_bytes(self) -> int:
+        return self._event_bytes + self._state_bytes
+
+    def _size(self, event: dict[str, Any]) -> int:
+        return len(json.dumps(event, ensure_ascii=False, default=str).encode("utf-8"))
+
+    def _enforce_byte_budget(self) -> None:
+        self._event_bytes = sum(self._size(event) for event in self._events)
+        self._state_bytes = sum(self._size(event) for event in self._state.values())
+        while self._events and self._event_bytes > self.max_bytes:
+            self._events.popleft()
+            self._event_bytes = sum(self._size(event) for event in self._events)
+        while self._state and self._state_bytes > self.max_bytes:
+            self._state.popitem(last=False)
+            self._state_bytes = sum(self._size(event) for event in self._state.values())
 
     def is_current_generation(self, generation: int) -> bool:
         return generation == self._generation
@@ -125,6 +163,8 @@ class SessionEventJournal:
         self._state[key] = state_event
         while len(self._state) > self.max_state_events:
             self._state.popitem(last=False)
+        self._last_touch = time.monotonic()
+        self._enforce_byte_budget()
         return event
 
     def latest(self, event_type: str) -> dict[str, Any] | None:
@@ -137,6 +177,7 @@ class SessionEventJournal:
         *,
         after_epoch: str | None = None,
     ) -> dict[str, Any]:
+        self._last_touch = time.monotonic()
         earliest = self._events[0]["session_sequence"] if self._events else self._sequence + 1
         full = (
             (after_epoch is not None and after_epoch != self.server_epoch)
@@ -268,8 +309,28 @@ class ClientSendBuffer:
 _journals: dict[str, SessionEventJournal] = {}
 
 
+def sweep_idle_journals(
+    *,
+    now: float | None = None,
+    idle_ttl_seconds: float = DEFAULT_JOURNAL_IDLE_TTL_SECONDS,
+) -> int:
+    """Release replay buffers that have no active websocket owner."""
+    now = time.monotonic() if now is None else now
+    expired = [
+        key
+        for key, journal in _journals.items()
+        if journal.active_connections == 0
+        and now - journal._last_touch >= idle_ttl_seconds
+    ]
+    for key in expired:
+        _journals.pop(key, None)
+    return len(expired)
+
+
 def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
     key = str(session_id)
+    if len(_journals) % 32 == 0:
+        sweep_idle_journals()
     journal = _journals.get(key)
     if journal is None:
         journal = SessionEventJournal(key)

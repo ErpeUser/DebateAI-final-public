@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,9 +12,16 @@ router = APIRouter(prefix="/api/sessions/{session_id}/questions", tags=["questio
 
 
 @router.get("", response_model=list[QuestionOut])
-async def list_questions(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_questions(
+    session_id: uuid.UUID,
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Question).where(Question.session_id == session_id).order_by(Question.created_at.desc())
+        select(Question)
+        .where(Question.session_id == session_id)
+        .order_by(Question.created_at.desc(), Question.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

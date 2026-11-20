@@ -33,6 +33,7 @@ class RevealingWebSocket:
         self._last_flush = time.monotonic()
         self._journal = event_journal(session_id)
         self._generation = self._journal.open_generation()
+        self._generation_closed = False
         self._send_buffer = ClientSendBuffer(maxsize=256)
         self._drained = asyncio.Event()
         self._drained.set()
@@ -128,6 +129,9 @@ class RevealingWebSocket:
         if not self._sender_task.done():
             self._sender_task.cancel()
         await asyncio.gather(self._sender_task, return_exceptions=True)
+        if not self._generation_closed:
+            self._generation_closed = True
+            self._journal.close_generation(self._generation)
         return await self._inner.close(*args, **kwargs)
 
     async def _sender_loop(self) -> None:

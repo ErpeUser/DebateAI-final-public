@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from typing import Any
 
 from app.services.agents.prompts import STRATEGIC_SIGNALS_PROMPT
@@ -34,6 +35,7 @@ async def run_strategic_signals_cycle(
     doc_summaries: str | None = None,
     speakers: list[dict] | None = None,
     active_questions: list[dict] | None = None,
+    is_current: Callable[[], bool] | None = None,
 ):
     """Run one live signals cycle.
 
@@ -89,6 +91,9 @@ async def run_strategic_signals_cycle(
             provider_error_message(provider_for(cfg.model_id), exc),
         )
         raise
+    if is_current is not None and not is_current():
+        logger.info("[strategic_signals] dropping stale generated cycle before persistence")
+        return None
     synthesis = await _persist_synthesis(
         session_id=session_id,
         mode="live",

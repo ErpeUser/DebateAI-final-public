@@ -1,6 +1,6 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -22,9 +22,16 @@ async def create_directive(session_id: uuid.UUID, body: DirectiveCreate, db: Asy
 
 
 @router.get("", response_model=list[DirectiveOut])
-async def list_directives(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_directives(
+    session_id: uuid.UUID,
+    limit: int = Query(200, ge=1, le=1000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
-        select(Directive).where(Directive.session_id == session_id).order_by(Directive.created_at)
+        select(Directive)
+        .where(Directive.session_id == session_id)
+        .order_by(Directive.created_at, Directive.id)
+        .limit(limit)
     )
     return result.scalars().all()
 

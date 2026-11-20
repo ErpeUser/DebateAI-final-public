@@ -66,5 +66,5 @@ $env:DATABASE_URL = "postgresql+asyncpg://" + $encodedUser + ":" + $encodedPass 
 
 Write-Host "Backend starting on http://localhost:8000 - start the frontend with: cd frontend; npm run dev"
 Set-Location $backendDir
-& $venvPython -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --ws-ping-timeout 90 --ws-max-queue 2048 --ws-max-size 65536
+& $venvPython -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 1 --ws-ping-timeout 90 --ws-max-queue 2048 --ws-max-size 65536
 if ($LASTEXITCODE -ne 0) { throw "Backend exited with code $LASTEXITCODE." }

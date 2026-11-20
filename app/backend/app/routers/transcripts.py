@@ -1,7 +1,7 @@
 import logging
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -54,14 +54,20 @@ async def create_transcript(session_id: uuid.UUID, body: TranscriptCreate, db: A
 
 
 @router.get("", response_model=list[TranscriptEntryOut])
-async def list_transcripts(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_transcripts(
+    session_id: uuid.UUID,
+    limit: int = Query(500, ge=1, le=5000),
+    db: AsyncSession = Depends(get_db),
+):
     result = await db.execute(
         select(TranscriptEntry)
         .where(TranscriptEntry.session_id == session_id)
-        .order_by(TranscriptEntry.sequence)
+        .order_by(TranscriptEntry.sequence, TranscriptEntry.id)
+        .limit(limit)
     )
     entries = list(result.scalars().all())
-    provisional = await list_visible_provisional_revisions(db, session_id)
+    remaining = max(0, limit - len(entries))
+    provisional = (await list_visible_provisional_revisions(db, session_id))[:remaining]
     next_sequence = max((entry.sequence for entry in entries), default=0)
     return [
         *entries,

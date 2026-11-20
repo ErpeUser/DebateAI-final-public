@@ -76,6 +76,28 @@ class SessionEventJournalTests(unittest.TestCase):
         self.assertFalse(journal.is_current_generation(old_generation))
         self.assertTrue(journal.is_current_generation(new_generation))
 
+    def test_byte_budget_evicts_old_history_and_reports_bound(self):
+        journal = SessionEventJournal(uuid.uuid4(), max_events=64, max_state_events=64, max_bytes=1024)
+        for index in range(20):
+            journal.record({"type": "transcript", "data": {"id": str(index), "text": "x" * 200}})
+        self.assertLessEqual(journal.buffered_bytes, 2048)
+        self.assertLess(len(journal.snapshot()["data"]["events"]), 20)
+
+    def test_idle_sweep_keeps_active_journal_and_releases_closed_one(self):
+        from app.services import ws_event_stream
+
+        active = SessionEventJournal("active")
+        generation = active.open_generation()
+        closed = SessionEventJournal("closed")
+        ws_event_stream._journals["active"] = active
+        ws_event_stream._journals["closed"] = closed
+        closed._last_touch = 0
+        self.assertGreaterEqual(ws_event_stream.sweep_idle_journals(now=3600, idle_ttl_seconds=60), 1)
+        self.assertNotIn("closed", ws_event_stream._journals)
+        self.assertIn("active", ws_event_stream._journals)
+        active.close_generation(generation)
+        ws_event_stream._journals.pop("active", None)
+
     def test_full_snapshot_keeps_latest_state_and_final_transcripts(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=2, max_state_events=8)
         journal.record({"type": "status", "data": {"state": "ready"}})

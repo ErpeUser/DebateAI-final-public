@@ -5,6 +5,7 @@ import uuid
 from unittest.mock import AsyncMock, patch
 
 from sqlalchemy import func, select
+from sqlalchemy.engine import make_url
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 from app.models import Base, ProvisionalTranscriptRevision, Session
@@ -12,11 +13,19 @@ from app.services.provisional_transcripts import persist_provisional_revision
 
 
 POSTGRES_URL = os.environ.get("DEBATEAI_TEST_POSTGRES_URL", "")
+RUN_ID = os.environ.get("DEBATEAI_TEST_POSTGRES_RUN_ID", "")
+ALLOW_SHARED_CI = os.environ.get("DEBATEAI_TEST_POSTGRES_ALLOW_SHARED", "").lower() == "true"
 
 
-@unittest.skipUnless(POSTGRES_URL, "DEBATEAI_TEST_POSTGRES_URL is not configured")
+@unittest.skipUnless(
+    POSTGRES_URL and RUN_ID and ALLOW_SHARED_CI,
+    "isolated PostgreSQL CI database is not configured",
+)
 class ProvisionalTranscriptPostgresConcurrencyTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
+        url = make_url(POSTGRES_URL)
+        if url.host != "127.0.0.1" or url.database != "debateai_acceptance_" + RUN_ID:
+            raise RuntimeError("Refusing a PostgreSQL database outside the acceptance namespace")
         self.engine = create_async_engine(POSTGRES_URL)
         async with self.engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)

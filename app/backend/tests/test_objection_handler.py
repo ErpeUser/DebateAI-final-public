@@ -9,6 +9,7 @@ from app.services.agents.objection_handler import (
     LiveDebateResponse,
     ObjectionHandlerAgent,
     ObjectionHandlerOutput,
+    normalize_standard_strategies,
     _compose_rationale,
 )
 
@@ -38,6 +39,33 @@ def _model_recommendation() -> DebateRecommendation:
         counter_question="Welche Quelle stuetzt das?",
         analogy="Das ist wie ein Urteil ohne Beweisaufnahme.",
     )
+
+
+class StandardStrategyTests(unittest.TestCase):
+    def test_normalizer_returns_three_distinct_options_with_metadata(self):
+        recommendation = _model_recommendation().model_copy(update={
+            "claim_id": "claim-1",
+            "claim_revision": 2,
+            "transcript_revision": 4,
+            "generation_id": "generation-1",
+        })
+        options = normalize_standard_strategies(recommendation)
+        self.assertEqual(3, len(options))
+        self.assertEqual(3, len({item["id"] for item in options}))
+        self.assertTrue(any(item["speakable"] for item in options))
+        self.assertEqual({2}, {item["claim_revision"] for item in options})
+        self.assertEqual({4}, {item["transcript_revision"] for item in options})
+
+    def test_normalizer_replaces_empty_or_duplicate_model_options(self):
+        recommendation = _model_recommendation().model_copy(update={
+            "strategy_options": [
+                {"kind": "answer", "text": "Gleicher Satz"},
+                {"kind": "counter_question", "text": "Gleicher Satz"},
+            ],
+        })
+        options = normalize_standard_strategies(recommendation)
+        self.assertEqual(3, len(options))
+        self.assertEqual(3, len({item["text"].casefold() for item in options}))
 
 
 class ComposeRationaleTests(unittest.TestCase):
