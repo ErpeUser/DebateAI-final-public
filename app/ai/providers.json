@@ -57,7 +57,7 @@
     }
   ],
   "fallback_enabled": true,
-  "forced_model": "",
+  "forced_model": "chatgpt-web:gpt-6",
   "max_parallel_analyses": 1,
   "live_research_deadline_seconds": 12,
   "unavailable_cooldown_seconds": 900,
