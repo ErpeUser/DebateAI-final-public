@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `9b3901e4f94a25db7fc3bbd42e323de9046411f0` (auch `origin/main`). Für das erste Umsetzungspaket bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Frontend-Abnahmetest (19/19), die Frontend-Gesamtsuite (379/379), der bestehende Response-Vertrag (7/7), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `68b783d6124cb09157a5c72696ff66f8582652d0` (GitHub-Branch-Readback nach dem Modus-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (381/381), der bestehende Response-Vertrag (7/7), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -14,7 +14,7 @@ Die folgenden stabilen IDs ordnen jeden relevanten Visionsabschnitt mindestens e
 | V-02 | §§ 2, 6 Deutsch-V1, lokale ASR und Privacy First | IMPLEMENTED_UNVERIFIED | `services/transcription_language.py`, `transcription_runtime.py`, `privacy.py`; Tests `test_transcription_language.py`, `test_pii_audio_policy.py`. Offline-/Hardware-SLA ist nicht belegt (P2.3). |
 | V-03 | § 3 Argument-/Strategie-Agent und Kontext | IMPLEMENTED_UNVERIFIED | `services/agents/orchestrator.py`, `objection_handler.py`, `strategic_signals.py`; Tests `test_debate_copilot.py`, `test_agent_activity.py`, `test_argument_graph.py`. Deutscher Live-Nutzen ist nicht unabhängig bewertet. |
 | V-04 | § 4 beste Antwort plus höchstens zwei Alternativen, Revision/Stale | IMPLEMENTED_UNVERIFIED | `normalize_standard_strategies()` erzeugt drei lineage-markierte Züge; `ActiveCall/DebateCoachPanel.tsx` zeigt eine Primärkarte und höchstens zwei sekundäre Züge. Neue Tests `test_standard_strategy_options.py` und `DebateCoachPanel.test.mjs`; echte Windows-/Nutzerbewertung bleibt offen. |
-| V-05 | § 5 genau „Hart“/„Überzeugend“, Vorauswahl | IMPLEMENTED_UNVERIFIED | `DebateSettingsCard.tsx`, `services/debate_settings.py`, `test_debate_settings.py`, `DebateSettingsCard.test.mjs`. Die Kopplung von letztem Modus und `NewSessionModal` muss als Pre-Call-Fluss noch real geprüft werden. |
+| V-05 | § 5 genau „Hart“/„Überzeugend“, Vorauswahl | IMPLEMENTED_UNVERIFIED | `DebateSettingsCard.tsx`, `services/debate_settings.py`, `NewSessionModal.tsx`; `test_debate_settings.py`, `DebateSettingsCard.test.mjs`, `NewSessionModal.test.mjs` (4/4). Der letzte der zwei Modi wird jetzt lokal für den nächsten Sitzungsdialog vorgemerkt; ein echter Windows-/Pre-Call-Lauf bleibt offen. |
 | V-06 | §§ 2, 7 ChatGPT Web/Gemini Web und lokaler Erstpfad | IMPLEMENTED_UNVERIFIED | `routers/chatgpt_web.py`, `routers/gemini_web.py`, `services/debate_research.py`, Desktop-Bridges; Adapterverträge vorhanden. Authentifizierte Provider- und Ausfallabnahme fehlt (P0.3). |
 | V-07 | § 7 „Jetzt recherchieren“, Stop/Replace/Priorisieren | PARTIAL | Voice-/UI-Befehl und Research-Lanes existieren, aber kein vollständiger nachgewiesener Cancel/Replace/Reuse-End-to-End-Vertrag ohne lokalen Pfadstopp. |
 | V-08 | §§ 7, 20 adaptive Denkintensität/Providerwechsel | EXPERIMENTAL | `services/adaptive_reasoning.py` plus `test_adaptive_reasoning.py`; zuverlässige Web-Steuerbarkeit ist ausdrücklich noch zu prüfen. |
@@ -89,6 +89,68 @@ Der vorhandene `normalize_standard_strategies`-Vertrag und `DebateCoachPanel` wu
 **10. Codex-Desktop-Handoff bei Blockern**
 
 Auf einem autorisierten Windows-Gerät `npm test`, den installierten WebView2-Desktop-Smoke und einen manuellen deutschen Debattenlauf mit mindestens einer ASR-Revision ausführen. Prüfen: Primärkarte bleibt vorne, maximal zwei Alternativen, veraltete Karte wird ersetzt/markiert, keine vierte Option im Standard-Livepfad. Ergebnis mit Commit-SHA und Bildschirm-/Event-Evidenz in diesem Punkt ergänzen.
+
+### V-05 – Debattenmodus im nächsten Sitzungsdialog vorwählen
+
+**Priorität:** P1
+**Status:** IMPLEMENTED_UNVERIFIED
+**Vision-Referenz:** § 5, ergänzt durch §§ 7–8
+
+**1. Verbindliches Ziel**
+
+Der Nutzer wählt zwischen genau den zwei vorgesehenen Rhetorikmodi „Überzeugend“ und „Hart / brutal-sachlich“. Der zuletzt gewählte Debattenmodus wird beim nächsten Öffnen des Sitzungsdialogs wieder vorausgewählt; ungültige oder fremde gespeicherte Werte fallen sicher auf „Überzeugend“ zurück. Die bestehende Admin-Einstellung bleibt davon getrennt und wird nicht durch einen stillen dritten Modus ergänzt.
+
+**2. Konkretes Nutzungsbeispiel**
+
+Der Nutzer öffnet „Neue Sitzung“, wählt „Hart / brutal-sachlich“ und erstellt die Debatte. Beim nächsten Öffnen stehen weiterhin beide Modi bereit und „Hart / brutal-sachlich“ ist bereits markiert. Ist der Browser-Speicher beschädigt oder enthält er etwa `client_sales`, erscheint wieder „Überzeugend“ und die Sitzung kann trotzdem erstellt werden.
+
+**3. Tatsächlicher Ist-Zustand**
+
+- `app/frontend/src/components/NewSessionModal.tsx` verwendet den bestehenden Modus-Selector, liest den Schlüssel `debateai:last-debate-mode` beim Initialisieren und bei jedem Öffnen und speichert nur `debate_persuasive` beziehungsweise `debate_forceful`.
+- `app/frontend/src/components/DebateSettingsCard.tsx` und `app/backend/app/services/debate_settings.py` bleiben die bestehende Admin-/Persistenzschnittstelle für die globale Konfiguration.
+- `app/frontend/src/components/NewSessionModal.test.mjs` enthält zwei unabhängige UI-Verhaltensfälle: Wiederherstellung des gewählten Modus sowie sichere Rückkehr zum Standard bei ungültigem Speicherwert.
+
+**4. Genaue Abweichung**
+
+Die lokale Browserpersistenz und SSR-Vertragsprüfung sind implementiert. Ein realer Windows-WebView-/Pre-Call-Durchgang mit Sitzungserstellung und anschließendem erneutem Öffnen ist in dieser Umgebung nicht ausführbar; deshalb bleibt das Ziel `IMPLEMENTED_UNVERIFIED`.
+
+**5. Unabhängige Abnahmetests**
+
+- **Test A – funktionale Wiederherstellung:** `TMPDIR="$PWD/.tmp" node --test src/components/NewSessionModal.test.mjs`; setzt den Speicherwert `debate_forceful`, rendert den Dialog und prüft, dass „Hart / brutal-sachlich“ aktiv und „Überzeugend“ inaktiv ist. **Bestanden: 1/1 Fall.**
+- **Test B – kritischer Fallback:** derselbe Testlauf setzt `client_sales` als fremden Wert und prüft, dass `readLastDebateMode()` exakt `debate_persuasive` liefert. **Bestanden: 1/1 Fall.**
+- Zusätzlich: vollständige Frontend-Suite **381/381** und `npm run build` **bestanden**. Windows-WebView-/manuelle Pre-Call-Abnahme **nicht ausführbar**.
+
+**6. Recherche vorhandener Lösungen**
+
+Der vorhandene `NewSessionModal`-Selector und die Browser-Storage-Muster der Frontend-Komponenten wurden wiederverwendet. Ein neues Zustandsframework oder eine zweite Modusverwaltung wäre unnötig; eine kleine, fail-safe Helper-Funktion schützt den Dialog vor Storage-/Privatmodusfehlern.
+
+**7. Exakter Umsetzungsplan**
+
+1. `NewSessionModal.tsx` um einen typisierten Schlüssel und einen sicheren Reader für die zwei erlaubten Debattenmodi ergänzen.
+2. Beim Öffnen und beim Umschalten den gespeicherten Wert lesen beziehungsweise aktualisieren; Fehler im Browser-Speicher dürfen die Sitzungserstellung nicht blockieren.
+3. `NewSessionModal.test.mjs` um einen Positiv- und einen ungültigen-Wert-Fall ergänzen.
+4. Zieltest, Frontend-Gesamtsuite und Produktionsbuild ausführen; den Status erst nach dem realen Desktop-Durchgang auf `VERIFIED` heben.
+
+**8. Erfüllungskriterien**
+
+- [x] Genau die zwei vorgesehenen Debattenmodi bleiben erreichbar.
+- [x] Der letzte gültige Modus wird beim nächsten Öffnen vorausgewählt.
+- [x] Fremde oder beschädigte Speicherwerte erzeugen keinen ungültigen Sitzungsmodus.
+- [x] Ein Storage-Fehler verhindert die Sitzungserstellung nicht.
+- [x] Test A und Test B prüfen beobachtbares Dialogverhalten und bestehen.
+- [x] Frontend-Regressionen und Produktionsbuild bestehen.
+- [ ] Echter Windows-/WebView-/Pre-Call-Durchgang mit anschließender Sitzungserstellung besteht.
+
+**9. Implementierungsnachweise**
+
+- Änderungen: `app/frontend/src/components/NewSessionModal.tsx`, `app/frontend/src/components/NewSessionModal.test.mjs`.
+- Commit-SHA: `68b783d6124cb09157a5c72696ff66f8582652d0` (GitHub `main`, Branch-Readback verifiziert).
+- Ausgeführt: Zieltest 4/4, Frontend 381/381, Vite/TypeScript-Build grün.
+- Einschränkung: GitHub-CLI-Synchronisation und realer Windows-/WebView-Lauf bleiben mangels Authentifizierung beziehungsweise Hardware offen.
+
+**10. Codex-Desktop-Handoff bei Blockern**
+
+Auf einem autorisierten Windows-Gerät den Desktop-Build starten, „Neue Sitzung“ öffnen, beide Modi nacheinander wählen, Sitzungen erstellen, den Dialog erneut öffnen und die Vorauswahl sowie den tatsächlich an den Backend-Create-Request übergebenen `meeting_type` prüfen. Zusätzlich einen blockierten/privaten Browser-Speicher simulieren; erwartetes Ergebnis ist weiterhin ein erstellbarer Dialog mit „Überzeugend“ als Standard.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
