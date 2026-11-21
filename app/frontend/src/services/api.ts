@@ -334,7 +334,8 @@ export const createSession = (
     body: JSON.stringify({ name, ...data }),
   });
 
-export const listSessions = () => request<Session[]>("/sessions");
+export const listSessions = () =>
+  requestAllCursorPages<Session>("/sessions");
 
 export const getSession = (id: string) => request<Session>(`/sessions/${id}`);
 
@@ -653,11 +654,11 @@ export const updateTranscriptText = (
   );
 
 export const listTranscripts = (sessionId: string) =>
-  request<TranscriptEntry[]>(`/sessions/${sessionId}/transcripts`);
+  requestAllCursorPages<TranscriptEntry>(`/sessions/${sessionId}/transcripts`, 500);
 
 // Call Segments
 export const listSegments = (sessionId: string) =>
-  request<CallSegment[]>(`/sessions/${sessionId}/segments`);
+  requestAllCursorPages<CallSegment>(`/sessions/${sessionId}/segments`, 500);
 
 // Import transcript/audio
 export const importTranscript = async (

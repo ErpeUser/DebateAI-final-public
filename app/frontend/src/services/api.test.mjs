@@ -29,6 +29,9 @@ const {
   listKnowledgeRecords,
   listKnowledgeSources,
   listQuestions,
+  listSegments,
+  listSessions,
+  listTranscripts,
   retranscribeSession,
   enhanceInsights,
   pollChatGPTWebLogin,
@@ -75,6 +78,72 @@ test("collection clients follow opaque cursors and preserve item order", async (
     "/api/sessions/session-1/questions?limit=200",
     "/api/sessions/session-1/questions?limit=200&cursor=opaque%2B%2F%3D",
   ]);
+});
+
+test("core session, segment, and transcript clients follow cursor pages", async () => {
+  const urls = [];
+  const counts = new Map();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const value = String(url);
+    urls.push(value);
+    const key = value.split("?")[0];
+    const count = (counts.get(key) ?? 0) + 1;
+    counts.set(key, count);
+    const items = {
+      "/api/sessions": count === 1 ? [{ id: "session-1" }] : [{ id: "session-2" }],
+      "/api/sessions/session-1/segments": count === 1 ? [{ id: "segment-1" }] : [{ id: "segment-2" }],
+      "/api/sessions/session-1/transcripts": count === 1 ? [{ id: "transcript-1" }] : [{ id: "transcript-2" }],
+    }[key];
+    return page(items, count === 1 ? "next-core-page" : null);
+  };
+
+  try {
+    assert.deepEqual(await listSessions(), [
+      { id: "session-1" },
+      { id: "session-2" },
+    ]);
+    assert.deepEqual(await listSegments("session-1"), [
+      { id: "segment-1" },
+      { id: "segment-2" },
+    ]);
+    assert.deepEqual(await listTranscripts("session-1"), [
+      { id: "transcript-1" },
+      { id: "transcript-2" },
+    ]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(urls, [
+    "/api/sessions?limit=200",
+    "/api/sessions?limit=200&cursor=next-core-page",
+    "/api/sessions/session-1/segments?limit=500",
+    "/api/sessions/session-1/segments?limit=500&cursor=next-core-page",
+    "/api/sessions/session-1/transcripts?limit=500",
+    "/api/sessions/session-1/transcripts?limit=500&cursor=next-core-page",
+  ]);
+});
+
+test("core cursor clients reject a repeated cursor instead of looping", async () => {
+  const calls = new Map();
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    const key = String(url).split("?")[0];
+    const count = (calls.get(key) ?? 0) + 1;
+    calls.set(key, count);
+    return page([{ id: `${key}-${count}` }], "stuck-core-cursor");
+  };
+
+  try {
+    await assert.rejects(() => listSessions(), /wiederholten Cursor/);
+    await assert.rejects(() => listSegments("session-1"), /wiederholten Cursor/);
+    await assert.rejects(() => listTranscripts("session-1"), /wiederholten Cursor/);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual([...calls.values()], [2, 2, 2]);
 });
 
 test("all cursor-backed screens stop at a missing cursor and retain API errors", async () => {
