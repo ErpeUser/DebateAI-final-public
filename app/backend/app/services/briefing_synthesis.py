@@ -60,6 +60,10 @@ SIGNAL_HISTORY_SECTIONS = (
 SIGNAL_HISTORY_MAX_ENTRIES = 200
 BRIEF_INSIGHTS_BUDGET_CHARS = 12000
 BRIEF_SIGNAL_HISTORY_BUDGET_CHARS = 6000
+# Lens results are embedded as JSON in the arbiter's next request. Keep this
+# bounded independently from the input transcript/insight budgets so a verbose
+# model cannot make the follow-up browser/API prompt exceed its context window.
+BRIEF_LENS_JSON_BUDGET_CHARS = 18000
 
 
 class EvidenceRef(BaseModel):
@@ -901,8 +905,76 @@ def _model_dict(model: BaseModel | None) -> dict:
     return model.model_dump() if model else {}
 
 
-def _model_json(model: BaseModel | None) -> str:
-    return json.dumps(_model_dict(model), indent=2)
+def _json_path_value(value: object, path: tuple[object, ...]) -> object:
+    for part in path:
+        value = value[part]  # type: ignore[index]
+    return value
+
+
+def _set_json_path_value(root: object, path: tuple[object, ...], value: object) -> None:
+    if not path:
+        return
+    parent = _json_path_value(root, path[:-1])
+    parent[path[-1]] = value  # type: ignore[index]
+
+
+def _model_json(model: BaseModel | None, budget: int = BRIEF_LENS_JSON_BUDGET_CHARS) -> str:
+    """Render a lens result as compact, bounded JSON for the arbiter prompt.
+
+    Lens output is model-controlled and can contain long evidence quotes or
+    many items. Pretty-printing the complete object made the arbiter request
+    grow without a bound, which is especially easy to hit on ChatGPT Web.
+    Trim low-priority strings and list tails while preserving valid JSON and the
+    newest request's structural fields.
+    """
+    payload = _model_dict(model)
+    rendered = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) <= budget:
+        return rendered
+
+    clipped = json.loads(json.dumps(payload, ensure_ascii=False))
+    if isinstance(clipped, dict):
+        clipped["_truncated"] = True
+
+    protected = {"id", "title", "question", "section", "last_seen", "count"}
+
+    def candidates(value: object, path: tuple[object, ...] = ()):
+        strings: list[tuple[int, tuple[object, ...]]] = []
+        lists: list[tuple[int, tuple[object, ...]]] = []
+        for key, item in value.items() if isinstance(value, dict) else enumerate(value) if isinstance(value, list) else []:
+            child_path = path + (key,)
+            if isinstance(item, str) and len(item) > 64 and str(key) not in protected:
+                strings.append((len(item), child_path))
+            elif isinstance(item, list) and item:
+                lists.append((len(json.dumps(item, ensure_ascii=False)), child_path))
+                nested_strings, nested_lists = candidates(item, child_path)
+                strings.extend(nested_strings)
+                lists.extend(nested_lists)
+            elif isinstance(item, dict):
+                nested_strings, nested_lists = candidates(item, child_path)
+                strings.extend(nested_strings)
+                lists.extend(nested_lists)
+        return strings, lists
+
+    while len(rendered) > budget:
+        strings, lists = candidates(clipped)
+        if strings:
+            _, path = max(strings)
+            current = str(_json_path_value(clipped, path))
+            excess = len(rendered) - budget
+            keep = max(0, len(current) - excess - 3)
+            _set_json_path_value(clipped, path, f"{current[:keep]}..." if keep else "")
+        elif lists:
+            _, path = max(lists)
+            values = _json_path_value(clipped, path)
+            values.pop()  # type: ignore[union-attr]
+        else:
+            break
+        rendered = json.dumps(clipped, ensure_ascii=False, separators=(",", ":"))
+
+    if len(rendered) > budget:
+        return json.dumps({"_truncated": True}, ensure_ascii=False, separators=(",", ":"))
+    return rendered
 
 
 def _validate_synthesis_mode(mode: str):

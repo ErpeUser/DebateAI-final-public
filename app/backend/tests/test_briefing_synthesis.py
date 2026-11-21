@@ -15,6 +15,7 @@ from app.services.briefing_synthesis import (
     _format_signal_history,
     _normalize_synthesis_owners,
     _question_dict,
+    _model_json,
     agent_config_enabled,
     _response_contract,
 )
@@ -184,6 +185,28 @@ class BriefingSynthesisTests(unittest.TestCase):
         self.assertEqual(1, len(history_payload["items"]))
         self.assertEqual("Newest signal", history_payload["items"][0]["title"])
         self.assertTrue(history_payload["items"][0]["summary"].endswith("..."))
+
+    def test_lens_json_is_compact_and_bounded_for_arbiter(self):
+        output = BriefLensOutput(
+            top_outcomes=[
+                {
+                    "title": f"Outcome {index}",
+                    "summary": "summary " + ("x" * 1800),
+                    "rationale": "rationale " + ("y" * 1800),
+                    "evidence_refs": [{"quote": "quote " + ("z" * 1200)} for _ in range(4)],
+                }
+                for index in range(12)
+            ],
+            notes="notes " + ("n" * 5000),
+        )
+
+        rendered = _model_json(output, budget=4000)
+        payload = json.loads(rendered)
+
+        self.assertLessEqual(len(rendered), 4000)
+        self.assertTrue(payload["_truncated"])
+        self.assertNotIn('": ', rendered)
+        self.assertIn("top_outcomes", payload)
 
 
 class _ContextResult:
