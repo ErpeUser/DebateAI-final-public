@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `9987bb000b0b7e102b0cac341ba21ea63d5c2212` (auch `origin/main`). Für das erste Umsetzungspaket bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Frontend-Abnahmetest (19/19) und `npm run build`; der Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `9b3901e4f94a25db7fc3bbd42e323de9046411f0` (auch `origin/main`). Für das erste Umsetzungspaket bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Frontend-Abnahmetest (19/19), die Frontend-Gesamtsuite (379/379), der bestehende Response-Vertrag (7/7), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -82,7 +82,7 @@ Der vorhandene `normalize_standard_strategies`-Vertrag und `DebateCoachPanel` wu
 **9. Implementierungsnachweise**
 
 - Änderungen: `DebateCoachPanel.tsx`, `DebateCoachPanel.test.mjs`, `test_standard_strategy_options.py`.
-- Commit-SHA: wird nach GitHub-Commit ergänzt.
+- Commit-SHA: `9b3901e4f94a25db7fc3bbd42e323de9046411f0` (GitHub `main`, verifiziert über Branch- und Commit-Readback).
 - Ausgeführt: Backend 2/2, Frontend 19/19, `npm run build` grün.
 - Einschränkung: Der lokale `github_sync.py`-Pull ist mangels `gh`-Auth nicht ausführbar; der GitHub-Connector bleibt der externe SHA-Nachweis.
 
