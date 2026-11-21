@@ -77,6 +77,10 @@ class SynthesizerOutput(BaseModel):
 # with call length (ALP-283).
 _STUB_TEXT_CHARS = 110
 _ENRICHMENT_NOTE_CHARS = 200
+_INSIGHTS_JSON_BUDGET_CHARS = 18000
+# Keep the whole insight array bounded; individual fields are truncated above,
+# but long meetings can otherwise accumulate an unbounded number of settled rows.
+SYNTHESIZER_INSIGHTS_JSON_BUDGET_CHARS = 18000
 
 # Last (insights + transcript) fingerprint per session, so an unchanged corpus
 # skips the call. Cleared by clear_session_state when the call ends.
@@ -163,11 +167,17 @@ def _stub_record(q: Question) -> dict:
     }
 
 
-def _build_insights_json(questions: list[Question], now: datetime | None = None) -> str:
-    """Serialize the corpus as full records for live items, stubs for settled.
+def _build_insights_json(
+    questions: list[Question],
+    now: datetime | None = None,
+    budget: int = SYNTHESIZER_INSIGHTS_JSON_BUDGET_CHARS,
+) -> str:
+    """Serialize a compact, bounded corpus for the synthesizer prompt.
 
-    Ordered by creation so the payload is byte-stable between cycles, which a
-    prompt cache needs and the unordered query could never guarantee.
+    Records stay ordered by creation for deterministic fingerprints. When the
+    corpus exceeds the budget, newest records are admitted first and rendered
+    back in chronological order so the agent retains recent context without
+    sending an unbounded JSON array to ChatGPT Web.
     """
     window = max(0, int(getattr(settings, "SYNTHESIZER_WORKING_SET_SECONDS", 600)))
     cutoff = (now or datetime.now(timezone.utc)) - timedelta(seconds=window)
@@ -175,7 +185,39 @@ def _build_insights_json(questions: list[Question], now: datetime | None = None)
         _full_record(q) if _in_working_set(q, cutoff) else _stub_record(q)
         for q in questions
     ]
-    return json.dumps(items, separators=(",", ":"))
+    budget = max(128, int(budget))
+    rendered = json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) <= budget:
+        return rendered
+
+    kept: list[dict] = []
+    for item in reversed(items):
+        candidate = [item, *kept]
+        candidate_rendered = json.dumps(
+            candidate,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        if len(candidate_rendered) > budget:
+            if not kept:
+                # The normal field-level limits make this rare, but preserve
+                # one addressable row when a caller passes a tiny test budget.
+                clipped = {
+                    key: (value[: max(0, budget // 4)] + "...")
+                    if isinstance(value, str)
+                    else value
+                    for key, value in item.items()
+                }
+                candidate_rendered = json.dumps(
+                    [clipped],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                if len(candidate_rendered) <= budget:
+                    return candidate_rendered
+            break
+        kept = candidate
+    return json.dumps(kept, ensure_ascii=False, separators=(",", ":"))
 
 
 def _format_transcript_entries(

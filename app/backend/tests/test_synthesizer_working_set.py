@@ -110,6 +110,20 @@ class WorkingSetTests(unittest.TestCase):
             _build_insights_json(rows, now=NOW),
         )
 
+    def test_serialization_is_bounded_for_a_long_corpus(self):
+        rows = [
+            insight(
+                question=f"Opportunity {index} " + ("x" * 180),
+                rationale="Rationale " + ("y" * 180),
+                source_context="Context " + ("z" * 180),
+            )
+            for index in range(40)
+        ]
+        payload = _build_insights_json(rows, now=NOW, budget=900)
+        self.assertLessEqual(len(payload), 900)
+        self.assertIsInstance(json.loads(payload), list)
+        self.assertNotIn(": ", payload)
+
     def test_a_settled_record_is_far_smaller_than_the_same_live_one(self):
         # Realistic field lengths: on the reference meeting rationale was 18.6
         # percent of the payload and source_context 17.9 percent.
