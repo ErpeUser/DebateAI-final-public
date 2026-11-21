@@ -1013,8 +1013,16 @@ class StopDrainModeTests(unittest.TestCase):
             ),
         )
 
-    def test_unknown_or_minimal_drain_requests_fall_back_to_full(self):
-        for requested in ("minimal", "bogus", 7, None):
+    def test_deliberate_minimal_drain_is_the_no_retention_choice(self):
+        self.assertEqual(
+            "minimal",
+            audio_handler._requested_drain_mode(
+                {"type": "stop", "drain": "minimal"}
+            ),
+        )
+
+    def test_unknown_drain_requests_fall_back_to_full(self):
+        for requested in ("bogus", 7, None):
             with self.subTest(requested=requested):
                 self.assertEqual(
                     "full",

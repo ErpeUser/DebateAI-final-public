@@ -445,6 +445,22 @@ export default function ActiveCallView({
                     Abschlussauswertung.
                   </span>
                 </button>
+                <button
+                  role="menuitem"
+                  onClick={() => {
+                    setEndMenuOpen(false);
+                    onEndCall("minimal");
+                  }}
+                  className="block w-full px-4 py-2.5 text-left transition-colors hover:bg-brand-light-gray-2"
+                >
+                  <span className="block font-body text-sm font-semibold text-brand-dark-gray">
+                    Komplett ohne Speicherung/Verbesserung
+                  </span>
+                  <span className="mt-0.5 block font-body text-xs text-brand-mid-gray">
+                    Beendet und löscht Transkript, Aufnahme und Sitzungsdaten
+                    dieser Sitzung.
+                  </span>
+                </button>
               </div>
             )}
           </div>

@@ -1391,6 +1391,39 @@ function MainApp() {
       setInterimText("");
 
       if (activeSessionId) {
+        if (drain === "minimal") {
+          // The minimal backend drain intentionally performs no analysis. Wait
+          // for its completion before invoking the existing delete endpoint so
+          // a slow final audio flush cannot race the cleanup transaction.
+          if (stopOutcome !== "completed") {
+            await pollSessionCompletion(activeSessionId);
+          }
+          let completed = false;
+          try {
+            const latest = await api.getSession(activeSessionId);
+            completed = latest.state === "completed" && !!latest.ended_at;
+          } catch (err) {
+            console.error("Failed to confirm no-retention completion", err);
+          }
+          if (!completed) {
+            setPostProcessing((prev) => unconfirmedPostProcessing(prev));
+            setEndingCall(false);
+            return;
+          }
+          try {
+            await api.deleteSession(activeSessionId);
+            clearMeetingChatHistory(activeSessionId);
+            setActiveSessionId(null);
+            if (!liveSessionIdRef.current) resetSessionRuntimeState();
+            await refreshSessions();
+          } catch (err) {
+            console.error("Failed to delete no-retention session", err);
+            setPostProcessing((prev) => unconfirmedPostProcessing(prev));
+          } finally {
+            setEndingCall(false);
+          }
+          return;
+        }
         let completionConfirmed = stopOutcome === "completed";
         if (!completionConfirmed) {
           try {

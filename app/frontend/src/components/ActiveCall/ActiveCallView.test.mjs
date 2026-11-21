@@ -150,6 +150,18 @@ test("a connecting call does not claim that a connection was lost", () => {
   assert.doesNotMatch(html, /role="alert"/);
 });
 
+test("the end menu keeps save, skip-analysis, and no-retention actions distinct", () => {
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(src, /onEndCall\("full"\)/);
+  assert.match(src, /onEndCall\("skip_analysis"\)/);
+  assert.match(src, /onEndCall\("minimal"\)/);
+  assert.match(src, /Komplett ohne Speicherung\/Verbesserung/);
+  assert.match(src, /löscht Transkript, Aufnahme und Sitzungsdaten/);
+});
+
 test("a degraded call says recording continues before describing the impact", () => {
   const html = render(
     props({

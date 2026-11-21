@@ -762,7 +762,7 @@ export interface SessionSynthesis {
 }
 
 /** How much post-call analysis a deliberate stop should run. */
-export type StopDrainMode = "full" | "skip_analysis";
+export type StopDrainMode = "full" | "skip_analysis" | "minimal";
 
 export interface WSStatusData {
   state: string;

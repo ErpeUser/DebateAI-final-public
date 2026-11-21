@@ -101,7 +101,11 @@ router = APIRouter()
 
 # Default colors for auto-created speakers
 _SPEAKER_COLORS = ["#0d9488", "#f59e0b", "#e74c3c", "#2ecc71", "#9b59b6", "#f39c12"]
-_STOP_DRAIN_MODES = ("full", "skip_analysis")
+# Deliberate stops may either run the complete drain, skip the expensive
+# briefing stages, or use the no-retention path.  The latter still flushes
+# enough audio to close the active segment cleanly; the client removes the
+# completed session through the normal delete endpoint immediately afterwards.
+_STOP_DRAIN_MODES = ("full", "skip_analysis", "minimal")
 _WHISPER_FINAL_CONTEXT_BYTES = 10 * 16000 * 2
 _WHISPER_FINAL_MAX_WAIT_SECONDS = 1.5
 
