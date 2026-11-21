@@ -1,8 +1,8 @@
 # DebateAI – Offene Punkte
 
-Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
+Stand: 2026-11-22. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `6aa9be935cfdd90c57d64e2f3be1fcee8286a096` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10 und Migrations-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), der echte SQLite-Migrationsmatrixlauf (3/3), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `897423984bd22d6036b4ef452c1cb6948cb97c63` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10, Migrations- und P2.12-Retention-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), der echte SQLite-Migrationsmatrixlauf (3/3), der P2.12-10.000-Registry-Stresstest (2/2), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -23,7 +23,7 @@ Die folgenden stabilen IDs ordnen jeden relevanten Visionsabschnitt mindestens e
 | V-11 | §§ 10–11 Onboarding, Modell-/Sprachvergleich | PARTIAL | Calibration-/Admin-Lab und `test_calibration_*` vorhanden; vollständiger blinder A/B-/WER/CER-/RTF-Nachweis fehlt (P1.10/P2.3). |
 | V-12 | §§ 13–14 Audio-/Video-Labor und profilgebundene Optimierung | EXPERIMENTAL | `video_eval_*`, Calibration- und Optimierungsdienste vorhanden; Baseline→gezielte Änderung→Regression→Freigabe ist nicht vollständig nachgewiesen. |
 | V-13 | § 15 vollständige Cloud-Testinstanz und automatische GitHub-Bugmeldung | MISSING/BLOCKED | Workflows decken CI ab, aber keine vollständige steuerbare Cloud-Instanz mit Replay/Optimierung/Issue-Pipeline ist belegt; Credentials/Operatorzugriff fehlen. |
-| V-14 | § 12, § 15 WebSocket-Journale und Multiworker | IMPLEMENTED_UNVERIFIED (Single-Worker) / MISSING (Multiworker) | `services/ws_event_stream.py`, `transcription_jobs.py`, `useWebSocket.ts`; 25 Journal- und 3 Job-Tests laufen, aber State ist prozesslokal; Redis/DB-Adapter und Zwei-Worker-Test fehlen (P1.15/P2.12). |
+| V-14 | § 12, § 15 WebSocket-Journale und Multiworker | IMPLEMENTED_UNVERIFIED (Single-Worker) / MISSING (Multiworker) | `services/ws_event_stream.py`, `transcription_jobs.py`, `useWebSocket.ts`; 28 Journal- und 3 Job-Tests laufen, aber State ist prozesslokal; Redis/DB-Adapter und Zwei-Worker-Test fehlen (P1.15/P2.12). |
 | V-15 | § 16 Sicherheit, PII, Origin und Einwilligung | IMPLEMENTED_UNVERIFIED | Request-Guard-/PII-/Privacy-Tests und Instance-Token vorhanden. Reale LAN-/Reverse-Proxy-/DNS-Rebinding- und Provider-Delete-Abnahme fehlt (P1.16). |
 | V-16 | §§ 19, 21 Windows-Distribution, Signierung, Rollback | PARTIAL/BLOCKED | Bundle-, Hash- und Rollback-Smokes sowie `desktop-release.yml` vorhanden; Authenticode, produktiver Download und frischer Client fehlen (P0.2/P1.4). |
 | V-17 | §§ 17, 21 CI-/Structure-Gesamtgate | PARTIAL/BLOCKED | Tests/Security-Workflows vorhanden; Structure-Gesamtlauf bleibt wegen absoluter Sentrux-Schulden offen (P0.1). |
@@ -482,8 +482,68 @@ Auf einem isolierten PostgreSQL-Testsystem `DEBATEAI_TEST_POSTGRES_URL`, `DEBATE
 
 ### P2.12 Prozessweite Journale und PII-Scrub-Indizes
 
-- **Status:** TTL/LRU, Byte-/Registry-Limits, sessionweises Cleanup und terminale Job-TTL sind implementiert und regressionsgetestet. Ein 10.000-Session-Langzeittest und produktiver Multiworker-Replay-Nachweis fehlen.
-- **Benötigt:** definierte RAM-/Indexbudgets, synthetischer 10.000-Session-Lauf, Reconnect-Replay-Prüfung und ein autorisierter Multiworker-Nachweis.
+**Priorität:** P2
+**Status:** PARTIAL
+**Vision-Referenz:** §§ 12, 15, 16 und 18
+
+**1. Verbindliches Ziel**
+
+WebSocket-Replay-Journale, Transkriptionsjobs und PII-/Secret-Scrub-Indizes müssen prozessweit sicher begrenzt sein. Inaktive Sitzungen und terminale Jobs werden nach TTL entfernt, Byte-/Eintragsgrenzen verhindern unkontrolliertes Wachstum, gelöschte Sitzungen räumen ihre sensiblen Indizes auf, und ein Reconnect darf nur den korrekten Snapshot beziehungsweise Delta-Bereich erhalten.
+
+**2. Konkretes Nutzungsbeispiel**
+
+Nach einem langen Betrieb mit 10.000 abgeschlossenen Sitzungen bleiben keine alten Replay-Journale oder Jobzustände im Prozessregister. Ein aktiver WebSocket bleibt während der TTL-Abnahme erhalten; nach dem Schließen wird das Journal entfernt. PII-Werte werden sessionbezogen registriert, bei Löschung vergessen und nach Ablauf des Index-TTL nicht mehr als Log-/Egress-Scrubwert geführt.
+
+**3. Tatsächlicher Ist-Zustand**
+
+- `app/backend/app/services/ws_event_stream.py::SessionEventJournal` begrenzt Ereignisse, State und Bytes; `sweep_idle_journals` schützt aktive Generationen und entfernt inaktive Journale.
+- `app/backend/app/services/transcription_jobs.py::sweep_jobs` behält aktive Jobs und entfernt terminale Snapshots; `forget_session` wird beim Sitzungs-Delete aufgerufen.
+- `app/backend/app/services/pii/vault.py` führt einen sessionbewussten Plaintext-Index mit TTL/LRU; die Redaction-Schicht besitzt ebenfalls ein LRU-Limit.
+- `app/backend/tests/test_p212_bounds.py` erzeugt 10.000 echte Journale und 10.000 terminale Jobobjekte und prüft die vollständige TTL-Bereinigung. `event_journal()` hält das Prozessregister bei neuen inaktiven Sitzungen am Budget, räumt das älteste unbenutzte Journal nach `last_touch` und lässt aktive Journale sowie bestehende Lookups unangetastet. `test_ws_event_stream.py`, `test_transcription_jobs.py`, `test_pii_index_bounds.py` und `test_pii_vault_transactions.py` decken Reconnect, Byte-Grenzen, aktive/terminale Zustände, TTL/LRU und gemeinsam verwendete sessionbewusste PII-Werte ab.
+
+**4. Genaue Abweichung**
+
+Die lokale In-Process-Begrenzung und der 10.000-Registry-Lauf sind nachgewiesen. Die Journale und Jobs sind weiterhin prozesslokal; ein echter Multiworker-Replay über einen gemeinsamen Redis-/Datenbankadapter, ein produktiver Langzeit-RAM-/CPU-Nachweis und ein autorisierter PII-Delete-Lauf auf Windows fehlen. Deshalb bleibt das Ziel `PARTIAL`.
+
+**5. Unabhängige Abnahmetests**
+
+- **Test A – funktionaler Replay-/Boundary-Test:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_ws_event_stream.py' -v`; prüft monotone Cursor, Epoch-Wechsel, Delta-/Full-Snapshot, Byte-Budget, aktive Generationen und das Verhalten bei überlaufendem Client-Puffer. **Bestanden: 28/28.**
+- **Test B – unabhängiger Retention-/PII-Test:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_p212_bounds.py' -v` sowie `test_transcription_jobs.py` und `test_pii_index_bounds.py`; prüft 10.000 Journale und Jobs, TTL-Bereinigung, aktiven Job-Erhalt und sessionbewussten PII-/Secret-Index. **Bestanden: 2/2 Stressfälle, 3/3 Jobfälle, 2/2 PII-Index-Fälle und 6/6 Vault-Transaktionsfälle.**
+- Zusätzlich: `compileall` und `git diff --check` **bestanden**. Der Multiworker-/Redis-/Windows-Nachweis bleibt extern.
+
+**6. Recherche vorhandener Lösungen**
+
+Der Bestand verwendet bereits die für diese Architektur passenden bounded deques, `OrderedDict`-LRU/TTL-Indexe, monotone Session-Sequenzen und explizite `forget_session`-Hooks. Ein neuer Cache- oder Replay-Server wäre für den lokalen Desktoppfad unnötig; für die offene Multiworker-Anforderung ist ein geteilter Redis-/Datenbankadapter als separater Integrationsschritt zu prüfen.
+
+**7. Exakter Umsetzungsplan**
+
+1. Ereignis-, State- und Byte-Budgets im Journal beibehalten und mit Reconnect-/Overflow-Tests schützen.
+2. Bei voller Prozessregistrierung das älteste unbenutzte Journal anhand `last_touch` räumen; bestehende Lookups und aktive Generationen dürfen dabei nicht verdrängt werden.
+3. `token_for` mit der Session-ID im Plaintext-Index registrieren, damit `forget(session_a)` einen gemeinsam genutzten Wert für `session_b` erhält.
+4. TTL-Sweeps und `forget_session` für Journale, Jobs und PII-Indizes bei jedem relevanten Lookup/Cleanup ausführen.
+5. 10.000-Session-Registry-Läufe regelmäßig im lokalen Regressionstest ausführen.
+6. Für den offenen Multiworker-Nachweis einen gemeinsamen Replay-/Job-Adapter auswählen, zwei Worker mit demselben Epoch-/Cursorvertrag starten und PII-Delete/TTL über Workergrenzen prüfen.
+
+**8. Erfüllungskriterien**
+
+- [x] Journal-, State- und Byte-Grenzen sind implementiert und getestet.
+- [x] Idle-Journale und terminale Jobs werden nach TTL entfernt.
+- [x] Aktive Jobs und aktive WebSocket-Generationen bleiben erhalten.
+- [x] Neue inaktive Journale überschreiten das Prozessbudget nicht; aktive Journale und vorhandene Lookups werden bei der Kapazitätsbereinigung geschützt.
+- [x] PII-/Secret-Indizes sind sessionbewusst und begrenzt; ein geteilter Wert bleibt bis zur letzten Session registriert.
+- [x] Test A und Test B bestehen; 10.000-Registry-Stress ist reproduzierbar.
+- [ ] Gemeinsamer Multiworker-Replay-/Job-Adapter, produktiver Langzeit-RAM-Nachweis und Windows-PII-Abnahme bestehen.
+
+**9. Implementierungsnachweise**
+
+- Änderungen: `app/backend/app/services/pii/vault.py`, `app/backend/app/services/ws_event_stream.py`, `app/backend/tests/test_pii_vault_transactions.py`, `app/backend/tests/test_ws_event_stream.py`, `app/backend/tests/test_p212_bounds.py`.
+- Commit-SHAs: `45d167095f4f5d5334403fb9779fdaa8e1f5c4ea` (Stress), `c3e7bcfe6dea3dcd85c42adaacf672b88b7acd9f` (sessionbewusster PII-Index/Journalkapazität), `897423984bd22d6036b4ef452c1cb6948cb97c63` (last_touch-LRU und Lookup-Schutz); Branch-Readback von `main` bestätigt.
+- Ausgeführt: Stress 2/2, WebSocket-Journal 28/28, Transkriptionsjobs 3/3, PII-Index 2/2, Vault-Transaktionen 6/6, `compileall`, `git diff --check`.
+- Einschränkung: Prozessgrenzen, reale Windows-/Providerdaten und autorisierte Multiworker-Infrastruktur fehlen.
+
+**10. Codex-Desktop-Handoff bei Blockern**
+
+Auf einem autorisierten Zwei-Worker-System denselben Live-Call über Workerwechsel/Restart wiederverbinden. Nach jedem Reconnect `server_epoch`, `through_sequence`, Snapshot-/Delta-Reihenfolge und keine Duplikate prüfen; danach 10.000 Sessions mit RAM-/CPU-Messung und PII-Löschung über beide Worker ausführen. Einen Redis-/Datenbankadapter erst nach diesem beobachtbaren Vertrag als Ersatz für die Prozessregister integrieren.
 
 ## P3 – Inventar und externe Zuständigkeiten
 
