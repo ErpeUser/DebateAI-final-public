@@ -2,9 +2,9 @@
 
 Stand: 2026-11-22. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `897423984bd22d6036b4ef452c1cb6948cb97c63` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10, Migrations- und P2.12-Retention-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), der echte SQLite-Migrationsmatrixlauf (3/3), der P2.12-10.000-Registry-Stresstest (2/2), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `6ac3f1f6610fa16712765f5f45bcf9802b54ea9a` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10, Migrations- und P2.12-Retention-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (12/12), die Frontend-Gesamtsuite (386/386), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), der echte SQLite-Migrationsmatrixlauf (3/3), der P2.12-10.000-Registry-Stresstest (2/2), der Chat-Priorisierungs-/Fehlerlauf (13/13), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
-## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
+## Vision-Abdeckungsmatrix (Bestandsaufnahme 22.11.2026)
 
 Die folgenden stabilen IDs ordnen jeden relevanten Visionsabschnitt mindestens einer prüfbaren Produktanforderung zu. `IMPLEMENTED_UNVERIFIED` bedeutet, dass Code und fokussierte Tests existieren, aber ein externer Hardware-, Provider-, Nutzungs- oder Release-Nachweis fehlt. `PARTIAL` bedeutet, dass der Code nur einen Teil des beobachtbaren Vertrags erfüllt.
 
@@ -118,7 +118,7 @@ Die lokale Browserpersistenz und SSR-Vertragsprüfung sind implementiert. Ein re
 
 - **Test A – funktionale Wiederherstellung:** `TMPDIR="$PWD/.tmp" node --test src/components/NewSessionModal.test.mjs`; setzt den Speicherwert `debate_forceful`, rendert den Dialog und prüft, dass „Hart / brutal-sachlich“ aktiv und „Überzeugend“ inaktiv ist. **Bestanden: 1/1 Fall.**
 - **Test B – kritischer Fallback:** derselbe Testlauf setzt `client_sales` als fremden Wert und prüft, dass `readLastDebateMode()` exakt `debate_persuasive` liefert. **Bestanden: 1/1 Fall.**
-- Zusätzlich: vollständige Frontend-Suite **384/384** und `npm run build` **bestanden**. Windows-WebView-/manuelle Pre-Call-Abnahme **nicht ausführbar**.
+- Zusätzlich: vollständige Frontend-Suite **386/386** und `npm run build` **bestanden**. Windows-WebView-/manuelle Pre-Call-Abnahme **nicht ausführbar**.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -145,7 +145,7 @@ Der vorhandene `NewSessionModal`-Selector und die Browser-Storage-Muster der Fro
 
 - Änderungen: `app/frontend/src/components/NewSessionModal.tsx`, `app/frontend/src/components/NewSessionModal.test.mjs`.
 - Commit-SHA: `68b783d6124cb09157a5c72696ff66f8582652d0` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Zieltest 4/4, Frontend 384/384, Vite/TypeScript-Build grün.
+- Ausgeführt: Zieltest 4/4, Frontend 386/386, Vite/TypeScript-Build grün.
 - Einschränkung: GitHub-CLI-Synchronisation und realer Windows-/WebView-Lauf bleiben mangels Authentifizierung beziehungsweise Hardware offen.
 
 **10. Codex-Desktop-Handoff bei Blockern**
@@ -181,7 +181,7 @@ Der lokale Codepfad und die Vertragsprüfungen sind vorhanden. Es fehlt der echt
 
 - **Test A – Backend-Funktion und Grenzfall:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_audio_handler.py' -v`; prüft, dass nur der explizite `minimal`-Stop angenommen wird, unbekannte Werte weiter sicher auf `full` fallen und der Minimal-Finalizer keine Analyse-Drain-Stufen startet. **Bestanden: relevante Audio-Handler-Suite 63/63.**
 - **Test B – kritische UI-Prüfung:** `TMPDIR="$PWD/.tmp" node --test src/components/ActiveCall/ActiveCallView.test.mjs`; prüft getrennte Full-/Skip-/Minimal-Aktionen sowie die sichtbare Erklärung, dass Transkript, Aufnahme und Sitzungsdaten gelöscht werden. **Bestanden: 21/21.**
-- Zusätzlich: Frontend-Gesamtsuite **384/384**, `npm run build` und Repository-Layout-Guard **bestanden**. Reale Provider-/Windows-/Audio-Abnahme **nicht ausführbar**.
+- Zusätzlich: Frontend-Gesamtsuite **386/386**, `npm run build` und Repository-Layout-Guard **bestanden**. Reale Provider-/Windows-/Audio-Abnahme **nicht ausführbar**.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -208,7 +208,7 @@ Der vorhandene `minimal`-Finalizer und die bestehende `DELETE /api/sessions/{id}
 
 - Änderungen: `app/backend/app/ws/audio_handler.py`, `app/backend/tests/test_audio_handler.py`, `app/frontend/src/types/index.ts`, `app/frontend/src/components/ActiveCall/ActiveCallView.tsx`, `app/frontend/src/components/ActiveCall/ActiveCallView.test.mjs`, `app/frontend/src/App.tsx`.
 - Commit-SHA: `7a149b0b60261dace3cb4cd0376b6751c6faa9ff` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Audio-Handler 63/63, ActiveCallView 21/21, Frontend 384/384, Vite/TypeScript-Build grün, Layout-Guard grün.
+- Ausgeführt: Audio-Handler 63/63, ActiveCallView 21/21, Frontend 386/386, Vite/TypeScript-Build grün, Layout-Guard grün.
 - Einschränkung: Provider-Delete bleibt extern; der lokale `gh`-Pull ist weiterhin wegen fehlender CLI-Authentifizierung blockiert.
 
 **10. Codex-Desktop-Handoff bei Blockern**
@@ -287,8 +287,9 @@ Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal 
 
 ### P2.10 Listen-, Transcript- und Knowledge-APIs
 
-- **Status:** PARTIAL. Die Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` sowie jetzt Fragen, Direktiven, Dokumente, Knowledge-Quellen und Knowledge-Records akzeptieren versionsbehaftete, endpointgebundene Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Die bestehenden Frontend-Consumer für die fünf erweiterten Sammlungen und für die Kernlisten folgen den opaken Cursorn automatisch und liefern weiterhin vollständige Arrays an `useSession`, `MeetingChat` und `KnowledgeManager`. SQL-seitige Chat-Priorisierung und ein begrenzter Last-/Multiworker-Nachweis bleiben offen.
-- **Benötigt:** Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie für weitere UI-Consumer, ein begrenzter Lastnachweis und die noch fehlende SQL-seitige Chat-Priorisierung.
+- **Status:** PARTIAL. Die Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` sowie jetzt Fragen, Direktiven, Dokumente, Knowledge-Quellen und Knowledge-Records akzeptieren versionsbehaftete, endpointgebundene Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Die bestehenden Frontend-Consumer für die fünf erweiterten Sammlungen und für die Kernlisten folgen den opaken Cursorn automatisch und liefern weiterhin vollständige Arrays an `useSession`, `MeetingChat` und `KnowledgeManager`. Ein begrenzter Last-/Multiworker-Nachweis bleibt offen.
+- **Benötigt:** Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie für weitere UI-Consumer und ein begrenzter Last-/Multiworker-Nachweis.
+- **Chat-Priorisierung:** `app/backend/app/routers/chat.py::chat` begrenzt die Insight-Abfrage weiterhin per SQL und ordnet vor dem `LIMIT` nach `starred DESC`, `needs_followup DESC`, `answered ASC`, Aktualität und ID. Dadurch bleiben markierte, offene und nachzufassende Punkte im Prompt, auch wenn viele ältere Antworten existieren. `test_chat_errors.py` prüft die SQL-Reihenfolge und die unveränderte Prioritätsreihenfolge im Provider-Prompt (**13/13**).
 
 #### P2.10a – Opaque-Cursor-Grundvertrag für Sitzungslisten
 
@@ -313,7 +314,7 @@ Ein Client ruft `/api/sessions?limit=2` ab, erhält zwei absteigend nach `create
 
 **4. Genaue Abweichung**
 
-Die Kern-API und ihre bestehenden Frontend-Consumer folgen jetzt automatisch allen vorhandenen Seiten. Die Provisional-Transcript-Anzeige bleibt ausdrücklich auf der Legacy-Erstseite beziehungsweise dem WebSocket-Livekanal; ein Last-/Multiworker-Nachweis und die SQL-seitige Chat-Priorisierung fehlen weiterhin.
+Die Kern-API und ihre bestehenden Frontend-Consumer folgen jetzt automatisch allen vorhandenen Seiten. Die Provisional-Transcript-Anzeige bleibt ausdrücklich auf der Legacy-Erstseite beziehungsweise dem WebSocket-Livekanal; ein Last-/Multiworker-Nachweis fehlt weiterhin.
 
 **5. Unabhängige Abnahmetests**
 
@@ -347,11 +348,11 @@ Der Bestand verwendet bereits stabile Composite-Sortierungen und Limits. Die neu
 - Änderungen: `app/backend/app/services/cursor_pagination.py`, `app/backend/app/routers/sessions.py`, `app/backend/app/routers/transcripts.py`, `app/backend/tests/test_cursor_pagination.py`, `app/frontend/src/services/api.ts`, `app/frontend/src/services/api.test.mjs`.
 - Commit-SHAs: `c101be8a800ea6a06a67cbeb7186c4beb5626314` (API-Grundvertrag) und `b0b448f51f9259ce262a180a86dec420d7e1290b` (Kernlisten-Consumer; GitHub `main`, Branch-Readback verifiziert).
 - Ausgeführt: Cursor 5/5, Sessions-Router 4/4, Frontend-API 12/12, Frontend-Gesamtsuite 386/386, `npm run build`, Backend-`compileall` und Layout-Guard grün.
-- Einschränkung: Provisional-Transcript-UI bleibt live-only; ein begrenzter Last-/Multiworker-Nachweis und SQL-seitige Chat-Priorisierung fehlen weiterhin.
+- Einschränkung: Provisional-Transcript-UI bleibt live-only; ein begrenzter Last-/Multiworker-Nachweis fehlt weiterhin.
 
 **10. Codex-Desktop-Handoff bei Blockern**
 
-Für die nächste Ausbaustufe den begrenzten Last-/Multiworker-Nachweis und die SQL-seitige Chat-Priorisierung ausführen. Die Provisional-Transcript-Anzeige bleibt ausdrücklich live-only, solange kein separater Cursorvertrag für diese ephemeren Zeilen beschlossen ist.
+Für die nächste Ausbaustufe den begrenzten Last-/Multiworker-Nachweis ausführen. Die Provisional-Transcript-Anzeige bleibt ausdrücklich live-only, solange kein separater Cursorvertrag für diese ephemeren Zeilen beschlossen ist.
 
 #### P2.10b – Cursor-Fortsetzung für Fragen, Direktiven, Dokumente und Knowledge
 
