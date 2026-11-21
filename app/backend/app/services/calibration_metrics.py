@@ -39,6 +39,21 @@ def score_transcript(reference: str, hypothesis: str) -> dict:
     if len(reference) > 2000 or len(hypothesis) > 4000:
         raise ValueError('Transcript exceeds the calibration scoring limit.')
     ref, hyp = normalized_tokens(reference), normalized_tokens(hypothesis)
+    if not ref:
+        # JiWER rejects an empty reference in newer releases. Calibration
+        # still needs to represent silence and hallucinated speech explicitly.
+        return {
+            'normalization': 'NFC+casefold; punctuation ignored; decimal separators retained; CER excludes spaces',
+            'reference_words': 0, 'hypothesis_words': len(hyp),
+            'substitutions': 0, 'deletions': 0, 'insertions': len(hyp),
+            'wer': None, 'cer': None,
+            'hallucinated_words': len(hyp),
+            'critical_reference_tokens': [],
+            'critical_hypothesis_tokens': [token for token in hyp if _critical_token(token)],
+            'deleted_reference_tokens': [],
+            'false_deletions': 0, 'false_deletion_tokens': [],
+            'factual_status': 'unverified',
+        }
     # Join product tokens explicitly so JiWER does not discard decimal
     # separators, signs, percent symbols or currency units.
     word_output = jiwer.process_words(' '.join(ref), ' '.join(hyp))

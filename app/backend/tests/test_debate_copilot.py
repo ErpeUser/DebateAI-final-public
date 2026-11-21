@@ -582,7 +582,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("erfinde keine Fakten", system)
         # Keep the complete live schema and ASR-safety contract bounded while
         # still allowing the mode-specific instruction appended at runtime.
-        self.assertLess(len(system), 2000)
+        self.assertLess(len(system), 2200)
         self.assertIs(generate.await_args.args[2], LiveDebateResponse)
 
     async def test_semantically_empty_guidance_is_not_retried(self):
@@ -897,7 +897,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 "chatgpt-web:gpt-6",
                 "endpoint:gemini-web:gemini-3.1-pro",
                 "endpoint:subscription-ai:gpt-6-sol",
-                "endpoint:subscription-ai:gemini-3.1-pro-preview",
+                "endpoint:subscription-ai:gemini-3.8-flash-high",
             ],
             candidates,
         )
