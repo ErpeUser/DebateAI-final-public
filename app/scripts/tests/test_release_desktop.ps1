@@ -146,8 +146,9 @@ try {
 }
 
 $source = [IO.File]::ReadAllText($coordinator)
+$repositoryRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $gitignore = [IO.File]::ReadAllText(
-    (Join-Path (Split-Path -Parent (Split-Path -Parent $PSScriptRoot)) ".gitignore")
+    (Join-Path $repositoryRoot ".gitignore")
 )
 Assert-True $gitignore.Contains("release-assets/") `
     "Versioned local release assets are not ignored"
@@ -374,12 +375,12 @@ Assert-True ($source.IndexOf('Write-Host "Desktop release $Version"') -lt
 # passes arguments as strings, so the switch never binds and the run dies on
 # a type conversion before doing any work.
 $releasingDoc = Get-Content -LiteralPath (
-    Join-Path $PSScriptRoot "..\..\docs\releasing.md"
+    Join-Path $PSScriptRoot "..\..\docs\HANDBUCH.md"
 ) -Raw
 Assert-True $releasingDoc.Contains('& ./scripts/release_desktop.ps1 -Version vX.Y.Z -Confirm:$false') `
-    "docs/releasing.md lost the working call-operator invocation"
+    "docs/HANDBUCH.md lost the working call-operator invocation"
 Assert-True (-not ($releasingDoc -match
     '-File scripts/release_desktop\.ps1[^\r\n]*-Confirm')) `
-    "docs/releasing.md documents a -File invocation that cannot bind -Confirm"
+    "docs/HANDBUCH.md documents a -File invocation that cannot bind -Confirm"
 
 Write-Output "Desktop release coordinator contracts: OK"

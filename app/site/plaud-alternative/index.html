@@ -190,7 +190,7 @@
         <p>
           The difference starts the moment audio is captured. It streams to
           your own server, where voice activity detection and
-          <a href="/docs/architecture/#the-live-call-path">speaker diarization always run locally</a>
+          <a href="/docs/#the-live-call-path">speaker diarization always run locally</a>
           using Silero VAD and WeSpeaker ResNet152 embeddings, and every
           transcript line gets a speaker label. Point the transcriber at local
           ONNX Whisper or Parakeet models, the agents at a self-hosted
@@ -204,7 +204,7 @@
         <p>
           Then it goes somewhere recorders do not go. While the call is live,
           DebateAI runs nine seeded
-          <a href="/docs/architecture/">agents</a>: an audio gateway for interim
+          <a href="/docs/">agents</a>: an audio gateway for interim
           transcription, five live insight agents, and a three-agent
           post-call briefing pass. The objection handler scans the last 90
           seconds roughly every 10 seconds and returns an immediate suggested
@@ -481,7 +481,7 @@
         <p>
           Setup is a git clone and <code>docker compose up --build</code>, or
           the desktop bundle for Windows, macOS, and Linux. The
-          <a href="/docs/quickstart/">quickstart</a> covers it honestly: the
+          <a href="/docs/">quickstart</a> covers it honestly: the
           first start builds images and downloads models, so it takes a few
           minutes, not seconds. Transcript files in <code>.txt</code>,
           <code>.md</code>, and <code>.docx</code> can be imported too. There

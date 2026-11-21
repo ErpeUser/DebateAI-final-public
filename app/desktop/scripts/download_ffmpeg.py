@@ -2,7 +2,7 @@
 
 Windows and Linux desktop bundles ship this binary so audio conversion
 (webm voice recordings, mp3/m4a imports) works without a system ffmpeg.
-macOS bundles stay ffmpeg-free, matching docs/releasing.md.
+macOS bundles stay ffmpeg-free, matching docs/HANDBUCH.md.
 """
 
 import hashlib

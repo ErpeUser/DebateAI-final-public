@@ -5,10 +5,10 @@ import vm from "node:vm";
 
 const customerFiles = [
   "../README.md",
-  "../docs/quickstart.md",
-  "../docs/releasing.md",
-  "../docs/deployment.md",
-  "../docs/DEBATEAI_CANONICAL_INDEX.md",
+  "../docs/HANDBUCH.md",
+  "../docs/VISION.md",
+  "../docs/OFFENE_PUNKTE.md",
+  "../docs/HISTORIE.md",
   "../AGENTS.md",
   "../site/index.html",
   "../site/private-meeting-ai/index.html",
@@ -113,8 +113,8 @@ test("first-run copy describes explicit provider-aware model selection", () => {
 });
 
 test("active locality and language copy follows the implementation claim matrix", () => {
-  const claimMatrix = read("../docs/website-claim-matrix.md");
-  const configuration = read("../docs/configuration.md");
+  const claimMatrix = read("../docs/HANDBUCH.md");
+  const configuration = read("../docs/HANDBUCH.md");
   const releaseNotes = read("../backend/app/release_notes.py");
   const comparison = read("../site/open-source-meeting-assistants/index.html");
   const privacy = read("../site/private-meeting-ai/index.html");
@@ -246,7 +246,7 @@ test("customer guidance never uses GitHub as the executable access boundary", ()
 test("customer download entry points use the authenticated DebateAI portal", () => {
   for (const path of [
     "../README.md",
-    "../docs/quickstart.md",
+    "../docs/HANDBUCH.md",
     "../site/index.html",
     "../site/private-meeting-ai/index.html",
     "../site/analyst-lenses/index.html",
@@ -358,12 +358,13 @@ test("active docs use only checked-in pages and the canonical repository layout"
       .filter((name) => name.endsWith(".md"))
       .map((name) => name.replace(/\.md$/, "")),
   );
+  assert.deepEqual(
+    [...docs].sort(),
+    ["HANDBUCH", "HISTORIE", "OFFENE_PUNKTE", "VISION"].sort(),
+  );
   const sourceFiles = [
     "../README.md",
-    "../docs/DEBATEAI_CANONICAL_INDEX.md",
-    "../docs/quickstart.md",
-    "../docs/deployment.md",
-    "../docs/releasing.md",
+    "../docs/HANDBUCH.md",
     "../site/index.html",
   ];
   for (const path of sourceFiles) {
@@ -386,8 +387,14 @@ test("active docs use only checked-in pages and the canonical repository layout"
     )) {
       const target = match[2];
       if (target === "docs") continue;
+      const docName =
+        target === "index"
+          ? "HANDBUCH"
+          : target === "offene_punkte" || target === "vision" || target === "historie"
+            ? target.toUpperCase()
+            : target;
       assert.ok(
-        docs.has(target === "index" ? "DEBATEAI_CANONICAL_INDEX" : target),
+        docs.has(docName),
         `${path} references missing docs page ${target}`,
       );
     }
@@ -532,7 +539,7 @@ test("the sitemap remains a same-host index while public pages link to the porta
 });
 
 test("historical migration normalizes peeled commit timestamps to strict UTC", () => {
-  const releasing = read("../docs/releasing.md");
+  const releasing = read("../docs/HANDBUCH.md");
   assert.match(releasing, /\[DateTimeOffset\]::Parse/);
   assert.match(
     releasing,
@@ -551,7 +558,7 @@ test("historical migration normalizes peeled commit timestamps to strict UTC", (
 });
 
 test("production deployment always rebuilds immediately before Wrangler deploy", () => {
-  const deployment = read("../docs/deployment.md");
+  const deployment = read("../docs/HANDBUCH.md");
   assert.match(deployment, /^npm run deploy$/m);
   assert.doesNotMatch(deployment, /^npx wrangler deploy$/m);
   assert.match(
@@ -561,8 +568,8 @@ test("production deployment always rebuilds immediately before Wrangler deploy",
 });
 
 test("rollout order documents a real hold gate before catalog publication", () => {
-  const deployment = read("../docs/deployment.md");
-  const releasing = read("../docs/releasing.md");
+  const deployment = read("../docs/HANDBUCH.md");
+  const releasing = read("../docs/HANDBUCH.md");
   for (const runbook of [deployment, releasing]) {
     assert.match(runbook, /No executable hold commit is currently recorded/i);
     assert.match(runbook, /git cat-file -e <hold-sha>\^\{commit\}/);
@@ -578,19 +585,19 @@ test("rollout order documents a real hold gate before catalog publication", () =
 });
 
 test("staged link cutover never embeds an invented commit", () => {
-  for (const path of ["../docs/deployment.md", "../docs/releasing.md"]) {
+  for (const path of ["../docs/HANDBUCH.md"]) {
     const runbook = read(path);
     assert.doesNotMatch(runbook, /git revert [0-9a-f]{40}/);
     assert.match(runbook, /create a dedicated hold commit/i);
   }
   assert.match(
-    read("../docs/releasing.md"),
-    /Follow \[Deployment\]\(deployment\.md\).*ordered gate/is,
+    read("../docs/HANDBUCH.md"),
+    /Follow \[Deployment\]\(HANDBUCH\.md#deployment-und-betrieb\).*ordered gate/is,
   );
 });
 
 test("D1 exports require operator-supplied absolute paths outside the repository", () => {
-  const deployment = read("../docs/deployment.md");
+  const deployment = read("../docs/HANDBUCH.md");
   assert.match(deployment, /DEBATEAI_D1_BACKUP_PATH/);
   assert.match(deployment, /\[IO\.Path\]::IsPathRooted\(/);
   assert.match(deployment, /--output="\$backupPath"/);
@@ -601,7 +608,7 @@ test("D1 exports require operator-supplied absolute paths outside the repository
 });
 
 test("progressive release recovery names the platform boundary precisely", () => {
-  const releasing = read("../docs/releasing.md");
+  const releasing = read("../docs/HANDBUCH.md");
   assert.match(
     releasing,
     /failure before one platform's manifest is created leaves that platform\s+hidden/i,

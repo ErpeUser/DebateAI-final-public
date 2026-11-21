@@ -20,12 +20,12 @@ rmSync(OUT, { recursive: true, force: true });
 mkdirSync(OUT, { recursive: true });
 
 for (const file of readdirSync(SRC).filter((f) => f.endsWith(".md"))) {
-  // The canonical index is the docs root. Keep its source filename descriptive
-  // while preserving the stable /docs/ URL expected by the site shell.
+  // The technical handbook is the docs root. Keep its source filename
+  // descriptive while preserving the stable /docs/ URL expected by the site.
   const slug =
-    file === "DEBATEAI_CANONICAL_INDEX.md"
+    file === "HANDBUCH.md"
       ? "index"
-      : file.replace(/\.md$/, "");
+      : file.replace(/\.md$/, "").toLowerCase();
   let text = readFileSync(join(SRC, file), "utf8");
 
   // Drop the GitHub-only wordmark banner; Starlight has its own header.
@@ -49,7 +49,7 @@ for (const file of readdirSync(SRC).filter((f) => f.endsWith(".md"))) {
   text = text.replace(
     /\]\(([\w-]+)\.md(#[^)]*)?\)/g,
     (_, name, hash = "") =>
-      `](${prefix}${name === "README" ? "" : name + "/"}${hash})`,
+      `](${prefix}${name === "README" || name === "HANDBUCH" ? "" : name.toLowerCase() + "/"}${hash})`,
   );
 
   // Per-page meta description: first prose block (headings/tables/images/code
@@ -85,7 +85,7 @@ for (const file of readdirSync(SRC).filter((f) => f.endsWith(".md"))) {
   );
 }
 
-// Referenced by architecture.md; stored with versioned docs at app/docs.
+// Referenced by HANDBUCH.md; stored with versioned docs at app/docs.
 copyFileSync(join(SRC, "architecture.svg"), join(OUT, "architecture.svg"));
 
 // Screenshots and other images referenced by the docs as assets/<file>.

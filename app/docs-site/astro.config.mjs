@@ -39,28 +39,11 @@ export default defineConfig({
         { label: "← Zur Startseite", link: "/" },
         {
           label: "Erste Schritte",
-          items: [
-            { label: "Übersicht", link: "/" },
-            "quickstart",
-            "architecture",
-          ],
+          items: [{ label: "Handbuch", link: "/" }],
         },
         {
           label: "Produktvertrag",
           items: ["vision", "offene_punkte", "historie"],
-        },
-        {
-          label: "Referenz",
-          items: [
-            "websocket-protocol",
-            "rest-api",
-            "configuration",
-            "deployment",
-            "releasing",
-            "generated-workspace",
-            "github-repository",
-            "windows-final-recovery",
-          ],
         },
       ],
       customCss: ["./src/styles/custom.css"],

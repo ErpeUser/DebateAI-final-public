@@ -169,7 +169,7 @@
           Zoom, Google Meet, Teams, or anything else. The difference starts
           the moment audio is captured: it streams to your own server, where
           voice activity detection and
-          <a href="/docs/architecture/#the-live-call-path">speaker diarization run locally</a>
+          <a href="/docs/#the-live-call-path">speaker diarization run locally</a>
           and every transcript line gets a speaker label -- something Granola
           does not emphasize at all.
         </p>
@@ -177,7 +177,7 @@
           Then it goes further than notes. DebateAI seeds nine agents --
           an audio gateway, five live insight agents, and a three-agent
           briefing pass. While the call is live, the
-          <a href="/docs/architecture/">insight agents</a> read the transcript and
+          <a href="/docs/">insight agents</a> read the transcript and
           push questions worth asking, responses to objections,
           opportunities, and action items to your screen in real time.
           Granola helps you remember the meeting; DebateAI tries to help
@@ -290,7 +290,7 @@
           experimental local captioner as well when interim captions are
           needed. The full flow
           is documented in the
-          <a href="/docs/architecture/#the-live-call-path">audio pipeline docs</a>.
+          <a href="/docs/#the-live-call-path">audio pipeline docs</a>.
         </p>
         <h3>During the call vs after it</h3>
         <p>
@@ -343,7 +343,7 @@
           Setup is a git clone and <code>docker compose up --build</code>,
           plus a Gemini API key (or local ONNX transcription plus a
           self-hosted model to run offline end to end). The
-          <a href="/docs/quickstart/">quickstart</a>
+          <a href="/docs/">quickstart</a>
           covers it honestly: the first start builds images and downloads
           models, so it takes a few minutes, not seconds.
         </p>

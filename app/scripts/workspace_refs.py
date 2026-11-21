@@ -26,7 +26,7 @@ RESOURCES = {
     "build_desktop_spec": APP / "desktop/debateai.spec",
     "build_docs_wrangler": APP / "docs-site/wrangler.jsonc",
     "build_backend_test": APP / "backend/tests/test_update_service.py",
-    "source_canonical_docs": APP / "docs/DEBATEAI_CANONICAL_INDEX.md",
+    "source_canonical_docs": APP / "docs/HANDBUCH.md",
     "runtime_executable": BUNDLE / "DebateAI.exe",
     "runtime_updater": BUNDLE / "DebateAIUpdater.exe",
     "runtime_internal": BUNDLE / "_internal",

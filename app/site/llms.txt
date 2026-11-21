@@ -124,14 +124,10 @@ Key facts:
 - [Desktop release v0.6.6](/releases/v0.6.6/): public asset inventory, release notes, install notes, and first-run guidance
 - [All releases](/releases/): version history with publish dates and per-release notes
 - [Full documentation as one file](/llms-full.txt): every docs page concatenated as plain markdown for agents
-- [Quickstart](/docs/quickstart/): Docker Compose setup, local development, migrations, tests
-- [Architecture](/docs/architecture/): the live call path end to end
-- [Agent System](/docs/architecture/): each agent's trigger, purpose, and configuration
-- [Audio Pipeline](/docs/architecture/#the-live-call-path): capture format, VAD/diarization, transcription routing
-- [WebSocket Protocol](/docs/websocket-protocol/): binary audio framing and message types
-- [REST API](/docs/rest-api/): endpoint reference
-- [Configuration](/docs/configuration/): settings, environment variables, model registry
-- [Deployment](/docs/deployment/): compose services, GPU support, startup behavior
+- [Technical handbook](/docs/): quickstart, architecture, WebSocket and REST API, configuration, deployment, release, recovery, workspace and design contracts
+- [Product vision](/docs/vision/): target users, live debate experience, local-first execution and quality gates
+- [Open items](/docs/offene_punkte/): current unresolved product, release and verification gates
+- [History and provenance](/docs/historie/): dated decisions, retired workstreams and evidence boundaries
 
 ## Writing
 

@@ -11,7 +11,7 @@
   <a href="#features">Features</a> -
   <a href="#what-it-looks-like">Screenshots</a> -
   <a href="#architecture">Architecture</a> -
-  <a href="docs/DEBATEAI_CANONICAL_INDEX.md">Documentation</a>
+  <a href="docs/HANDBUCH.md">Documentation</a>
 </p>
 
 ---
@@ -185,7 +185,7 @@ orchestrator whose insights stream back to the UI over the same socket. A
 parallel Gemini Live (or OpenAI Realtime) session provides interim
 transcription while the batch pipeline produces the durable record.
 
-Read more in [docs/architecture.md](docs/architecture.md).
+Read more in the [technical handbook](docs/HANDBUCH.md#architektur-und-datenfluss).
 
 ## Run it
 
@@ -233,7 +233,7 @@ The idempotent setup installs Ollama when needed, pulls Qwen3 4B, selects local
 Parakeet v3 transcription, and configures the live Sprechspur plus all
 background agents. Privacy First is on by default. Pass `-Research` only if
 you want short, model-produced factual queries sent to configured ChatGPT Web/Gemini AI research lanes; audio and transcript text still remain local. See the
-[Windows quickstart](docs/quickstart.md#local-german-debate-copilot-on-windows-no-api-key)
+[Windows quickstart](docs/HANDBUCH.md#local-german-debate-copilot-on-windows-no-api-key)
 for system-audio selection, data locations, switches, and recovery steps.
 
 ### Option 3: Docker (isolated)
@@ -246,7 +246,7 @@ Requires Docker with the Compose plugin. The default pipeline uses a free
 [Gemini API key](https://ai.google.dev/) for transcription and agents.
 For a setup that needs no key at all, pair local ONNX Whisper/Parakeet
 transcription with a self-hosted endpoint for the agents
-(see [Configuration](docs/configuration.md#self-hosted-endpoints)).
+(see [Configuration](docs/HANDBUCH.md#self-hosted-endpoints)).
 
 ```bash
 git clone https://github.com/ErpeUser/DebateAI-final-public.git
@@ -264,22 +264,17 @@ On a host with an NVIDIA GPU, enable GPU diarization with the override:
 docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
 ```
 
-Full setup options (local development, migrations, GPU validation) are in
-[docs/quickstart.md](docs/quickstart.md) and
-[docs/deployment.md](docs/deployment.md).
+Full setup options, migrations and GPU validation are in the
+[technical handbook](docs/HANDBUCH.md#quickstart-und-lokale-entwicklung).
 
 ## Documentation
 
 | Page | What it covers |
 | --- | --- |
-| [Canonical index](docs/DEBATEAI_CANONICAL_INDEX.md) | Maintained contract and historical boundaries |
-| [Quickstart](docs/quickstart.md) | Docker Compose, local development, migrations, tests |
-| [Architecture](docs/architecture.md) | The live call path, frontend and backend structure |
-| [WebSocket Protocol](docs/websocket-protocol.md) | Binary audio framing and messages on `/ws/{session_id}` |
-| [REST API](docs/rest-api.md) | Endpoint reference for the routers |
-| [Configuration](docs/configuration.md) | Environment variables, credentials, model registry |
-| [Deployment](docs/deployment.md) | Compose services, GPU support, nginx proxying, startup behavior |
-| [Releasing](docs/releasing.md) | Build, signing, update and recovery procedures |
+| [Handbuch](docs/HANDBUCH.md) | Setup, architecture, API, configuration, deployment, release and workspace |
+| [Vision](docs/VISION.md) | Product goal and accepted direction |
+| [Offene Punkte](docs/OFFENE_PUNKTE.md) | Current gaps and verification gates |
+| [Historie](docs/HISTORIE.md) | Dated decisions, provenance and retired workstreams |
 
 ## Tech stack
 

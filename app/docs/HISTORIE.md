@@ -55,7 +55,10 @@ Ein zweiter Abschnitt, **Antwortlabor**, lässt eine gegnerische These, eigene P
 Keine unkontrollierte Neuarchitektur; kein ungefragtes Löschen von Nutzerprofilen oder lokalen Verbesserungen; kein Auto-Apply des A/B-Siegers; kein erfundener Windows-Hardwaretest; keine automatische Veröffentlichung eines signierten Releases ohne Zertifikat/Freigabe.
 
 ## Vorrang und Bezug
-Zusammen lesen: `/AGENTS.md`, `/source/AGENTS.md`, `source/docs/windows-final-runbook.md`, `source/docs/releasing.md` und `source/docs/FINAL_STATUS_AND_OPEN_ITEMS.md`. Dieses Dokument beschreibt **was** das Produkt leisten soll; die anderen Dateien regeln Arbeitsweise, Ausführung und aktuellen Nachweis.
+Zusammen lesen: `/AGENTS.md`, `/app/AGENTS.md`, `HANDBUCH.md` und
+`OFFENE_PUNKTE.md`. Dieses Dokument beschreibt die Herkunft und die
+Entscheidungen; Handbuch und offene Punkte regeln Ausführung und aktuellen
+Nachweis.
 
 </details>
 
@@ -246,7 +249,7 @@ Stand: **19. November 2026**. Der [Evidenznachweis](#historische-evidenz-2026-11
 
 Quellcode, Tests, Lockfiles und gesetzlich erforderliche Lizenzen bleiben in `app/`; installierte Laufzeiten und regenerierbare Artefakte gehören nach `DebateAI_Generated/` oder in einen isolierten Buildbereich. Vor jeder Löschung tatsächliche Referenzen und Wiederherstellbarkeit prüfen. Keine privaten Benutzerdaten, externen Secrets, Git-Historie oder optionalen Modellpfade blind entfernen.
 
-Aktuelle Kommandos und Releasebedingungen stehen in [releasing.md](releasing.md); dieser Status ersetzt die älteren Windows-/Codex-Aufträge ausdrücklich.
+Aktuelle Kommandos und Releasebedingungen stehen im [Handbuch](HANDBUCH.md); dieser Status ersetzt die älteren Windows-/Codex-Aufträge ausdrücklich.
 
 ## Herkunft und geschützte Nachweise
 
@@ -254,3 +257,862 @@ Aktuelle Kommandos und Releasebedingungen stehen in [releasing.md](releasing.md)
 - Die früheren privaten technischen Fortschritts- und Acceptance-Protokolle wurden in die historische Zusammenfassung überführt und aus dem aktiven Projektbaum entfernt. Die unabhängige Audit-Kopie bleibt außerhalb des Projekts geschützt.
 - Lokale Providerprofile, Transkripte, Audiodaten, Credentials, Runtime-Dateien und private Evidence bleiben außerhalb dieser drei redaktionellen Quellen.
 - `RESEARCH_DE.md` und `RECONCILIATION_MATRIX_DE.md` sind in diese Historie eingearbeitet und werden nicht mehr als eigenständige Quellen gepflegt.
+
+---
+
+## Konsolidiertes Archiv der ausgedünnten Dokumente
+
+Die folgenden Abschnitte bewahren frühere Arbeitsstände, Übergaben und Verträge, deren operative Inhalte in `HANDBUCH.md` oder den drei Kerntexten aufgegangen sind. Sie gelten als Provenienz und ändern den aktuellen Produkt- oder Releasevertrag nicht.
+
+### Archivierte Prompt-Matrix
+
+Quelle: `PROMPT_MATRIX_B.md`.
+
+Basis-SHA: `445ee4a6eb5d1fb271e485aa132a6031e2b26db1`
+Branch: `feat/prelive-prompt-quality`
+
+Die Matrix beschreibt die zur Laufzeit verwendeten Promptressourcen und die
+zusätzlichen Code-Prompts, die nicht als eigene Datei vorliegen. Hashes sind die
+SHA-256-Kurzform des aktuellen Textes (12 Zeichen). Ein Prompt gilt als aktiv,
+wenn `load_prompt_resource`, `active_prompt`, ein Agent-Konstruktor oder ein
+Router ihn zur Laufzeit lädt. `experimental_integrator_v1` ist als Altlast
+markiert: Die Integration geschieht aktuell deterministisch im Python-
+Orchestrator und lädt diese Datei nicht.
+
+| Name | Aufgabe | Datei/Codepfad | aktives Modell | Eingaben | Ausgabeformat | Version/Hash | bekannte Schwächen | geplante Tests | Bewertung |
+|---|---|---|---|---|---|---|---|---|---|
+| `debate_live_v2` | lokale Sofortantwort | `app/ai/debate_live_v2.txt`, `objection_handler.py` | lokales Debattenmodell | Kontext, Sprecher, Direktiven, Transkriptfenster | JSON-Recommendation | `b836b11580ae` | ASR-Fehler und Negationen bleiben modellabhängig | Contract, Benchmark, Live-Replay | aktiv, verbessert |
+| `debate_deep_v1` | tiefe Claim-Analyse | `app/ai/debate_deep_v1.txt` | externe Tiefenanalyse/Fallback | Claim, Nutzerposition, Verlauf, Belege | JSON/strukturierte Analyse | `3abb7b59a10f` | langsam; darf Live-Antwort nicht blockieren | Promptvertrag, Deep-Replay | aktiv |
+| `agent.objection_handler` | Argument-Agent und lokale Rhetorik | `app/ai/agent.objection_handler.txt`, `objection_handler.py` | konfiguriertes Textmodell | Live-Kontext, Einwände, Sprecher, Direktiven | Recommendation + Items | `d20ab1b79529` | Modell-/Providerqualität schwankt | Promptvertrag, Debattenfälle | aktiv |
+| `agent.consolidated_analyst` | Fakten-/Kontextanalyse | `app/ai/agent.consolidated_analyst.txt` | Agentmodell | Meetingkontext, Fenster, Linsen, Sprecher | Insight-JSON | `a172b45b07f4` | Lens-Konfiguration kann überladen | Agent- und Lens-Tests | aktiv |
+| `agent.synthesizer` | Zusammenführung und Qualitätskontrolle | `app/ai/agent.synthesizer.txt` | Synthesizer-Modell | Kontext, Insights, Transkript | Synthese-JSON | `d28b0501c9e2` | nachgelagerte Latenz | Synthesizer-Tests | aktiv |
+| `agent.opportunity_specialist` | Angebotsabgleich | `app/ai/agent.opportunity_specialist.txt` | DB-/Textmodell | Kontext, Wissensbasis, Chancen | Insight-JSON | `60bce4e376b0` | nur aktiv bei belastbarer Wissensbasis | Opportunity-Tests | aktiv |
+| `agent.strategic_signals` | strategische Live-Signale | `app/ai/agent.strategic_signals.txt` | Textmodell | Kontext, Sprecher, Direktiven, Verlauf | Signal-JSON | `ea57ab716420` | Inferenzrisiko bei dünnem Verlauf | Signal-Tests | aktiv |
+| `agent.transcript_refiner` | ASR-Text säubern | `app/ai/agent.transcript_refiner.txt` | Refiner-Modell | Transkriptzeilen | JSON/Textvertrag | `ab12d1a64899` | darf keine Wörter verändern | Refiner-/Placeholder-Tests | aktiv |
+| `agent.audio_gateway` | stille Audioweiterleitung | `app/ai/agent.audio_gateway.txt` | Audio-Gateway | Audiospur | keine eigene Ausgabe | `0716f8b6cf8f` | keine Analyse erlaubt | Audio-Gateway-Tests | aktiv |
+| `agent.brief_meeting_lens` | sachliches Nachdebattenprotokoll | `app/ai/agent.brief_meeting_lens.txt` | Briefing-Modell | Kontext, Sprecher, Transkript | Briefing-JSON | `4feefbeddb30` | nachgelagert | Briefing-Tests | aktiv |
+| `agent.brief_discovery_lens` | Sensemaking/Fragen | `app/ai/agent.brief_discovery_lens.txt` | Briefing-Modell | Kontext, Sprecher, Insights, Transkript | Briefing-JSON | `86b1808c1a23` | Sales-Inferenz vermeiden | Briefing-Tests | aktiv |
+| `agent.brief_arbiter` | zwei Briefing-Linsen versöhnen | `app/ai/agent.brief_arbiter.txt` | Briefing-Modell | beide Linsenergebnisse, Kontext | Briefing-JSON | `95c4521ee6dc` | Konflikte/Unsicherheit explizit halten | Arbiter-Tests | aktiv |
+| `experimental_debate_live_v1` | experimentelle lokale Debatte | `app/ai/experimental_debate_live_v1.txt` | experimentell konfiguriert | Live-Kontext, Sprecher, Einwände | JSON | `d824af734519` | experimentell; kein Live-SLA | Experimental-Tests | aktiv experimentell |
+| `experimental_research_v1` | experimentelle Recherchelane | `app/ai/experimental_research_v1.txt` | externe Lane | Claim, Quellenkontext | JSON | `476edf1ccb98` | ChatGPT-Web-Lock kann seriell wirken | Lane-/Lock-Tests | aktiv experimentell |
+| `experimental_adversarial_v1` | Gegenprüfung/Double Standards | `app/ai/experimental_adversarial_v1.txt` | externe Lane | vollständiger Verlauf, Claim | JSON | `007bb1d63056` | keine neue Position ohne Claim | Lane-Tests | aktiv experimentell |
+| `experimental_strategist_v1` | sprechbare Strategie | `app/ai/experimental_strategist_v1.txt` | externe Lane | Claim, Verlauf | JSON | `e5d5e4fd8bed` | keine persönliche Attacke | Lane-Tests | aktiv experimentell |
+| `experimental_integrator_v1` | historische externe Integrationsstufe | `app/ai/experimental_integrator_v1.txt` | keines | — | — | `cfe2173b3711` | ungenutzt; Integration ist Python-Code | Nicht-Lade-Test | veraltet/ungenutzt |
+| `background.oracle` / `.gemini` / `.gpt6` | gleiche Hintergrundanalyse | `app/ai/background.*.txt` | jeweiliger Provider | Claim, Position, Verlauf, Belege | strukturierte Analyse | `2744492ae6f6` | byte-identische Duplikate | Hash-/Routing-Test | aktiv, doppelt |
+| `research_source_system` | Quellenrecherche-Rolle | `app/ai/research_source_system.txt`, `debate_research.py` | Rechercheprovider | Claim/Query | Quellen-JSON | `cb63d6620e0a` | Snippets sind kein Beleg | Quellen-/Halluzinationstests | aktiv |
+| `research_source_refinement` | verifizierte Quellen in Sprechtext | `app/ai/research_source_refinement.txt` | Rechercheprovider | Empfehlung, Target-Claim, Auszüge | Empfehlung-JSON | `1090b896051c` | Zeitraum/Grundgesamtheit prüfen | Quellenbindungstests | aktiv |
+| `transcript_refiner_system` | unverändernde Transkriptkorrektur | `app/ai/transcript_refiner_system.txt` | Refiner | ASR-Zeilen | korrigierter Text | `c1e415e9856e` | keine Wortänderung | ASR-Contract-Tests | aktiv |
+| `batch_transcription` | Batch-ASR-Anweisung | `app/ai/batch_transcription.txt` | ASR-/Cloudprovider | Audio/Segmente | Transkript | `eacf6b56cc16` | Modellverfügbarkeit | Transkriptions-/ASR-Tests | aktiv |
+| `gemini_live_gateway` | Live-Audio-Gateway | `app/ai/gemini_live_gateway.txt` | Gemini Live | Audio, Session | Gateway-Events | `d8ff13573e96` | Cloudzustimmung/Verfügbarkeit | Adapter-Tests | aktiv |
+| `analyze_transcript` | importiertes Transkript | `app/ai/analyze_transcript.txt` | Analysemodell | Kontext, Direktiven, Transkript | Insight-JSON | `7c9d68b75a8f` | Batch, nicht Live | Analyzer-Tests | aktiv |
+| `live_chat_system` / `postcall_chat_system` | Chatrollen | `app/ai/*.txt`, Router | gewähltes Modell | Kontext/Frage/Verlauf | Chattext/JSON | `868e00b0f4a7` / `b65fba9ada59` | Kontextlänge | Chat-Tests | aktiv |
+| `speaker_context_enhancement` | Sprecherkorrektur neu bewerten | `app/ai/speaker_context_enhancement.txt` | Analysemodell | Sprecher, Insights, Transkript | Operations-JSON | `fe2c1ca1e6e2` | keine Änderungen an dismissed items | Speaker-Tests | aktiv |
+| `debate_review_system` / `_task` | Nachdebatten-Review | `app/ai/debate_review_*.txt` | Reviewmodell | Debatte, Quellen, Nutzerfreigabe | Review-JSON | `36b1ffb53118` / `0751ec82d890` | nur nach Bestätigung | Review-Tests | aktiv |
+| `debate_user_loyalty` | Position bewahren | `app/ai/debate_user_loyalty.txt` | lokales Modell | Nutzerposition/Claim | Zusatzinstruktion | `074e83b05175` | Loyalität darf Fakten nicht verfälschen | Loyalty-Tests | aktiv |
+| `mode.forceful` / `.persuasive` | rhetorische Modi | `app/ai/mode.*.txt` | lokales Modell | Modus, Claim, Kontext | Zusatzinstruktion | `3d26eb2d9f03` / `3410fb3e5ca2` | Schärfe sachlich begrenzen | Mode-Tests | aktiv |
+| `style.natural` / `.concise` / `.evidence` | Stilregeln | `app/ai/style.*.txt` | lokales Modell | Antwortentwurf | Zusatzinstruktion | `5933e0f0dfa4` / `0dc87d17189e` / `98e3d9144e0d` | Stil kann sich widersprechen | Style-Tests | aktiv |
+| `analogy.required` / `.optional` | Analogiepflicht | `app/ai/analogy.*.txt` | lokales Modell | Claim/Antwort | Zusatzinstruktion | `fc8cbc2b7be0` / `16cd9b766dc5` | keine erfundenen Tatsachen | Rhetorik-Tests | aktiv |
+| `phase.new_topic` / `_follow_up` / `_deep_reanalysis` | adaptive Denkstufen | `app/ai/phase.*.txt` | Laufzeitroute | Claim-/Kontextstatus | Zusatzinstruktion | `1e6db0e9ed5f` / `99b4541375d1` / `a5f9a58f2e49` | Aufwand bei Themenwechsel | Adaptive-Tests | aktiv |
+| `app/backend/app/services/agents/prompts.py` | viele feste Agentensysteme | Python-Konstanten | je Agentroute | je Rolle definierte Felder | JSON-Schemata | Code-Hash im Commit | nicht vollständig dateibasiert | Prompt-/Agenttests | aktiv im Code |
+| `objection_handler.py`-Instruktionen | Forschungs-/Modus-/Strategieappendices | Python-Konstanten | lokales/externe Modelle | Claim, Kontext, Einstellungen | JSON | Code-Hash im Commit | dynamische Kombinationen | Objection-/Mode-Tests | aktiv im Code |
+| `debate_research.py`-Systemtexte | Quellenprüfung | Python-Code | Rechercheprovider | Query, Quellen | Recherche-JSON | Code-Hash im Commit | externe Quellenlatenz | Research-Tests | aktiv im Code |
+| `local_fit.py`-Systemprompt | lokaler Modellvergleich | Python-Code | lokale Textmodelle | Debattenfälle | Fit-/Benchmarkdaten | Code-Hash im Commit | CPU/RAM/GPU abhängig | Local-Fit-Tests | aktiv im Code |
+
+### Doppelte oder veraltete Ressourcen
+
+- `background.oracle`, `background.gemini` und `background.gpt6` sind byte-identisch; sie bleiben vorerst als modellabhängige Routingnamen erhalten.
+- `app/ai/playbooks.json` und `app/ai/defaults/playbooks.json` sind identisch. Die Defaultkopie bleibt als Reset-/Migrationsquelle getrennt; der Endpoint `/api/ai-config/prompts/rhetoriciq.playbooks/reset` liest sie explizit.
+- `app/ai/debate_deep_v1.txt` und `app/ai/defaults/prompts/debate_deep_v1.txt` sind identisch. Die Defaultkopie bleibt als Resetquelle für benutzerdefinierte Prompts erhalten.
+- `experimental_integrator_v1.txt` wird nicht geladen; die Datei bleibt als historische Referenz erhalten.
+- Die aktive und Defaultfassung von `debate_live_v2` wurden in B vereinheitlicht; die neue Hash-Version ist `b836b11580ae`.
+
+### Archivierte Arbeitsstrang-B-Übergabe
+
+Quelle: `TRACK_B_HANDOFF.md`.
+
+### Änderungsstand
+
+- Basis-SHA: `445ee4a6eb5d1fb271e485aa132a6031e2b26db1`
+- Branch: `feat/prelive-prompt-quality`
+- Arbeitsbereich: eigener Worktree `/workspace/scratch/01cefca878b0/worktree-b`
+- Ziel: kontrollierte Promptqualität, zugängliches A/B-/Sprachlabor, Videolink-UI und nachvollziehbare Übergabe an Integrationsdurchgang C.
+
+### Gelieferte Funktionen
+
+#### Promptqualität und Optimierung
+
+`app/backend/app/services/prompt_optimization.py` ist ein providerunabhängiger,
+kontrollierter Store. Er vergleicht dieselben `fixed`- und `holdout`-Fälle,
+aggregiert Natürlichkeit, Faktentreue, argumentative Stärke, Quellenredlichkeit,
+Sprechbarkeit/Nutzbarkeit, Latenz und Kosten und verweigert die Aktivierung bei
+fehlenden Fällen oder Regressionen. Vorschläge werden mit Inhaltshash,
+Baseline-Hash, Grund, Risiken, Quellen und Zeitstempel protokolliert.
+
+Der Standardpfad bleibt Vorschlag beziehungsweise manuelle Freigabe. Auto-Apply
+muss sowohl in der Policy als auch durch eine ausdrückliche Aktivierung gesetzt
+werden. Das Änderungsbudget ist standardmäßig klein. Aktivierung und Auditdatei
+werden atomar geschrieben; bei einem Schreibfehler wird der vorherige Prompt
+wiederhergestellt. `rollback()` ist jederzeit möglich. `rollback_if_regressed()`
+prüft zusätzlich den aktiven Hash und verhindert, dass ein inzwischen manuell
+geänderter Prompt überschrieben wird. Platzhalter laufen vor der Aktivierung
+durch die vorhandene Produktionsvalidierung.
+
+`video_eval_autotune.py` bietet jetzt Fixture-Normalisierung,
+`compare_evaluations`-Entscheidung, report-only-Ausgabe und explizit gated
+`apply_prompt_proposal`/`apply_optimization`-Wrapper. Ohne Freigabe entsteht
+keine Mutation. Die bestehende Video-Pipeline und Batch-Verarbeitung bleiben
+unverändert.
+
+Die aktive Live-Promptfassung wurde mit der Defaultfassung vereinheitlicht: Das
+`counterargument` muss die Antwort mit dem stärksten ehrlichen Grund stützen und
+niemals dagegen argumentieren; `analogy` erklärt die entscheidende Logik. Der
+Vertragstest prüft außerdem kurze sprechbare Antworten, Claim-Zielgenauigkeit,
+Negationen und das Verbot erfundener Fakten.
+
+#### Labor und Desktop
+
+Der neue Admin-Tab `Labor` enthält:
+
+- blindes A/B-/Sprachlabor mit zwei tatsächlich verfügbaren Modellen oder Promptvarianten,
+- gleiche Eingabe, Quellen und Datensatz-ID, optional unabhängiger Holdout,
+- wechselnde, deterministische A/B-Reihenfolge und Reveal erst nach gespeicherter Bewertung,
+- Bewertungen für Natürlichkeit, Stärke, Präzision, Quellenredlichkeit und Nutzbarkeit,
+- „beide ungeeignet“, Export, Latenz-/Kosten-/Prompt-Hash-Anzeige,
+- kontrollierte Übernahme und Rollback sowie Rater-Übereinstimmung aus dem Backend,
+- Videolink-Card gegen den vereinbarten `/api/video-eval/jobs...`-Vertrag mit
+  Statusanzeige, Gemini-Fallback-Einwilligung, Abbruch und Artifact-Ansicht.
+
+Die API-Funktionen zeigen Providerfehler sichtbar an und behaupten keinen
+Live-Erfolg, wenn das Backend oder ein Cloudmodell nicht verfügbar ist.
+
+### Prompt-Matrix und Forschung
+
+Die vollständige Matrix steht im archivierten Abschnitt dieses Dokuments.
+Sie unterscheidet aktive, experimentelle, doppelte und ungenutzte Ressourcen und
+führt Eingaben, Ausgabeformate, Modellroute, Hash, Schwächen, Tests und Bewertung
+auf.
+
+Verwendete überprüfbare Referenzen:
+
+- OpenAI, *Evaluation best practices*: https://developers.openai.com/api/docs/guides/evaluation-best-practices
+- OpenAI, *Agent evals*: https://developers.openai.com/api/docs/guides/agent-evals
+- OpenAI, *Graders*: https://developers.openai.com/api/docs/guides/graders
+- Shi et al., *Judging the Judges*, IJCNLP-AACL 2025: https://aclanthology.org/2025.ijcnlp-long.18/
+- Findings of EMNLP 2025, multi-agent judge bias: https://aclanthology.org/2025.findings-emnlp.941/
+- OpenAI, *Whisper*: https://cdn.openai.com/papers/whisper.pdf
+
+Die Entscheidungen daraus sind im Code sichtbar: feste Datensätze, Holdouts,
+blinde Reihenfolge, getrennte Qualitätsdimensionen, keine alleinige Bestätigung
+durch den vorschlagenden Judge und kontinuierliche Auditdaten.
+
+### Geänderte Dateien
+
+- `app/ai/debate_live_v2.txt`
+- `app/ai/defaults/prompts/debate_live_v2.txt`
+- `app/backend/app/services/prompt_optimization.py`
+- `app/backend/scripts/video_eval_autotune.py`
+- `app/backend/tests/test_prompt_optimization.py`
+- `app/backend/tests/test_video_eval_autotune_controlled.py`
+- `app/backend/tests/test_ai_prompt_contracts.py`
+- `app/frontend/src/components/AdminPanel.tsx`
+- `app/frontend/src/components/QualityLabCard.tsx`
+- `app/frontend/src/components/QualityLabCard.test.mjs`
+- `app/frontend/src/components/VideoEvalCard.tsx`
+- `app/frontend/src/components/VideoEvalCard.test.mjs`
+- `app/frontend/src/lib/qualityLab.ts`
+- `app/frontend/src/lib/qualityLab.test.mjs`
+- `app/frontend/src/services/api.ts`
+- `HISTORIE.md`
+- `TRACK_B_HANDOFF.md`
+
+### Verifikation
+
+- `PYTHONPATH=app/backend python -m unittest tests.test_prompt_optimization tests.test_video_eval_autotune_controlled`: **10/10 bestanden**.
+- `PYTHONPATH=app/backend python -m unittest tests.test_ai_prompt_contracts`: Promptvertrag und Live-Qualitätsvertrag bestanden.
+- Frontend `npm test`: **377/377 bestanden**.
+- Frontend `npm run build`: **Exit 0**; Vite meldet weiterhin die bekannten Chunk-Größenwarnungen.
+- `python -m py_compile app/backend/app/services/prompt_optimization.py app/backend/scripts/video_eval_autotune.py`: bestanden.
+- Breitere Backendtests, die SQLAlchemy/Google-Provider importieren, konnten in der Minimalumgebung nicht geladen werden, weil diese optionalen Testabhängigkeiten dort fehlen. Sie wurden nicht als bestanden gezählt.
+
+### Integrationshinweise für C
+
+1. Die Quality-/Video-Lab-Routen sind im Frontend typisiert, aber absichtlich noch
+   nicht in der zentralen Backend-Routerregistrierung enthalten. C soll die
+   vorhandenen Verträge implementieren und die Mocks durch echte, fail-closed
+   Provider-/Jobdienste ersetzen.
+2. Für Promptübernahmen soll C `PromptOptimizationStore(ai_config.ai_directory())`
+   verwenden und `approved_by_user` beziehungsweise beide Auto-Apply-Schalter
+   explizit setzen. `user_managed=True` schützt persönliche Prompts.
+3. `experimental_external_parallelism` beschreibt logische Lanes. Der
+   ChatGPT-Webadapter bleibt exklusiv gesperrt; die UI darf daraus keine drei
+   parallelen Browserzugriffe ableiten.
+4. Die lokale Sofortantwort bleibt zeitkritisch und darf nicht auf einen externen
+   Judge, Holdout-Lauf oder Videolink-Job warten.
+5. A kann die Videobeweis-Persistenz und Backendjobs an den UI-Vertrag anschließen,
+   ohne die in B geschützten Promptdateien, Store-Auditdaten oder Frontendtests
+   zu überschreiben.
+6. Persönliche Promptdateien und Playbooks bleiben updatefest; keine Seed-/Reset-
+   Routine darf sie still ersetzen.
+
+### Nachpr?fung und Korrekturcommit (20.11.2026)
+
+Die urspr?ngliche Lieferung deckt **nicht** alle Punkte des umfangreichen B-Auftrags ab.
+Die Lab-Backendrouten, der vollst?ndige ASR-Vergleich (WER/CER/RTF ?ber alle
+verf?gbaren Modelle), echte Live-/Holdout-Benchmarkdaten und die End-to-End-
+Integration mit A stehen weiterhin aus. Der UI-Vertrag ersetzt keinen
+funktionsf?higen Jobdienst. Es wurden keine Cloudmodelle kostenpflichtig aufgerufen.
+
+In der Nachpr?fung wurden konkrete Schutzl?cken behoben:
+- Fehlende Qualit?tsdimensionen auf einer Vergleichsseite verhindern eine
+  Freigabe, statt als impliziter Nullwert in den Mittelwert einzugehen.
+- Eine einzelne Raterbewertung hat keine messbare ?bereinstimmung (null).
+- Eine produktive ?bernahme aus dem A/B-Labor ist bei Gleichstand oder
+  ungeeigneten Antworten deaktiviert und erfordert eine zus?tzliche Best?tigung.
+
+Gezielte Nachtests: 9 Backend-Optimierungstests und 6 Frontend-Labortests
+bestanden. Der Repository-Layout-Guard meldete 1101 zul?ssige Dateien.
+Nicht verifizierte gr??ere Test- und Produktionsbuilds werden nicht als
+bestanden ausgegeben.
+
+### Archivierter Windows-Recovery-Vertrag
+
+Quelle: `windows-final-recovery.md`.
+
+Stand 2026-11-11. Der fruehere ZIP-Overlay-Weg wird durch direkte Git-Integration ersetzt. Kein apply_package.py und keine alte final_sync_safety.py ueber den neueren integrierten Source kopieren. Der aktuelle single-file sync_final_workspace.py enthaelt seinen Kollisionsschutz bereits vor Stash/Merge/Rebase.
+
+### Sichere Programmaktualisierung
+
+Die alte funktionierende Installation bleibt erhalten, bis neues Archiv und Staging vollstaendig verifiziert sind. Staging auf demselben Dateisystem wie das Installationsziel anlegen, vorhandene validierende Archive-/Updaterfunktion nutzen, nur Programmdateien tauschen. Aktive Aufnahme/Verarbeitung abwarten und eigene Prozesse sauber beenden. Keine pauschalen Remove-Item- oder git-clean-Befehle. Bei Fehler vor Tausch bleibt alte Version unangetastet; bei Startfehler nach Tausch alte Binaerdateien zuruecksetzen. Den Health-Nachweis an die neue Instanz binden, nicht irgendein bereits laufendes Backend als Erfolg akzeptieren.
+
+### Daten sind ein eigener Rueckweg
+
+Migriere %LOCALAPPDATA%\Backchannel einmalig nach %LOCALAPPDATA%\DebateAI; lösche die Quelle nicht und überschreibe keinen nichtleeren Zielordner. PostgreSQL, master.key/DPAPI, AI-Prompts/Playbooks, Browserprofile, API-/OAuth-Sessions, Transkripte und Modelle niemals loeschen. Eine laufende DB-Dateikopie ist kein konsistenter Backup. Vor Schemaaenderung den vorhandenen kontrollierten Backupweg oder gestoppte DB nutzen und Wiederherstellbarkeit pruefen. Binaerrollback ist kein Schemarollback. Zwei verschiedene Programmversionen duerfen nicht parallel denselben Datenbestand benutzen. Kein automatisches Verschmelzen zweier nichtleerer Datenordner.
+
+### Konfiguration und Produktidentitaet
+
+Neue Defaults, bisherige Baseline und aktive Benutzerkopie semantisch zusammenfuehren. Ein EXE-Update ersetzt absichtlich keine angepassten Prompts. Aktiven Pfad/Generation/Profile/Trigger via Anwendung pruefen. Exe-/Updater-/Archivnamen erst als zusammenhaengenden Vertrag migrieren; historische Lizenz-/Herkunftshinweise bleiben.
+
+### Testlabor und Grenzen
+
+Laborassets und Navigation sind integriert. Der Produktions-Paarbenchmark benchmark_blind_pair.py ist implementiert, benoetigt aber die aktuelle App-Projektumgebung und ein bewusst beendetes Desktopprogramm. Er ist kein neuer Installer oder in die EXE eingebauter Generierungsbutton. Fehler, Timeouts und unbewertete Skalen bleiben ehrlich. Ein synthetischer Browsertest oder Headless-Replay ist keine deutsche Hardware-/Sprachabnahme.
+
+Die aktuellen lokalen Build- und Wiederherstellungsschritte stehen in releasing.md. Signierter Release nur mit realem Zertifikat, unabhaengigem Kanal und erfolgreichem Protokoll; keine erfundene Freigabe.
+
+### Zusammengeführte technische und redaktionelle Nebenakten
+
+Die technischen Nebenakten `DEBATEAI_CANONICAL_INDEX.md`, `workspace-audit.md`, `workspace-layout.md`, `github-repository.md`, `identity-decoupling-design.md`, `local-first-text-contract.md`, `static-analysis.md`, `static-analysis-triage.md` und `website-claim-matrix.md` wurden als aktuelle technische Abschnitte in `HANDBUCH.md` konsolidiert. Ihre historischen Entscheidungen und offenen Grenzen bleiben über die datierten Abschnitte in diesem Dokument nachvollziehbar.
+
+## Archivierte Arbeitspläne und Übergaben
+
+Die folgenden Planungs- und Übergabedokumente waren zeitgebundene Arbeitsunterlagen. Ihre Entscheidungen und Ergebnisse sind in den aktuellen Kerntexten oder im Handbuch berücksichtigt. Sie bleiben hier als Provenienz erhalten.
+
+### TRACK_A_HANDOFF.md
+
+Quelle: `HISTORIE.md`.
+
+# DEBATEAI – Arbeitsstrang A Übergabe
+
+Stand: 2026-11-20 (Europe/Vienna)
+Basis-SHA: `445ee4a6eb5d1fb271e485aa132a6031e2b26db1`
+Branch: `feat/prelive-video-evidence`
+Arbeitsverzeichnis: eigener Worktree `worktree-a`
+
+## Ergebnis
+
+Arbeitsstrang A ergänzt den bestehenden Offline-Video-Evaluationspfad um einen
+link-first, consent-aware Jobpfad:
+
+1. Öffentliche HTTPS-URL wird validiert (keine Credentials, Sonderports,
+   lokale/private DNS-Ziele); yt-dlp wird mit `skip_download`, manuellen und
+   automatischen Untertiteln sowie begrenzter Sprachwahl nur zur Metadaten- und
+   Track-Ermittlung aufgerufen.
+2. Manuelle Untertitel werden vor automatischen Untertiteln ausgewählt und ohne
+   Videodownload abgerufen. VTT/SRT/TTML-artige Cue-Texte werden in stabile,
+   deutsche, zeitgestempelte Segmente mit Sprecherfeldern normalisiert.
+3. Ohne parsebares Transkript entsteht `awaiting_consent` mit dem Hinweis
+   „Kein Transkript verfügbar“. Eine Zustimmung für `gemini_api` ist nötig,
+   bevor der alternative Gemini-Weg aufgerufen wird. Fehlender Schlüssel,
+   nicht unterstützte URL und Providerfehler bleiben verständliche lokale
+   Fehlerzustände.
+4. A1 (`rhetorical_evidence`) und A2 (`argument_evidence`) entstehen getrennt,
+   versioniert und segmentbezogen. A1 liefert Metriken/Testfälle ohne
+   Promptänderung. A2 verwendet Claims, Quell-IDs und die Zustände
+   `mentioned`, `found`, `retrieved`, `supports`, `contradicts`, `unclear`,
+   `unavailable`.
+5. JSON-Checkpoints und Artefakte werden atomar unter dem lokalen
+   `DATA_DIR/video-eval`-Pfad gespeichert. Job-Token schützen Status, Consent,
+   Abbruch und Artefaktzugriff. Doppelte aktive URL-/Sprachanfragen werden
+   wiederverwendet; neuere Checkpoints überschreiben keine abgeschlossenen
+   Ergebnisse.
+6. `video_context.py` segmentiert lange Transkripte token- und zeichenbewusst,
+   mit Satz-/Sprechergrenzen, stabilen Chunk-IDs, begrenzter Überlappung,
+   Checkpoints, Antwortvalidierung und einem Rollover-Workflow. Nur
+   `message-too-large` und `context-full` dürfen einen autorisierten neuen Chat
+   auslösen; Rate-Limits, Login, CAPTCHA und belegte Browserprofile werden
+   niemals durch Chatwechsel umgangen.
+
+## Geänderte und neue Dateien
+
+- `app/backend/app/services/video_eval_pipeline.py` – rückwärtskompatible
+  Artefaktfelder `artifact_schema_version`, `rhetorical_evidence`,
+  `argument_evidence`, `provenance`.
+- `app/backend/app/services/video_eval_jobs.py` – URL-/DNS-Prüfung, yt-dlp-
+  Probe, Untertitelabruf/-normalisierung, Gemini-Fallback, A1/A2-Auswertung,
+  lokale Job-/Artefaktpersistenz, Consent und Abbruch.
+- `app/backend/app/services/video_context.py` – lange Kontextsegmente,
+  Fehlerklassifikation, Checkpoints, Merge/Deduplizierung und kontrollierter
+  Kontextwechsel.
+- `app/backend/app/routers/video_eval.py` – additive API-Routerdefinition.
+- `app/backend/scripts/video_eval_batch.py` – Linkeingänge nutzen zuerst
+  Untertitel; bei fehlendem Transkript wird kein stiller Cloud-Upload ausgelöst.
+- `app/backend/tests/test_video_eval_jobs.py` – Untertitelreihenfolge,
+  Normalisierung, Consent, fehlender Gemini-Key und Artefaktzugriff.
+- `app/backend/tests/test_video_eval_router.py` – API-Vertrag und Token-Scope.
+- `app/backend/tests/test_video_context.py` – Chunking, Overlap,
+  Fehlerklassen, Rollover, Checkpoints und Secret-Scrubbing.
+- `HISTORIE.md` – API-/Artefaktspezifikation
+  für Arbeitsstrang B.
+
+## API-Vertrag
+
+Die Endpunkte sind im Router implementiert:
+
+- `POST /api/video-eval/jobs` mit `{url, language}`
+- `GET /api/video-eval/jobs/{id}`
+- `POST /api/video-eval/jobs/{id}/consent` mit
+  `{provider: "gemini_api", approved}`
+- `POST /api/video-eval/jobs/{id}/cancel`
+- `GET /api/video-eval/jobs/{id}/artifact`
+
+Alle Job-Status-/Mutation-/Artefaktabfragen verwenden `X-DebateAI-Job-Token`.
+Die vollständigen Beispielantworten, Zustände und Mock-Hinweise stehen in
+`HISTORIE.md`.
+
+## Tests und Verifikation
+
+Erfolgreich:
+
+```text
+python -m compileall -q app/backend/app app/backend/scripts app/backend/tests
+```
+
+Zusätzliche lokale Smoke-Prüfungen decken VTT/SRT-Normalisierung, manuelle
+gegen automatische Tracks, `awaiting_consent` → `gemini_key_missing`, lokale
+Artefaktspeicherung, A1/A2-Felder und erlaubten Kontext-Rollover ab.
+
+Der Lauf von pytest wurde versucht, ist in der bereitgestellten Runtime aber
+nicht möglich, weil `pytest`/`pytest-asyncio` nicht installiert sind:
+
+```text
+python -m pytest -q -p no:cacheprovider \
+  tests/test_video_context.py tests/test_video_eval_jobs.py \
+  tests/test_video_eval_router.py tests/test_video_eval_pipeline.py \
+  tests/test_video_eval_evaluator.py
+# No module named pytest
+```
+
+Keine echten Provideraufrufe, Kosten oder Browserlogins wurden ausgelöst.
+
+## Recherchequellen
+
+Zum Implementierungszeitpunkt wurden die offiziellen Primärquellen geprüft:
+
+- yt-dlp README und Python-Embedding:
+  <https://github.com/yt-dlp/yt-dlp#usage-and-options> und
+  <https://github.com/yt-dlp/yt-dlp#embedding-yt-dlp>
+- Gemini Video Understanding:
+  <https://ai.google.dev/gemini-api/docs/video-understanding>
+- Gemini Audio/Transkription:
+  <https://ai.google.dev/gemini-api/docs/audio>
+- Gemini Files API:
+  <https://ai.google.dev/gemini-api/docs/files>
+- Gemini Structured Output:
+  <https://ai.google.dev/gemini-api/docs/structured-output>
+- Gemini Rate Limits und Preismodelle:
+  <https://ai.google.dev/gemini-api/docs/rate-limits> und
+  <https://ai.google.dev/gemini-api/docs/pricing>
+- YouTube Terms und Developer Policies für öffentliche Inhalte, Zustimmung,
+  Löschung und Downloadgrenzen:
+  <https://www.youtube.com/t/terms> und
+  <https://developers.google.com/youtube/terms/api-services-terms-of-service>
+
+Die Dokumentation weist darauf hin, dass der YouTube-URL-Weg nur öffentliche
+Videos verarbeitet, Preview-/Tariflimits sich ändern können und Files-API-
+Uploads einen eigenen Processing-/ACTIVE-/FAILED-Lifecycle sowie automatische
+Aufbewahrungs- und Löschregeln haben. Die Implementierung hält diese Grenzen
+konfigurierbar und überträgt ohne Consent keine Medien.
+
+## Grenzen
+
+- `app/main.py` registriert den neuen Router noch nicht. Das ist absichtlich,
+  damit der parallele Integrator C die gemeinsame Routerliste einmalig ändert:
+  `from app.routers import video_eval` und
+  `app.include_router(video_eval.router)`.
+- Der Gemini-Adapter nutzt für öffentliche YouTube-URLs den direkten URI-Weg.
+  Files-API-Uploads für andere Plattformen, Status-Polling, vorzeitiges
+  `files.delete` und feinere Tarif-/Kostenlimits sind als Erweiterungspunkt
+  vorbereitet, aber nicht ohne Providerfreigabe getestet.
+- Quellen werden lokal als `mentioned` erfasst. Die vorhandene
+  `debate_research`-Verifikation darf C hinter einem expliziten
+  Recherche-/Provider-Consent anschließen und danach `retrieved` sowie
+  `supports`/`contradicts` setzen.
+- Die JSON-Jobpersistenz ist für den bestehenden Single-User-Desktop gedacht.
+  Für Multiworker-Serverbetrieb braucht C eine DB-Journal-/Lockschicht oder
+  einen dedizierten Worker.
+- Der bestehende ChatGPT-Web-Adapter startet pro `generate()` einen eigenen
+  Oracle-Prozess und hält einen exklusiven Browserprofil-Lock. Deshalb ist ein
+  Chatwechsel im normalen Adapter derzeit nicht nötig; `video_context.py`
+  schützt nur tatsächlich wiederverwendete Chats und meldet einen fehlenden
+  sicheren Wechsel explizit.
+
+## Integrationsaufgaben für C
+
+1. Router in `main.py` registrieren und die vorhandene Request-/Runtime-
+   Middleware prüfen.
+2. API-Spezifikation an B übergeben; B kann den Router mit dem dokumentierten
+   Mock-Store testen.
+3. Bei aktivierter externer Quellenrecherche den bestehenden
+   `debate_research.research_claim`-Pfad mit Provider-/Datenklassen-Consent
+   verbinden und seine Ergebnisse in A2-Quellzustände mappen.
+4. Falls relationale Dauerpersistenz für Jobs/Artefakte erforderlich wird,
+   additive Alembic-Migration und Zugriffskontrolle ergänzen; vorhandene
+   `VideoEvalArtifact`-JSONs rückwärtskompatibel importieren.
+5. Provider-/Browser-Integrationstests mit sicheren Mocks und die fehlende
+   Windows-/Desktop-Abnahme getrennt durchführen.
+
+### TRACK_A_VIDEO_EVIDENCE_API.md
+
+Quelle: `HISTORIE.md`.
+
+# Arbeitsstrang A: Video-Evidence-API
+
+Stand: 2026-11-20 · Vertrag für Arbeitsstrang B
+
+Die additive Routerimplementierung liegt in `app/backend/app/routers/video_eval.py`.
+Sie wird bewusst nicht automatisch in `app/backend/app/main.py` registriert, weil
+`main.py` im parallelen Integrationsdurchgang C gemeinsam gepflegt wird. C kann
+den Router mit `app.include_router(video_eval.router)` unter dem bestehenden
+`/api`-Präfix aktivieren.
+
+## Zustände und Arbeitsschritte
+
+`status` ist einer von `queued`, `processing`, `awaiting_consent`, `completed`,
+`failed` oder `cancelled`. `stage` beschreibt den aktuellen Abschnitt:
+
+`queued` → `validate_url` → `metadata` → `subtitles` → `transcription` →
+`ai_analysis` → `source_verification` → `persistence` → `completed`.
+
+Ein öffentlicher Link wird mit yt-dlp-Metadaten geprüft. Die erste Extraktion
+setzt `skip_download`, `writesubtitles`, `writeautomaticsub` und eine begrenzte
+Sprachliste. Manuelle Untertitel werden vor automatischen Untertiteln verwendet;
+ein erfolgreiches Untertitelartefakt setzt `video_downloaded: false`. Fehlt ein
+parsebares Transkript, bleibt der Job in `awaiting_consent` und verlangt eine
+explizite Zustimmung für `gemini_api`.
+
+## Endpunkte
+
+### `POST /api/video-eval/jobs`
+
+```json
+{
+  "url": "https://www.youtube.com/watch?v=example",
+  "language": "de"
+}
+```
+
+Antwort (`202`):
+
+```json
+{
+  "id": "vjob_…",
+  "status": "queued",
+  "stage": "queued",
+  "progress": 0.0,
+  "artifact_ids": [],
+  "access_token": "…",
+  "deduplicated": false
+}
+```
+
+`access_token` ist ein lokales Job-Geheimnis. B sendet es als
+`X-DebateAI-Job-Token` bei Consent, Abbruch und Artefaktabruf; es wird nicht in
+Logs oder Artefakten gespeichert.
+
+### `GET /api/video-eval/jobs/{id}`
+
+Header: `X-DebateAI-Job-Token: …`
+
+Liefert Status, `stage`, `progress`, `error_code`, `error`, `consent`,
+`checkpoints` und verfügbare `artifact_ids`. Der Videolink wird nicht als
+zusätzlicher Prompt an einen Provider weitergereicht.
+
+Beispiel für fehlende Untertitel:
+
+```json
+{
+  "id": "vjob_…",
+  "status": "awaiting_consent",
+  "stage": "transcription",
+  "progress": 0.35,
+  "consent": {
+    "required": true,
+    "provider": "gemini_api",
+    "data_class": "video_url",
+    "message": "Kein Transkript verfügbar. Gemini-Transkription darf erst nach bewusster Freigabe starten."
+  },
+  "artifact_ids": []
+}
+```
+
+### `POST /api/video-eval/jobs/{id}/consent`
+
+Header: `X-DebateAI-Job-Token: …`
+
+```json
+{"provider": "gemini_api", "approved": true}
+```
+
+Nur `gemini_api` ist für den Fallback zugelassen. Bei Ablehnung endet der Job
+mit `consent_denied`; bei fehlendem Schlüssel mit `gemini_key_missing`. Beide
+Fehler bewahren Link, Metadaten und Checkpoints lokal.
+
+### `POST /api/video-eval/jobs/{id}/cancel`
+
+Header: `X-DebateAI-Job-Token: …`
+
+Beendet den Job sicher und erhält bereits gespeicherte Checkpoints.
+
+### `GET /api/video-eval/jobs/{id}/artifact`
+
+Header: `X-DebateAI-Job-Token: …`
+
+Liefert nur das lokale strukturierte Artefakt. Ein falsches oder fehlendes Token
+führt zu `403`; ein noch nicht abgeschlossenes Artefakt zu `409`.
+
+## Artefaktvertrag
+
+Die bestehenden Felder `video_id`, `source_url`, `transcript_segments`,
+`source_candidates`, `verified_sources`, `rhetorical_profile` und `eval_cases`
+bleiben erhalten. Link-first Jobs ergänzen:
+
+- `artifact_schema_version: 2` und `provenance` mit URL, Plattform, Abrufzeit,
+  Untertitelsprache/-format, Hash und `video_downloaded`.
+- `transcript_segments[].segment_id` als stabiler Hash aus Video, Position,
+  Zeit und Text.
+- `rhetorical_evidence` (A1) mit `analysis_id: rhetoric-v1`, Befunden,
+  Segmentbezug und messbaren Testfällen. Es aktiviert keine Promptänderung.
+- `argument_evidence` (A2) mit Claim-IDs, Sprecher-/Zeitbezug, Quell-IDs und
+  den Zuständen `mentioned`, `found`, `retrieved`, `supports`, `contradicts`,
+  `unclear`, `unavailable`.
+
+Transkript- und Untertitelinhalte werden als Daten behandelt. Die lokale Analyse
+interpretiert keine Anweisung aus einem Untertitel; Provider-Prompts müssen die
+gleiche Datenmarkierung beibehalten.
+
+## Mock-Nutzung in B
+
+B kann den Router in einer kleinen FastAPI-Testanwendung registrieren und den
+`video_eval._store` durch einen `VideoJobStore(tmp_path, gemini=FakeGemini())`
+ersetzen. Damit bleiben manuelle Untertitel, automatische Untertitel,
+Consent-Ablehnung, fehlender Schlüssel, Abbruch und Artefaktzugriff ohne echte
+Providerkosten reproduzierbar.
+
+### 2026-11-19-open-items-remediation-plan.md
+
+Quelle: `HISTORIE.md`.
+
+# Open-items Remediation Implementation Plan
+
+> For agentic workers: execute the tasks in order, keep the test ledger current, and do not claim completion without fresh evidence.
+
+## Goal
+
+Make the public checkout pass every reproducible open-item gate while keeping private evidence and production release credentials outside the repository.
+
+## Architecture and tech stack
+
+The changes touch Python unittest contracts, PowerShell release checks, GitHub Actions YAML, Markdown status records, and existing npm workspaces. No runtime dependency or product API is introduced.
+
+## Global constraints
+
+- Work directly on `main` as required by `AGENTS.md`.
+- Preserve `.ai` privacy, generated/runtime boundaries, and existing lockfiles.
+- Do not create a PR, force-push, publish a release, or invent signing/R2 data.
+- Every changed behavior gets a targeted regression check before delivery.
+
+## Tasks
+
+- [x] Keep the V3 matrix test active for authorized private evidence and skip it with an explicit reason in the public checkout.
+- [x] Pin the calibration browser job to ubuntu-24.04.
+- [x] Make the startup PowerShell contract end with explicit exit 0 after success.
+- [x] Fix stale documentation links and refresh the status register.
+- [x] Run targeted tests, builds, layout guards, and source-only checks.
+- [x] Commit to main and publish the verified tree through the authorized GitHub write path.
+- [ ] Obtain a fresh green GitHub run for the delivered SHA; an empty run/status response remains unverified.
+
+## Spec and TDD steps
+
+1. Run the V3 matrix test before the change and capture the missing-private-file failure.
+2. Add the optional-path skip, then run the same test and an authorized matrix fixture check.
+3. Pin the browser runner and make the PowerShell success exit explicit.
+4. Run layout, source-only, docs, frontend, Oracle, and audit checks.
+5. Update status documentation only from the resulting evidence.
+
+## Review focus
+
+- A missing private file must never become a false pass for an authorized file.
+- The browser runner pin must match the Playwright version in the workflow.
+- PowerShell failure paths must remain nonzero; only the completed path exits 0.
+- Status wording must distinguish local evidence from GitHub and operator gates.
+
+## Test ledger
+
+- Backend V3 matrix unit test (public and optional private path).
+- PowerShell startup/build contract tests where Windows is available.
+- Docs-site `npm test`, `npm run build`, and high-severity npm audit.
+- Oracle high-severity npm audit and frontend test/build/PWA checks.
+- `verify_repository_layout.py` and `workspace_refs.py --source-only --strict`.
+- GitHub workflow runs/statuses for the delivered commit.
+
+## Exact commands
+
+```text
+python -m unittest app.backend.tests.test_v3_matrix_coverage -v
+python app/scripts/verify_repository_layout.py
+python app/scripts/workspace_refs.py --source-only --strict
+cd app/docs-site && npm test && npm run build && npm audit --audit-level=high
+cd app/frontend && npm test && npm run build && npm run test:pwa -- --dist
+cd app/desktop/chatgpt_oracle && npm audit --audit-level=high
+```
+
+### 2026-11-20-full-open-items-remediation-plan.md
+
+Quelle: `HISTORIE.md`.
+
+# Full Open-Items Remediation Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans. Each task is test-first and ends with fresh verification.
+
+**Goal:** Implement every repository-local, reproducible item in `app/docs/OFFENE_PUNKTE.md`, record external gates that require unavailable credentials/hardware, and leave `main` synchronized locally and remotely.
+
+**Architecture:** Prefer existing contracts and smallest compatible fixes. Group changes by subsystem: docs/site, security/startup, PII/data lifecycle, cross-worker state, API limits/performance, UX/accessibility, CI/release contracts, and evaluation tooling. External operator gates remain explicit blockers rather than fabricated passes.
+
+**Tech Stack:** Python 3.12, FastAPI/SQLAlchemy/Alembic, React/TypeScript, Node test runners/Astro, GitHub Actions, existing PowerShell and repository guard scripts.
+
+**Spec:** `app/docs/OFFENE_PUNKTE.md`, `app/docs/VISION.md`, `AGENTS.md`, and the current repository tests/workflows.
+
+## Global Constraints
+
+- Work directly on `main`; never force-push, rewrite history, or create a PR.
+- Preserve `.ai`, `runtime/DebateAI/_internal`, Generated/private-data boundaries, lockfiles, and secrets.
+- Do not install new tools or dependencies; use existing packages, scripts, lockfiles, and available CI/remote-device capabilities.
+- Every behavior change gets a failing regression test before implementation.
+- No claim of signing, hardware, provider, private-ledger, human-rating, or GitHub-billing completion without the required external evidence.
+- Update `OFFENE_PUNKTE.md` only after implementation evidence exists; preserve IDs and history.
+
+## Review Focus
+
+- Missing docs paths and stale `master/source` references must fail tests before the docs/site fix.
+- Non-loopback API access without an explicit token must remain denied while loopback development remains usable.
+- Session deletion must remove remote/local/browser artifacts and PII indexes without breaking retries or reconnect replay.
+- Multi-session PII must never use only the first session's roster.
+- Cross-worker WS/REST state, pagination limits, migration races, and large reveal bodies must have bounded behavior.
+- Standard debate output must preserve turn/revision identity and stale-result handling.
+
+## Tasks
+
+### Task 1: Docs-site and active repository contract
+
+**Files:** `app/docs-site/site.test.js`, `sync-docs.mjs`, `assemble.mjs`, `astro.config.mjs`, active README/docs/site/release references, targeted docs tests.
+
+**Acceptance:** existing docs-site tests and build pass; only existing docs are linked; repository/branch/layout references use `ErpeUser/DebateAI-final-public`, `main`, and `app`; historical examples are labeled.
+
+### Task 2: Startup, LAN-origin, and release branch contracts
+
+**Files:** `app/backend/scripts/start_backend.py`, request guard tests, `app/backend/app/services/request_guard.py` if needed, GPU/quickstart scripts, `app/scripts/release_desktop.ps1`, PowerShell contract tests.
+
+**Acceptance:** default native/GPU start is loopback or token-protected, reload is explicit development-only, foreign private origin without token gets 403, release scripts are branch-aware for `main`.
+
+### Task 3: PII scope and deletion lifecycle
+
+**Files:** chat router/shield/vault/redaction, session/document deletion routers, frontend MeetingChat/App, backend/frontend tests.
+
+**Acceptance:** multi-session protection unions the selected sessions, session deletion is idempotent and queues remote cleanup, local files and sessionStorage are cleared, and global PII indexes have bounded session-aware lifecycle.
+
+### Task 4: Cross-worker state and migration serialization
+
+**Files:** orchestrator/event journal/transcription job registries, migration startup path, integration tests.
+
+**Acceptance:** either shared state or an explicit single-worker/sticky contract is enforced; concurrent startup tests produce one migration head without duplicate/lock errors.
+
+### Task 5: API pagination and bounded chat/reveal processing
+
+**Files:** list routers, schemas, frontend session hook, chat prompt/reveal middleware, API/performance tests.
+
+**Acceptance:** stable limit/cursor defaults protect sessions, transcripts, questions, directives, documents, speakers, and knowledge; prompt/reveal paths have bounded memory and deterministic truncation/413 behavior.
+
+### Task 6: Accessibility and standard debate experience
+
+**Files:** `PiiShieldCard.tsx`, `ConfirmProvider.tsx`, `DebateOverlay.tsx`, live-role orchestration/settings, frontend/backend tests.
+
+**Acceptance:** named controls and focus trap/restore pass DOM/a11y tests; standard mode provides three current alternatives and live strategic signals with revision identity.
+
+### Task 7: CI, dependency baseline, PostgreSQL, and structural gates
+
+**Files:** `.github/workflows/tests.yml`, `structure.yml`, requirements/package manifests only when existing lockfiles support it, CI contract tests/docs.
+
+**Acceptance:** PostgreSQL tests run in a visible job without skip; Sentrux policy distinguishes approved baseline from new violations; reload default and dependency/static-analysis baseline are documented and tested.
+
+### Task 8: Audio race, diagnostics, and evaluation paths
+
+**Files:** audio pipeline, diagnostics/AdminPanel, calibration/A-B UI where existing APIs support it, tests.
+
+**Acceptance:** simultaneous WS/native completions do not drop native data; diagnostics export is redacted; existing calibration API has a documented, reproducible user path or remains explicitly blocked.
+
+### Task 9: External-only gates and final ledger
+
+**Files:** `app/docs/OFFENE_PUNKTE.md` for current gaps and `app/docs/HISTORIE.md` for dated evidence only after evidence.
+
+**Acceptance:** mark only verifiable local items complete; preserve explicit blockers for signing, hardware/provider, private ledger, human ratings, billing, separate repositories, and operator cutover. Run full available test matrix, layout/source guards, review diff, commit to `main`, push through the authorized GitHub write path, and fast-forward the local checkout.
+
+### 2026-11-20-offene-punkte-plan.md
+
+Quelle: `HISTORIE.md`.
+
+# Offene Punkte 2026-11-20 Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task.
+
+**Goal:** Alle lokal behebbaren Punkte aus `app/docs/OFFENE_PUNKTE.md` auf dem aktuellen `main`-Stand umsetzen, externe Gates mit frischem Evidence/Blocker abgleichen und den Standardbranch verifizieren/synchronisieren.
+
+**Architecture:** Bestehende FastAPI/SQLAlchemy-, React/Vite- und Docs-Site-Verträge bleiben erhalten. Änderungen werden in begrenzten, rückwärtskompatiblen Schichten vorgenommen: query-/memory-budgets im Backend, idempotente Cleanup-/TTL-Lifecycle, reproduzierbare Analyse-/Evidence-Dokumentation und konsistente Produktclaims.
+
+**Tech Stack:** Python 3.12+, FastAPI, SQLAlchemy/Alembic, unittest/pytest, React/Vite, Node test runner, Astro/Starlight, GitHub Actions.
+
+**Spec:** `app/docs/OFFENE_PUNKTE.md` (aktueller Backlog; externe Operator-/Hardware-Gates bleiben als solche ausgewiesen).
+
+## Global Constraints
+
+- Direkte Arbeit auf `main`; kein Force-Push, kein History-Rewrite, kein Feature-Branch.
+- Vor Pull/Push `python app/scripts/github_sync.py --pull --strict` ausführen; wenn CLI-Auth fehlt, GitHub-Connector/`git ls-remote` als getrennte Evidence dokumentieren.
+- Keine Secrets, echten Providerdaten oder Produktionsartefakte in den Tree schreiben.
+- Bestehende API-Kompatibilität und sichere Default-Limits beibehalten.
+
+## Review Focus
+
+- Große Chat-/Reveal-Payloads dürfen weder unkontrolliert im SQL-Query noch doppelt im Worker wachsen.
+- Session-Löschung muss lokale, Browser- und externe Artefakte idempotent behandeln und Fehler sichtbar machen.
+- Globale Journale/PII-Indizes dürfen nach TTL/LRU-Sweep nicht unbounded wachsen oder zulässiges Reconnect-Replay verlieren.
+- Cursor-/Limit-Parameter müssen stabile Tie-Breaker und kompatible Defaults haben.
+- Backlog-Status darf nur mit frischen Commit-/Test-/CI-/Device-Belegen aktualisiert werden.
+
+### Task 1: Discovery, ledger und Evidence
+
+**Files:**
+- Create: `.superpowers/sdd/2026-11-20-offene-punkte/progress.md`
+- Create: `docs/superpowers/plans/2026-11-20-offene-punkte-plan.md`
+- Modify: `app/docs/OFFENE_PUNKTE.md`
+
+- [ ] Vollständiges Ledger aller 37 `### P*`-Einträge mit `status_before`, `status_after`, `evidence_or_blocker` erstellen.
+- [ ] Aktuellen lokalen SHA, Remote-Head, GitHub-Repo-Metadaten, Actions-Runs und Desktop-Gerät getrennt belegen.
+- [ ] Nach jeder Changeset-/Test-/CI-Verifikation die passenden Statuszeilen und Header aktualisieren.
+
+### Task 2: Backend query/memory budgets (P2.8, P2.10)
+
+**Files:**
+- Modify: `app/backend/app/routers/chat.py`
+- Modify: `app/backend/app/routers/{sessions,transcripts,questions,knowledge,documents,directives,speakers}.py`
+- Test: `app/backend/tests/test_chat_prompt.py`, passende Router-/Limit-Tests
+
+- [ ] Failing tests für SQL-seitige Priorisierung, sichere Obergrenzen, stabile Cursor/Tie-Breaker und kontrollierte 413/Truncation schreiben.
+- [ ] Implementieren und vollständige Backend-Regression ausführen.
+
+### Task 3: Cleanup outbox/retry and lifecycle bounds (P1.14, P2.12)
+
+**Files:**
+- Modify: `app/backend/app/routers/sessions.py`
+- Modify: `app/backend/app/services/{pii/vault.py,pii/redaction.py,transcription_jobs.py,ws_event_stream.py}`
+- Create/Modify: migrations/models/tests as needed
+
+- [ ] Failing tests für idempotente Provider-Delete-Outbox/Retry, Session-Cleanup, TTL/LRU und zulässiges Replay.
+- [ ] Implementieren, ohne externe Provider zu erzwingen; Status/Audit muss sichtbar bleiben.
+
+### Task 4: Migration and single-worker safety (P1.15, P1.16, P2.11)
+
+**Files:**
+- Modify: `app/backend/app/main.py`, `app/backend/scripts/start_backend.py`, request-guard tests/docs
+- Test: startup/migration/request-guard suites
+
+- [ ] Fehler-/Retry-Matrix für parallele Migrationen und LAN-Origin/Bind-Defaults ergänzen.
+- [ ] Bestehende Single-worker-Verträge und Advisory-Lock-Logik explizit verifizieren.
+
+### Task 5: Product claims, language contract, static-analysis baseline (P1.5, P2.4, P3.4)
+
+**Files:**
+- Modify: `app/site/index.html`, `app/docs/{HANDBUCH.md,VISION.md}`, runtime/seed/frontend copy as needed
+- Create: `app/docs/static-analysis-baseline.md`, config/scripts/tests as needed
+
+- [ ] Claims als lokal/cloud-gebunden/experimentell/ungeprüft markieren und Link-/Asset-Scan grün halten.
+- [ ] Ein verbindlicher Sprach-/Provider-Default wird in Code, Seed, UI und Doku synchronisiert.
+- [ ] Read-only Knip/deptry/dependency-cruiser Baseline mit expliziten Ausnahmen und Report erzeugen.
+
+### Task 6: Verification and delivery
+
+- [ ] Backend gezielte Tests plus vollständige verfügbare Suiten ausführen.
+- [ ] Docs-Site `npm ci`, `npm test`, `npm run build`; Frontend `npm ci`, `npm test`, `npm run build` soweit verfügbar.
+- [ ] Remote Actions exakt auf Ziel-SHA prüfen; Windows-Desktop-Smoke/Release-Gates mit echter Ausgabe durchführen, soweit Gerät/Signatur/Provider vorhanden.
+- [ ] `github_sync.py --pull --strict` (oder Auth-Blocker) dokumentieren, committen, `git push origin main`, danach lokal/remote/origin-Refs und Clean-Status getrennt verifizieren.
+
+### 2026-11-19-open-items-remediation-design.md
+
+Quelle: `HISTORIE.md`.
+
+# Open-items remediation design
+
+Stand: 2026-11-19
+
+## Intent and scope
+
+Move the open-items register to a reproducible acceptance state. Fix issues that
+are reproducible in the public checkout and keep external release gates explicit.
+
+Goals:
+
+- The backend suite must not require private evidence in the public checkout.
+- The Playwright lab must use a supported, pinned GitHub runner.
+- The Windows startup contract must return exit code 0 after successful checks.
+- Documentation must point to the canonical status file and fresh evidence.
+
+External gates remain blocked until a real Windows device, provider accounts,
+publisher identity, and production R2 credentials are supplied. No test key or
+invented release URL is acceptable.
+
+## Approaches
+
+Re-adding the private matrix would violate the repository privacy contract;
+removing its tests would lose local coverage. The selected approach keeps the
+matrix checks active when an authorized evidence file exists and skips them with
+a clear reason in the public checkout. The browser job is pinned to
+ubuntu-24.04 because the current Playwright version rejects ubuntu-26.04.
+
+## Acceptance criteria
+
+- AC-01 public checkout skips the private matrix checks without FileNotFoundError.
+- AC-02 an authorized matrix file still runs both checks.
+- AC-03 calibration-browser uses ubuntu-24.04.
+- AC-04 startup test exits 0 after success.
+- AC-05 docs and Oracle npm audits report zero high/critical findings.
+- AC-06 status and README use the canonical open-items path.
+- AC-07 hardware, signature, and R2 gates are marked BLOCKED, not passed.
+- AC-08 layout and source-only guards remain green.
+- AC-09 targeted tests and builds are reproducible.
+- AC-10 the delivered commit is verified on main with no feature branch or PR.
+
+## Six phases
+
+1. Discovery and capability preflight.
+2. Research and reuse of existing tests, guards, and lockfiles.
+3. Specification, measurable acceptance criteria, and atomic plan.
+4. Minimal implementation on main.
+5. Adversarial functional, security, and layout verification.
+6. Delivery with exact commit and fresh GitHub evidence.

@@ -86,6 +86,7 @@ REQUIRED_FILES = frozenset(
         "app/desktop/debateai.spec",
         "app/desktop/release_signing_keys.json",
         "app/site/index.html",
+        "app/docs/HANDBUCH.md",
         "app/docs-site/worker.js",
         "app/docs-site/package-lock.json",
         "app/scripts/workspace_refs.py",

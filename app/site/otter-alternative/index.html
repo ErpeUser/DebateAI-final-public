@@ -168,12 +168,12 @@
           tab or system audio directly in the browser -- no bot joins the
           meeting, so it works with Zoom, Google Meet, Teams, or any meeting
           app. Voice activity detection and
-          <a href="/docs/architecture/#the-live-call-path">speaker diarization run locally</a>,
+          <a href="/docs/#the-live-call-path">speaker diarization run locally</a>,
           building a live speaker-attributed transcript.
         </p>
         <p>
           While the call is still happening, a crew of
-          <a href="/docs/architecture/">AI agents</a> reads the growing transcript
+          <a href="/docs/">AI agents</a> reads the growing transcript
           and pushes questions worth asking, responses to objections,
           opportunities, and action items -- the kind of live assistance Otter
           reserves for Enterprise sales teams, included here for everyone at
@@ -287,7 +287,7 @@
           to a self-hosted OpenAI-compatible server on your own machine or
           LAN -- a fully local deployment makes no outbound calls at all.
           Details are in the
-          <a href="/docs/architecture/#the-live-call-path">audio pipeline docs</a>.
+          <a href="/docs/#the-live-call-path">audio pipeline docs</a>.
         </p>
         <h3>When the value arrives</h3>
         <p>
@@ -342,7 +342,7 @@
           Setup is a git clone and <code>docker compose up --build</code>,
           plus a Gemini API key (or a local ONNX Whisper/Parakeet model for
           fully offline transcription). The
-          <a href="/docs/quickstart/">quickstart</a> is honest about the
+          <a href="/docs/">quickstart</a> is honest about the
           friction: first start builds images and downloads models, so give
           it a few minutes.
         </p>

@@ -19,17 +19,10 @@ cpSync(join(root, "dist"), join(out, "docs"), { recursive: true });
 
 // Sidebar reading order first (matches astro.config.mjs), then any new docs.
 const DOCS_ORDER = [
-  "DEBATEAI_CANONICAL_INDEX",
-  "quickstart",
-  "architecture",
-  "websocket-protocol",
-  "rest-api",
-  "configuration",
-  "deployment",
-  "releasing",
-  "generated-workspace",
-  "github-repository",
-  "windows-final-recovery",
+  "HANDBUCH",
+  "VISION",
+  "OFFENE_PUNKTE",
+  "HISTORIE",
 ];
 const docsSrc = join(root, "..", "docs");
 const all = readdirSync(docsSrc)
@@ -43,7 +36,7 @@ const sections = names.map((name) => {
   const text = readFileSync(join(docsSrc, `${name}.md`), "utf8")
     .replace(/^<p align="center">[\s\S]*?<\/p>\s*/, "")
     .trim();
-  const page = name === "DEBATEAI_CANONICAL_INDEX" ? "" : `${name}/`;
+  const page = name === "HANDBUCH" ? "" : `${name.toLowerCase()}/`;
   return `<!-- Canonical page: /docs/${page} -->\n\n${text}`;
 });
 writeFileSync(

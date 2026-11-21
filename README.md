@@ -18,14 +18,14 @@ the source that uses them.
 - .git - small pointer to the protected Git history in the adjacent Coding audit (do not delete that audit)
 - app/scripts/workspace_refs.py - stable path auditor (run with --strict)
 - Start-DebateAI.cmd - starts the installed release or verifies and installs a signed update; developer source-build fallback when no update channel is configured
-- app/docs/generated-workspace.md - recovery and build documentation
+- app/docs/HANDBUCH.md - technical setup, operation and release handbook
 - app/docs/VISION.md - owner-approved product vision
 - app/docs/OFFENE_PUNKTE.md - maintained current open items and verification gaps
 - app/docs/HISTORIE.md - consolidated historical visions, decisions and provenance
 - .github/workflows/ - root GitHub Actions (including the blocking repository-layout check)
 - .github/CODEOWNERS, .github/dependabot.yml - ownership and dependency-update policy
 - app/scripts/github_sync.py - default-branch pull and incoming-branch/PR audit
-- app/docs/github-repository.md - GitHub settings, CI, structure gate and known billing limitations
+- app/docs/HANDBUCH.md - repository, CI, structure gate and release contract
 - %LOCALAPPDATA%/DebateAI/ - private user sessions, settings and database
   (outside this repository and never considered build cache)
 
@@ -45,7 +45,7 @@ build toolchain). Both paths install only after a passing smoke test.
 For the removable workspace audit run
 `python app/scripts/workspace_refs.py --strict`; add `--initialize
 --write-report` only if you want to regenerate optional cache folders.
-See `app/docs/generated-workspace.md` for safeguards and limitations.
+See `app/docs/HANDBUCH.md` for safeguards and limitations.
 Legacy pointer checkouts remain readable during migration, but new checkouts
 use the normal internal `.git/` directory.
 
@@ -53,7 +53,7 @@ use the normal internal `.git/` directory.
 
 - Repository layout: `python app/scripts/verify_repository_layout.py` (read-only)
 - CI-compatible source checkout: `python app/scripts/workspace_refs.py --source-only --strict`
-- GitHub config: `app/docs/github-repository.md` (public repository and direct-main workflow)
+- GitHub config: `app/docs/HANDBUCH.md` (public repository and direct-main workflow)
 - Python 3.12, Node.js 24
 - Backend: cd app/backend; python -m pip install -r requirements.txt
 - Frontend: cd app/frontend; npm ci; npm test; npm run build

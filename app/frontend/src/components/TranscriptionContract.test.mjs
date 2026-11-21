@@ -27,7 +27,7 @@ test("local fit guidance names the experimental local captioner", async () => {
 });
 
 test("docs and release notes expose the same language contract", async () => {
-  const configuration = await read("../../../docs/configuration.md");
+  const configuration = await read("../../../docs/HANDBUCH.md");
   const releaseNotes = await read("../../../backend/app/release_notes.py");
 
   assert.match(configuration, /desktop\/runtime default is German \(`de`\)/i);

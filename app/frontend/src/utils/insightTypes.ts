@@ -43,7 +43,7 @@ export const BUILTIN_TYPE_META: Record<
 // be derived from the rows: a cycle with one row per section and a history of
 // mostly action cues both used to render as a second "Action Cue" group.
 // The live chips keep the short plurals above (Strategic, History; see
-// docs/agents.md); the post-call group headings get these fuller names.
+// HANDBUCH.md); the post-call group headings get these fuller names.
 const SIGNAL_GROUP_LABELS: Record<string, string> = {
   signal: "Strategische Signale",
   signal_history: "Signalverlauf",

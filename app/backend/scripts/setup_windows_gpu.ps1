@@ -5,7 +5,7 @@ Docker cannot pass an AMD GPU through to Linux containers on Windows, so the
 backend must run natively; Postgres stays in Docker. AMD's official
 PyTorch-on-Windows (ROCm) wheels require Python 3.12 and Adrenalin driver
 26.2.2+, and support RDNA4 GPUs such as the Radeon RX 9070 / 9070 XT.
-See docs/deployment.md ("AMD GPU on Windows").
+See docs/HANDBUCH.md ("AMD GPU on Windows").
 
 Usage (from the repo root):
   .\backend\scripts\setup_windows_gpu.ps1        # one-time setup (idempotent)

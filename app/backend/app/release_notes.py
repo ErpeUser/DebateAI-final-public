@@ -3,7 +3,7 @@
 Single source of truth for the running application's version. It lives in the
 `app` package so every delivery path (Docker image, desktop bundle, local dev)
 ships it automatically. Update it as part of every release (see
-docs/releasing.md): bump APP_VERSION and prepend a matching entry to
+docs/HANDBUCH.md): bump APP_VERSION and prepend a matching entry to
 RELEASE_NOTES.
 
 Bodies are GitHub-flavored markdown rendered in the Admin -> About tab. Keep

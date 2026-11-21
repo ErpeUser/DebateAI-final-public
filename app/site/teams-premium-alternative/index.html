@@ -195,12 +195,12 @@
           audio directly in the browser -- no bot joins the meeting, so it
           works with Teams, Zoom, Google Meet, Webex, or any app at all.
           Voice activity detection and
-          <a href="/docs/architecture/#the-live-call-path">speaker diarization run locally</a>,
+          <a href="/docs/#the-live-call-path">speaker diarization run locally</a>,
           building a live speaker-attributed transcript as you talk.
         </p>
         <p>
           While the call is still happening, a crew of
-          <a href="/docs/architecture/">nine seeded agents</a> works on that
+          <a href="/docs/">nine seeded agents</a> works on that
           transcript. An audio gateway produces interim transcription. Five
           live insight agents run on their own schedules: a consolidated
           analyst every 40 seconds for questions, observations, opportunities,
@@ -430,7 +430,7 @@
           to a self-hosted OpenAI-compatible server on your own machine or
           LAN; select the experimental local captioner when interim captions
           are needed so a fully local deployment calls out to nobody. Details are in the
-          <a href="/docs/architecture/#the-live-call-path">audio pipeline docs</a>.
+          <a href="/docs/#the-live-call-path">audio pipeline docs</a>.
         </p>
         <h3>What we are worse at</h3>
         <p>
@@ -475,7 +475,7 @@
           <code>docker compose up --build</code>. Add a Gemini or OpenAI API
           key -- or run the whole stack locally: ONNX transcription, a
           self-hosted model for the agents, and the on-device captioner,
-          with Privacy First on. The <a href="/docs/quickstart/">quickstart</a> is
+          with Privacy First on. The <a href="/docs/">quickstart</a> is
           honest about the friction: the first start builds images and
           downloads models, so give it a few minutes.
         </p>

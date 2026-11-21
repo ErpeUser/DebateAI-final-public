@@ -10,7 +10,7 @@ current runtime instructions.
   files, secrets, saved sessions or customizable playbooks.
 - Retain the live Python/Node/Desktop entry points, APIs, migrations, release
   contracts and source assets. Static scanner results require verification.
-- Follow docs/DEBATEAI_CANONICAL_INDEX.md, docs/releasing.md and
+- Follow docs/HANDBUCH.md and
   docs/OFFENE_PUNKTE.md for current open gates and docs/HISTORIE.md for dated evidence.
 - Run targeted tests and fresh builds. Do not assert a signed release without
   a new binary, verified signature and smoke test.

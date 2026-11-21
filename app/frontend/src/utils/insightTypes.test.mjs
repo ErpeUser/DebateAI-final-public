@@ -73,7 +73,7 @@ test("signal cards keep their section badge even though the group does not", asy
 });
 
 test("the live chips keep the short plurals the docs name", async () => {
-  // QuestionList builds its chips from the plural; docs/agents.md documents
+  // QuestionList builds its chips from the plural; HANDBUCH.md documents
   // them as Strategic and History, so the fuller group headings must not
   // leak into the live call strip.
   const { BUILTIN_TYPE_META } = await load();

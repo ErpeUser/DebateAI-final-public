@@ -1,7 +1,7 @@
 # DebateAI - repository agent guidance
 
 Current versioned source lives under app/, NOT under historical source/.
-See app/README.md and app/docs/DEBATEAI_CANONICAL_INDEX.md for detailed
+See app/README.md and app/docs/HANDBUCH.md for detailed
 implementation context. Canonical installed bundle location is runtime/DebateAI/;
 it was restored from the source-only audit and passes the bundle smoke test.
 
