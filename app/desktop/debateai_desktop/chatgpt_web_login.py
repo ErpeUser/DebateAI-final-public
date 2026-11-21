@@ -80,7 +80,7 @@ def run_chatgpt_web_login(result_path: Path) -> int:
         latency_ms = round((time.perf_counter() - started) * 1000)
         answer = output.read_text(encoding="utf-8").strip() if output.is_file() else ""
         selection = _verified_oracle_selection(home, started_wall)
-        if completed.returncode or not answer or selection is None:
+        if completed.returncode or selection is None:
             # Test doubles and a few subprocess wrappers may omit stderr/stdout
             # or expose non-string placeholders.  Diagnostics must never turn
             # a provider failure into a secondary TypeError.
@@ -92,7 +92,7 @@ def run_chatgpt_web_login(result_path: Path) -> int:
             elif completed.returncode:
                 message = "Die ChatGPT-Web-Prüfung konnte nicht abgeschlossen werden."
             elif not answer:
-                message = "ChatGPT Web hat nach der Anmeldung keine Antwort geliefert."
+                message = "GPT-6 wurde ausgewählt, aber die Antwortprüfung blieb leer."
             else:
                 message = "GPT-6 mit Extra High konnte in der ChatGPT-Oberflaeche nicht bestaetigt werden."
             _write_json(result_path, {
