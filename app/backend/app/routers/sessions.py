@@ -28,6 +28,7 @@ from app.services import transcription_jobs
 from app.services.agents.orchestrator import get_live_orchestrator, live_debate_snapshot
 from app.services.audio_echo import build_echo_cancelled_mix
 from app.services.briefing_synthesis import agent_model_id
+from app.services.cursor_pagination import InvalidCursor, decode_cursor, encode_cursor
 from app.services.gemini_files import delete_uploaded_file
 from app.services.llm import LLMModelNotSelected
 from app.services.meeting_context import normalize_meeting_type
@@ -42,7 +43,7 @@ from app.services.speaker_revalidation import (
 )
 from app.services.token_usage import summarize_usage
 from app.services.ws_event_stream import forget_session as forget_event_journal
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
 from sqlalchemy import delete, select
@@ -86,13 +87,37 @@ async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)
 
 @router.get("", response_model=list[SessionOut])
 async def list_sessions(
+    response: Response,
     limit: int = Query(200, ge=1, le=1000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
-        select(Session).order_by(Session.created_at.desc(), Session.id).limit(limit)
-    )
-    return result.scalars().all()
+    from sqlalchemy import and_, or_
+
+    statement = select(Session).order_by(Session.created_at.desc(), Session.id)
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "sessions")
+            marker_created = datetime.fromisoformat(str(marker["created_at"]))
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid session cursor") from None
+        statement = statement.where(
+            or_(
+                Session.created_at < marker_created,
+                and_(Session.created_at == marker_created, Session.id > marker_id),
+            )
+        )
+    result = await db.execute(statement.limit(limit + 1))
+    rows = list(result.scalars().all())
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    if response is not None and has_more and rows:
+        last = rows[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "sessions", created_at=last.created_at.isoformat(), id=str(last.id)
+        )
+    return rows
 
 
 @router.get("/live/debate-overlay")
@@ -165,16 +190,44 @@ async def update_session(
 @router.get("/{session_id}/segments", response_model=list[CallSegmentOut])
 async def list_segments(
     session_id: uuid.UUID,
+    response: Response,
     limit: int = Query(500, ge=1, le=2000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    from sqlalchemy import and_, or_
+
+    statement = (
         select(CallSegment)
         .where(CallSegment.session_id == session_id)
         .order_by(CallSegment.segment_number, CallSegment.id)
-        .limit(limit)
     )
-    return result.scalars().all()
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "segments")
+            marker_number = int(marker["segment_number"])
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid segment cursor") from None
+        statement = statement.where(
+            or_(
+                CallSegment.segment_number > marker_number,
+                and_(
+                    CallSegment.segment_number == marker_number,
+                    CallSegment.id > marker_id,
+                ),
+            )
+        )
+    result = await db.execute(statement.limit(limit + 1))
+    rows = list(result.scalars().all())
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    if response is not None and has_more and rows:
+        last = rows[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "segments", segment_number=last.segment_number, id=str(last.id)
+        )
+    return rows
 
 
 @router.get("/{session_id}/token-usage", response_model=TokenUsageSummaryOut)

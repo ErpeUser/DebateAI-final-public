@@ -5,6 +5,7 @@ from app.database import get_db
 from app.models import Session, Speaker, TranscriptEntry, TranscriptEntryRevision
 from app.schemas import TranscriptEntryOut, TranscriptEntryRevisionOut
 from app.services.agents.orchestrator import get_live_orchestrator
+from app.services.cursor_pagination import InvalidCursor, decode_cursor, encode_cursor
 from app.services.pii import shield
 from app.services.provisional_transcripts import (
     list_visible_provisional_revisions,
@@ -15,7 +16,7 @@ from app.services.transcript_revisions import (
     UNCHANGED,
     apply_manual_transcript_revision,
 )
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -63,18 +64,54 @@ async def create_transcript(
 @router.get("", response_model=list[TranscriptEntryOut])
 async def list_transcripts(
     session_id: uuid.UUID,
+    response: Response,
     limit: int = Query(500, ge=1, le=5000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    from sqlalchemy import and_, or_
+
+    statement = (
         select(TranscriptEntry)
         .where(TranscriptEntry.session_id == session_id)
         .order_by(TranscriptEntry.sequence, TranscriptEntry.id)
-        .limit(limit)
     )
-    entries = list(result.scalars().all())
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "transcripts")
+            marker_sequence = int(marker["sequence"])
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid transcript cursor") from None
+        statement = statement.where(
+            or_(
+                TranscriptEntry.sequence > marker_sequence,
+                and_(
+                    TranscriptEntry.sequence == marker_sequence,
+                    TranscriptEntry.id > marker_id,
+                ),
+            )
+        )
+    result = await db.execute(
+        statement.limit(limit + 1)
+    )
+    durable = list(result.scalars().all())
+    has_more = len(durable) > limit
+    entries = durable[:limit]
+    if response is not None and has_more and entries:
+        last = entries[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "transcripts", sequence=last.sequence, id=str(last.id)
+        )
     remaining = max(0, limit - len(entries))
-    provisional = (await list_visible_provisional_revisions(db, session_id))[:remaining]
+    # Provisional rows are a live-only tail. They are included on the initial
+    # page for compatibility, but never repeated on a later durable cursor
+    # page.
+    provisional = (
+        []
+        if cursor
+        else (await list_visible_provisional_revisions(db, session_id))[:remaining]
+    )
     next_sequence = max((entry.sequence for entry in entries), default=0)
     return [
         *entries,
