@@ -131,10 +131,10 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
           <button
             type="button"
             onClick={startLogin}
-            disabled={busy || status.login_state === "pending"}
+            disabled={busy || status.login_state === "pending" || Boolean(status.ready)}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white disabled:opacity-40"
           >
-            {status.login_state === "pending" ? "Anmeldung läuft ..." : "Mit Google anmelden"}
+            {status.login_state === "pending" ? "Anmeldung läuft ..." : status.ready ? "Anmeldung gespeichert" : "Mit Google anmelden"}
           </button>
         )}
         {status?.configured && (
