@@ -1,9 +1,29 @@
+import json
 import unittest
+from types import SimpleNamespace
 
-from app.services.agents.opportunity_specialist import _parse_mappings
+from app.services.agents.opportunity_specialist import (
+    _build_opportunities_json,
+    _parse_mappings,
+)
 
 
 class ParseMappingsTests(unittest.TestCase):
+    def test_opportunity_json_is_compact_and_bounded(self):
+        questions = [
+            SimpleNamespace(
+                id=f"id-{index}",
+                question="Opportunity " + ("x" * 180),
+                rationale="Rationale " + ("y" * 180),
+                source_context="Context " + ("z" * 180),
+            )
+            for index in range(20)
+        ]
+        rendered = _build_opportunities_json(questions, budget=900)
+        self.assertLessEqual(len(rendered), 900)
+        self.assertIsInstance(json.loads(rendered), list)
+        self.assertNotIn(": ", rendered)
+
     def test_bare_json_array(self):
         raw = '[{"id": "abc", "offering_match": "match"}]'
         self.assertEqual(_parse_mappings(raw), [{"id": "abc", "offering_match": "match"}])

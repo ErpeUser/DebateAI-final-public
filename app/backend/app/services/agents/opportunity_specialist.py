@@ -24,17 +24,60 @@ from app.services.meeting_context import build_meeting_context_text, format_prom
 logger = logging.getLogger(__name__)
 
 
-def _build_opportunities_json(questions: list[Question]) -> str:
-    """Format unmapped opportunities for the prompt."""
-    items = []
-    for q in questions:
-        items.append({
+OPPORTUNITIES_JSON_BUDGET_CHARS = 12000
+
+
+def _build_opportunities_json(
+    questions: list[Question],
+    budget: int = OPPORTUNITIES_JSON_BUDGET_CHARS,
+) -> str:
+    """Format opportunities as compact, bounded JSON for the model prompt.
+
+    Opportunity text is user/model controlled and the query can return many
+    rows. Keep the contract as a JSON array while admitting the newest rows
+    first so a large backlog cannot overflow a ChatGPT Web context window.
+    """
+    items = [
+        {
             "id": str(q.id),
             "opportunity": q.question,
             "rationale": q.rationale,
             "source_context": q.source_context,
-        })
-    return json.dumps(items, indent=2)
+        }
+        for q in questions
+    ]
+    budget = max(64, int(budget))
+    rendered = json.dumps(items, ensure_ascii=False, separators=(",", ":"))
+    if len(rendered) <= budget:
+        return rendered
+
+    kept: list[dict] = []
+    for item in reversed(items):
+        candidate = [item, *kept]
+        candidate_rendered = json.dumps(
+            candidate,
+            ensure_ascii=False,
+            separators=(",", ":"),
+        )
+        if len(candidate_rendered) > budget:
+            if not kept:
+                # Keep one opportunity when a single row is unusually large.
+                clipped = {
+                    key: (value[: max(0, budget // 4)] + "…")
+                    if isinstance(value, str)
+                    else value
+                    for key, value in item.items()
+                }
+                candidate_rendered = json.dumps(
+                    [clipped],
+                    ensure_ascii=False,
+                    separators=(",", ":"),
+                )
+                if len(candidate_rendered) <= budget:
+                    return candidate_rendered
+            break
+        kept = candidate
+    return json.dumps(kept, ensure_ascii=False, separators=(",", ":"))
 
 
 def _parse_mappings(raw: str) -> list | None:
