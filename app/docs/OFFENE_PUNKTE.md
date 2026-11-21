@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `5579338e106161e15ef16883d8a8db45b3e6dff5` (GitHub-Branch-Readback nach dem Modus- und Dokumentations-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (381/381), der bestehende Response-Vertrag (7/7), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `7a149b0b60261dace3cb4cd0376b6751c6faa9ff` (GitHub-Branch-Readback nach dem No-Retention-Code-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (382/382), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -18,7 +18,7 @@ Die folgenden stabilen IDs ordnen jeden relevanten Visionsabschnitt mindestens e
 | V-06 | §§ 2, 7 ChatGPT Web/Gemini Web und lokaler Erstpfad | IMPLEMENTED_UNVERIFIED | `routers/chatgpt_web.py`, `routers/gemini_web.py`, `services/debate_research.py`, Desktop-Bridges; Adapterverträge vorhanden. Authentifizierte Provider- und Ausfallabnahme fehlt (P0.3). |
 | V-07 | § 7 „Jetzt recherchieren“, Stop/Replace/Priorisieren | PARTIAL | Voice-/UI-Befehl und Research-Lanes existieren, aber kein vollständiger nachgewiesener Cancel/Replace/Reuse-End-to-End-Vertrag ohne lokalen Pfadstopp. |
 | V-08 | §§ 7, 20 adaptive Denkintensität/Providerwechsel | EXPERIMENTAL | `services/adaptive_reasoning.py` plus `test_adaptive_reasoning.py`; zuverlässige Web-Steuerbarkeit ist ausdrücklich noch zu prüfen. |
-| V-09 | § 8 Sitzungsende: Speichern oder komplett ohne Speicherung | PARTIAL | Audio-/Transkript-Retention und lokaler Cleanup sind vorhanden (`test_audio_cleanup_preservation.py`, `test_audio_failure_preservation.py`), aber die zwei mutually-exclusive UI-Optionen und Provider-Delete-Abnahme fehlen (P1.14). |
+| V-09 | § 8 Sitzungsende: Speichern oder komplett ohne Speicherung | PARTIAL | Vollständiger Abschluss, analyseloser Abschluss und der neue explizite No-Retention-Pfad verwenden `ActiveCallView`, `audio_handler._requested_drain_mode` und den bestehenden `DELETE /api/sessions/{id}`-Cleanup. Backend-/UI-Verträge laufen; Provider-Delete- und reale End-to-End-Abnahme fehlen (P1.14). |
 | V-10 | § 9 Windows-Dashboard und Antwort-Hierarchie | IMPLEMENTED_UNVERIFIED | `App.tsx`, `DebateCoachPanel.tsx`, `useWebSocket.ts`; Frontend-Komponententests grün. WebView2/DPI/zweiter Monitor und reale Nutzbarkeit fehlen (P0.3). |
 | V-11 | §§ 10–11 Onboarding, Modell-/Sprachvergleich | PARTIAL | Calibration-/Admin-Lab und `test_calibration_*` vorhanden; vollständiger blinder A/B-/WER/CER-/RTF-Nachweis fehlt (P1.10/P2.3). |
 | V-12 | §§ 13–14 Audio-/Video-Labor und profilgebundene Optimierung | EXPERIMENTAL | `video_eval_*`, Calibration- und Optimierungsdienste vorhanden; Baseline→gezielte Änderung→Regression→Freigabe ist nicht vollständig nachgewiesen. |
@@ -151,6 +151,69 @@ Der vorhandene `NewSessionModal`-Selector und die Browser-Storage-Muster der Fro
 **10. Codex-Desktop-Handoff bei Blockern**
 
 Auf einem autorisierten Windows-Gerät den Desktop-Build starten, „Neue Sitzung“ öffnen, beide Modi nacheinander wählen, Sitzungen erstellen, den Dialog erneut öffnen und die Vorauswahl sowie den tatsächlich an den Backend-Create-Request übergebenen `meeting_type` prüfen. Zusätzlich einen blockierten/privaten Browser-Speicher simulieren; erwartetes Ergebnis ist weiterhin ein erstellbarer Dialog mit „Überzeugend“ als Standard.
+
+### V-09 – Sitzungsende mit Speicherung oder vollständigem No-Retention-Pfad
+
+**Priorität:** P0
+**Status:** PARTIAL
+**Vision-Referenz:** § 8, ergänzt durch §§ 16 und 17
+
+**1. Verbindliches Ziel**
+
+Der Nutzer kann einen normalen Abschluss mit dauerhaftem Transkript und optionaler Aufnahme wählen oder ausdrücklich „Komplett ohne Speicherung/Verbesserung“ fortfahren. Diese zweite Wahl muss die normale Aufbewahrung für genau diese Sitzung überstimmen: Nach dem Abschluss dürfen deren Transkript, Aufnahme, Argumentextrakte, Sitzungs-Token und lokale Chat-/Optimierungsartefakte nicht als Sitzung zurückbleiben. Die bestehende, vollständige Löschroutine muss auch lokale Audiodateien und zugängliche Provider-Dateien abarbeiten.
+
+**2. Konkretes Nutzungsbeispiel**
+
+Während einer aktiven Sitzung öffnet der Nutzer das Ende-Menü und wählt „Komplett ohne Speicherung/Verbesserung“. Der Backend-Socket führt nur den notwendigen minimalen Abschluss ohne späte Analyse aus. Erst wenn der Abschluss bestätigt ist, löscht der Client die Sitzung über `DELETE /api/sessions/{id}`; danach verschwindet sie aus der Sitzungsliste. Bei einem langsamen oder nicht bestätigten Abschluss bleibt die Löschung aus und der Nutzer erhält keinen falschen Erfolgsstatus.
+
+**3. Tatsächlicher Ist-Zustand**
+
+- `app/frontend/src/components/ActiveCall/ActiveCallView.tsx` bietet weiterhin den normalen vollständigen Abschluss, „Ohne Auswertung beenden“ (Transkript bleibt) und jetzt zusätzlich die klar bezeichnete No-Retention-Aktion mit `onEndCall("minimal")`.
+- `app/backend/app/ws/audio_handler.py` akzeptiert `minimal` nun ausdrücklich als absichtlichen Stop-Modus. Der vorhandene Minimalpfad stoppt Analyse-Tasks, leert die Transkriptionswarteschlange und markiert die Sitzung erst danach abgeschlossen.
+- `app/frontend/src/App.tsx` wartet bei `minimal` auf die Abschlussbestätigung und ruft anschließend die bestehende Löschroutine auf. Diese löscht über Kaskaden die Sitzungsdaten, räumt den Audio-Unterordner, vergisst lokale Journale/PII-Sitzungszustände und fordert Provider-Dateilöschungen für gespeicherte Dokumente an.
+- Unabhängige Nachweise: `test_audio_handler.py` prüft die akzeptierte `minimal`-Anforderung und den analyselosen Finalisierungspfad; `ActiveCallView.test.mjs` prüft die drei getrennten Aktionen und die sichtbare No-Retention-Beschriftung.
+
+**4. Genaue Abweichung**
+
+Der lokale Codepfad und die Vertragsprüfungen sind vorhanden. Es fehlt der echte Windows-/WebView-/Provider-Durchlauf mit einer realen Sitzung sowie eine autorisierte Provider-Abnahme für absichtlich fehlschlagende und erfolgreich wiederholte Löschungen. Deshalb bleibt das Ziel `PARTIAL`.
+
+**5. Unabhängige Abnahmetests**
+
+- **Test A – Backend-Funktion und Grenzfall:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_audio_handler.py' -v`; prüft, dass nur der explizite `minimal`-Stop angenommen wird, unbekannte Werte weiter sicher auf `full` fallen und der Minimal-Finalizer keine Analyse-Drain-Stufen startet. **Bestanden: relevante Audio-Handler-Suite 63/63.**
+- **Test B – kritische UI-Prüfung:** `TMPDIR="$PWD/.tmp" node --test src/components/ActiveCall/ActiveCallView.test.mjs`; prüft getrennte Full-/Skip-/Minimal-Aktionen sowie die sichtbare Erklärung, dass Transkript, Aufnahme und Sitzungsdaten gelöscht werden. **Bestanden: 21/21.**
+- Zusätzlich: Frontend-Gesamtsuite **382/382**, `npm run build` und Repository-Layout-Guard **bestanden**. Reale Provider-/Windows-/Audio-Abnahme **nicht ausführbar**.
+
+**6. Recherche vorhandener Lösungen**
+
+Der vorhandene `minimal`-Finalizer und die bestehende `DELETE /api/sessions/{id}`-Routine decken bereits Prozess-, Datenbank-, Audio- und Provider-Cleanup ab. Diese Pfade werden wiederverwendet; ein paralleler „ephemeral session“-Speicher oder eine zweite Löschlogik würde widersprüchliche Datenschutzgarantien erzeugen.
+
+**7. Exakter Umsetzungsplan**
+
+1. `audio_handler._STOP_DRAIN_MODES` und `_requested_drain_mode` um den ausdrücklich angeforderten `minimal`-Stop erweitern.
+2. `StopDrainMode`, `ActiveCallView` und `App.handleEndCall` so verbinden, dass die No-Retention-Wahl sichtbar ist und erst nach bestätigtem Abschluss löscht.
+3. Bei ausbleibender Bestätigung über den vorhandenen Poll-/Timeout-Pfad die Löschung auslassen und den Zustand als nicht bestätigt anzeigen.
+4. Backend- und UI-Abnahmen sowie Frontend-Regressionen ausführen; anschließend Windows-/Provider-Nachweise ergänzen.
+
+**8. Erfüllungskriterien**
+
+- [x] Normaler Abschluss und No-Retention-Abschluss sind sichtbar und eindeutig beschriftet.
+- [x] Der No-Retention-Weg fordert `minimal` an und startet keine späten Analyse-Stufen.
+- [x] Die Sitzung wird erst nach bestätigtem Abschluss über den vorhandenen Cleanup gelöscht.
+- [x] Bei fehlender Bestätigung wird nicht voreilig gelöscht.
+- [x] Backend-Test A und UI-Test B bestehen.
+- [x] Frontend-Gesamtsuite, Produktionsbuild und Layout-Guard bestehen.
+- [ ] Echte Sitzung auf Windows/WebView2 mit Audio und anschließender lokaler/Provider-Löschbestätigung besteht.
+
+**9. Implementierungsnachweise**
+
+- Änderungen: `app/backend/app/ws/audio_handler.py`, `app/backend/tests/test_audio_handler.py`, `app/frontend/src/types/index.ts`, `app/frontend/src/components/ActiveCall/ActiveCallView.tsx`, `app/frontend/src/components/ActiveCall/ActiveCallView.test.mjs`, `app/frontend/src/App.tsx`.
+- Commit-SHA: `7a149b0b60261dace3cb4cd0376b6751c6faa9ff` (GitHub `main`, Branch-Readback verifiziert).
+- Ausgeführt: Audio-Handler 63/63, ActiveCallView 21/21, Frontend 382/382, Vite/TypeScript-Build grün, Layout-Guard grün.
+- Einschränkung: Provider-Delete bleibt extern; der lokale `gh`-Pull ist weiterhin wegen fehlender CLI-Authentifizierung blockiert.
+
+**10. Codex-Desktop-Handoff bei Blockern**
+
+Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal den normalen Abschluss und einmal die No-Retention-Option durchführen. Vorher/nachher prüfen: `GET /api/sessions`, Audio-Unterordner unter `DATA_DIR/audio/{session_id}`, Transkript-/Question-/Synthesis-/Token-Zeilen und Browser-Chat-Key. Für Provider-Dokumente die Provider-Konsole beziehungsweise autorisierte Delete-API prüfen; einen absichtlichen Fehlerfall einmal wiederholen und Retry-/Backoff-Nachweis dokumentieren.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
