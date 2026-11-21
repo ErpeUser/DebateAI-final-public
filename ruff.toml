@@ -1,5 +1,6 @@
 target-version = "py311"
 line-length = 88
+cache-dir = "DebateAI_Generated/cache/ruff"
 
 [lint]
 # Intentional project patterns. FastAPI evaluates dependency defaults itself,

@@ -55,6 +55,10 @@ The native archive smoke runner stores temporary extraction roots and isolated
 application data under `DebateAI_Generated/build/native-smoke/` and
 `DebateAI_Generated/build/native-smoke-data/`.
 
+Ruff analysis cache is also redirected to
+`DebateAI_Generated/cache/ruff` by the repository-level `ruff.toml`, so a
+source checkout does not accumulate a root cache directory.
+
 `-Offline` forbids recovery if the installed release is missing. A partially configured channel (only one URL) always fails explicitly. Bad signatures, hashes or unsafe archives never trigger an unsigned installation fallback.
 
 ## Audit and CI

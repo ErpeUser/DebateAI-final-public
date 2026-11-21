@@ -46,6 +46,7 @@ RESOURCES = {
     "build_recovery": GENERATED / "build/recovery",
     "npm_cache": GENERATED / "cache/npm",
     "pip_cache": GENERATED / "cache/pip",
+    "ruff_cache": GENERATED / "cache/ruff",
 }
 
 # Only recreate scratch/output directories. Do not resurrect obsolete
@@ -56,6 +57,7 @@ GENERATED_DIRS = (
     "build/native-smoke",
     "build/native-smoke-data",
     "cache",
+    "cache/ruff",
     "downloads",
     "logs",
     "reports/provenance",

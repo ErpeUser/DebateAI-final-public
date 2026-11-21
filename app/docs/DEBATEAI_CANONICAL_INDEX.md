@@ -16,6 +16,7 @@ requirement.
 - [Configuration](configuration.md) — canonical `DEBATEAI_*` variables and explicitly configured update endpoints.
 - [Desktop release and recovery](releasing.md) — current build, signing, update and recovery procedures.
 - [Workspace layout](workspace-layout.md) — source, runtime and generated-workspace boundaries.
+- [Workspace audit](workspace-audit.md) — measured inventory, disposition decisions and target tree.
 - [Identity decoupling design](identity-decoupling-design.md) — canonical runtime and safe legacy-data migration.
 
 ## Historical and migration-only records

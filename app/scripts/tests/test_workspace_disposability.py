@@ -142,6 +142,7 @@ class DisposableWorkspaceTests(unittest.TestCase):
             generated / "build/releases/DebateAI-windows-x64.zip",
         )
         self.assertEqual(refs.RESOURCES["npm_cache"], generated / "cache/npm")
+        self.assertEqual(refs.RESOURCES["ruff_cache"], generated / "cache/ruff")
 
     def test_native_smoke_outputs_are_disposable(self):
         generated = refs.ROOT / "DebateAI_Generated"
