@@ -63,6 +63,11 @@ def upgrade():
         # after the duplicate resequencing above, then recreates it with the
         # same constraint.  This is required for legacy desktop databases,
         # which are adopted on SQLite before the versioned tail is applied.
+        # A process interruption can leave the temporary copy behind; it is
+        # safe to remove because the original table remains authoritative
+        # until the batch rename completes.
+        if "_alembic_tmp_transcript_entries" in sa.inspect(bind).get_table_names():
+            op.drop_table("_alembic_tmp_transcript_entries")
         with op.batch_alter_table("transcript_entries", recreate="always") as batch:
             batch.create_unique_constraint(
                 _CONSTRAINT,

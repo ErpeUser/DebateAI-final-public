@@ -4,6 +4,7 @@ Revision ID: 033_list_query_indexes
 Revises: 032_transcript_discard_audits
 """
 
+import sqlalchemy as sa
 from alembic import op
 
 revision = "033_list_query_indexes"
@@ -50,8 +51,19 @@ _INDEXES = (
 
 
 def upgrade() -> None:
+    inspector = sa.inspect(op.get_bind())
     for name, table, columns in _INDEXES:
-        op.create_index(name, table, list(columns), unique=False)
+        # A failed startup can leave earlier indexes from this revision in a
+        # SQLite database even though Alembic has not advanced its version
+        # row.  Skip those on retry so the repaired database can reach head.
+        existing = {
+            str(item["name"])
+            for item in inspector.get_indexes(table)
+            if item.get("name")
+        }
+        if name not in existing:
+            op.create_index(name, table, list(columns), unique=False)
+            existing.add(name)
 
 
 def downgrade() -> None:

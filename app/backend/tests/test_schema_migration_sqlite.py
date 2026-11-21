@@ -16,6 +16,7 @@ from unittest.mock import patch
 from alembic.config import Config
 from alembic.script import ScriptDirectory
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.asyncio import create_async_engine
 
 from app import main
@@ -160,6 +161,93 @@ class SQLiteSchemaMigrationTests(unittest.IsolatedAsyncioTestCase):
                 "uq_transcript_entries_session_sequence",
                 {item["name"] for item in constraints},
             )
+
+    async def test_failed_legacy_tail_can_be_repaired_and_retried(self):
+        with tempfile.TemporaryDirectory(prefix="debateai-failed-migration-") as temp:
+            url = "sqlite+aiosqlite:///" + str(Path(temp) / "failed.sqlite")
+            engine = create_async_engine(url)
+            self.addAsyncCleanup(engine.dispose)
+            session_id = uuid.uuid4().hex
+
+            # Omit sessions.created_at to force the real 033 index migration
+            # to fail after the legacy adoption has stamped revision 028.
+            async with engine.begin() as connection:
+                await connection.execute(
+                    text(
+                        "CREATE TABLE sessions ("
+                        "id CHAR(32) PRIMARY KEY, name VARCHAR(255), "
+                        "state VARCHAR(20))"
+                    )
+                )
+                await connection.execute(
+                    text(
+                        "CREATE TABLE transcript_entries ("
+                        "id CHAR(32) PRIMARY KEY, session_id CHAR(32), "
+                        "text TEXT, timestamp DATETIME, sequence INTEGER)"
+                    )
+                )
+                await connection.execute(
+                    text(
+                        "INSERT INTO sessions (id, name, state) "
+                        "VALUES (:id, 'legacy', 'completed')"
+                    ),
+                    {"id": session_id},
+                )
+                await connection.execute(
+                    text(
+                        "INSERT INTO transcript_entries "
+                        "(id, session_id, text, timestamp, sequence) "
+                        "VALUES (:id, :session_id, 'legacy row', '2026-01-01', 1)"
+                    ),
+                    {"id": uuid.uuid4().hex, "session_id": session_id},
+                )
+
+            with self.assertRaises(OperationalError):
+                await self._run(engine, url)
+
+            async with engine.begin() as connection:
+                version = (
+                    await connection.execute(
+                        text("SELECT version_num FROM alembic_version")
+                    )
+                ).scalar_one()
+                temp_tables = await connection.run_sync(
+                    lambda sync: {
+                        item
+                        for item in inspect(sync).get_table_names()
+                        if item.startswith("_alembic_tmp_")
+                    }
+                )
+                await connection.execute(
+                    text("ALTER TABLE sessions ADD COLUMN created_at DATETIME")
+                )
+
+            self.assertEqual("028_debate_claim_records", version)
+            self.assertIn("_alembic_tmp_transcript_entries", temp_tables)
+
+            # Repair the legacy shape and retry the same startup operation.
+            # Revision 029 removes the stale batch table, while revision 033
+            # skips any indexes left behind by a partial attempt.
+            await self._run(engine, url)
+
+            async with engine.connect() as connection:
+                versions = list(
+                    (
+                        await connection.execute(
+                            text("SELECT version_num FROM alembic_version")
+                        )
+                    ).scalars()
+                )
+                temp_tables = await connection.run_sync(
+                    lambda sync: {
+                        item
+                        for item in inspect(sync).get_table_names()
+                        if item.startswith("_alembic_tmp_")
+                    }
+                )
+
+            self.assertEqual([self._expected_head()], versions)
+            self.assertEqual(set(), temp_tables)
 
 
 if __name__ == "__main__":
