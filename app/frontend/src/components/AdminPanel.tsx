@@ -190,9 +190,9 @@ function LensEditor({
 
   const deleteLens = async (lens: AnalystLens) => {
     const ok = await confirm({
-      title: "Perspektive loeschen",
-      message: `Die Perspektive "${lens.label}" und ihre Anweisung wirklich loeschen?`,
-      confirmLabel: "Loeschen",
+      title: "Perspektive löschen",
+      message: `Die Perspektive "${lens.label}" und ihre Anweisung wirklich löschen?`,
+      confirmLabel: "Löschen",
       tone: "danger",
     });
     if (!ok) return;
@@ -209,7 +209,7 @@ function LensEditor({
           onClick={addLens}
           className="rounded-full border border-brand-light-gray-1 px-2.5 py-1 font-body text-[11px] font-medium text-brand-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
         >
-          + Perspektive hinzufuegen
+          + Perspektive hinzufügen
         </button>
       </div>
 
@@ -258,7 +258,7 @@ function LensEditor({
                 <button
                   type="button"
                   onClick={() => deleteLens(lens)}
-                  title="Perspektive loeschen"
+                  title="Perspektive löschen"
                   className="shrink-0 rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-600"
                 >
                   <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -338,11 +338,11 @@ function LensEditor({
       </div>
 
       <p className="mt-2 font-body text-[10px] text-brand-mid-gray">
-        Jede aktive Perspektive ergaenzt die Systemanweisung und kennzeichnet ihre Ergebnisse mit dem ausgewaehlten Typ.
+        Jede aktive Perspektive ergänzt die Systemanweisung und kennzeichnet ihre Ergebnisse mit dem ausgewählten Typ.
       </p>
       {missingPlaceholder && (
         <p className="mt-1 font-body text-[10px] text-amber-700">
-          In der Systemanweisung fehlt der Platzhalter {"{lens_sections}"}. Setze sie auf den Standard zurueck oder fuege den Platzhalter ein.
+          In der Systemanweisung fehlt der Platzhalter {"{lens_sections}"}. Setze sie auf den Standard zurück oder füge den Platzhalter ein.
         </p>
       )}
     </div>
@@ -435,27 +435,27 @@ function AgentCard({
           {agent.agent_type === "audio" && (
             <p className="mt-2 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/60 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-brand-gray">
               Hier werden nur Live-Audio-Modelle angezeigt. Eigene OpenAI-kompatible Chatmodelle
-              sind reine Textmodelle und versorgen die Analyse-Assistenten. Fuer eine vollstaendig
-              lokale Transkription waehle unter Transkription &amp; Audio ein lokales ONNX-Modell.
+              sind reine Textmodelle und versorgen die Analyse-Assistenten. Für eine vollständig
+              lokale Transkription wähle unter Transkription &amp; Audio ein lokales ONNX-Modell.
             </p>
           )}
           {agent.slug === "opportunity_specialist" && (
             <p className="mt-2 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/60 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-brand-gray">
-              Laeuft nach der Gesamtanalyse und sucht nicht selbst nach Chancen. Erkennt eine Perspektive eine Chance, wird sie mit den Wissensquellen abgeglichen und die bestehende Karte ergaenzt.
+              Läuft nach der Gesamtanalyse und sucht nicht selbst nach Chancen. Erkennt eine Perspektive eine Chance, wird sie mit den Wissensquellen abgeglichen und die bestehende Karte ergänzt.
             </p>
           )}
           {blockedByPrivacy && (
             <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-amber-900">
               {hasLocalAlternative ? (
                 <>
-                  Datenschutz zuerst ist aktiv. Das ausgewaehlte Modell wuerde Daten ausserhalb
-                  deines Netzes senden und wird deshalb nicht gestartet. Waehle ein eigenes Modell
+                  Datenschutz zuerst ist aktiv. Das ausgewaehlte Modell würde Daten ausserhalb
+                  deines Netzes senden und wird deshalb nicht gestartet. Wähle ein eigenes Modell
                   auf diesem Rechner oder im lokalen Netz.
                 </>
               ) : (
                 <>
-                  Datenschutz zuerst ist aktiv, aber fuer diesen Assistenten ist kein lokales Modell
-                  verfuegbar. Fuege unter Verbindungen einen OpenAI-kompatiblen Server hinzu oder
+                  Datenschutz zuerst ist aktiv, aber für diesen Assistenten ist kein lokales Modell
+                  verfügbar. Füge unter Verbindungen einen OpenAI-kompatiblen Server hinzu oder
                   deaktiviere den Schutz. Die Einstellungen bleiben erhalten.
                 </>
               )}
@@ -534,7 +534,7 @@ function AgentCard({
             {modelInterval !== null && (
               <p className="mt-1.5 rounded border border-brand-teal/30 bg-brand-teal/5 px-2 py-1.5 font-body text-[10px] leading-relaxed text-brand-dark-gray">
                 <span className="font-medium">Aktuell {modelInterval} s</span> mit dem
-                ausgewaehlten Modell. Der lokale Leistungstest hat diesen Wert fuer{" "}
+                ausgewählten Modell. Der lokale Leistungstest hat diesen Wert für{" "}
                 {selectedModel?.name ?? agent.model_id} gesetzt. Starte den Test unter
                 Transkription &amp; Audio erneut, um ihn zu aendern.
               </p>
@@ -578,7 +578,7 @@ function AgentCard({
               })}
           </div>
           <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
-            Wissensquellen fuer den Chancen-Abgleich. Ohne Auswahl wird der integrierte Angebotskatalog verwendet.
+            Wissensquellen für den Chancen-Abgleich. Ohne Auswahl wird der integrierte Angebotskatalog verwendet.
           </p>
         </div>
       )}
@@ -611,7 +611,7 @@ function AgentCard({
                 onClick={() => onResetPrompt(agent.slug)}
                 className="font-body text-[10px] text-brand-mid-gray transition-colors hover:text-brand-teal"
               >
-                Auf Standard zuruecksetzen
+                Auf Standard zurücksetzen
               </button>
             </div>
             <textarea

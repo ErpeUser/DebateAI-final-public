@@ -238,7 +238,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
             </div>
           </div>
         ))}
-        {busy && <p className="font-body text-xs text-brand-mid-gray">Denke nach...</p>}
+        {busy && <p className="font-body text-xs text-brand-mid-gray">Antwort wird erstellt …</p>}
         {error && <p className="font-body text-xs text-red-600">{error}</p>}
       </div>
 
@@ -249,7 +249,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
-          placeholder="Ask about these meetings..."
+          placeholder="Über diese Gespräche fragen …"
           disabled={busy}
           className="flex-1 rounded-lg border border-brand-light-gray-1 bg-surface px-3 py-2 font-body text-sm text-brand-dark-gray focus:border-brand-teal"
         />
@@ -260,7 +260,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
           className="inline-flex items-center gap-2 rounded-lg bg-brand-teal px-4 py-2 font-body text-sm font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:opacity-40"
         >
           <Send className="h-4 w-4" aria-hidden="true" />
-          Send
+          Senden
         </button>
       </div>
     </div>

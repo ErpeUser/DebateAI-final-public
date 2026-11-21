@@ -29,6 +29,9 @@ export default function ProviderOnboardingCard({
   const [anyKeySaved, setAnyKeySaved] = useState(false);
   const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
   const [privacyBusy, setPrivacyBusy] = useState(false);
+  const [smartTestBusy, setSmartTestBusy] = useState(false);
+  const [smartTestMessage, setSmartTestMessage] = useState<string | null>(null);
+  const [showLab, setShowLab] = useState(false);
 
   const localOnly = privacy?.local_only === true;
 
@@ -48,14 +51,33 @@ export default function ProviderOnboardingCard({
           agentModels: toReadinessAgentModels(agents, models),
         })
       );
+      return true;
     } catch (err) {
       console.error("Failed to check setup readiness", err);
+      return false;
     }
   }, [localOnly]);
 
   useEffect(() => {
     check();
   }, [check, refreshToken]);
+
+  const handleSmartTest = async () => {
+    setSmartTestBusy(true);
+    setSmartTestMessage("Prüfe Transkription, Modelle und Datenschutz …");
+    try {
+      const ok = await check();
+      setSmartTestMessage(
+        ok
+          ? "Schnelltest abgeschlossen. Die Anzeige wurde aktualisiert."
+          : "Schnelltest konnte nicht vollständig abgeschlossen werden. Details oben prüfen."
+      );
+    } catch {
+      setSmartTestMessage("Schnelltest konnte nicht vollständig abgeschlossen werden.");
+    } finally {
+      setSmartTestBusy(false);
+    }
+  };
 
   const handlePrivacyFirst = async () => {
     setPrivacyBusy(true);
@@ -84,6 +106,33 @@ export default function ProviderOnboardingCard({
         Dienste hinzufügen und danach unter Agenten sowie Transkription &amp; Audio die
         Modelle wählen. „Empfohlen“ kennzeichnet einen guten Ausgangspunkt.
       </p>
+
+      <div className="mt-3 rounded-lg border border-brand-teal/40 bg-brand-teal/5 p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="font-display text-sm font-bold text-brand-dark-gray">
+              Spielerischer Schnelltest
+            </h4>
+            <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
+              Drei echte Bereitschaftsprüfungen zeigen dir sofort, ob Transkription,
+              Agentenmodelle und Datenschutz zusammenpassen.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleSmartTest}
+            disabled={smartTestBusy}
+            className="rounded-lg bg-brand-teal px-3.5 py-2 font-body text-xs font-semibold text-white transition-colors hover:bg-brand-teal/90 disabled:opacity-40"
+          >
+            {smartTestBusy ? "Test läuft …" : "Schnelltest starten"}
+          </button>
+        </div>
+        {smartTestMessage && (
+          <p className="mt-2 font-body text-xs font-medium text-brand-teal">
+            {smartTestMessage}
+          </p>
+        )}
+      </div>
 
       <div className="mt-3 grid gap-3 md:grid-cols-2">
         <div className="rounded-lg border border-brand-teal/40 bg-brand-teal/5 p-3.5">
@@ -127,6 +176,34 @@ export default function ProviderOnboardingCard({
             </button>
           )}
         </div>
+      </div>
+
+      <div className="mt-3 rounded-lg border border-brand-light-gray-1 bg-white p-3.5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h4 className="font-display text-sm font-bold text-brand-dark-gray">
+              Modell-Labor direkt im Onboarding
+            </h4>
+            <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
+              Vergleiche lokale Transkription mit echten Beispielen. Der Test läuft im
+              eingebetteten Labor und ändert keine Einstellungen automatisch.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowLab((value) => !value)}
+            className="rounded-lg border border-brand-teal px-3.5 py-2 font-body text-xs font-semibold text-brand-teal transition-colors hover:bg-brand-teal/5"
+          >
+            {showLab ? "Labor schließen" : "Modell-Labor öffnen"}
+          </button>
+        </div>
+        {showLab && (
+          <iframe
+            src="/calibration.html"
+            title="Modell-Labor"
+            className="mt-3 h-[640px] w-full rounded-lg border border-brand-light-gray-1 bg-surface"
+          />
+        )}
       </div>
 
       {stage === "partial" && readiness && (

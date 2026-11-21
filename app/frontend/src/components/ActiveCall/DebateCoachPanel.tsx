@@ -236,7 +236,7 @@ export default function DebateCoachPanel({
                   type="button"
                   onClick={() => setPinnedRecommendation(pinnedRecommendation ? null : recommendation)}
                   className="inline-flex items-center gap-1 rounded-full border border-brand-light-gray-1 px-2 py-1 font-semibold text-brand-gray hover:border-brand-teal/40 hover:text-brand-dark-gray"
-                  title={pinnedRecommendation ? "Fixierung loesen" : "Diese Sprechkarte sichtbar halten"}
+                  title={pinnedRecommendation ? "Fixierung lösen" : "Diese Sprechkarte sichtbar halten"}
                 >
                   {pinnedRecommendation ? <PinOff aria-hidden="true" className="h-3 w-3" /> : <Pin aria-hidden="true" className="h-3 w-3" />}
                   {pinnedRecommendation ? `Fixiert v${pinnedVersion || "-"}` : "Fixieren"}
@@ -448,7 +448,7 @@ export default function DebateCoachPanel({
               {(alternativeText || recommendation.counterargument) && (
                 <details className="mt-2 rounded-lg border border-brand-light-gray-1 bg-brand-light-gray-2 px-3 py-2 font-body text-xs text-brand-gray">
                   <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
-                    {alternativeText ? "Alternative anzeigen" : "Begruendung anzeigen"}
+                    {alternativeText ? "Alternative anzeigen" : "Begründung anzeigen"}
                   </summary>
                   {alternativeText && (
                     <p className="mt-2 leading-5">
@@ -537,9 +537,21 @@ export default function DebateCoachPanel({
               )}
 
               <div className="mt-2 border-t border-brand-light-gray-1 pt-2">
-                <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-brand-gray">
-                  Gezielt nachprüfen
-                </p>
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-brand-gray">
+                    Jetzt recherchieren
+                  </p>
+                  <button
+                    type="button"
+                    data-research-action="primary"
+                    onClick={() => onResearch?.("all")}
+                    disabled={privacyFirst || !onResearch || !recommendation.target_claim || recommendation.research_status === "searching"}
+                    className="inline-flex items-center gap-1 rounded-md bg-brand-teal px-2.5 py-1.5 font-body text-[11px] font-semibold text-white shadow-sm hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:opacity-45"
+                  >
+                    <Search aria-hidden="true" className="h-3 w-3" />
+                    Jetzt recherchieren
+                  </button>
+                </div>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {([
                     ["counterevidence", "Widerlegung suchen", Search],

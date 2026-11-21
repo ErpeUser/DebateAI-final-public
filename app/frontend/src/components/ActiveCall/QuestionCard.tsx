@@ -62,12 +62,12 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
         <div className="flex flex-wrap items-center gap-1.5">
           {question.is_followup && (
             <span className="inline-flex items-center rounded-full bg-[#f59e0b]/15 px-2 py-0.5 font-body text-xs font-medium text-[#f59e0b]">
-              Follow-up
+              Nachfrage
             </span>
           )}
           {question.directive_id && (
             <span className="inline-flex items-center rounded-full bg-[#f59e0b]/15 px-2 py-0.5 font-body text-xs font-medium text-[#f59e0b]">
-              Directive
+              Anweisung
             </span>
           )}
           {showEnhanced && question.enhanced && (
@@ -139,7 +139,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
           </svg>
-          Details
+          Einzelheiten
         </button>
       )}
       {hasDetails && showDetails && (
@@ -205,7 +205,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
       {question.answered && question.needs_followup && (
         <div className="mt-3 rounded-md border border-[#f59e0b]/30 bg-[#f59e0b]/10 px-3 py-2">
           <span className="inline-flex items-center rounded-full bg-[#f59e0b]/20 px-2 py-0.5 font-body text-xs font-medium text-[#f59e0b]">
-            Needs Follow-up
+            Nachfrage nötig
           </span>
           {question.followup_question && (
             <p className="mt-1 font-body text-sm text-brand-dark-gray">
@@ -224,7 +224,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
               title="Diese Frage als Anweisung für die Assistenten verwenden"
               className="rounded px-2 py-1 font-body text-xs font-medium text-brand-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal"
             >
-              Make directive
+              Als Anweisung verwenden
             </button>
           )}
           <button
@@ -232,8 +232,8 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
             className={`rounded p-1 transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal ${
               currentVote > 0 ? "bg-brand-teal/10 text-brand-teal" : "text-brand-mid-gray"
             }`}
-            title="Upvote insight"
-            aria-label="Upvote insight"
+            title="Erkenntnis positiv bewerten"
+            aria-label="Erkenntnis positiv bewerten"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m4.5 15.75 7.5-7.5 7.5 7.5" />
@@ -244,7 +244,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
               className={`min-w-[1.25rem] text-center font-mono text-xs font-semibold ${
                 currentVote > 0 ? "text-brand-teal" : "text-brand-mid-gray"
               }`}
-              title={`Vote: ${currentVote}`}
+              title={`Bewertung: ${currentVote}`}
             >
               {currentVote > 0 ? `+${currentVote}` : currentVote}
             </span>
@@ -254,8 +254,8 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
             className={`rounded p-1 transition-colors hover:bg-brand-light-gray-2 hover:text-red-500 ${
               currentVote < 0 ? "bg-red-50 text-red-500" : "text-brand-mid-gray"
             }`}
-            title="Downvote insight"
-            aria-label="Downvote insight"
+            title="Erkenntnis negativ bewerten"
+            aria-label="Erkenntnis negativ bewerten"
           >
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="m19.5 8.25-7.5 7.5-7.5-7.5" />
@@ -266,7 +266,7 @@ export default function QuestionCard({ question, showEnhanced = false, onStar, o
           <button
             onClick={() => onStar(!question.starred)}
             className="rounded p-1 transition-colors hover:bg-brand-light-gray-2"
-            aria-label={question.starred ? "Unstar" : "Star"}
+            aria-label={question.starred ? "Markierung entfernen" : "Markieren"}
           >
             {question.starred ? (
               <svg className="h-4 w-4 text-[#f59e0b]" fill="currentColor" viewBox="0 0 20 20">

@@ -23,10 +23,57 @@ const PRESETS = [
 const NAMES = {'local-whisper-base':'Whisper Base', 'local-parakeet-tdt-0.6b-v3':'Parakeet TDT v3', 'local-whisper-large-v3-turbo':'Whisper Large v3 Turbo'};
 let blindCases = [], blindIndex = 0, blindGeneration = 0, importedEvidence = [], activeImport = null;
 let clip = null, clipUrl = null, result = null, votes = [], trial = null, generation = 0, request = null, busy = false;
-const report = () => ({schema_version:1, created_at:new Date().toISOString(), kind:'local_calibration', source_commit:null,
-  audio_included:false, settings_changed:false, asr:result, votes, imported_suites:importedEvidence,
-  limitations:['No Windows hardware or streaming proof is implied.', 'Human usefulness ratings are not factual truth labels.',
-  'Imported candidate provenance must be checked independently.']});
+const MAX_CHATGPT_JSON_BYTES = 480 * 1024;
+const clipText = (value, limit=400) => {
+  if (typeof value !== 'string') return value ?? null;
+  return value.length > limit ? value.slice(0, limit) + '…' : value;
+};
+const compactMetrics = metrics => {
+  if (!metrics || typeof metrics !== 'object') return null;
+  return {
+    wer: metrics.wer ?? null,
+    cer: metrics.cer ?? null,
+    substitutions: metrics.substitutions ?? null,
+    deletions: metrics.deletions ?? null,
+    insertions: metrics.insertions ?? null,
+    false_deletions: metrics.false_deletions ?? null,
+    hallucinated_words: metrics.hallucinated_words ?? null,
+    critical_reference_tokens: Array.isArray(metrics.critical_reference_tokens) ? metrics.critical_reference_tokens.slice(0, 20) : [],
+    critical_hypothesis_tokens: Array.isArray(metrics.critical_hypothesis_tokens) ? metrics.critical_hypothesis_tokens.slice(0, 20) : [],
+  };
+};
+const compactAsr = (value, maxTrials=3, textLimit=400) => {
+  if (!value || typeof value !== 'object') return null;
+  return {
+    attempted_trials: value.attempted_trials ?? 0,
+    failed_trials: value.failed_trials ?? 0,
+    models: Array.isArray(value.models) ? value.models.map(model => ({
+      model_id: model.model_id,
+      latency_p50_seconds: model.latency_p50_seconds ?? null,
+      trials: Array.isArray(model.trials) ? model.trials.slice(-maxTrials).map(trial => ({
+        status: trial.status,
+        reason: trial.reason ?? null,
+        real_time_factor: trial.real_time_factor ?? null,
+        text: clipText(trial.text, textLimit),
+        metrics: compactMetrics(trial.metrics),
+      })) : [],
+    })) : [],
+  };
+};
+const report = () => ({
+  schema_version: 1,
+  export_profile: 'chatgpt_compact',
+  created_at: new Date().toISOString(),
+  kind: 'local_calibration',
+  source_commit: null,
+  audio_included: false,
+  settings_changed: false,
+  asr: compactAsr(result),
+  votes: votes.slice(-50),
+  imported_suites: importedEvidence.slice(-20),
+  limitations: ['No Windows hardware or streaming proof is implied.', 'Human usefulness ratings are not factual truth labels.',
+    'Imported candidate provenance must be checked independently.'],
+});
 function status(message, error=false) { $('status').textContent=message; $('status').classList.toggle('error',error); }
 function element(tag, text, cls) { const n=document.createElement(tag); if(text!==undefined)n.textContent=text; if(cls)n.className=cls; return n; }
 function selectedModels() {return [...document.querySelectorAll('#model-options input:checked')].map(e=>e.value);}
@@ -192,7 +239,18 @@ $('persist').addEventListener('change',()=>{
   else{try{localStorage.removeItem(KEY);}catch{}status('Browserspeicherung deaktiviert; nur der Arbeitsspeicher dieses Labors bleibt.');}
 });
 $('export').addEventListener('click',()=>{
-  const blob=new Blob([JSON.stringify(report(),null,2)],{type:'application/json'});const url=URL.createObjectURL(blob);
+  let value=report();
+  let serialized=JSON.stringify(value);
+  if (new TextEncoder().encode(serialized).byteLength > MAX_CHATGPT_JSON_BYTES) {
+    value = {...value, export_profile:'chatgpt_compact_truncated', truncated:true,
+      asr:compactAsr(result,1,120), votes:votes.slice(-10), imported_suites:importedEvidence.slice(-5)};
+    serialized=JSON.stringify(value);
+  }
+  if (new TextEncoder().encode(serialized).byteLength > MAX_CHATGPT_JSON_BYTES) {
+    value = {...value, asr:null, votes:[], imported_suites:[], truncated:true};
+    serialized=JSON.stringify(value);
+  }
+  const blob=new Blob([serialized],{type:'application/json'});const url=URL.createObjectURL(blob);
   const a=document.createElement('a');a.href=url;a.download=`DebateAI-Kalibrierung-${new Date().toISOString().replace(/[:.]/g,'-')}.json`;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);
 });
 $('clear').addEventListener('click',()=>{

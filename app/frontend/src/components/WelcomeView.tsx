@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import * as api from "../services/api";
 import { setupReadiness, toReadinessAgentModels, type SetupReadiness } from "../lib/providerOnboarding";
 
@@ -72,6 +72,34 @@ function StepCard({
 export default function WelcomeView({ hasSessions, onNewSession, onOpenApiKeys }: WelcomeViewProps) {
   const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
   const [version, setVersion] = useState<string | null>(null);
+  const [smartCheckRunning, setSmartCheckRunning] = useState(false);
+  const [smartCheckStep, setSmartCheckStep] = useState(0);
+  const [smartCheckDone, setSmartCheckDone] = useState(false);
+
+  const runSmartCheck = useCallback(async () => {
+    setSmartCheckRunning(true);
+    setSmartCheckDone(false);
+    setSmartCheckStep(1);
+    try {
+      const [privacy, transcription, agents, models] = await Promise.all([
+        api.getPrivacyConfig().catch(() => null),
+        api.getTranscriptionReadiness().catch(() => null),
+        api.listAgents().catch(() => []),
+        api.listModels().catch(() => []),
+      ]);
+      setSmartCheckStep(2);
+      const next = setupReadiness({
+        localOnly: privacy?.local_only === true,
+        transcription,
+        agentModels: toReadinessAgentModels(agents, models),
+      });
+      setReadiness(next);
+      setSmartCheckStep(3);
+      setSmartCheckDone(true);
+    } finally {
+      setSmartCheckRunning(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!hasSessions) {
@@ -131,6 +159,40 @@ export default function WelcomeView({ hasSessions, onNewSession, onOpenApiKeys }
             und belegte Nachbesserungen — ohne dass die erste Reaktion auf Recherche warten muss.
           </p>
         </div>
+
+        <section className="mb-6 rounded-2xl border border-brand-teal/30 bg-surface p-5 shadow-sm" aria-labelledby="smart-check-title">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.2em] text-brand-teal">Dein 30-Sekunden-Start</p>
+              <h3 id="smart-check-title" className="mt-1 font-display text-xl font-bold text-brand-dark-gray">Smart-Check statt Einstellungs-Marathon</h3>
+              <p className="mt-1 max-w-2xl font-body text-xs leading-5 text-brand-gray">
+                Wir prüfen die echte Transkription, die gewählten Modelle und den Datenschutzmodus gemeinsam.
+                Danach weißt du, ob du direkt loslegen kannst oder nur eine Verbindung fehlt.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => void runSmartCheck()}
+              disabled={smartCheckRunning}
+              className="shrink-0 rounded-lg bg-brand-teal px-4 py-2.5 font-body text-xs font-semibold text-white shadow-sm transition-colors hover:bg-brand-teal-dark disabled:cursor-wait disabled:opacity-60"
+            >
+              {smartCheckRunning ? "Prüfung läuft ..." : smartCheckDone ? "Noch einmal prüfen" : "Smart-Check starten"}
+            </button>
+          </div>
+          <ol className="mt-4 grid gap-2 sm:grid-cols-3" aria-live="polite">
+            {["Transkription", "Modelle", "Datenschutz"].map((label, index) => {
+              const step = index + 1;
+              const active = smartCheckRunning && smartCheckStep === step;
+              const complete = smartCheckDone && smartCheckStep >= step;
+              return (
+                <li key={label} className={`flex items-center gap-2 rounded-lg px-3 py-2 font-body text-xs ${complete ? "bg-brand-teal/10 text-brand-teal" : active ? "bg-amber-50 text-amber-900" : "bg-brand-light-gray-2 text-brand-gray"}`}>
+                  <span className="font-mono text-[10px] font-semibold">{complete ? "✓" : `0${step}`}</span>
+                  {active ? `Prüfe ${label.toLowerCase()} ...` : label}
+                </li>
+              );
+            })}
+          </ol>
+        </section>
 
         <div className="mb-6 grid gap-3 md:grid-cols-3">
           {[

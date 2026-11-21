@@ -247,6 +247,17 @@ test("a search snippet is labelled as found, never as proof", () => {
   assert.doesNotMatch(markup, /Belegt zu:/);
 });
 
+test("the live panel exposes an explicit Jetzt recherchieren action", () => {
+  const html = render({
+    recommendation: ready,
+    activity: activity("waiting"),
+    onResearch: () => {},
+  });
+
+  assert.match(html, /data-research-action="primary"/);
+  assert.match(html, /Jetzt recherchieren/);
+});
+
 test("live research switch can be off while manual checks remain available", () => {
   const html = render({
     recommendation: ready,
