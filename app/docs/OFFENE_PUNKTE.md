@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `7a149b0b60261dace3cb4cd0376b6751c6faa9ff` (GitHub-Branch-Readback nach dem No-Retention-Code-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (382/382), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `c101be8a800ea6a06a67cbeb7186c4beb5626314` (GitHub-Branch-Readback nach dem Cursor-Code-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (382/382), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Cursor-Vertragstest (5/5), der Session-Router-Test (4/4), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -287,8 +287,71 @@ Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal 
 
 ### P2.10 Listen-, Transcript- und Knowledge-APIs
 
-- **Status:** kompatible Array-Limits, stabile Tie-Breaker und Composite-Indizes sind vorhanden. Echte Cursor-Fortsetzung, UI-Seitenabruf und vollständige SQL-seitige Chat-Priorisierung bleiben offen.
-- **Benötigt:** versionskompatibler Cursorvertrag für alle betroffenen Endpunkte, UI-Weiterblättern, Cursor-Regressionen und ein begrenzter Lastnachweis.
+- **Status:** PARTIAL. Die drei Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` akzeptieren jetzt einen versionsbehafteten, endpointgebundenen Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Fragen, Direktiven, Dokumente, Knowledge-Records, UI-Seitenabruf und vollständige SQL-seitige Chat-Priorisierung bleiben offen.
+- **Benötigt:** Cursorvertrag für alle weiteren betroffenen Endpunkte, UI-Weiterblättern, Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie und ein begrenzter Lastnachweis.
+
+#### P2.10a – Opaque-Cursor-Grundvertrag für Sitzungslisten
+
+**Priorität:** P2
+**Status:** IMPLEMENTED_UNVERIFIED
+**Vision-Referenz:** § 18, ergänzt durch §§ 9 und 12
+
+**1. Verbindliches Ziel**
+
+Große Sitzungs-, Segment- und Transkriptlisten müssen über stabile, serverseitig ausgewertete Cursor fortsetzbar sein. Bestehende Clients dürfen weiterhin Arrays mit `limit` erhalten; neue Clients senden den undurchsichtigen Cursor unverändert zurück und erkennen die nächste Seite am `X-Next-Cursor`-Header.
+
+**2. Konkretes Nutzungsbeispiel**
+
+Ein Client ruft `/api/sessions?limit=2` ab, erhält zwei absteigend nach `created_at` und stabil per `id` sortierte Sitzungen sowie `X-Next-Cursor`. Der zweite Request sendet diesen Wert als `cursor` und erhält die nächste Seite ohne Überschneidung. Ein Segment- oder Transkriptcursor darf nicht versehentlich an einer anderen Route akzeptiert werden.
+
+**3. Tatsächlicher Ist-Zustand**
+
+- `app/backend/app/services/cursor_pagination.py` erzeugt und prüft kompakte, URL-sichere Base64-JSON-Hüllen mit Versions- und Endpoint-Bindung.
+- `app/backend/app/routers/sessions.py` implementiert Cursorfilter und Tie-Breaker für Sitzungen und Call-Segmente.
+- `app/backend/app/routers/transcripts.py` implementiert den Sequenz-/ID-Tie-Breaker. Ephemere Provisional-Rows erscheinen nur auf der Legacy-Erstseite und werden auf Cursor-Seiten nicht wiederholt; der WebSocket bleibt dafür der Livekanal.
+- `app/backend/tests/test_cursor_pagination.py` prüft Roundtrip, falschen Endpoint, ungültige Cursor und den Next-Cursor-Header.
+
+**4. Genaue Abweichung**
+
+Die API-Grundlage ist implementiert, aber weitere Listenendpunkte und ein UI-Weiterblättern fehlen. Der Cursorpfad ist deshalb kein vollständiger Produktabschluss für alle großen Listen.
+
+**5. Unabhängige Abnahmetests**
+
+- **Test A – Vertrags- und Robustheitsprüfung:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination.py' -v`; prüft Versions-/Endpointbindung, Roundtrip und `X-Next-Cursor` nur bei tatsächlich weiteren Datensätzen. **Bestanden: 3/3.**
+- **Test B – Regression der bestehenden Session-Router:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_sessions_router.py' -v`; prüft weiterhin Start-, Ende-, Resume- und Delete-Verträge nach Einbau der Response-/Cursorparameter. **Bestanden: 4/4.**
+- Zusätzlich: Backend-`compileall` **bestanden**. Weitere Listen-/UI-/Lasttests bleiben offen.
+
+**6. Recherche vorhandener Lösungen**
+
+Der Bestand verwendet bereits stabile Composite-Sortierungen und Limits. Die neue kleine Helper-Funktion ergänzt nur die fehlende Cursorhülle; ein neues Paging-Framework oder ein JSON-Formatwechsel wäre für die vorhandenen Frontend-Clients unnötig.
+
+**7. Exakter Umsetzungsplan**
+
+1. Cursorhülle mit Version und Endpoint-Tag einführen.
+2. Für jede Sortierung den letzten Datensatz als Tie-Breaker codieren und SQL-seitig `limit + 1` abfragen.
+3. Nur bei weiterer Seite `X-Next-Cursor` setzen; Array-Antworten und Provisional-Erstseite kompatibel halten.
+4. Fragen, Direktiven, Dokumente, Knowledge-Records und UI-Weiterblättern in einem Folgepaket ergänzen.
+
+**8. Erfüllungskriterien**
+
+- [x] Cursor ist undurchsichtig, versioniert und endpointgebunden.
+- [x] Sitzungen, Segmente und dauerhafte Transkripte haben stabile Tie-Breaker.
+- [x] Bestehende Array-/Limit-Clients bleiben kompatibel.
+- [x] Weitere Seiten werden ausschließlich über `X-Next-Cursor` signalisiert.
+- [x] Test A und Test B bestehen.
+- [ ] Alle betroffenen Listen und das UI unterstützen Cursor-Seiten.
+- [ ] Last- und Multiworker-Nachweis besteht.
+
+**9. Implementierungsnachweise**
+
+- Änderungen: `app/backend/app/services/cursor_pagination.py`, `app/backend/app/routers/sessions.py`, `app/backend/app/routers/transcripts.py`, `app/backend/tests/test_cursor_pagination.py`.
+- Commit-SHA: `c101be8a800ea6a06a67cbeb7186c4beb5626314` (GitHub `main`, Branch-Readback verifiziert).
+- Ausgeführt: Cursor 3/3, Sessions-Router 4/4, bestehende Transcript-/Backend-Regressionen und `compileall` grün.
+- Einschränkung: UI-Paging, weitere Listen, Provider-/Lastabnahme fehlen.
+
+**10. Codex-Desktop-Handoff bei Blockern**
+
+Für die nächste Ausbaustufe zuerst die echten Frontend-API-Consumer für Sessions, Fragen, Direktiven, Dokumente und Knowledge-Records auf `X-Next-Cursor` umstellen; danach pro Route zwei Seiten mit künstlichen Gleichständen und gelöschten Zwischenzeilen prüfen. Die Provisional-Transcript-Anzeige muss dabei entweder einen eigenen Cursorteil erhalten oder ausdrücklich live-only bleiben.
 
 ### P2.11 Parallele Migrationsstarts
 
