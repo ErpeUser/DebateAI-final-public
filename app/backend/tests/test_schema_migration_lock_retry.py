@@ -21,12 +21,26 @@ class _FakeLockConnection:
         self.closed = True
 
 
+class _UnlockFailingConnection(_FakeLockConnection):
+    async def execute(self, statement):
+        self.executed.append(str(statement))
+        if "pg_advisory_unlock" in str(statement):
+            raise RuntimeError("unlock failed")
+
+
 class _FakeEngine:
     def __init__(self):
         self.connections = []
 
     async def connect(self):
         connection = _FakeLockConnection()
+        self.connections.append(connection)
+        return connection
+
+
+class _UnlockFailingEngine(_FakeEngine):
+    async def connect(self):
+        connection = _UnlockFailingConnection()
         self.connections.append(connection)
         return connection
 
@@ -51,6 +65,19 @@ class SchemaMigrationLockRetryTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(2, len(connection.executed))
             self.assertIn("pg_advisory_lock", connection.executed[0])
             self.assertIn("pg_advisory_unlock", connection.executed[1])
+
+    async def test_unlock_failure_still_closes_the_lock_connection(self):
+        engine = _UnlockFailingEngine()
+
+        with (
+            patch.object(main, "engine", engine),
+            patch.object(main, "_run_schema_migrations_unlocked", AsyncMock()),
+        ):
+            with self.assertRaisesRegex(RuntimeError, "unlock failed"):
+                await main._run_schema_migrations()
+
+        self.assertEqual(1, len(engine.connections))
+        self.assertTrue(engine.connections[0].closed)
 
 
 if __name__ == "__main__":

@@ -602,11 +602,17 @@ async def _run_schema_migrations() -> None:
             locked = True
         await _run_schema_migrations_unlocked()
     finally:
-        if locked:
-            await lock_conn.execute(
-                text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))")
-            )
-        await lock_conn.close()
+        # Closing the session is mandatory even when unlock itself reports a
+        # database failure.  Otherwise a broken cleanup path can strand the
+        # connection (and, for a pooled PostgreSQL engine, the advisory-lock
+        # session) so a later startup retry cannot make progress.
+        try:
+            if locked:
+                await lock_conn.execute(
+                    text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))")
+                )
+        finally:
+            await lock_conn.close()
 
 
 @asynccontextmanager
