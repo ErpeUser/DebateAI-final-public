@@ -122,6 +122,48 @@ test("ready state renders one primary speaking move and keeps the alternative se
   assert.match(html, /Kopieren/);
 });
 
+test("standard live recommendations expose at most two distinct alternatives", () => {
+  const html = render({
+    recommendation: {
+      ...ready,
+      strategy_options: [
+        {
+          id: "standard_answer",
+          kind: "answer",
+          title: "Sofortantwort",
+          text: ready.answer_now,
+        },
+        {
+          id: "standard_counter_question",
+          kind: "counter_question",
+          title: "Gegenfrage",
+          text: ready.counter_question,
+        },
+        {
+          id: "standard_example",
+          kind: "example",
+          title: "Konkreter Gegenfall",
+          text: ready.analogy,
+        },
+        {
+          id: "unexpected_fourth",
+          kind: "refutation",
+          title: "Nicht im Live-Vertrag",
+          text: "Dieser Zug darf die Standardansicht nicht überfüllen.",
+        },
+      ],
+    },
+    activity: activity("waiting"),
+  });
+
+  assert.match(html, /Weitere Antwortmöglichkeiten/);
+  assert.equal((html.match(/data-priority="alternative"/g) || []).length, 2);
+  assert.match(html, /Gegenfrage/);
+  assert.match(html, /Konkreter Gegenfall/);
+  assert.doesNotMatch(html, /Nicht im Live-Vertrag/);
+  assert.equal((html.match(/data-priority="primary"/g) || []).length, 1);
+});
+
 test("ready state offers all compact manual debate actions without adding prompt panels", () => {
   const html = render({
     recommendation: ready,

@@ -286,6 +286,23 @@ export default function DebateCoachPanel({
     recommendation?.pipeline_mode === "experimental_debateai"
       ? (recommendation.external_lane_artifacts ?? [])
       : [];
+  // The standard backend contract normalizes three strategy options: the
+  // selected primary move followed by at most two genuinely different
+  // alternatives. Keep the experimental four-move lab separate so the live
+  // product never renders an unbounded list of equally weighted cards.
+  const standardAlternatives =
+    recommendation?.pipeline_mode !== "experimental_debateai"
+      ? (recommendation?.strategy_options ?? [])
+          .filter(
+            (option) =>
+              option.id !== recommendation?.selected_strategy_id &&
+              option.kind !==
+                (recommendation?.primary_move === "question"
+                  ? "counter_question"
+                  : "answer"),
+          )
+          .slice(0, 2)
+      : [];
 
   return (
     <section aria-labelledby="debate-coach-title" className="px-4 pb-3">
@@ -497,6 +514,38 @@ export default function DebateCoachPanel({
                 </p>
               </article>
 
+              {standardAlternatives.length > 0 && (
+                <div
+                  className="mt-2 space-y-1.5"
+                  aria-label="Weitere Antwortmöglichkeiten"
+                  data-alternatives-count={standardAlternatives.length}
+                >
+                  <p className="font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-brand-mid-gray">
+                    Weitere Antworten
+                  </p>
+                  {standardAlternatives.map((option) => (
+                    <details
+                      key={option.id}
+                      data-priority="alternative"
+                      className="rounded-lg border border-brand-light-gray-1 bg-surface px-3 py-2 font-body text-xs text-brand-gray"
+                    >
+                      <summary className="cursor-pointer select-none font-semibold text-brand-dark-gray">
+                        {option.title}
+                      </summary>
+                      <p className="mt-1.5 leading-5">{option.text}</p>
+                      {option.rationale && (
+                        <p className="mt-1 leading-5">
+                          <span className="font-semibold text-brand-dark-gray">
+                            Warum:
+                          </span>{" "}
+                          {option.rationale}
+                        </p>
+                      )}
+                    </details>
+                  ))}
+                </div>
+              )}
+
               {recommendation.pipeline_mode === "experimental_debateai" &&
                 recommendation.strategy_options &&
                 recommendation.strategy_options.length > 0 && (
@@ -512,6 +561,7 @@ export default function DebateCoachPanel({
                         (option) =>
                           option.id !== recommendation.selected_strategy_id,
                       )
+                      .slice(0, 2)
                       .map((option) => (
                         <details
                           key={option.id}
