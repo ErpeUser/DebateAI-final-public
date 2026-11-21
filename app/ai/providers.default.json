@@ -36,9 +36,9 @@
     },
     {
       "id": "gemini_cli",
-      "label": "Gemini CLI OAuth (Fallback)",
+      "label": "Gemini CLI OAuth (gemini-3.8-flash-high, High)",
       "provider": "google-login",
-      "model_id": "endpoint:subscription-ai:gemini-3.1-pro-preview",
+      "model_id": "endpoint:subscription-ai:gemini-3.8-flash-high",
       "enabled": true,
       "reasoning_effort": "high",
       "timeout_seconds": 180,

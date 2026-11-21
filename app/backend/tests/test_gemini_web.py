@@ -8,6 +8,33 @@ from app.routers.gemini_web import _normalize_cookie
 
 
 class GeminiWebCookieTests(unittest.TestCase):
+    def test_status_selects_the_best_model_advertised_by_the_saved_account(self):
+        async def run():
+            with (
+                mock.patch.object(
+                    gemini_web,
+                    "stored_gemini_web_cookie_configured",
+                    mock.AsyncMock(return_value=True),
+                ),
+                mock.patch.object(
+                    gemini_web,
+                    "gemini_web_models",
+                    return_value=[
+                        "gemini-auto",
+                        "gemini-everyday-help",
+                        "gemini-deeper-analysis",
+                        "gemini-code-complex-work",
+                    ],
+                ),
+            ):
+                return await gemini_web._status(object())
+
+        import asyncio
+
+        status = asyncio.run(run())
+        self.assertTrue(status["pro_available"])
+        self.assertEqual("gemini-deeper-analysis", status["model"])
+
     def test_accepts_only_the_two_session_cookies_required_by_upstream(self):
         value = _normalize_cookie(
             "__Secure-1PSID=first-secret; __Secure-1PSIDTS=second-secret; NID=route"

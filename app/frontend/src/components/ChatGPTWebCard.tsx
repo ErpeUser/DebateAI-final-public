@@ -22,7 +22,12 @@ export default function ChatGPTWebCard({ onChanged }: { onChanged?: () => void }
         const next = await api.pollChatGPTWebLogin(controller.signal);
         if (controller.signal.aborted) return;
         setStatus(next);
-        setMessage(next.message);
+        const retainedVerification = next.ready && next.login_state === "error";
+        setMessage(
+          retainedVerification
+            ? "GPT-6 Extra High bleibt bestätigt. Die erneute Browserprüfung wurde beendet, ohne die gespeicherte Verbindung zu löschen."
+            : next.message,
+        );
         if (next.login_state !== "pending") {
           setBusy(false);
           if (next.ready) onChanged?.();
@@ -162,7 +167,7 @@ export default function ChatGPTWebCard({ onChanged }: { onChanged?: () => void }
           </button>
         )}
       </div>
-      <p className={`mt-2 font-body text-xs ${status?.login_state === "error" ? "text-red-600" : "text-brand-teal"}`}>
+      <p className={`mt-2 font-body text-xs ${status?.login_state === "error" && !status.ready ? "text-red-600" : "text-brand-teal"}`}>
         {message || status?.message}
       </p>
     </div>

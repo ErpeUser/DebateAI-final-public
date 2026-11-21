@@ -111,10 +111,10 @@ export default function SubscriptionAccountsCard({ onChanged }: { onChanged?: ()
           <button
             type="button"
             onClick={() => void startLogin("gemini-cli")}
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || Boolean(status?.gemini.ready)}
             className="mt-3 rounded bg-sky-700 px-3 py-1.5 font-body text-xs font-medium text-white disabled:opacity-40"
           >
-            {busy === "gemini-cli" ? "Anmeldung läuft ..." : "Mit Google anmelden"}
+            {busy === "gemini-cli" ? "Anmeldung läuft ..." : status?.gemini.ready ? "Anmeldung gespeichert" : "Mit Google anmelden"}
           </button>
           {status?.gemini.ready && (
             <button
@@ -137,10 +137,10 @@ export default function SubscriptionAccountsCard({ onChanged }: { onChanged?: ()
           <button
             type="button"
             onClick={() => void startLogin("codex")}
-            disabled={Boolean(busy)}
+            disabled={Boolean(busy) || Boolean(status?.openai.ready)}
             className="mt-3 rounded bg-sky-700 px-3 py-1.5 font-body text-xs font-medium text-white disabled:opacity-40"
           >
-            {busy === "codex" ? "Anmeldung läuft ..." : "Neuen OpenAI-Account anmelden"}
+            {busy === "codex" ? "Anmeldung läuft ..." : status?.openai.ready ? "Anmeldung gespeichert" : "Neuen OpenAI-Account anmelden"}
           </button>
         </div>
       </div>

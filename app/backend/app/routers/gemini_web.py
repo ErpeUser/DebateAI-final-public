@@ -28,12 +28,34 @@ router = APIRouter(prefix="/api/gemini-web", tags=["gemini-web"])
 _MAX_COOKIE_BYTES = 64 * 1024
 _REQUIRED_COOKIES = ("__Secure-1PSID", "__Secure-1PSIDTS")
 _PRO_MODEL = "gemini-3.1-pro"
+_PREFERRED_MODELS = (
+    "gemini-4-neon",
+    "gemini-3.8-flash-high",
+    "gemini-3.1-pro",
+    "gemini-deeper-analysis",
+    "gemini-most-complex-work",
+    "gemini-code-complex-work",
+)
 _login_process: subprocess.Popen | None = None
 _login_lock = threading.Lock()
 
 
 def _setting(name: str) -> str:
     return env_value(f"DEBATEAI_GEMINI_WEB_{name}").strip()
+
+
+def preferred_web_model(models: list[str]) -> str:
+    """Return the strongest model the saved Gemini account actually advertises."""
+    available = [str(model).strip() for model in models if str(model).strip()]
+    available_lower = {model.casefold(): model for model in available}
+    for preferred in _PREFERRED_MODELS:
+        if preferred.casefold() in available_lower:
+            return available_lower[preferred.casefold()]
+    for marker in ("deeper", "complex", "pro", "high"):
+        match = next((model for model in available if marker in model.casefold()), "")
+        if match:
+            return match
+    return available[0] if available else ""
 
 
 async def _status(
@@ -52,7 +74,8 @@ async def _status(
                 for item in (endpoint.models or [])
                 if isinstance(item, dict) and str(item.get("id") or "").strip()
             ]
-    pro_available = _PRO_MODEL in models
+    selected_model = preferred_web_model(models)
+    pro_available = bool(selected_model)
     return {
         "available": bool(
             _setting("URL")
@@ -62,7 +85,7 @@ async def _status(
         "ready": configured and bool(models),
         "pro_available": pro_available,
         "models": models,
-        "model": _PRO_MODEL if pro_available else "",
+        "model": selected_model,
         "thinking": "High wird angefordert; die Antwort weist das tatsaechliche Modell aus.",
         "login_available": bool(
             _setting("LOGIN_COMMAND")
@@ -72,10 +95,10 @@ async def _status(
         "message": (
             login_message
             or (
-                "Gemini 3.1 Pro ist fuer dieses Konto nachgewiesen und als Web-Fallback bereit."
+                f"{selected_model} ist fuer dieses Konto nachgewiesen und als Web-Fallback bereit."
                 if pro_available
                 else (
-                    "Die Anmeldung ist aktiv, aber das Konto meldet Gemini 3.1 Pro nicht als waehlbares Modell."
+                    "Die Anmeldung ist aktiv, aber das Konto meldet kein waehlbares Gemini-Modell."
                     if configured and models
                     else (
                         "Die Anmeldung wird geprueft."

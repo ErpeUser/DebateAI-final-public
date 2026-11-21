@@ -67,6 +67,28 @@ class WindowsAudioEndpointTests(unittest.TestCase):
                 microphone_mode="fixed",
             )
 
+    def test_fixed_current_default_recovers_when_enumeration_temporarily_misses_id(self):
+        audio = _Audio([{
+            "index": 0,
+            "name": "Default",
+            "hostApi": 2,
+            "maxInputChannels": 1,
+            "defaultSampleRate": 48000,
+            "deviceUID": "{0.0.1.00000000}.default",
+        }])
+        with patch.object(
+            windows_audio_capture,
+            "_device_by_endpoint_id",
+            side_effect=OSError("Das fest gewaehlte Windows-Audiogeraet ist nicht mehr verfuegbar"),
+        ):
+            microphone, _loopback = select_devices(
+                audio,
+                microphone_id="mmdevice:{0.0.1.00000000}.default",
+                microphone_mode="fixed",
+            )
+
+        self.assertEqual(0, microphone.index)
+
     def test_ambiguous_legacy_id_never_selects_first_identical_device(self):
         base = {
             "name": "Identical USB Mic",

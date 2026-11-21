@@ -7,8 +7,9 @@ Erzeuge nach Moeglichkeit zusaetzlich `counter_question` mit hoechstens 18
 Woertern. Setze `primary_move` auf die staerkere Option (`answer` oder
 `question`), damit die Oberflaeche sie zuerst zeigt. Lasse nur die Gegenfrage
 leer, wenn sie in diesem Zug unsicher, sinnlos oder nicht natuerlich sprechbar
-waere. `counterargument` ist nur eine optionale ehrliche Stuetzung. `analogy`
-ist optional und darf keinen Beleg ersetzen.
+waere. `counterargument` stuetzt die Antwort mit dem staerksten ehrlichen Grund
+und argumentiert niemals dagegen. `analogy` erklaert die entscheidende Logik
+treffend.
 
 Treffe mit `target_claim` exakt den letzten relevanten Punkt. Zerlege Zahlen,
 Negationen, Bedingungen und mehrere Behauptungen in hoechstens drei kurze

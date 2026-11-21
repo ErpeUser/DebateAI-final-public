@@ -394,6 +394,32 @@ def ensure_gemini_cli_route(wire_model: str = "gemini-3.1-pro-preview") -> dict[
     return save_provider_configuration({**data, "routes": next_routes})
 
 
+def ensure_gemini_web_route(wire_model: str) -> dict[str, Any]:
+    """Keep the saved Gemini Web route aligned with the account's live catalog."""
+    data = provider_configuration()
+    routes = data.get("routes") if isinstance(data, dict) else None
+    model = str(wire_model or "").strip()
+    if not isinstance(routes, list) or not model:
+        return data
+    next_routes = [dict(route) if isinstance(route, dict) else route for route in routes]
+    model_id = f"endpoint:gemini-web:{model}"
+    label = f"Gemini-Webproxy ({model}, High)"
+    for route in next_routes:
+        if not isinstance(route, dict) or route.get("id") != "gemini_web":
+            continue
+        if (
+            route.get("model_id") == model_id
+            and route.get("label") == label
+            and route.get("reasoning_effort") == "high"
+        ):
+            return data
+        route["model_id"] = model_id
+        route["label"] = label
+        route["reasoning_effort"] = "high"
+        return save_provider_configuration({**data, "routes": next_routes})
+    return data
+
+
 def reset_provider_configuration() -> dict[str, Any]:
     directory = ai_directory()
     default_path = directory / "providers.default.json"

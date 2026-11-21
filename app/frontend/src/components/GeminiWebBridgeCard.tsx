@@ -99,7 +99,7 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
   if (status && !status.available) return null;
 
   const badge = status?.pro_available
-    ? "3.1 Pro verfügbar"
+    ? `${status.model || "Gemini"} verfügbar`
     : status?.configured
       ? "Angemeldet · Pro nicht bestätigt"
       : "Nicht angemeldet";
@@ -107,7 +107,7 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
   return (
     <div className="rounded-xl border border-amber-200 bg-surface p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-base font-bold text-brand-dark-gray">Gemini Pro über lokalen Webzugang</h3>
+        <h3 className="font-display text-base font-bold text-brand-dark-gray">Gemini über lokalen Webzugang</h3>
         <span className={`rounded-full px-2 py-0.5 font-body text-[10px] font-medium text-white ${status?.pro_available ? "bg-brand-teal" : "bg-amber-500"}`}>
           {badge}
         </span>
@@ -131,10 +131,10 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
           <button
             type="button"
             onClick={startLogin}
-            disabled={busy || status.login_state === "pending"}
+            disabled={busy || status.login_state === "pending" || Boolean(status.ready)}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white disabled:opacity-40"
           >
-            {status.login_state === "pending" ? "Anmeldung läuft ..." : "Mit Google anmelden"}
+            {status.login_state === "pending" ? "Anmeldung läuft ..." : status.ready ? "Anmeldung gespeichert" : "Mit Google anmelden"}
           </button>
         )}
         {status?.configured && (

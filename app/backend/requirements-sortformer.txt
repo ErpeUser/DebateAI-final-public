@@ -1,2 +1,2 @@
-nemo_toolkit[asr]>=2.3.0,<3
-huggingface_hub[cli]>=0.24.0
+nemo_toolkit[asr]==2.7.2
+huggingface_hub[cli]>=0.34.0,<1.0

@@ -246,19 +246,46 @@ def select_devices(
     microphone = default_microphone
     loopback = default_loopback
     if microphone_mode == "fixed":
-        microphone = _device_by_endpoint_id(audio, microphone_id or "", loopback=False)
+        try:
+            microphone = _device_by_endpoint_id(audio, microphone_id or "", loopback=False)
+        except OSError:
+            # PyAudio can briefly omit the endpoint from its enumeration while
+            # Windows is renewing the default device. Keep an explicitly
+            # selected device only when the current default exposes the same
+            # stable identity. Other fixed-device failures remain errors.
+            if not _device_matches_id(default_microphone, microphone_id):
+                raise
+            microphone = default_microphone
     elif microphone_index is not None and microphone_mode is None:
         microphone = _device_from_info(audio.get_device_info_by_index(microphone_index))
         if microphone.loopback:
             raise OSError("Das gewaehlte Mikrofon ist ein Loopback-Geraet")
     if loopback_mode == "fixed":
-        loopback = _device_by_endpoint_id(audio, loopback_id or "", loopback=True)
+        try:
+            loopback = _device_by_endpoint_id(audio, loopback_id or "", loopback=True)
+        except OSError:
+            if not _device_matches_id(default_loopback, loopback_id):
+                raise
+            loopback = default_loopback
     elif loopback_index is not None and loopback_mode is None:
         info = audio.get_device_info_by_index(loopback_index)
         if not bool(info.get("isLoopbackDevice")):
             raise OSError("Das gewaehlte Systemgeraet bietet kein Loopback")
         loopback = _device_from_info(info, loopback=True)
     return microphone, loopback
+
+
+def _device_matches_id(device: NativeAudioDevice | None, endpoint_id: str | None) -> bool:
+    if device is None or not endpoint_id:
+        return False
+    if not device.endpoint_id.startswith("mmdevice:"):
+        return False
+    legacy_native_id = (
+        f"wasapi:{device.endpoint_id.removeprefix('mmdevice:')}"
+        if device.endpoint_id.startswith("mmdevice:")
+        else ""
+    )
+    return endpoint_id in (device.endpoint_id, device.stable_id, legacy_native_id)
 
 
 def _device_by_endpoint_id(audio: Any, endpoint_id: str, *, loopback: bool) -> NativeAudioDevice:

@@ -13,7 +13,7 @@ from app.config import settings
 from app.database import engine
 from app.models import Base
 from app.release_notes import APP_VERSION
-from app.routers import agents, ai_config, analyze, artifacts, ask, chat, chatgpt_web, credentials, debate_review, debate_settings, dossiers, retranscribe, diagnostics, directives, documents, endpoints, gemini_web, groups, imports, knowledge, meta, model_downloads, models, native_audio, offerings, pii_shield, privacy, questions, sessions, speakers, subscription_accounts, synthesis, transcripts, updates
+from app.routers import agents, ai_config, analyze, artifacts, ask, chat, chatgpt_web, credentials, debate_review, debate_settings, dossiers, retranscribe, diagnostics, directives, documents, endpoints, gemini_web, groups, imports, knowledge, meta, model_downloads, models, native_audio, offerings, pii_shield, privacy, questions, sessions, speakers, subscription_accounts, synthesis, transcripts, updates, video_eval
 from app.services.pii.egress import PiiEgressBlocked
 from app.services.pii.reveal_middleware import PiiRevealMiddleware
 from app.services.privacy import LocalOnlyModeError
@@ -537,6 +537,13 @@ async def lifespan(app: FastAPI):
             async with async_session() as db:
                 await sync_subscription_bridge(db)
                 await db.commit()
+                from app.routers.gemini_web import preferred_web_model
+                from app.services.ai_config import ensure_gemini_web_route
+                from app.services.subscription_bridge import gemini_web_models
+
+                selected_web_model = preferred_web_model(gemini_web_models())
+                if selected_web_model:
+                    ensure_gemini_web_route(selected_web_model)
         except Exception as exc:
             logging.getLogger(__name__).warning(
                 "Optional provider discovery unavailable (%s); local backend remains ready",
@@ -638,6 +645,7 @@ app.include_router(pii_shield.session_router)
 app.include_router(model_downloads.router)
 app.include_router(updates.router)
 app.include_router(audio_handler.router)
+app.include_router(video_eval.router)
 
 
 @app.exception_handler(LocalOnlyModeError)

@@ -22,6 +22,16 @@ The app runs from your system tray / menu bar and stores data per-user --
 `~/Library/Application Support/DebateAI` on macOS,
 `~/.local/share/debateai` on Linux -- no Docker needed. Set a Gemini API key in Admin -> Connections on first run ([API credentials](configuration.md#api-credentials) shows how to create one in about two minutes). For the full self-hosted stack, use Docker Compose below.
 
+### First-run onboarding in the desktop GUI
+
+When no debate exists yet, the center screen shows the three-step onboarding
+checklist. **Modelle prüfen → Einstellungen** opens **Admin → Verbindungen**
+with the **Ersteinrichtung** card. Save or test the desired provider there,
+then choose the available models under **Assistenten** and **Transkription &
+Audio**. The card shows **Zum ersten Gespräch** once the selected
+transcription and agent models are runnable. The same connection and model
+pages remain available under **Admin** after the first conversation.
+
 ### Keeping the desktop app up to date
 
 From v0.4.0 the desktop app updates itself in place. "Check for updates" in
@@ -140,6 +150,11 @@ docker compose down -v     # also delete the database and audio volumes
 ```
 
 ### GPU startup (Sortformer diarization)
+
+Windows desktop releases already include the pinned Torch, CUDA, and NeMo
+runtime. Open **Admin → Transkription & Audio**, run the Sortformer benchmark,
+and select Enhanced only after the local benchmark passes. Docker uses the
+same model contract inside its backend image.
 
 Use the GPU override when running on a host with NVIDIA GPU support. It
 builds the backend with GPU ONNX Runtime and reserves the GPU for the

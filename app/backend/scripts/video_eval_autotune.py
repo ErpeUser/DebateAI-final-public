@@ -19,6 +19,12 @@ from pathlib import Path
 from typing import Any
 
 from app.services.video_eval_evaluator import build_split_manifest, load_video_artifacts, save_manifest
+from app.services.prompt_optimization import (
+    EvaluationResult,
+    OptimizationPolicy,
+    PromptOptimizationStore,
+    compare_evaluations,
+)
 from app.services.ai_config import research_settings
 from video_eval_batch import _assert_unique_video_ids, process
 
@@ -86,6 +92,140 @@ async def _request_tuning_review(summary: dict[str, Any]) -> dict[str, Any]:
         return {"provider": provider, "status": "invalid_shape", "prompt_variants": [], "agent_comparison": []}
     return {"provider": provider, "status": "completed", **payload}
 
+
+def evaluation_results_from_fixture(raw: object) -> list[EvaluationResult]:
+    """Normalize compatible fixture rows while keeping score fields explicit."""
+    if not isinstance(raw, list):
+        raise ValueError("evaluation results must be a JSON array")
+    rows = []
+    for index, row in enumerate(raw, 1):
+        if not isinstance(row, dict):
+            raise ValueError(f"evaluation row {index} must be an object")
+        case_id = str(row.get("case_id") or row.get("id") or "").strip()
+        metrics = row.get("metrics")
+        if not case_id or not isinstance(metrics, dict):
+            raise ValueError(f"evaluation row {index} needs case_id and metrics")
+        rows.append(EvaluationResult(case_id, str(row.get("split") or "fixed"), metrics))
+    return rows
+
+
+def load_evaluation_results_from_payload(payload: object) -> list[EvaluationResult]:
+    """Load evaluator rows from a JSON payload without accepting implicit splits."""
+    rows = payload.get("results") if isinstance(payload, dict) else payload
+    if not isinstance(rows, list):
+        raise ValueError("Evaluationsergebnis muss eine results-Liste enthalten")
+    result: list[EvaluationResult] = []
+    for index, row in enumerate(rows, 1):
+        if not isinstance(row, dict):
+            raise ValueError(f"Evaluation {index} ist kein Objekt")
+        case_id = str(row.get("case_id") or row.get("id") or "").strip()
+        split = str(row.get("split") or "").strip().casefold()
+        metrics = row.get("metrics")
+        if not case_id or split not in {"fixed", "holdout"} or not isinstance(metrics, dict):
+            raise ValueError(f"Evaluation {index} braucht case_id, split=fixed|holdout und metrics")
+        result.append(EvaluationResult(case_id=case_id, split=split, metrics=metrics))
+    return result
+
+
+def load_evaluation_results(path: str | Path) -> list[EvaluationResult]:
+    source = Path(path)
+    return load_evaluation_results_from_payload(json.loads(source.read_text(encoding="utf-8")))
+
+
+def build_optimization_report(
+    baseline_results: list[EvaluationResult],
+    candidate_results: list[EvaluationResult],
+    *,
+    policy: OptimizationPolicy | None = None,
+) -> dict[str, Any]:
+    """Return an auditable decision; this function never activates a prompt."""
+    decision = compare_evaluations(baseline_results, candidate_results, policy)
+    return {
+        "decision": decision.to_dict(),
+        "baseline_cases": [row.to_dict() for row in baseline_results],
+        "candidate_cases": [row.to_dict() for row in candidate_results],
+        "activation": {
+            "status": "proposal_only",
+            "applied": False,
+            "reason": "Aktivierung braucht ausdrückliche Freigabe oder aktivierten Auto-Apply-Modus.",
+        },
+    }
+
+
+def evaluate_prompt_proposal(
+    baseline_results: list[EvaluationResult],
+    candidate_results: list[EvaluationResult],
+    policy: OptimizationPolicy | None = None,
+) -> dict[str, Any]:
+    return compare_evaluations(baseline_results, candidate_results, policy).to_dict()
+
+
+def apply_prompt_proposal(
+    ai_root: Path,
+    *,
+    prompt_name: str,
+    candidate_content: str,
+    rationale: str,
+    baseline_results: list[EvaluationResult],
+    candidate_results: list[EvaluationResult],
+    policy: OptimizationPolicy | None = None,
+    approved_by_user: bool = False,
+    auto_apply: bool = False,
+    explicit_auto_apply: bool = False,
+    user_managed: bool = False,
+    sources: list[str] | None = None,
+    risks: list[str] | None = None,
+) -> dict[str, Any]:
+    return PromptOptimizationStore(ai_root).apply(
+        prompt_name,
+        candidate_content,
+        rationale,
+        baseline_results,
+        candidate_results,
+        policy,
+        approved_by_user=approved_by_user,
+        auto_apply=auto_apply,
+        explicit_auto_apply=explicit_auto_apply,
+        user_managed=user_managed,
+        sources=sources or [],
+        risks=risks or [],
+    )
+
+def apply_optimization(
+    prompt_root: str | Path,
+    prompt_name: str,
+    candidate_content: str,
+    baseline_results: list[EvaluationResult],
+    candidate_results: list[EvaluationResult],
+    *,
+    rationale: str = "",
+    policy: OptimizationPolicy | None = None,
+    approved_by_user: bool = False,
+    auto_apply: bool = False,
+    explicit_auto_apply: bool = False,
+    user_managed: bool = False,
+) -> dict[str, Any]:
+    """Apply only after the same fixed/holdout cases pass the store gate."""
+    policy = policy or OptimizationPolicy(auto_apply_enabled=auto_apply)
+    store = PromptOptimizationStore(prompt_root)
+    try:
+        return store.apply(
+            prompt_name,
+            candidate_content,
+            rationale,
+            baseline_results,
+            candidate_results,
+            policy,
+            approved_by_user=approved_by_user,
+            auto_apply=auto_apply,
+            explicit_auto_apply=explicit_auto_apply,
+            user_managed=user_managed,
+        )
+    except ValueError as exc:
+        # A missing explicit approval is a safe, reportable no-op for CLI use.
+        if "explicit" in str(exc).lower() or "approval" in str(exc).lower():
+            return {"status": "rejected", "reason": str(exc), "applied": False}
+        raise
 
 def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
     """Normalize a plain URL list into the batch processor contract."""

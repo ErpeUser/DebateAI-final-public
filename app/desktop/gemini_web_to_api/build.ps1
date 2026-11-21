@@ -4,6 +4,13 @@ param(
 
 $ErrorActionPreference = "Stop"
 
+# Codex can inject GIT_CONFIG_COUNT without the matching key variables into a
+# child process. Clear that malformed session-only override before git apply so
+# the verified upstream patch is evaluated against the downloaded source.
+Get-ChildItem Env:GIT_CONFIG_* -ErrorAction SilentlyContinue | ForEach-Object {
+    Remove-Item -LiteralPath ("Env:" + $_.Name) -ErrorAction SilentlyContinue
+}
+
 if ($env:OS -ne "Windows_NT") {
     throw "This pinned dependency build currently targets Windows amd64 only."
 }
