@@ -105,6 +105,103 @@ class ChatBriefingOwnerTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(f"LIMIT {MAX_CHAT_TRANSCRIPT_ENTRIES_PER_SESSION}", sql)
         self.assertIn(f"LIMIT {MAX_CHAT_INSIGHTS_PER_SESSION}", sql)
 
+    async def test_chat_prioritizes_insights_in_sql_before_the_limit(self):
+        statements = []
+        db = _db_mock()
+
+        async def execute(statement):
+            statements.append(str(statement.compile(compile_kwargs={"literal_binds": True})))
+            result = MagicMock()
+            result.scalars.return_value.all.return_value = []
+            result.scalar_one_or_none.return_value = None
+            return result
+
+        db.execute = AsyncMock(side_effect=execute)
+        with (
+            patch(
+                "app.services.briefing_synthesis.get_session_synthesis",
+                new=AsyncMock(return_value=None),
+            ),
+            patch("app.routers.chat.generate_text", new=AsyncMock(return_value="Done")),
+            patch(
+                "app.routers.chat.shield.protect_text_for_sessions",
+                new=AsyncMock(side_effect=lambda _db, _ids, text: text),
+            ),
+            patch(
+                "app.routers.chat.shield.reveal_text",
+                new=AsyncMock(side_effect=lambda _db, _id, text, **_kwargs: text),
+            ),
+        ):
+            await chat(_body(GOOGLE_MODEL), db=db)
+
+        question_sql = next(sql for sql in statements if 'FROM questions' in sql)
+        order_by = question_sql.split(" ORDER BY ", 1)[1].split(" LIMIT ", 1)[0]
+        self.assertLess(order_by.index("starred DESC"), order_by.index("needs_followup DESC"))
+        self.assertLess(order_by.index("needs_followup DESC"), order_by.index("answered ASC"))
+        self.assertIn(f"LIMIT {MAX_CHAT_INSIGHTS_PER_SESSION}", question_sql)
+
+    async def test_chat_keeps_database_insight_priority_in_prompt_order(self):
+        first, second = uuid4(), uuid4()
+        high = SimpleNamespace(
+            id=first,
+            item_type="question",
+            question="Escalate the renewal risk",
+            rationale="",
+            source_context="",
+            speaker_id=None,
+            answered=False,
+            answer_summary="",
+            needs_followup=True,
+            followup_question="",
+            offering_match="",
+        )
+        low = SimpleNamespace(
+            id=second,
+            item_type="observation",
+            question="Already resolved detail",
+            rationale="",
+            source_context="",
+            speaker_id=None,
+            answered=True,
+            answer_summary="done",
+            needs_followup=False,
+            followup_question="",
+            offering_match="",
+        )
+        db = _db_mock()
+        calls = 0
+
+        async def execute(statement):
+            nonlocal calls
+            calls += 1
+            result = MagicMock()
+            result.scalar_one_or_none.return_value = None
+            result.scalars.return_value.all.return_value = [high, low] if "FROM questions" in str(statement) else []
+            return result
+
+        db.execute = AsyncMock(side_effect=execute)
+        generate = AsyncMock(return_value="Done")
+        with (
+            patch(
+                "app.services.briefing_synthesis.get_session_synthesis",
+                new=AsyncMock(return_value=None),
+            ),
+            patch("app.routers.chat.generate_text", new=generate),
+            patch(
+                "app.routers.chat.shield.protect_text_for_sessions",
+                new=AsyncMock(side_effect=lambda _db, _ids, text: text),
+            ),
+            patch(
+                "app.routers.chat.shield.reveal_text",
+                new=AsyncMock(side_effect=lambda _db, _id, text, **_kwargs: text),
+            ),
+        ):
+            await chat(_body(GOOGLE_MODEL), db=db)
+
+        prompt = generate.await_args.args[1]
+        self.assertLess(prompt.index("Escalate the renewal risk"), prompt.index("Already resolved detail"))
+        self.assertGreaterEqual(calls, 3)
+
     async def test_chat_uses_the_normalized_synthesis_in_its_prompt(self):
         raw_owner = str(uuid4())
         raw_synthesis = _synthesis(raw_owner)

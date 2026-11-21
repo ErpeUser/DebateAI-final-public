@@ -298,11 +298,19 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         insights_result = await db.execute(
             select(Question)
             .where(Question.session_id == session_id, Question.dismissed.is_(False))
-            .order_by(Question.created_at.desc(), Question.id.desc())
+            .order_by(
+                Question.starred.desc(),
+                Question.needs_followup.desc(),
+                Question.answered.asc(),
+                Question.created_at.desc(),
+                Question.id.desc(),
+            )
             .limit(MAX_CHAT_INSIGHTS_PER_SESSION)
         )
+        # The database applies the priority before the bounded LIMIT. Keep the
+        # returned order in the prompt so an important unresolved insight cannot
+        # be displaced by a newer but already-answered row.
         insights = list(insights_result.scalars().all())
-        insights.reverse()
 
         started = session.started_at or session.created_at
         sessions_data.append(
