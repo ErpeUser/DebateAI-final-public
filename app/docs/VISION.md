@@ -1,198 +1,389 @@
-# DebateAI – Produktvision
+# DebateAI – Verbindliche Gesamtvision
 
-**Stand:** 19.11.2026 · **Status:** vom Projekteigentümer anhand von 50 Entscheidungsfragen und Freitext-Ergänzungen präzisiertes **Produktziel**, nicht Aussage über den aktuellen Fertigstellungsgrad.
+**Stand:** 21.11.2026  
+**Dokumenttyp:** Vollständiges Produktziel und fachlicher Anforderungskatalog, **kein Nachweis einer fertigen Implementierung**.  
+**Geltung:** Zielvision für DebateAI; konsolidiert aus der bisherigen VISION.md vom 19.11.2026 und den Eigentümerentscheidungen aus sechs Grill-Me-Runden bis zum 21.11.2026.
 
-**Leseregel:** Festgelegte Ziele haben Vorrang vor älteren Konzepten. Noch nicht entschiedene Alternativen stehen jeweils unmittelbar unter dem betroffenen Thema oder gesammelt am Ende; frühere Produktlinien sind ausdrücklich als historisch/optional gekennzeichnet. Implementiert, getestet, veröffentlicht und abgenommen sind unterschiedliche Zustände.
+> **Leseregel und Vorrang:** Die jüngsten ausdrücklich getroffenen Produktentscheidungen gelten vor widersprechenden früheren Vorschlägen. Bestätigte ältere Ziele bleiben erhalten. „Soll“, „muss“ und „geplant“ beschreiben Zielverhalten, nicht den aktuellen Softwarestand. **Implementiert, lokal getestet, auf echter Hardware geprüft, freigegeben und veröffentlicht sind unterschiedliche Zustände.** Tatsächliche Nachweise stehen im aktuellen Code, in [HANDBUCH.md](HANDBUCH.md) und [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md); historische Herkunft in [HISTORIE.md](HISTORIE.md).
 
-## 1. Leitbild und Zielgruppe
+## 1. Leitbild, Zielgruppe und unverrückbarer Produktkern
 
-**DebateAI soll der beste persönliche Echtzeit-Debatten-Copilot werden.** Die Anwendung hört einer laufenden, insbesondere kontroversen Diskussion zu, versteht die argumentative Situation und liefert genau dann die rhetorisch stärksten, sofort aussprechbaren Reaktionen, wenn der Nutzer sie braucht. Sie soll ihm helfen, Widersprüche aufzudecken, Behauptungen zu hinterfragen, eigene Positionen zu verteidigen und überzeugender zu argumentieren. **Der Mensch entscheidet selbst, was er sagt; DebateAI spricht nicht autonom an seiner Stelle.**
+**DebateAI soll der bestmögliche persönliche Echtzeit-Debatten-Copilot werden.** Es verfolgt eine laufende, vor allem kontroverse Diskussion, erkennt ihre Argumentstruktur und schlägt im richtigen Moment kurze, natürliche, unmittelbar aussprechbare Reaktionen vor. Es hilft dem Nutzer, Prämissen zu prüfen, Widersprüche und Doppelstandards zu erkennen, relevante Belege zu finden und überzeugender zu argumentieren. **Der Mensch entscheidet selbst, was er sagt. DebateAI spricht nicht autonom an seiner Stelle.**
 
-Erste Kernzielgruppen sind **Privatpersonen sowie Debattierer, Studierende und Rhetorik-Interessierte**. Das wichtigste V1-Szenario ist ein **kontroverser Videocall**; persönliche Gespräche und nachträgliche Analysen sind nachgeordnet. Das Produkt ist zunächst bewusst **für eine einzelne Person**, nicht für Team-Workspaces, optimiert.
+Die erste Zielgruppe sind Privatpersonen, Debattierer, Studierende und Rhetorik-Interessierte. **V1 konzentriert sich auf eine einzelne Person in einem kontroversen Videocall.** Persönliche Gespräche, nachträgliche Auswertungen und allgemeine Meeting-Analyse sind unterstützende beziehungsweise optionale Szenarien. Team-Workspaces und ein allgemeiner Meeting-Dienst sind nicht die primäre Produktidentität.
 
-Der entscheidende Aha-Moment ist eine **brillante, sofort nutzbare Erwiderung**. Erfolg bedeutet nicht möglichst viel KI-Text, sondern dass Vorschläge **nachweislich häufiger helfen**: Sie sind rechtzeitig, sprechbar, situativ treffend, überzeugend und sachlich vertretbar.
+Der Aha-Moment ist nicht viel generierter Text, sondern eine **situativ richtige, sachlich vertretbare und rechtzeitig sprechbare Erwiderung**. Erfolg wird an nachweisbarem Nutzen, Genauigkeit, Natürlichkeit, Rhetorik, Zeitverhalten und Stabilität gemessen. DebateAI soll langfristig auch eine modulare Plattform für Rhetik- und Gesprächsanalyse, Evaluierung und KI-Forschung sein; jede Erweiterung muss jedoch dem Live-Debattenkern dienen.
 
-Langfristig bleibt DebateAI eine **modulare Plattform für Rhetorik, Gesprächsanalyse und KI-Forschung** – aber alle Erweiterungen müssen den Echtzeit-Debattenkern unterstützen, nicht verdrängen.
+**Leitprinzipien:**
+- **Local First im Live-Pfad:** Lokale Spracherkennung und ein lokales Textmodell liefern die erste Reaktion; externe Web-Agenten ergänzen, blockieren diesen Pfad aber nicht.
+- **Web First bei externen Agenten:** Neue ChatGPT-/Gemini-Agenten arbeiten über die jeweiligen Weboberflächen, nicht über verpflichtende Modell-APIs.
+- **Einfachheit trotz Leistung:** Die bestehende Desktop-UI wird konsequent verbessert und vereinfacht, ohne ihre wertvollen Analysefunktionen zu verlieren.
+- **Generative statt deterministische KI-Beispiele:** Modellantworten in Vorschauen und Alternativen stammen aus tatsächlichen Modellgenerationen; keine als echt ausgegebenen Textbausteine.
+- **Nutzerentscheidung:** Die KI darf Einstellungen und Strategien empfehlen, aber persönliche Präferenzen nicht stillschweigend übernehmen.
+- **Geprüfte Selbstoptimierung:** Nach manuellem Start können Testprofile automatisiert verbessert werden, niemals während der Live-Debatte.
+- **Eigenständigkeit:** DebateAI darf sich von Backchannel und anderen Systemen inspirieren lassen, darf aber nicht von ihnen als Produkt abhängen.
 
-## 2. Das Live-Erlebnis als Hauptprodukt
+## 2. Plattform, Betriebsarchitektur und Modellwege
 
-Nach einem geführten Starttest für Audio, Hardware, lokale Modelle und Datenflüsse startet der Nutzer eine Sitzung. Mikrofon und Systemaudio laufen als getrennte Quellen. Die Anwendung ordnet Sprecher in Echtzeit zu, führt das Gesprächsprotokoll fort und erstellt ununterbrochen Vorschläge.
+**Das Hauptprodukt bleibt eine eigenständige Windows-Desktop-Anwendung.** Der kritische Live-Pfad nutzt lokale Audioverarbeitung, lokale ASR und ein lokal ausführbares Textmodell, etwa über Ollama/Qwen oder eine funktional geeignete Alternative. Das ist ein Architekturziel, keine Festlegung auf ein bestimmtes Modell. Der lokale Pfad bleibt auch während langsamer oder ausgefallener Web-Recherchen funktionsfähig.
 
-**Zwei logisch getrennte, durchgehend aktive Agentenrollen** arbeiten zusammen:
+Daneben arbeitet ein **zusätzlicher Web-Agenten-Pfad** mit ChatGPT Web und Gemini Web. Dieser übernimmt je nach Bedarf Recherche, tiefere Argumentationsanalyse, Kontextanreicherung, Vergleich und spätere Test-/Profiloptimierung. Eine laufende lokale erste Antwort darf von diesen Aufgaben nicht abhängig sein. Die neuen externen Agenten benötigen **keine verpflichtende direkte Modell-API**. Bereits vorhandene API-Integrationen, etwa für ältere Meeting- und Dokumentfunktionen, dürfen als klar gekennzeichnete optionale Legacy-Pfade erhalten bleiben, ohne die Web-Agenten-Strategie zu verwässern.
 
-1. **Argument-Agent:** Er bewertet die gerade gesprochene Aussage, ihre Prämissen, Schlussfolgerungen, möglichen Fehler, Beweislast und unmittelbar passenden Gegenreaktionen.
-2. **Strategie-Agent:** Er verfolgt die bisherige Sitzung, Positionen, bereits gegebene Antworten, wiederkehrende Argumentationsmuster, Widersprüche, Doppelstandards, Dilemmata und den nächsten taktisch sinnvollen Gesprächsschritt.
+**Lokal und Cloud sind zwei mögliche Ausführungsumgebungen derselben Anwendung:**
+- **Lokal:** reguläre Live-Debattennutzung, Testlabor und vollständige Programmausführung auf dem eigenen Windows-PC.
+- **Cloud:** vollständige Testinstanz des Programms einschließlich UI/Teststeuerung, Agenten, Browser-Sitzungen, Audio-/Video-Replay, Messung, Konfigurationsoptimierung und Build-/GitHub-Anbindung.
+- **Hybrid:** gemeinsame versionierte Prompts, Profile und Konfigurationsstände, ohne lokale Sitzungsdaten ungefragt in die Cloud zu verschieben.
 
-Beide Rollen dürfen parallel arbeiten, müssen aber auf denselben aktuellen Sprecher-/Kontextstand bezogen sein und dürfen einander nicht mit widersprüchlichen oder überholten Ergebnissen überschreiben. **Zwei Rollen sind eine fachliche Anforderung, keine zwingende Vorgabe für zwei getrennte Modelle oder Prozesse.** Die konkrete Orchestrierung muss den Latenz- und Qualitätszielen standhalten.
+Die Cloud ist **kein Ersatz für die lokale Nutzung**. Google Cloud wird wegen vorhandener Willkommens-Credits vorrangig auf technische Eignung und Kosten untersucht; andere Lösungen sind zulässig, falls sie objektiv besser geeignet sind. Docker/Self-hosted bleibt ein möglicher Entwicklungs- und Serverweg, Windows-Desktop aber die primäre Nutzung. Linux/macOS und breiterer Plattform-Support sind mögliche spätere Ausbauten.
 
-Der Live-Modus zeigt **drei kurze, unterschiedliche und möglichst direkt aussprechbare Alternativen**. Mindestens eine soll eine konkrete verwendbare Formulierung bieten; passende Alternativen können Gegenfrage, Einwand, Beispiel oder strategische Gesprächsbewegung sein. Empfehlungen werden **laufend** aktualisiert und auch während der eigenen Rede angezeigt, wenn ein wichtiger Fehler oder eine neue Chance erkannt wird. Der Nutzer muss dabei ohne Umwege selbst entscheiden können, ob er die Hilfe aufgreift.
+Vor einer ersten Live-Sitzung prüft eine geeignete Einrichtungshilfe Prozessor, GPU, RAM, Audio-Geräte, lokale ASR-/Textmodelle, Modellkompatibilität und ausgewählte Datenflüsse. Fehlende Modelle oder Voraussetzungen werden verständlich erklärt; Downloads, Provider und mögliche Kosten werden transparent dargestellt. Mindesthardware und verbindliche Modellmatrix sind durch Messungen zu bestimmen, nicht aus Vermutungen abzuleiten.
 
-**Frühe, revidierbare Vorschläge sind gewollt:** Die KI darf auf unvollständige Transkripte reagieren, kennzeichnet Unsicherheit aber passend. Korrigiert die ASR ihren Wortlaut, muss die sichtbare Empfehlung ebenfalls überarbeitet werden. Durch neue Aussagen überholte Karten dürfen nicht als aktuell weitergelten; sie werden sichtbar als **„veraltet“** markiert. Neue Ergebnisse tragen erkennbaren Sitzungs-/Turn-Bezug.
+## 3. Live-Debatte, fachliche Agentenrollen und Kontext
 
-**Ambitionierte Zielzeit:** Eine erste brauchbare Reaktion soll auf der definierten Windows-Zielhardware nach Möglichkeit innerhalb von **1 bis 2,5 Sekunden** erscheinen. Das ist ein zu messendes Ziel, kein bereits belegter SLA. Rechenintensive Nebenaufgaben dürfen die erste Reaktion nicht blockieren.
+Nach dem Audio-/Hardware-Starttest beginnt die Sitzung mit getrennten Audioquellen, laufenden Transkripten, Sprecherzuordnung und kontinuierlich aktualisierten Antwortvorschlägen. Die Anwendung verarbeitet nicht nur den letzten Satz, sondern **Argumentationsverlauf, eigene Position, Position des Gegenübers, bisherige Reaktionen, Widersprüche und den nächsten sinnvollen rhetorischen Schritt**.
 
-Bei Modell- oder Provider-Ausfall zeigt DebateAI **einen klaren Fehlerstatus und keine neue, vermeintlich intelligente Ersatzantwort**. Bereits angezeigte Vorschläge behalten ihren zeitlichen/inhaltlichen Status.
+**Zwei dauerhaft verfügbare fachliche Kernrollen bleiben verbindlich:**
 
-## 3. Rhetorik: zwei zentrale Modi
+1. **Argument-Agent:** Prüft aktuelle Aussagen, Prämissen, Schlussfolgerungen, Beweislast, Denkfehler und direkte Gegenreaktionen.
+2. **Strategie-Agent:** Verfolgt den Sitzungsverlauf, Muster, bereits verwendete Antworten, Doppelstandards, Widersprüche, Dilemmata und taktische Optionen.
 
-Die Rhetorik ist kein generischer Chatbot-Stil, sondern eine strategische Entscheidung anhand von Diskussion, Gegenüber, eigener Position und Modus.
+Diese Rollen müssen auf demselben gültigen Gesprächs-/Sprecherkontext arbeiten. **Zwei Rollen sind keine Pflicht zu zwei getrennten Modellen oder Prozessen.** Ein zentraler Koordinator kann sie lokal oder durch zusätzliche Web-Aufgaben unterstützen und achtet darauf, dass neue, alte und widersprüchliche Agentenergebnisse nicht ungeprüft vermischt werden.
 
-### Modus „Knallhart“
+Zusätzliche Rollen wie Recherche, Belegprüfung, Kontextanalyse und Evaluierung können bedarfsorientiert und dynamisch aktiviert werden. Bestehende Funktionen für Lead-/Shout-Verhalten, das Erkennen günstiger Argumentationsmomente und strategische Hinweise sollen so weit wie sinnvoll automatisiert und verbessert werden, statt zusätzliche Benutzerentscheidungen zu erzwingen. Live-KI-Unterstützung bleibt sichtbar und kontrollierbar; der Nutzer spricht selbst.
 
-Ziel ist **maximale argumentative Konfrontation**: unhaltbare Aussagen bloßstellen, Doppelstandards aufdecken, Widersprüche zuspitzen, gegnerische Prämissen umdrehen und durch präzise Rückfragen argumentative Auswege verengen. Pointierte, sehr scharfe, auch provokante Formulierungen sind ausdrücklich erwünscht. Das System soll nicht unnötig weichzeichnen.
+## 4. Antwortausgabe: eine beste Antwort, höchstens zwei Alternativen
 
-Dazu gehören **konkrete, an den Gesprächsverlauf angepasste Szenarien**: etwa dieselbe moralische Regel auf vertauschte politische oder soziale Rollen anwenden und fragen, ob das Gegenüber den Maßstab dann weiterhin akzeptieren würde. Solche Rollentausche sind klar **hypothetische Fragen**, keine erfundenen Tatsachen. „Hart wie möglich“ bezieht sich auf argumentative Wirksamkeit, nicht auf Drohungen, Aufrufe zu Gewalt oder frei erfundene Vorwürfe.
+Die frühere gleichrangige Darstellung von drei Antwortkarten wird durch eine klare Hierarchie ersetzt:
 
-### Modus „Überzeugend“
+- **Eine beste aktuelle Antwort** steht visuell im Vordergrund: kurz, natürlich, sprechbar und zum letzten relevanten Gesprächszug passend.
+- **Bis zu zwei sinnvolle Alternativen** stehen nachgeordnet bereit, beispielsweise eine Analogie, eine präzise Gegenfrage, ein Einwand, ein hypothetischer Perspektivwechsel oder eine zweite starke Argumentation.
+- Die Alternativen müssen sich in ihrer tatsächlichen Strategie unterscheiden; ein bloßes Umformulieren desselben Inhalts zählt nicht.
+- Die besten Antworten und Alternativen werden **dynamisch von den KI-Systemen generiert**, nicht aus statischen rhetorischen Textbausteinen zusammengesetzt.
+- Überholte Ergebnisse werden als **veraltet** markiert und nicht als aktuell angeboten. Antworten tragen einen eindeutigen Sitzungs-, Sprecher- und Gesprächszugbezug.
 
-Ziel ist **maximale tatsächliche Überzeugungswirkung**. DebateAI soll verständliche Beispiele, relevante gemeinsame Ausgangspunkte, präzise Sprache, Einwände des Gegenübers und psychologisch nachvollziehbare Gesprächsführung verbinden. Der Modus kann eine harte Gegenposition ruhig formulieren, eine taktisch hilfreiche Frage stellen oder den besten Zeitpunkt für einen Perspektivwechsel erkennen.
+**Frühe, revidierbare Vorschläge sind ausdrücklich erwünscht.** Das lokale Modell darf auf unvollständige Transkripte reagieren, muss aber Unsicherheit angemessen kennzeichnen. Korrigiert die ASR eine Aussage oder liefert eine Recherche belastbare neue Informationen, wird die bestehende Antwort nach Möglichkeit **verbessert, korrigiert oder erneuert**, statt ungefragt eine separate Folgeantwort zu erzeugen. Historische Versionen dürfen bei Bedarf nachvollziehbar bleiben. Auch während der Rede des Nutzers darf die Oberfläche relevante Fehler, Chancen und Korrekturen zeigen.
 
-### Umgang mit eigener Schwäche im Gespräch
+**Ambitioniertes, noch zu validierendes Latenzziel:** Auf definierter Windows-Zielhardware soll nach Möglichkeit eine erste brauchbare Antwort innerhalb von **1 bis 2,5 Sekunden** sichtbar sein. Dies ist kein bereits belegter SLA. Qualität, besonders die sachliche Richtigkeit, darf nicht für eine reine Geschwindigkeitszahl geopfert werden. Aufwendige Arbeiten dürfen den lokalen Erstpfad nicht spürbar blockieren.
 
-Wenn die KI merkt, dass **der Nutzer selbst** einen Denkfehler gemacht hat, soll sie nicht einfach seine Position aufgeben. Sie versucht zunächst, den **vertretbaren Kern** der Position zu retten: durch eine engere Definition, ein korrektes Beispiel, eine legitime Differenzierung, einen Wechsel zur überprüfbaren Grundfrage oder eine taktische Gegenfrage. Sie darf den Nutzer auch auf einen substanziellen Fehler hinweisen. **Ein falscher Fakt wird dabei nicht als wahr verteidigt; eine Ausweichstrategie wird nicht als Beleg ausgegeben.**
+Bei einem **Web-Agenten-Ausfall** arbeitet der tatsächlich verfügbare lokale Pfad weiter und zeigt den Ausfall transparent. Bei einem **Ausfall des lokalen Modells** wird ein ehrlicher Fehlerstatus angezeigt; es dürfen keine fingierten Ersatzantworten als aktuelle KI-Leistung ausgegeben werden.
 
-### Wahrheit und Belege
+## 5. Rhetorik: genau zwei zentrale Modi
 
-**Nur überprüfte Tatsachen werden als gesichert dargestellt.** Bei einer unbelegten, aber rhetorisch starken Erwiderung wird die Behauptung entweder als ungeprüft markiert, durch eine ehrliche hypothetische Annahme ersetzt oder in eine kritische Frage umgewandelt. Erfundene Studien, Zitate und Quellen sind ausgeschlossen.
+Der Nutzer wählt **vor jeder neuen Sitzung** zwischen **„Hart“** und **„Überzeugend“**. Der zuletzt verwendete Modus ist vorausgewählt, kann aber vor Sitzungsbeginn jederzeit geändert werden. Kein zusätzlicher Pflichtdialog bei jedem Agentenaufruf und keine Vielzahl konkurrierender Rhetorikmodi.
 
-Trägt das Gegenüber eine fragwürdige Zahl vor, darf DebateAI zuerst die **Logik des Schlusses unabhängig von der Zahl** angreifen: Was folgt daraus überhaupt? Welche Prämisse fehlt? Wird ein anderer Maßstab angelegt? Ein Faktencheck ergänzt diese Analyse später.
+### Hart
 
-**Noch offen:** Welcher Modus nach Installation startet (Knallhart oder explizite Wahl), welche Abstufungen die maximale Schärfe erhalten und wie stark sehr persönliche Angriffe in der UI begrenzt werden. Diese Details sind nicht durch die Antwort „hart wie möglich“ abschließend spezifiziert.
+Der bisherige Modus „Knallhart“ heißt in der UI künftig **„Hart“**. Inhaltlich bleibt er bewusst direkt, pointiert und argumentativ konfrontativ: Widersprüche aufzeigen, Doppelstandards prüfen, unhaltbare Prämissen angreifen, Maßstäbe hypothetisch umkehren und präzise Gegenfragen formulieren. Sehr scharfe, provokante und rhetorisch zugespitzte Formulierungen sind möglich, soweit sie sachlich vertretbar sind. **Hart** bedeutet nicht, Tatsachen zu erfinden, Gewalt anzudrohen oder unbelegte persönliche Vorwürfe als Fakten auszugeben.
 
-## 4. Recherche, Belegfluss und Reaktionsgeschwindigkeit
+### Überzeugend
 
-Die **erste nutzbare Erwiderung gewinnt zeitlich vor der vollständigen Quellenprüfung**. Sie kann eine klar erkennbare ungeprüfte Argumentationslinie enthalten, darf aber keine ungeprüften Angaben als feststehende Fakten verkaufen.
+Der Modus **„Überzeugend“** verfolgt eine möglichst hohe tatsächliche Überzeugungswirkung: verständliche Beispiele, Gemeinsamkeiten, faire Einordnung gegnerischer Einwände, präzise Formulierungen und situativ passende Gesprächsführung. Eine starke Gegenposition darf ruhig formuliert werden; kluge Gegenfragen und der richtige Zeitpunkt für einen Perspektivwechsel können wirksamer sein als reine Konfrontation.
 
-Sobald der Nutzer **externe Recherche aktiviert** hat, darf sie **kontinuierlich im Hintergrund** laufen, ohne für jede Suche erneut zu fragen. Treffer werden bewertet und – sobald belastbar – als **kurze, direkt verwendbare Aussage mit Quelllink** in die laufende Sitzung eingebracht. Später eintreffende Belege dürfen Vorschläge verbessern, korrigieren oder widerlegen; bereits veraltete Vorschläge müssen entsprechend gekennzeichnet bleiben.
+### Eigene Fehler, Wahrheit und rhetorische Redlichkeit
 
-Das System denkt **strategisch über den Gesprächsverlauf**: Es soll nicht nur den letzten Satz beantworten, sondern anhand der aktuellen Argumente und der in dieser Sitzung erkannten Argumentationsmuster entscheiden, ob direkte Widerlegung, Gegenfrage, hypothetischer Rollentausch, Dilemma, Klärung der Definition oder Abwarten die beste nächste Bewegung ist.
+Wenn der Nutzer selbst einen Fehler macht, soll DebateAI helfen, den **vertretbaren Kern** seiner Position zu retten – beispielsweise durch korrekte Präzisierung, einen engeren Begriff, ein zulässiges Gegenbeispiel oder eine Klärungsfrage. Es darf den Fehler auch benennen. **Falsche Tatsachen werden nicht als wahr verteidigt; eine Ausweichstrategie wird nicht als Beleg ausgegeben.**
 
-Tiefenanalyse, Webrecherche, Quellenextraktion und experimentelle Mehrschrittverfahren laufen in getrennten, begrenzten Ressourcenbudgets. Sie dürfen die lokale ASR und die schnelle Antwortgenerierung nicht spürbar verdrängen.
+Nur überprüfte Tatsachen werden als gesichert dargestellt. Ungeprüfte Zahlen, Studien, Zitate und Quellen dürfen nicht als verifiziert ausgegeben werden. Hypothetische Rollentausche sind als hypothetisch erkennbar. Bei einer fragwürdigen Zahl kann zunächst die Logik des daraus gezogenen Schlusses geprüft und erst danach die Zahl selbst recherchiert werden. Rhetorik wird stets gegen Korrektheit, Gesprächskontext und Quellenredlichkeit bewertet.
 
-## 5. Sprache, Audio und Sprecherverständnis
+## 6. Deutsch, Live-Audio, ASR und Sprecherverständnis
 
-**Deutsch ist die einzige offiziell unterstützte V1-Sprache.** Hohe Qualität für natürlich gesprochenes Deutsch, Zahlen, Eigennamen, Korrekturen und kontroverse Gesprächsdynamik hat Vorrang vor einer breiten, aber unausgereiften Sprachliste.
+**Deutsch bleibt die einzige offiziell unterstützte V1-Sprache.** Natürliches gesprochenes Deutsch, Zahlen, Eigennamen, Korrekturen, Gesprächsdynamik und Streitgespräche haben Vorrang vor einer breiten Sprachliste. Mehrsprachigkeit und Auto-Detect bleiben spätere Optionen; ältere Release-Notes zu Mehrsprachigkeit sind kein neuer V1-Produktvertrag.
 
-**Mikrofon und Systemaudio als getrennte Spuren** sind unverzichtbar. Audio-Capture, Zeitstempel, Gerätauswahl/-wechsel, Ausfälle und Wiederanlauf müssen stabil funktionieren. 16-kHz-PCM-kompatible Verarbeitung und lokal verfügbare Whisper-/Parakeet- oder gleichwertige ASR-Wege bleiben technische Optionen, keine pauschalen Genauigkeitsversprechen.
+**Verbindliche Audioanforderungen:**
+- Mikrofon und Systemaudio bleiben technisch und in den Daten **getrennte Spuren**.
+- Stabiler Windows-Capture inklusive WASAPI/Loopback, Gerätauswahl/-wechsel, Zeitstempeln, Ausfall- und Wiederanlaufbehandlung.
+- Geeignete PCM-Verarbeitung, unter anderem 16-kHz-kompatible Wege; Whisper, Parakeet und vergleichbare lokale ASR-Systeme sind zu vermessende Alternativen.
+- **Live-Sprecherzuordnung ist Pflicht:** Nutzer und Gegenüber dürfen nicht unbemerkt vertauscht werden.
+- Unsicherheiten, ASR-Revisionen und Diarisierungskorrekturen müssen in Kontextgedächtnis, Argumentanalyse und sichtbare Antworten propagiert werden.
+- Für die Qualitätsbewertung sind deutsche Referenzaufnahmen, reale Zielhardware, Sprecherwechsel, Überlappungen, Gerätegeräusche, lange Sitzungen und Wiederaufnahmen erforderlich.
 
-**Live-Sprecherzuordnung ist eine V1-Pflichtanforderung.** Die KI muss unterscheiden können, welche Aussage vom Nutzer und welche vom Gegenüber stammt; Fehler und Unsicherheit dürfen die strategische Einordnung nicht unsichtbar verfälschen. ASR-Revisionen und Diarisierungskorrekturen propagieren in Argumentgedächtnis und Antwortkarten.
+Keine pauschalen Qualitätsversprechen für ASR oder GPU-Verfahren, solange ihre Leistung auf repräsentativem Material und echter Hardware nicht ausreichend belegt ist.
 
-**Historische Alternative – Mehrsprachigkeit:** Release-Notes v0.6.6 beschrieben Auto-Detect/mehrsprachige Spracherkennung; Teile der aktuellen Konfiguration bevorzugen dagegen „de“. Mehrsprachigkeit bleibt ein späterer möglicher Ausbau, **nicht** der erklärte V1-Produktvertrag. Die tatsächliche Windows-Mikrofon-/WASAPI-/Loopback-Qualität ist vor einer Freigabe zu messen.
+## 7. Recherche, Belegfluss und adaptive Denkzeit
 
-## 6. Modelle und Ausführung: lokaler Live-Kern, optionale Cloud-Tiefe
+Die erste brauchbare Erwiderung hat zeitlich Vorrang vor einer vollständigen externen Quellenprüfung. **Unverifizierte Fakten dürfen dadurch aber nicht zu angeblich sicheren Tatsachen werden.** Recherche ergänzt, korrigiert und verbessert Antworten, sobald belastbare Informationen vorliegen.
 
-Der gewünschte Standard ist **Hybrid mit klarem Local-First-Vorrang**:
+**Automatisierte Recherche:**
+- Nach bewusst eingerichteter Freigabe darf Recherche bedarfsorientiert und fortlaufend im Hintergrund laufen, ohne einzelne Popups für jeden Suchvorgang.
+- Ein Agent entscheidet möglichst selbst, wann neue Informationen wirklich nötig sind und wann vorhandenes Wissen oder bereits gefundene Belege ausreichen.
+- **„Jetzt recherchieren“** ist während jeder laufenden Debatte verfügbar und erzwingt eine Recherche zum aktuellen Kontext.
+- Dieser Befehl darf laufende **Recherche-Agenten** stoppen, ersetzen oder neu priorisieren und bisherige nützliche Ergebnisse weiterverwenden.
+- **Der lokale Echtzeit-Agent darf dadurch nicht unterbrochen werden.**
+- Belastbare Quellen werden in knappen, unmittelbar verwendbaren Aussagen mit nachvollziehbarem Link eingebracht. Später eintreffende Recherche soll vorhandene Antwortvorschläge verbessern oder gegebenenfalls widerlegen.
 
-- **Latenzkritischer Pfad:** lokale Spracherkennung und ein lokal laufendes Textmodell (etwa Ollama/Qwen oder ein geeigneter kompatibler Endpunkt) erzeugen die unmittelbare Hilfe.
-- **Zusatzpfad:** nach Aktivierung dürfen Cloudmodelle, spezialisierte Provider und Webrecherche zusätzliche Kontext- und Beleganalyse liefern. Sie ersetzen nicht stillschweigend den lokalen Live-Pfad und blockieren seine erste Antwort nicht.
-- **Einrichtung:** Ein Assistent prüft vor der ersten echten Sitzung Prozessor/GPU/RAM, Audio-Geräte, vorhandene ASR-/Textmodelle, Modellkompatibilität und die gewählten Datenflüsse. Fehlende oder ungeeignete lokale Modelle werden verständlich erklärt; Downloads und Provider-Nutzung sollen sichtbar konfigurierbar sein.
+**Adaptive Denkintensität:** Je nach Schwierigkeit, Zeitdruck, Erreichbarkeit und Antwortdauer soll DebateAI verfügbare Reasoning-Stufen und Web-Modelle intelligent wählen. Bei langen Wartezeiten darf an sicheren Aufgabengrenzen die Denkintensität reduziert oder der Provider gewechselt werden. Bereits laufende Generationen werden nicht chaotisch abgebrochen. Arbeitsabläufe wie **recherchieren → bewerten → argumentieren → verständlich formulieren** sollen aufgabengerecht optimiert und nicht unnötig mehrfach ausgeführt werden.
 
-**Einmalige bewusste Aktivierung statt Popup-Flut:** Ist eine externe Verarbeitung mit Anbieter, Umfang und Kostenrahmen eingerichtet, soll sie ohne weitere Einzelbestätigung für jeden Aufruf funktionieren. Ohne Aktivierung keine überraschende Cloud-Übertragung. Der Wunsch nach reibungslosem Betrieb setzt keine Rechts- oder Aufnahmeregel außer Kraft.
+Die konkrete technische Möglichkeit, Reasoning-Stufen über ChatGPT Web/Gemini Web zuverlässig zu steuern, ist **vor Implementierungszusagen zu prüfen**. Die Vision verlangt gewünschtes Verhalten, behauptet aber keine heute gesicherte externe Steuerbarkeit.
 
-**Historische/optionale Alternativen:** Ein vollständig lokaler bzw. LAN-basierter Betrieb bleibt wichtig; ein frei kombinierbarer Mehrproviderbetrieb für die ältere Meeting-Analyse bleibt möglich. Weder die Website noch die Vision dürfen behaupten, jede vorhandene Funktion – insbesondere Dokument-Summarization oder experimentelle Live-Captions – arbeite schon nachweisbar vollständig lokal. Bei einzelnen Dokumentpfaden existieren Gemini-Files-API-Abhängigkeiten.
+## 8. Sitzungsstart, Sitzungsende und Aufbewahrung
 
-**Noch offen:** verbindliche V1-Provider-/Modellmatrix, konkrete Hardware-Mindestwerte, Freigabeumfang externer Transkriptausschnitte und die Wahl zwischen lokaler Schutzoption und automatischer Bereinigung vor externen Aufrufen. PII Shield ist im privaten lokalen Standardbetrieb auf Eigentümerwunsch **aus**, nicht pauschal für jeden denkbaren Einsatz abgeschafft.
+### Start
 
-## 7. Hauptoberfläche und Einrichtung
+Vor **jeder neuen Sitzung** ist die Wahl zwischen Hart und Überzeugend möglich. **Der zuletzt gewählte Modus ist vorausgewählt.** Technische Einrichtung und Hardwarechecks werden angeboten, wenn sie nötig sind; kein unnötiges wiederholtes Voll-Onboarding.
 
-Das Hauptprodukt ist eine **eigenständige, umfangreiche Windows-Desktop-Oberfläche**, deren **Analyse-Dashboard im Vordergrund** stehen darf. Eine reine Text-Minimalanzeige oder ein schmales Overlay ist höchstens eine **optionale** Ansicht, nicht das zentrale Produktversprechen. Empfehlungen werden **als Text** ausgegeben; automatische KI-Stimme oder autonomes Mitsprechen gehören nicht zum Zielbetrieb.
+### Normales Sitzungsende
 
-Die Live-Ansicht soll den aktuellen Gesprächsstand, **drei schnell lesbare Reaktionsvorschläge**, deren Aktualität, Sprecherzuordnung, Argumentationsmuster, strategische Hinweise und nachgelieferte Belege verständlich zusammenführen. Tiefergehende Analyse darf umfangreich sein, muss aber die unmittelbare Antwort unterscheidbar halten.
+**Bei normalem Beenden wird ein vollständiges zeitgestempeltes Transkript erzeugt und lokal behalten.** Es erhält nachvollziehbare Sprecherzuordnung, soweit sicher erkannt, und kann für spätere Auswertung, Argumentgedächtnis und vom Nutzer ausgelöste Tests verwendet werden. Extrahierte Argumente und sonstige ausdrücklich beibehaltene Sitzungsdaten dürfen ebenfalls lokal erhalten bleiben, bis der Nutzer sie löscht.
 
-Die Einrichtung führt durch **Mikrofon, Systemaudio, Modellverfügbarkeit, Leistung und Daten-/Providerwahl**. Im Alltag ist die Oberfläche einfach; ein **Expertenmodus** erschließt Prompts, Modelle, Agentenrollen, Strategien und feinere Einstellungen.
+Die bestehende Ende-der-Sitzung-Oberfläche soll **zwei klar beschriftete, aufklappbare Reiter/Optionen** erhalten und verbessern – derzeit existiert nach Eigentümerangabe nur einer:
 
-**Offene UX-Abwägung:** Ein großes Dashboard und ein gleichzeitig sichtbarer Videocall konkurrieren um Bildschirmplatz. Ob andockbare Panels, zweiter Monitor oder ein optionaler Kompaktmodus dieses Problem lösen, wird über reale Nutzungstests entschieden; nicht durch eine ungefragte Umdeutung des gewählten Dashboards zu einem Minimal-Overlay.
+1. **„Aufnahme speichern“:** Audio-/Sitzungsaufnahme bewusst dauerhaft sichern, ergänzend zum zeitgestempelten Transkript, und bei Bedarf später analysieren oder in Tests verwenden.
+2. **„Komplett ohne Speicherung/Verbesserung fortfahren“:** Die aktuelle Sitzung beenden beziehungsweise fortfahren, **ohne** Transkript, Aufnahme, Argumentextrakte oder Profilverbesserungsdaten dieser Sitzung dauerhaft aufzubewahren oder in Trainings-/Optimierungsläufe zu übernehmen. Bereits temporär angefallene Sitzungsartefakte werden nach Maßgabe des technisch möglichen Löschpfads bereinigt.
 
-## 8. A/B-, Sprach- und Strategielabor als Kernfeature
+**Vorrangregel:** Die bewusste Wahl von „ohne Speicherung/Verbesserung“ überschreibt für **diese Sitzung** die normale Transkript-Aufbewahrung. Die Optionen dürfen nicht widersprüchlich gleichzeitig aktiv sein. Die beiden Reiter sollen intuitiv, klar und ohne unnötige Dialoge funktionieren. Die UI darf daneben den normalen Abschluss mit Transkripterhalt zulassen.
 
-Das **Modell-/Prompt-A/B-Labor ist für alle Nutzer ein zentrales Produktfeature**, nicht lediglich ein verstecktes Entwicklerwerkzeug. Es vergleicht bei **identischer These, eigener Position, Sitzungssituation und Stilvorgabe** tatsächlich verfügbare Prompt-/Modellvarianten. Antworten A/B werden vor einer Bewertung **blind** und mit wechselnder Reihenfolge gezeigt; anschließend werden Modelle, Promptversion, Latenz, Kontext und mögliche Kosten aufgedeckt.
+### Rohdaten und Bestandsschutz
 
-Bewertet werden mindestens **Sprechbarkeit, Natürlichkeit, Reaktionsgeschwindigkeit, argumentative Stärke, situativer Nutzen, Gegenfrage und Quellenredlichkeit**. Der Nutzer soll sehen, welche Strategie im realen Debattenkontext gewinnt. **Kein automatischer Gewinnerwechsel im Livebetrieb**: getestete Einstellungen werden bewusst übernommen und können rückgängig gemacht werden. Kein synchroner LLM-Judge auf dem zeitkritischen Pfad.
+Nicht ausdrücklich gespeicherte Rohaufnahmen werden nach notwendiger Verarbeitung beziehungsweise einem ausdrücklich gestarteten Test-/Trainingslauf bereinigt. **Bewusst gespeicherte Test-Videos, Referenz-Audios und Testdatensätze** bleiben dagegen für reproduzierbare Vergleiche erhalten, bis sie manuell gelöscht werden. **Kein stilles allgemeines Modelltraining** aus normalen Sitzungen.
 
-Ein **Sprachlabor** vergleicht Modelle fair anhand derselben Aufnahme und einer editierbaren deutschen Referenz, mit WER/CER, RTF, Laufzeit und Fehlerfällen. Laborläufe dürfen den aktiven Livebetrieb nicht lahmlegen. Unabhängige menschliche Bewertungen, Abgrenzung von Trainings-/Testfällen und Wiederholbarkeit sind erforderlich, bevor Qualitätsvorsprünge öffentlich behauptet werden.
+App-Updates und Rollbacks dürfen Datenbanken, gespeicherte Transkripte, Argumentgedächtnis, Profile, Playbooks, Modelle oder Konfigurationen nicht versehentlich löschen oder überschreiben. Bewusst gelöschte Aufnahmen sollen durch Backups oder Updates nicht ungewollt wieder auftauchen. Externe Provider-Speicherungen sind gesondert transparent zu machen; eine lokale Löschaktion darf nicht eine unbelegte globale Provider-Löschung vortäuschen.
 
-## 9. Sitzungsdaten, Privatsphäre und Einwilligung
+## 9. Bestehende Windows-Oberfläche gezielt perfektionieren
 
-Die erste Version ist ein **privat genutztes, lokal priorisiertes Einzelplatzprodukt**. Datenschutzkomfort darf die Live-Funktion nicht unnötig verkomplizieren; gleichzeitig bleiben technische Sicherheit, zulässige Aufnahmen und nachvollziehbare externe Datenflüsse verbindliche Grenzen.
+**Die vorhandene UI wird analysiert, verbessert und perfektioniert – kein pauschaler Neubau oder Ersatz der Anwendung.** Funktionierende Komponenten und bewährte Abläufe sollen weiterverwendet werden. Unnötige Komplexität wird reduziert, das Design vereinheitlicht und alle zentralen Interaktionen erhalten eine nachvollziehbare Benutzerführung.
 
-- **Offene KI-Nutzung:** DebateAI ist für Situationen vorgesehen, in denen der Einsatz von KI-Unterstützung offen ist. Für Gesprächsaufnahmen gelten je nach Kontext unterschiedliche Regeln; erforderliche Einwilligung wird nicht durch den privaten Nutzungszweck ersetzt.
-- **PII Shield:** Im lokalen Privatbetrieb standardmäßig **deaktiviert**. Für Cloudverarbeitung bleibt eine klar erkennbare, bewusst auswählbare Schutzfunktion möglich; sie muss nicht zwangsläufig jeden lokalen Verarbeitungsschritt verlangsamen.
-- **Cloudfreigabe:** Eine konfigurierte und aktivierte externe Route darf anschließend ohne wiederkehrende Unterbrechung genutzt werden. Anbieter, übermittelte Datenarten und mögliche Kosten müssen vor der erstmaligen Einrichtung transparent sein.
-- **Rohaufnahme:** Audio wird nur so lange vorgehalten, wie es für die jeweilige Verarbeitung erforderlich ist; nach abgeschlossener Verarbeitung und gegebenenfalls einem **vom Nutzer ausdrücklich gestarteten** Trainingslauf wird es gelöscht. Ein stilles, allgemeines Modelltraining wird daraus nicht abgeleitet.
-- **Dauerhafte Nutzdaten:** **Transkripte und extrahierte Argumente bleiben lokal erhalten**, bis der Nutzer sie löscht. Sie fallen gerade **nicht** unter eine pauschale kurze automatische Löschfrist. Optional ist ein verschlüsseltes Backup; Standard bleibt die effiziente lokale Speicherung.
-- **Updates:** Datenbanken, Argumentgedächtnis, persönliche Prompts/Playbooks, Modelle, Profile, Schlüssel und Sitzungsdaten dürfen durch App-Updates und Rollbacks nicht versehentlich gelöscht oder überschrieben werden. Absichtlich gelöschtes Audio darf durch Backup-/Update-Routinen nicht ungewollt wieder auftauchen.
+Das Hauptprodukt bleibt ein **vollwertiges Windows-Dashboard** mit sichtbarer Gesprächslage, bester Antwort, bis zu zwei Alternativen, Sprecherinformationen, Argumentationsmustern, strategischen Hinweisen, Recherche-/Quellenstatus und klaren Fehlermeldungen. Eine reine Text-Minimalanzeige oder ein schmales Overlay ist **optional**, nicht das alleinige Produktversprechen. Für Videocalls sollen sinnvolle Fenstergrößen, andockbare Panels, gegebenenfalls ein zweiter Monitor und ein optionaler Kompaktmodus anhand tatsächlicher Nutzung geprüft werden.
 
-**Noch offen:** genaue Aufzeichnungsregeln je Einsatzkontext, Aufbewahrung von Zwischenspeichern/Backups, Anbieter- und Datenklassenfreigaben, konkrete PII-Shield-Grenzen und ob überhaupt persönliches Modelltraining als Produktfunktion angeboten wird.
+**Gestaltungsprinzipien:**
+- Reduzierte, elegante Hauptansicht; umfassende Analysebereiche bei Bedarf aufklappen.
+- Klare visuelle Priorität für die **beste aktuelle Antwort**; Alternativen nachgeordnet.
+- Benutzerfreundliche Statusanzeigen, Agentenaktivität, Quellen und Sitzungsverlauf ohne Informationsüberladung.
+- Das bisherige umfangreiche Analyse-Dashboard wird **verbessert**, nicht einfach entfernt.
+- Benachrichtigungen und Hinweise erhalten sinnvolle Standards; kein Wildwuchs neuer Konfigurationsschalter.
+- Neue visuelle Elemente nur, wenn sie Orientierung, Verständlichkeit, Kontrolle oder Geschwindigkeit verbessern.
+- Einstellungen finden **außerhalb der laufenden Debatte** statt.
+- Vorschläge werden **als Text** gezeigt; autonome KI-Sprachausgabe oder selbstständiges Mitsprechen sind nicht vorgesehen.
 
-## 10. Funktionsumfang und langfristige Ausbaulinien
+## 10. Interaktives Onboarding und intelligentes Einstellungsstudio
 
-Der erste ernsthafte Release soll ein **integriertes Gesamtprodukt** mit einem vollständigen, belastbaren **Echtzeit-Debattenkern** sein – **kein bloßer Textchat-Prototyp**. Dazu gehören die fortlaufenden Agentenrollen, deutschsprachige Live-Audioverarbeitung, Sprechertrennung, drei aktuelle Reaktionskarten, zwei Rhetorikmodi, das Dashboard, Modell-/Hardware-Setup und das zugängliche A/B-Labor. Entscheidend ist, dass diese Kernfunktionen **wirklich verlässlich** sind.
+**Ein besonders wichtiges Produktmerkmal ist ein neu gedachtes, schönes, spielerisches und sofort verständliches Einstellungsstudio.** Es soll Spaß machen, Einstellungen auszuprobieren, ihre tatsächliche Wirkung zu verstehen und die passende Konfiguration zu finden – ohne eine Wand aus Dropdowns, technischen Parametern und Testfenstern.
 
-Die bereits entwickelte **allgemeine Meeting-Analyse** bleibt als **eigener optionaler Bereich** bestehen: strukturierte Transkripte, Beobachtungen, Briefings, Fragen, Nachanalysen und Sitzungsabfragen können weiter genutzt und verbessert werden, sind aber **nicht** die primäre Identität oder das Leitszenario.
+Das Studio hat **zwei Zugänge**:
+1. **Geführtes, freiwilliges Onboarding** beim Einstieg, später jederzeit erneut aufrufbar.
+2. **Frei erkundbares Einstellungsstudio** für die tägliche Nutzung und spätere Profilanpassungen.
 
-**Videoanalyse und experimentelle Vier-Move-/Mehragentensysteme** sind eine wichtige **langfristige Differenzierung**. Sie sollen strategische Szenarien, Evidenzpakete und tiefere Rhetorikanalyse ermöglichen, dürfen aber erst nach Messung von Qualität, Latenz und echtem Zusatznutzen als ausgereifte Produktfunktion gelten. Bestehende experimentelle Implementierungen sind kein Releasebeweis.
+**Interaktivität als Hauptfunktion, nicht als Nebentest:**
+- Wichtige Parameter besitzen direkt integrierte, echte KI-generierte Vorschauen und Vergleichsmöglichkeiten.
+- Bei einer Änderung wird die Vorschau **nach einer kurzen Ruhezeit** automatisch neu generiert; unnötige parallele Web-Anfragen werden gebündelt.
+- Die Vorschau macht nachvollziehbar, **wie** sich eine Konfiguration auf Stil, Antwort, Argumentation oder Modellverhalten auswirkt.
+- Ausführliche manuelle Sondertests und technische Informationen erscheinen **erst nach bewusstem Aufklappen**.
+- KI darf verständliche Empfehlungen und mehrere begründete Alternativen vorschlagen. **Nur der Nutzer wählt seine persönlichen Einstellungen.**
+- Einstellungen werden **in einem separaten Testprofil** ausprobiert; laufende Debatten werden nie unbeabsichtigt verändert.
+- Profile und Präferenzen lassen sich speichern, vergleichen, versionieren und rückgängig machen.
+- Beispiele und Animationen dienen der Erklärung; als echte KI-Antwort präsentierte Inhalte sind **niemals bloß deterministische Mustertexte**.
 
-**Keine vorrangige Integrations-Offensive:** Kalender-, CRM-, Videocall- oder Fremd-API-Integrationen werden erst nach der Perfektionierung des Kerns priorisiert. Kein Team-Workspace-Zwang, kein Kontozwang allein zur lokalen Nutzung.
+Die Bereiche orientieren sich sowohl an Nutzerzielen als auch an **sinnvollen technischen Kategorien**: Debattenstil, **Transkription**, Antwortgenerierung, Recherche, Agenten und Aufgabenverteilung, Hinweise/Ausgabe sowie nötige erweiterte Funktionen. Die tatsächliche Informationsarchitektur soll aus einer Untersuchung der vorhandenen UI entstehen und eher **weniger, aber klarere Optionen** bieten.
 
-**Offener Zielkonflikt:** „Integriertes Gesamtprodukt“ bedeutet nicht automatisch, dass jede historische Meeting-, Video- und Forschungsfunktion zum ersten Release vollständig abgenommen sein muss. Die genaue Pflicht-/Optional-/Experimentell-Matrix bleibt vor der Freigabe ausdrücklich zu entscheiden; die Funktionsbreite darf fehlende Zuverlässigkeit nicht verdecken.
+Die übliche Bedienung soll **keinen separaten komplizierten Testbereich erzwingen**: Das Testen ist ein nahtloser Teil des Einstellens. Nur fachlich tiefe Experten- und Messtests werden zusätzlich aufklappbar.
 
-## 11. Windows, Distribution und Open Source
+## 11. Sichtbarer Modell-, Prompt-, Sprach- und Strategievergleich
 
-**Windows-Desktop hat Vorrang.** Ziel ist ein stabiler Betrieb auf einem **modernen leistungsfähigen Windows-PC**, inklusive tatsächlichem Mikrofon-/Systemaudio-Capture, WebView2-/Desktop-Integration, lokalen Modellen, sauberem Gerätemanagement und nachvollziehbarem Fehlerverhalten. Frühere Bundles umfassen unter anderem PyInstaller, PostgreSQL, ffmpeg, Tray/Overlay und Updater; diese technische Basis ist auf realer Hardware zu validieren.
+Das A/B- und Sprachlabor ist **ein zugängliches Kernfeature für Nutzer**, kein verstecktes reines Entwicklerwerkzeug. Die aktuelle Produktentscheidung lautet ausdrücklich **sichtbarer Modellvergleich**, **nicht ein verpflichtender Blindvergleich mit verborgenem Modellnamen**.
 
-**Docker/self-hosted** bleibt als **optionaler Server-, Entwicklungs- und historischer Meeting-Pfad**, nicht als gleichrangiges V1-Leitprodukt. Linux/macOS und breiterer Plattform-Support sind mögliche spätere Ausbauten.
+- ChatGPT Web, Gemini Web und verfügbare Modell-/Prompt-/Stilvarianten werden **direkt nebeneinander** gezeigt.
+- Vergleiche verwenden möglichst **denselben Input, dieselbe These, die eigene Position, denselben Gesprächskontext und dieselbe Stilvorgabe**.
+- Echte, aktuell generierte Antworten sind als solche sichtbar; Modell, Promptversion, Latenz, Kontext und mögliche Kosten bleiben nachvollziehbar.
+- Der Nutzer kann unmittelbar sehen, **welche KI bei welcher Einstellung welche Antwort formuliert**.
+- Bewertet werden mindestens Sprechbarkeit, Natürlichkeit, argumentative Stärke, situativer Nutzen, Gegenfragen, Quellenredlichkeit, Fehler und Antwortgeschwindigkeit.
+- Gespeicherte frühere KI-Antworten sind nur bei **hoher Qualität** beziehungsweise ausdrücklicher Auswahl wiederverwendbar und **als gespeichert** erkennbar; niemals als frisches Live-Resultat ausgeben.
+- Die KI kann begründete Empfehlungen liefern. **Kein automatisch erzwungener Modellgewinner oder stiller Wechsel des persönlichen Liveprofils.**
+- Kein synchroner schwerer KI-Richter auf dem latenzkritischen Live-Pfad.
 
-Das Projekt wird **zunächst privat/persönlich bzw. Open Source ohne Monetarisierungsdruck** entwickelt. **Langfristiges Ziel ist vollständige Open-Source-Veröffentlichung von App- und Infrastrukturcode**, mit dokumentierten Abhängigkeiten und soweit möglich reproduzierbaren Build-/Releaseabläufen. Dieses Ziel schließt **keine** Credentials, privaten Profile, Audiodaten, Transkripte oder geheimen Betriebsschlüssel ein.
+Das **Transkriptions-/Sprachlabor** vergleicht ASR-Modelle an derselben Aufnahme mit editierbarer deutscher Referenz, WER/CER, RTF, Laufzeit und konkreten Fehlerfällen. Der Nutzer kann Transkription und Antwortgenerierung auch separat prüfen. Labortests dürfen eine aktive Live-Sitzung nicht lahmlegen.
 
-**Öffentliche Varianten (historischer Ist-Stand):**
-- **DebateAI-Source** ist ein code-only Snapshot mit bewusst fehlenden internen Verträgen, Workflow-/Buildbestandteilen und privater Runtime. Ein solcher Export ist **nicht** gleichbedeutend mit dem langfristigen Voll-Open-Source-Ziel.
-- **DebateAI-final-public** enthält eine umfassendere konsolidierte öffentliche Historie, beweist aber ebenfalls weder einen signierten noch einen vollständig reproduzierbaren Produktrelease.
-- **Privater Master** bleibt die bisherige interne Code-/Abnahmereferenz (Auditbasis 79c095c); diese Visionsfassung entsteht auf dem separaten Review-Branch. Öffentlichkeitsgrad und Reproduzierbarkeit müssen vor einer Vollveröffentlichung bewusst angeglichen werden.
+Unabhängige menschliche Bewertungen, wiederholbare Datensätze und die saubere Trennung von Test- und Optimierungsfällen bleiben für belastbare öffentliche Qualitätsbehauptungen erforderlich. Bewertungsverfahren dürfen wissenschaftlich fundiert sein, aber die **sichtbare** Produktdarstellung der Modellvergleiche nicht durch das früher vorgeschriebene Blind-A/B-Verfahren ersetzen.
 
-Veröffentlichte Aussagen über vollständige Offlinefähigkeit, Cloudfreiheit, Dokumentpfade, Mehrsprachigkeit oder Reifegrad müssen **dem tatsächlich geprüften Code entsprechen**; Marketing ersetzt keine Messung.
+## 12. Web-Agenten, Koordination, Browser-Sitzungen und Ausfälle
 
-## 12. Qualität, Abnahme und Nicht-Ziele
+**Neue externe KI-Agenten werden primär über ChatGPT Web und Gemini Web betrieben.** Die Zahl parallel laufender Chats und ihre Aufgaben werden intelligent nach Geschwindigkeit, Stabilität, Ergebnisqualität und aktueller Verfügbarkeit verteilt. Ein Beispiel sind zeitweise zwei ChatGPT- und zwei Gemini-Chats statt vier Chats desselben Anbieters; **diese Zahlen sind keine starren Vorgaben**. Dynamische Limits und bei Bedarf manuelle Obergrenzen verhindern unnötige Überlastung.
 
-**Absoluter Release-Stopper ist eine unzuverlässige oder faktisch falsche Empfehlung.** Eine gute Latenzzahl oder ein funktionsreiches Dashboard kompensiert keine schlechte rhetorische oder sachliche Qualität.
+Ein zentraler Koordinator:
+- verwaltet fachliche Rollen, Aufgaben, gemeinsamen Kontext, Quelle und Aktualität;
+- vermeidet widersprüchliche oder redundante parallele Recherche;
+- weist Aufgaben anhand der verfügbaren Web-Modelle zu;
+- darf bei Latenz, Providerfehlern und Überlastung die Aufgaben **unter den Web-Agenten** neu verteilen;
+- erhält die lokale Erstreaktion als unabhängigen, nicht unterbrechbaren Kern;
+- macht Agentenzuordnung und Status bei Bedarf transparent und manuell beeinflussbar.
 
-Abnahmekriterien für den Debattenkern sind insbesondere:
+**Browsersteuerung und Sitzungsverwaltung:**
+- Die Web-Browser sollen **möglichst unsichtbar und im Hintergrund** laufen; eine sichtbare, unterstützte Alternative ist bei technischen Grenzen zulässig.
+- Vor einer technischen Festlegung sind verfügbare CLI-, MCP-, Browserautomations- und Erweiterungsansätze auf Zuverlässigkeit, Nutzbarkeit und Plattformregeln zu prüfen.
+- **Persistente geschützte Browserprofile/Sitzungen** bevorzugen statt unverschlüsseltem Cookieexport oder im Quellcode gespeicherten Passwörtern.
+- Wenn eine Anmeldung abläuft, **sofort verständlich warnen** und eine schnelle erneute Anmeldung erlauben.
+- Nach Ausfällen kann ein Chat anhand gesicherter Zustände und gültiger Kontextzusammenfassungen ersetzt werden, ohne dieselbe Aufgabe mehrfach unkontrolliert auszuführen.
+- Temporäre Chats und Browserartefakte dürfen nach sicherer Übernahme der Ergebnisse bereinigt werden.
+- Mehrere eigene autorisierte Kontoprofile sind technisch trennbar, aber kein eigenes Hauptfeature.
+- Cloud-Testinstanzen können **eigene autorisierte Web-Sitzungen** verwalten, statt zwingend lokale Sitzungen zu kopieren.
 
-- **Rhetorik und Hilfe:** unabhängige menschliche Bewertungen mit realistischen deutschen Debattensituationen; Anteil tatsächlich nutzbarer Reaktionen; Fehler-, Halluzinations-, Überholungs- und Gegenbeispielquote; Bewertung beider Modi.
-- **Echtzeit und Orchestrierung:** Messung der ersten brauchbaren und der finalen Antwort einschließlich Tail-Latenz, korrektes Verhalten bei Teiltranskripten, laufenden Revisionen, zwei Agentenrollen und Hintergrundrecherche.
-- **Audio und Sprecher:** echte Windows-Mikrofon-/WASAPI-/Loopback-Sitzungen, Dual-Track, Sprecherwechsel, WER/CER, RTF, Gerätewechsel, langer Lauf und Wiederaufnahme nach Fehlern.
-- **Transparenz und Datenhaltung:** erkennbare lokale/externe Providerwege, verlässliche Quellenlinks, keine als sicher präsentierten ungesicherten Behauptungen, nachvollziehbare Audio-Löschung und Erhalt von Transkript/Argumentgedächtnis.
-- **Release und Betrieb:** reproduzierbare Tests, vorhandene CI-Logs statt als grün interpretierter Runner-Ausfälle, echte Windows-Build-/GUI-Abnahme, sichere Installation, Signatur/Hashes, Datenmigration, Update und Rollback. Offene Signatur-/Hardware-/Provider-Gates bleiben sichtbar.
+**Offene technische Bedingung:** Das verlässliche, regelkonforme Betreiben bestimmter Webfunktionen, Headless-Modi und Reasoning-Umschaltungen muss empirisch verifiziert werden. Aus der Vision folgt keine Behauptung, dass jeder Anbieter jede gewünschte Steuerfunktion heute erlaubt oder unterstützt.
 
-Der bestehende Acceptance- und Release-Kontext (unter anderem A22/Human-Rating, Windows-Audio, CI-Provisionierung, Authenticode/Distribution) ist bislang **nicht vollständig abgenommen**. Siehe [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md), den datierten Geschichtsvermerk, den datierten Visionssnapshot und [historischen Evidenzanhang](HISTORIE.md#historische-evidenz-2026-11-18).
+## 13. Vollständige Audio-/Video-Debattensimulation als Testlabor
 
-**Bewusste Nicht-Ziele:** automatische KI-Sprache im Gespräch, ein allgemeiner Team-Meeting-Dienst als Hauptidentität, primär mobile oder macOS-Veröffentlichung, ungeprüfte Vollautomatik von Modellwechseln, ungefragte öffentliche Releases, stille Cloudnutzung und das Ausgeben experimenteller Technik als fertig.
+Die Testumgebung soll das **gesamte DebateAI-Programm** unter realitätsnahen Bedingungen prüfen, nicht nur isolierte Prompttexte. Sie ist sowohl lokal als auch in der Cloud nutzbar und unterstützt **Videos, Audiodateien, zeitgestempelte Transkripte, aufgezeichnete Debatten, editierbare Referenzen und künstlich erzeugte Testszenarien**.
 
-## 13. Noch nicht entschiedene Varianten
+Ein realistischer Lauf spielt die Aufnahme beziehungsweise den Testgesprächsverlauf ab, stoppt an geeigneten Stellen und hält fest:
+- **was bis zu diesem Zeitpunkt tatsächlich gesagt und transkribiert wurde**;
+- welche Sprecher mit welcher Sicherheit erkannt wurden und welche Korrekturen erfolgten;
+- welcher Agent wann eine Aufgabe erhielt und welche Informationen er zu diesem Zeitpunkt kannte;
+- **wann** Recherche begann, ob sie zu früh, unnötig, sinnvoll oder zu spät war;
+- wie lange Transkription, Recherchen, lokale Erstreaktion und Web-Antworten dauerten;
+- **welche Antwort tatsächlich zu diesem Zeitpunkt** erzeugt und angezeigt wurde;
+- ob sie verständlich, wahrheitsgemäß, sprechbar, situationsgerecht und rhetorisch wirksam war;
+- welche konkrete Prompt-, Profil- oder Agentenkonfigurationsänderung eine Verbesserung verspricht.
 
-Diese Optionen sind **keine aktuellen Produktentscheidungen**. Sie bleiben direkt vergleichbar und können bei einer nächsten Visionsrunde einzeln bestätigt oder gestrichen werden.
+Die Oberfläche zeigt eine **gemeinsame Zeitleiste** für Aufnahme/Video, Transkript, Sprecher, Agentenaktivität, Recherche, Antwortversionen, Latenzen und Bewertungen. Testdaten und Agentenprotokolle bleiben für wiederholbare Vergleiche verfügbar, solange der Nutzer sie bewusst als Testmaterial aufbewahrt.
 
-1. **Startstil:** **A** Knallhart startet standardmäßig. **B** Der Nutzer wählt vor jeder neuen Sitzung zwischen Knallhart und Überzeugend. **C** Ein letzter Sitzungsstil wird übernommen.
-2. **Intensität von Knallhart:** **A** Eine feste, sehr scharfe Stufe. **B** Mehrere Eskalationsstufen. **C** Situative automatische Intensität mit klarer manueller Begrenzung.
-3. **Dashboard im Videocall:** **A** Großes separates Fenster auf zweitem Monitor. **B** Andockbare Hauptansicht. **C** Voll-Dashboard mit optionalem Mini-Modus.
-4. **Cloud-Freigabeumfang:** **A** Anbieterbezogen einmalig konfigurieren. **B** Pro Sitzung kontrollieren. **C** Pro Datenkategorie konfigurierbar, danach dauerhaft aktiv. Wiederkehrende Freigabedialoge pro Aufruf sind **nicht** gewünscht.
-5. **Aufnahme/Einwilligung:** **A** Einheitliche strenge Bestätigung. **B** Kontextabhängige Regeln für lokale Analyse, Speicherung und externe Weitergabe. **C** Bestätigung nur für tatsächlich aufzeichnende Betriebsweisen. Die rechtlich nötigen Grenzen sind gesondert zu prüfen.
-6. **Optionales persönliches Modelltraining:** **A** Nicht anbieten. **B** Nur manuell ausgelöste lokale Trainingsläufe. **C** Später als separater Expertenworkflow. Die Audio-Löschregel gilt in jedem Fall.
-7. **Erster integrierter Release:** **A** Gesamte Funktionsbreite nur nach voller Einzelabnahme. **B** Voller Live-Kern mit klar markierten optionalen/experimentellen Nebenmodulen. **C** Veröffentlichungsstufen mit vorab festgelegter Feature-Matrix.
+**Testarten:**
+- **Echtzeit:** echte End-to-End-Latenzen und Verhalten bei laufender Audio-/Videoeingabe.
+- **Schrittweise:** an einem Gesprächspunkt anhalten, prüfen, ändern, exakt diesen Abschnitt wiederholen.
+- **Beschleunigt:** Logik- und Regressionstests, ohne beschleunigte Laufzeiten mit realen Antwortlatenzen zu verwechseln.
+- **Variations-/Störungstests:** Sprecherüberschneidungen, Hintergrundgeräusche, Transkriptionsfehler, Unterbrechungen, langsame oder ausgefallene Web-Agenten, komplexe Gegenargumente.
+- **Funktionsübergreifend:** derselbe Test kann ASR, Sprechertrennung, Kontextgedächtnis, Agentenrouting, Recherche, Antwortgenerierung und UI gleichzeitig prüfen, Ergebnisse aber **getrennt** ausweisen.
 
-**Ältere verworfene oder zurückgestellte Richtung:** Allgemeiner self-hosted Meeting-Assistent als gleichrangiges Hauptprodukt, automatische Mehrsprachigkeit als V1-Versprechen und Docker-first als Standarddistribution sind aufgrund der Eigentümerantworten **nicht mehr gleichrangig**. Sie werden nicht aus der Historie gelöscht, sind aber kein Auftrag, das Leitziel zu verwässern.
+Zusätzliche KI-generierte Testfälle sind ausdrücklich erlaubt, **aber nur im Testbetrieb nach beziehungsweise außerhalb echter Live-Debatten**. Manuelle Markierungen besonders guter oder schlechter Gesprächsstellen unterstützen die Evaluations-KI und können hochwertige Referenzbewertungen erzeugen.
 
-## 14. Konsolidierte Zielergänzungen aus früheren Eigentümerbeschreibungen
+## 14. KI bewertet KI: schrittweise und profilgebundene Selbstoptimierung
 
-Frühere Beschreibungen mit dem Wunsch nach einem vollständig online testbaren System, fortlaufender Verbesserung, Audio- und Videomaterial sowie mehreren Prüfmethoden werden hier als langfristiger Zielrahmen zusammengeführt. Sie ändern den verbindlichen Local-First-Vorrang nicht.
+**Während einer laufenden Debatte werden keine Prompts, Modellgewichte, Programmeinstellungen oder Agentenverteilungen als Selbstoptimierung verändert.** Live-Betrieb darf Daten beobachten und nach den gewählten Sitzungsregeln protokollieren. **Optimiert wird ausschließlich in einem bewusst manuell gestarteten Testlauf.**
 
-- **Online-Betrieb:** Eine aktivierte Cloud-Umgebung darf ChatGPT-, Gemini- und weitere Provider-Sitzungen für kontrollierte Tests, Replays und Vergleiche persistent bereitstellen. Anbieter, Kosten, Datenklassen und Anmeldestatus bleiben sichtbar.
-- **Online-Training:** Kuratierte Transkripte, Audio- und Videofälle dürfen in einem ausdrücklich gestarteten Trainings- oder Anpassungslauf ausgewertet werden. Kein stilles allgemeines Training, kein automatisches Überschreiben der produktiven Konfiguration und kein ungeprüftes Übernehmen eines Modellgewinners.
-- **Ständige Verbesserung:** Fortschritt entsteht durch Audio-Replays, Video-Evaluationsfälle, feste Regressionstests, Blind-A/B-Vergleiche, Latenz- und Ressourcenmessung, menschliche Bewertungen, Nutzerfeedback und die nachvollziehbare Pflege von Argumentgedächtnis und Playbooks.
-- **Audio und Video:** Das Labor soll unveränderte Audio- und Videofälle wiedergeben oder einlesen können, deren Transkripte, Sprecherzuordnung und rhetorische Ergebnisse vergleichen und die Herkunft jedes Ergebnisses speichern. Die produktive Videoanalyse bleibt nach Qualität, Latenz und Zusatznutzen gestuft.
-- **Methodenmix:** Lokale Live-Inferenz, optionale Cloud-Tiefe, Webrecherche, Replay, A/B-Tests, Mehrturn-Benchmarks, ASR-Metriken, Human-Rating und belastbare Windows-Hardwaretests werden als getrennte, kombinierbare Prüfpfade behandelt.
+**Verbindlicher Optimierungszyklus:**
 
-Diese Ergänzungen beschreiben das gewünschte Ausbauziel. Ob persönliches Modelltraining als dauerhaftes Produktfeature angeboten wird, bleibt die in Abschnitt 13 dokumentierte offene Variante.
+1. Nutzer wählt **ein konkretes Testprofil** und startet die Optimierung manuell.
+2. Die unveränderte Ausgangsversion, relevante Datensätze, Promptversionen und Messbedingungen werden gesichert.
+3. Eine Evaluations-KI analysiert den Gesamtfall und **priorisiert die wichtigste Schwachstelle**.
+4. Sie identifiziert betroffene Agenten, Prompts, Einstellungen, Anzahl paralleler Agenten oder Routingentscheidungen und formuliert **konkrete testbare Änderungen**.
+5. Nur der betroffene Gesprächsabschnitt wird unter möglichst vergleichbaren Bedingungen erneut geprüft; alte Web-Chats dürfen den Test nicht unkontrolliert kontaminieren.
+6. Technische Kennzahlen und qualitative Bewertungen werden **getrennt** ermittelt. Korrektheit, Gesprächsverständnis und Timing haben Vorrang vor Stil und Härte.
+7. Eine nachweislich bessere Variante bleibt **im Testprofil**; eine Verschlechterung wird zurückgenommen.
+8. Erst danach folgt **der nächste problematische Abschnitt** oder die nächste Schwachstelle. Nicht wahllos mehrere Funktionen gleichzeitig verändern.
+9. Nach mehreren lokalen Verbesserungen folgt eine **vollständige Debattensimulation/Regression**, um Überoptimierung einzelner Szenen zu verhindern.
+10. Bei ausbleibender Verbesserung oder wiederholter Verschlechterung endet der Durchlauf kontrolliert. Beste getestete Version und Vergleichsbericht bleiben erhalten.
+11. Der Nutzer prüft und **genehmigt die Gesamtverbesserung am Ende der Serie**; es sind keine Rückfragen nach jedem einzelnen Testschritt erforderlich.
+12. Erst nach Freigabe werden die geprüften Prompts und Konfigurationen veröffentlicht beziehungsweise als neue freigegebene Profilversion übernommen.
+
+**Erlaubter autonomer Änderungsumfang:** Prompts, zulässige Programmeinstellungen, Agentenrollen, Agentenzahl, Parallelität, Aufgabenverteilung und Routing-/Arbeitsablaufregeln. **Nicht erlaubt:** selbstständige Änderungen an der Quellcode-Logik der Anwendung durch die Cloud-Test-KI.
+
+Die Selbstoptimierung ist zunächst **Prompt-, Strategie- und Konfigurationsoptimierung**, **nicht automatisch Fine-Tuning der Modellgewichte**. Persönliches Modelltraining kann langfristig als gesonderter ausdrücklich ausgelöster Expertenworkflow untersucht werden. Nicht ausgewählte Profile und persönliche Einstellungen bleiben unverändert.
+
+## 15. Cloud-Testinstanz, GitHub und automatische Bugmeldungen
+
+Die Cloud soll eine **vollständige auswertbare DebateAI-Instanz** bereitstellen. Dazu gehören steuerbare Testoberfläche, Web-Agenten, Audio-/Video-Replays, KI-Auswertung, Konfigurationsoptimierung, Ergebnisprotokolle und Integration mit dem GitHub-Repository. Sie dient ausdrücklich auch dazu, Defekte im vollständigen Zusammenspiel zu entdecken.
+
+**Verbindliche Trennung:**
+- **Cloud-Test-KI darf selbst optimieren:** Prompts, Programmeinstellungen, Agentenrollen, Anzahl und Aufteilung der Agenten, Routing sowie Arbeitsabläufe.
+- **Cloud-Test-KI darf nicht selbst reparieren:** Quellcodedateien, Laufzeitlogik oder technische Programmfehler. Diese werden **extern durch einen gesonderten Entwicklungsprozess** behoben.
+- **Bei erkannten Bugs:** Automatisch einen **GitHub-Issue-Eintrag mit Bug-Kennzeichnung** erzeugen beziehungsweise einen bestehenden passenden Eintrag ergänzen. Ein Bericht umfasst Reproduktionsschritte, relevante Logs, betroffene Bereiche, erwartetes/tatsächliches Verhalten, Umgebung und Teststand. Doppelte Issues möglichst vermeiden; **keine Zugangsdaten, Cookies oder geheimen Sitzungstokens in Issues oder Logs veröffentlichen**.
+
+**GitHub-/Build-Ablauf:**
+1. **Nach jedem Push** startet automatisch ein Build mit schnellen technischen Prüfungen, soweit über CI verfügbar.
+2. **Umfangreiche KI-Video-, Debatten- und Profiloptimierungstests starten nur manuell.**
+3. Ein manuell gestarteter Durchlauf darf autonom mehrere interne Verbesserungsschritte und lokale/Cloud-Regressionen abarbeiten; er bleibt stoppbar.
+4. Die geprüfte **Gesamtverbesserung benötigt am Ende eine Nutzerfreigabe**.
+5. Nach Freigabe werden nur die erlaubten versionierten Prompt-/Konfigurationsänderungen **direkt auf den Standardbranch** des festgelegten Repositories gepusht; keine dauerhaft unnötigen Nebenbranches.
+6. Die freigegebene Konfiguration wird anschließend **automatisch in der Testumgebung aktiviert** und beim nächsten vorgesehenen Synchronisieren lokal verfügbar, ohne unbeteiligte Profile zu überschreiben.
+7. Fehlgeschlagene Builds oder nachträglich erkannte Verschlechterungen führen zu einem nachvollziehbaren **Rollback auf die letzte funktionierende Version**, zum Beispiel durch einen gegenläufigen Commit; die Git-Historie darf nicht unkontrolliert überschrieben werden.
+
+**Aktuell für diese Vision festgelegtes Dokument-Repository:** ErpeUser/DebateAI-final-public, Standardbranch **main**, Pfad **app/docs/VISION.md**. Ein historisch genanntes privates Repository mit anderem Standardbranch ist dadurch **nicht** automatisch mit dem öffentlichen Repository identisch. Referenzen und Schreibziele müssen stets konkret überprüft werden.
+
+**Kosten und Betrieb:** Google-Cloud-Credits und möglichst günstiger Betrieb sind zu berücksichtigen. Eine Kostenanzeige und Ressourcentransparenz sind sinnvoll; **kein verpflichtendes Budgetlimit und keine automatische Kostenabschaltung**. Einfache Builds laufen automatisch nach Push; große Testserien nicht. Cloud-Testinstanz und lokaler Betrieb sollen denselben freigegebenen, versionierten Stand nutzen können. Testdaten, Web-Sitzungen und Provider-Berechtigungen dürfen nicht unkontrolliert vermischt werden.
+
+## 16. Sicherheits-, Datenschutz- und Einwilligungspriorität
+
+**Ausdrückliche Entwicklungspriorität: DebateAI wird zunächst privat und überwiegend lokal entwickelt und genutzt. Umfangreiche Datenschutz-, Sicherheits- und Compliance-Komfortfunktionen sind derzeit nachrangig. Sie sollen die Weiterentwicklung, das Einstellungsstudio und die Live-Qualität nicht unnötig verkomplizieren.**
+
+**Diese Priorisierung hebt unverzichtbare Mindestmaßnahmen nicht auf:**
+- Browser-Sitzungen und Zugangsdaten müssen angemessen geschützt und dürfen nicht im öffentlichen Repository oder in Bugmeldungen landen.
+- Externe Anbieter, mögliche Kosten und Arten übermittelter Daten werden einmalig verständlich eingerichtet; danach sind nicht für jeden Aufruf neue Freigabedialoge nötig.
+- Ohne eine bewusst aktivierte externe Route findet keine überraschende Cloud-Übertragung statt.
+- **PII Shield ist im privaten lokalen Standardbetrieb deaktiviert**; für externe Wege kann eine bewusst auswählbare Schutzfunktion angeboten werden.
+- Rechtlich erforderliche Einwilligungen und zulässige Aufnahmeformen bleiben relevant; private Nutzung beseitigt solche Grenzen nicht.
+- Bei „komplett ohne Speicherung/Verbesserung“ werden für diese Sitzung keine dauerhaften lokalen Lern- oder Aufzeichnungsartefakte behalten.
+- Absichtliche Löschungen dürfen nicht durch Update-, Retry- oder Backup-Pfade rückgängig gemacht werden.
+- Vor öffentlichem Mehrnutzer- oder Produktivbetrieb sind Sicherheits- und Datenschutzmaßnahmen neu zu bewerten.
+
+Die Anwendung ist für offen genutzte KI-Unterstützung gedacht; sie darf kein heimliches Mitsprache- oder Aufnahmeversprechen machen. Die konkreten rechtlichen und Provider-spezifischen Regeln sind vor der jeweiligen Nutzung zu prüfen.
+
+## 17. Testqualität, unabhängige Bewertung und Abnahme
+
+**Absolutes Freigabehindernis bleibt eine unzuverlässige oder faktisch falsche Empfehlung.** Weder eine schöne Oberfläche noch eine schnelle, aber falsche Antwort genügt. Qualitätsaussagen sind durch echte Tests und nachprüfbare Belege zu stützen.
+
+**Kernmetriken und Prüfpfade:**
+- **Rhetorik:** unabhängige menschliche Bewertungen deutscher Debatten, Nutzenquote, Natürlichkeit, Sprechbarkeit, argumentative Stärke, Qualität von Gegenfragen, Quellenredlichkeit sowie Bewertung beider Modi.
+- **Fakten und Aktualität:** Fehler- und Halluzinationsquote, überholte Antwortkarten, Quellenvalidierung, korrektes Kennzeichnen nicht verifizierter Aussagen.
+- **Timing:** Zeit bis zur ersten brauchbaren Antwort, finale Antwort, Tail-Latenz, Recherchebeginn/-ende, lokale und Web-Agentenlast, Reaktionsfähigkeit bei Unterbrechungen.
+- **ASR und Sprecher:** WER/CER, RTF, Sprecherfehler, Dual-Track, Overlap, Gerätewechsel, Ausfälle, lange reale Windows-Sitzungen.
+- **Agenten:** nachvollziehbare Rollen, kontextkonsistente Ergebnisse, geeignete Parallelität, kontrollierter Providerwechsel, kein unnötiges Doppeln von Arbeit.
+- **Selbstoptimierung:** reproduzierbare Vorher-/Nachher-Vergleiche, versionsgebundene Testfälle, getrennte Optimierungs-/Prüfdatensätze, Regression und gegebenenfalls menschliche Referenzurteile.
+- **Desktop/Release:** Installations-, WebView2-/GUI-, DPI-, Audio-, Update-, Migration- und Rollback-Tests; eindeutige Artefakt-/Commitbezüge, Hashes und gegebenenfalls Authenticode-Signierung.
+- **CI:** Tatsächliche Log- und Testnachweise zählen. Ein Runner- oder Provisionierungsfehler darf nicht als erfolgreiche Codeabnahme umgedeutet werden.
+
+**Aktueller Status darf nicht aus der Vision abgeleitet werden.** Laut [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) sind unter anderem vollständige CI-/Structure-Gates, produktive Windows-Signierung und Distribution sowie reale Windows-Audio-/Provider- und quantitative ASR-/Rhetorik-Nachweise noch nicht vollständig abgeschlossen. Bereits vorhandene Test- oder Build-Erfolge müssen auf ihren konkreten Commit und ihren Geltungsbereich bezogen werden.
+
+## 18. Funktionsumfang, Priorisierung und Entwicklung ohne unnötigen Neubau
+
+Der erste ernsthafte Release ist ein **integriertes, belastbares Gesamtprodukt** mit funktionierendem lokalen Live-Kern, deutschsprachiger Audioverarbeitung, Sprechertrennung, zwei fachlichen Agentenrollen, zwei Rhetorikmodi, bester Antwort plus höchstens zwei Alternativen, einem gut nutzbaren Windows-Dashboard und einem **sichtbaren, interaktiven Einstellungs-/Modellvergleich**. **Kein bloßer Textchat-Prototyp.**
+
+**Die vorhandene UI soll jetzt verbessert und perfektioniert werden** – nicht auf einen späteren unbestimmten Release verschoben. UI-Verbesserungen können parallel zur Stabilisierung von Browsern, Agenten und Testarchitektur erfolgen. Es wird **nicht** vorgeschrieben, erst eine komplett neue UI zu bauen oder das Einstellungsstudio bis nach der Cloud-Selbstoptimierung auszusetzen.
+
+**Sinnvolle Arbeitsprioritäten, bei konkreter Evidenz anpassbar:**
+1. Bestehende Architektur und Oberfläche vollständig prüfen, Defekte und bereits funktionierende Teile identifizieren.
+2. Lokalen Live-Kern, Audio, Kontext, Recherche- und Web-Sitzungsstabilität absichern.
+3. **Bestehende UI, Onboarding und Einstellungsstudio fortlaufend gezielt perfektionieren.**
+4. Sichtbare Modellvergleiche, reproduzierbare Audio-/Video-Simulation und Qualitätsmessung ausbauen.
+5. Autonome profilgebundene Optimierung, Cloud-Testinstanz und GitHub-Berichte kontrolliert integrieren.
+6. Verlässlichkeit, Testabnahme, Releases und Qualitätsfortschritt fortlaufend belegen.
+
+**Verfügbare bestehende Module behalten:** Die allgemeine Meeting-Analyse mit strukturierten Transkripten, Beobachtungen, Briefings, Fragen und Nachanalysen bleibt ein **optionaler separater Bereich**. Dokumentfunktionen und ältere Integrationen dürfen weiterbestehen, müssen aber ihren tatsächlichen Provider-/Lokalitätsstatus korrekt ausweisen. Videoanalyse, Vier-Move-/Mehragentensysteme und vertiefte Forschung bleiben wichtige, anhand Qualität und Nutzen zu validierende Erweiterungen. Weder Produktbreite noch experimentelle Prototypen dürfen als Releasebeweis gelten.
+
+**Keine vorrangige Integrations-Offensive:** Kalender, CRM, Fremd-APIs, primär mobile Apps oder ein erzwungener Team-Workspace stehen hinter der Perfektionierung des Debattenkerns zurück. Keine verpflichtende Kontoanmeldung nur für lokale Nutzung. Monetarisierungsdruck ist kein Entwicklungsleitziel.
+
+Die konkrete Feature-Matrix für eine Veröffentlichung darf **unverzichtbar / wichtig / experimentell** unterscheiden und klar ausweisen, was tatsächlich implementiert, getestet und freigegeben ist. Das ist keine Erlaubnis, unzuverlässige Kernfunktionen als fertig auszugeben.
+
+## 19. Windows-Distribution, Open Source und Bestandswahrheit
+
+Windows-Desktop hat Vorrang, einschließlich WebView2-/Desktop-Integration, Mikrofon-/Loopback-Betrieb, GPU-/Modellmanagement, sauberer Fehleranzeige und echter Hardwaretests. Frühere technische Bestandteile wie PyInstaller, PostgreSQL, ffmpeg, Tray/Overlay und Updater dürfen als vorhandene Ansätze geprüft und weitergenutzt werden; die Vision behauptet nicht, dass jedes frühere Bundle heute vollständig abgenommen ist.
+
+DebateAI wird zunächst persönlich beziehungsweise als Open-Source-Projekt ohne Monetarisierungszwang entwickelt. **Langfristiges Ziel ist eine vollständige Open-Source-Veröffentlichung von App- und Infrastrukturcode**, mit dokumentierten Abhängigkeiten und möglichst reproduzierbaren Build-/Releaseabläufen. Dazu gehören ausdrücklich **keine** privaten Anmeldedaten, Sitzungs-Cookies, Profile, Audiomaterialien, Transkripte oder geheimen Schlüssel.
+
+**Historische Quellvarianten und Provenienz:** DebateAI-Source war ein code-only Snapshot mit bewusst fehlenden internen Verträgen/Buildbestandteilen; DebateAI-final-public ist die umfangreichere öffentliche Konsolidierung. Ein früherer privater Master und ältere Audit-Commits sind **historische Vergleichsstände**, keine automatisch aktuelle Freigabereferenz. Öffentliche Repository-Inhalte und Build-Tests belegen nicht automatisch einen signierten, auslieferbaren Windows-Produktrelease. Einzelheiten stehen in [HISTORIE.md](HISTORIE.md).
+
+Öffentliche Aussagen über Offlinefähigkeit, Cloudfreiheit, Mehrsprachigkeit, lokale Dokumentanalyse, unterstützte Provider und Reifegrad müssen **dem überprüften Code und realen Tests entsprechen**. Keine Marketingbehauptung darf vorhandene Abhängigkeiten oder offene Gates verdecken.
+
+## 20. Verbindlicher Forschungs- und Analyseauftrag vor größeren Änderungen
+
+Vor umfangreichen Architektur-, UI- oder Agentenänderungen wird der **tatsächliche Repository-Stand** untersucht. Bestehende Funktionen sollen verstanden, fehlerhafte Komponenten korrigiert und gute Implementierungen erhalten werden.
+
+**Technisch zu untersuchen und anhand realer Tests zu entscheiden:**
+- **Backchannel und vergleichbare Agentenarchitekturen:** Aufgabenverteilung, Koordination, Kommunikation, Recovery und übertragbare Gestaltungsideen; keine Kopie oder Produktabhängigkeit.
+- **ChatGPT-Web-/Gemini-Web-Automatisierung:** verfügbare CLI-, MCP-, Browser- und Erweiterungswege sowie Funktions- und Plattformgrenzen.
+- **Reasoning-Steuerung und dynamisches Agentenrouting:** tatsächlich unterstützte Denkstufen, Latenzen, Providergrenzen und belastbare Fallbacks.
+- **Audio-/Video-Testverfahren:** Replay mit Zeitbezug, ASR-/Sprecherreferenzen, Störungstests, Human-Rating und belastbaren Evaluationsmetriken.
+- **Profiloptimierung:** gezielte Prompt-/Konfigurationsänderungen, Regression, Kontextisolation, Kosten und Reproduzierbarkeit.
+- **Hosting:** kostengünstige, möglichst durch Google-Credits gedeckte vollständige Testinstanz mit Browser-Sitzungen und Windows-/Cloud-Grenzen.
+- **Bestehende UI:** aktuelle Navigationslogik, unnötige Optionen, Onboarding, Einstellungszustände und Nutzbarkeit vor jeder größeren Änderung prüfen.
+
+**Faktenrecherche ist Aufgabe des Umsetzungsteams, keine offene Benutzerentscheidung.** Wo Webanbieter eine gewünschte Steuerung nicht zulassen oder technisch nicht zuverlässig ermöglichen, wird dies offen dokumentiert und eine möglichst funktional gleichwertige Alternative geprüft. Keine Abnahmekriterien durch unbewiesene Annahmen ersetzen.
+
+## 21. Dokumentationsvertrag, Änderungen und offene technische Punkte
+
+Diese Datei **VISION.md** ist die **zentrale, ausführliche und verbindliche Gesamtproduktvision**. Sie enthält die vollständigen Ziele und wesentlichen fachlichen Anforderungen. Die anderen Dokumente erfüllen weiterhin getrennte Aufgaben:
+
+| Datei | Inhalt |
+| --- | --- |
+| [VISION.md](VISION.md) | Verbindliche Gesamtvision, gewünschte Benutzererfahrung, Architekturprinzipien, Prioritäten und Zielverhalten |
+| [HANDBUCH.md](HANDBUCH.md) | Tatsächliche Architektur, Setup, APIs, Konfiguration, UI-/Designsystem, Deployment, Release und Betriebsverträge |
+| [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) | Aktuelle Lücken, nicht belegte Funktionen, technische Risiken, Abnahmekriterien und noch offene Gates |
+| [HISTORIE.md](HISTORIE.md) | Datiertes Wissen, ersetzte Entscheidungen, historische Visionen, Commits und Evidenz |
+
+**Prioritäts- und Statusregeln:**
+- Produktanforderungen können als **unverzichtbar**, **wichtig** oder **experimentell** eingestuft werden.
+- **Geplant**, **implementiert**, **getestet** und **freigegeben** sind klar getrennt.
+- Neue Eigentümerentscheidungen können ältere Prioritäten und Implementierungsannahmen ersetzen; sie werden konsolidiert statt widersprüchlich nebeneinander weitergeführt.
+- Erfolgreiche Tests, Builds und Releases werden anhand konkreter Versionen und Belege dokumentiert, nicht aus Absichtserklärungen abgeleitet.
+- Bereits bekannte ältere Zielkonflikte sind hier soweit durch die Eigentümerentscheidungen lösbar **entschieden**: **Hart/Überzeugend** mit Wahl vor jeder neuen Sitzung und letztem Modus als Vorauswahl; **sichtbarer Modellvergleich statt Pflicht-Blindtest**; **beste Antwort plus maximal zwei Alternativen**; **gezielte Perfektionierung der bestehenden UI**; **lokaler Erstpfad mit ergänzenden Web-Agenten**; **manueller Teststart mit autonomer interner Optimierung und abschließender Freigabe**.
+
+**Noch zu verifizieren, aber nicht als neue Grill-Me-Entscheidung offen:** Anbieterfähigkeit und Zulässigkeit von Web-Steuerungen, echte Windows-Zielhardware, konkrete Modell-/Provider-Matrix, Kosten und technische Grenzen der Cloud-Testinstanz, Windows-/Provider-Abnahme, rechtliche Besonderheiten der jeweiligen Aufnahmenutzung sowie noch nicht erfüllte Release-Gates. Diese Aufgaben gehören in die technische Bestandsaufnahme und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md).
 
 ---
 
-**Quellen und Vorrang:** Präzisierende Eigentümerantworten auf 50 Visionsfragen vom 19.11.2026 einschließlich der individuellen Ergänzungen; ältere den datierten Visionssnapshot, bisherige VISION.md, den datierten Geschichtsvermerk in [HISTORIE.md](HISTORIE.md) und [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md). **Die Vision beschreibt, was gewollt ist; der aktuelle Code- und Abnahmestand muss separat belegt werden.**
+**Herkunft und Vorrang:** Vollständige VISION.md mit Stand 19.11.2026, aktualisierte Produktentscheidungen aus sechs Grill-Me-Runden (insgesamt Fragen 1–119 mit individuellen Freitextpräzisierungen) bis 21.11.2026, sowie die getrennt dokumentierten technischen und historischen Nachweise. **Dieses Dokument ist ein Zielvertrag, keine Behauptung über die Implementierung.**
