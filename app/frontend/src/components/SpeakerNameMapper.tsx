@@ -28,7 +28,7 @@ export function enhancementProgressLabel(
   result: Pick<EnhanceInsightsResult, "status" | "completed_batches" | "total_batches">,
 ): string {
   return result.status === "running"
-    ? `Revalidating ${result.completed_batches}/${result.total_batches} batches...`
+    ? `Prüfe ${result.completed_batches}/${result.total_batches} Blöcke …`
     : "";
 }
 
@@ -249,7 +249,7 @@ export default function SpeakerNameMapper({
     const ok = await confirm({
       title: "Erkenntnisse verbessern",
       message: "Briefing und alle Erkenntnisse werden anhand der korrigierten Sprechernamen und internen beziehungsweise externen Rollen erneut geprüft.",
-      confirmLabel: "Continue",
+      confirmLabel: "Fortfahren",
       tone: "default",
     });
     if (!ok) return;

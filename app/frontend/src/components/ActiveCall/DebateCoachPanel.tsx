@@ -323,7 +323,7 @@ export default function DebateCoachPanel({
             <div aria-live="polite" aria-atomic="true">
               {hasNewVersion && (
                 <div role="status" className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-brand-teal/30 bg-brand-teal/5 px-3 py-2 font-body text-xs text-brand-dark-gray">
-                  <span>Eine neuere Sprechkarte ist verfuegbar (v{liveVersion || "-"}).</span>
+                  <span>Eine neuere Sprechkarte ist verfügbar (v{liveVersion || "-"}).</span>
                   <button
                     type="button"
                     onClick={() => setPinnedRecommendation(null)}

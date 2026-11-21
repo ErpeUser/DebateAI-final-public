@@ -53,7 +53,7 @@ Orchestrator und lädt diese Datei nicht.
 ## Doppelte oder veraltete Ressourcen
 
 - `background.oracle`, `background.gemini` und `background.gpt6` sind byte-identisch; sie bleiben vorerst als modellabhängige Routingnamen erhalten.
-- `app/ai/playbooks.json` und `app/ai/defaults/playbooks.json` sind identisch und bleiben wegen Update-/Benutzerkonfigurationsschutz getrennt.
-- `app/ai/debate_deep_v1.txt` und `app/ai/defaults/prompts/debate_deep_v1.txt` sind identisch.
+- `app/ai/playbooks.json` und `app/ai/defaults/playbooks.json` sind identisch. Die Defaultkopie bleibt als Reset-/Migrationsquelle getrennt; der Endpoint `/api/ai-config/prompts/rhetoriciq.playbooks/reset` liest sie explizit.
+- `app/ai/debate_deep_v1.txt` und `app/ai/defaults/prompts/debate_deep_v1.txt` sind identisch. Die Defaultkopie bleibt als Resetquelle für benutzerdefinierte Prompts erhalten.
 - `experimental_integrator_v1.txt` wird nicht geladen; die Datei bleibt als historische Referenz erhalten.
 - Die aktive und Defaultfassung von `debate_live_v2` wurden in B vereinheitlicht; die neue Hash-Version ist `b836b11580ae`.

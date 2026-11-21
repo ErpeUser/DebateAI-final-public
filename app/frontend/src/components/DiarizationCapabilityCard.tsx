@@ -543,7 +543,7 @@ function InfoPopover({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
     >
       <button
         type="button"
-        aria-label="Compare diarization modes"
+        aria-label="Diarisierungsmodi vergleichen"
         aria-expanded={open}
         onClick={() => onOpenChange(!open)}
         className="grid h-6 w-6 place-items-center rounded-full border border-brand-light-gray-1 bg-surface font-display text-[11px] font-bold text-brand-teal shadow-sm transition-colors hover:border-brand-teal"

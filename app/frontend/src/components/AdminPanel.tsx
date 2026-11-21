@@ -95,6 +95,7 @@ interface AdminPanelProps {
   // Direct entry through Administration stays the normal expert view.
   onboarding?: boolean;
   onOnboardingContinue?: () => void;
+  onOpenQualityLab?: () => void;
 }
 
 // Compact filter-chip toggle used for multi-select groups (knowledge sources,
@@ -250,7 +251,7 @@ function LensEditor({
                     {typeBadge}
                   </span>
                   {emptyPrompt && (
-                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 font-body text-[10px] text-amber-800" title="Perspektiven ohne Anweisung werden uebersprungen">
+                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 font-body text-[10px] text-amber-800" title="Perspektiven ohne Anweisung werden übersprungen">
                       Keine Anweisung
                     </span>
                   )}
@@ -501,7 +502,7 @@ function AgentCard({
           </select>
           {hasLockedModels && (
             <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
-              Ausgegraute Modelle benoetigen einen API-Schluessel ihres Anbieters (siehe Verbindungen).
+              Ausgegraute Modelle benötigen einen API-Schlüssel ihres Anbieters (siehe Verbindungen).
             </p>
           )}
         </div>
@@ -509,7 +510,7 @@ function AgentCard({
         {intervalDefault !== undefined && (
           <div>
             <label className="mb-1 block font-body text-xs font-medium text-brand-gray">
-              {intervalDriven ? "Pruefintervall" : "Pause zwischen Durchlaeufen"}
+              {intervalDriven ? "Prüfintervall" : "Pause zwischen Durchläufen"}
             </label>
             <div className="flex items-center gap-2">
               <input
@@ -532,14 +533,14 @@ function AgentCard({
             <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
               {intervalDriven
                 ? "Wie oft neue Transkriptteile analysiert werden (5-300 s)."
-                : "Mindestabstand zwischen Durchlaeufen bei neuen Erkenntnissen (5-300 s)."}
+                : "Mindestabstand zwischen Durchläufen bei neuen Erkenntnissen (5–300 s)."}
             </p>
             {modelInterval !== null && (
               <p className="mt-1.5 rounded border border-brand-teal/30 bg-brand-teal/5 px-2 py-1.5 font-body text-[10px] leading-relaxed text-brand-dark-gray">
                 <span className="font-medium">Aktuell {modelInterval} s</span> mit dem
                 ausgewählten Modell. Der lokale Leistungstest hat diesen Wert für{" "}
                 {selectedModel?.name ?? agent.model_id} gesetzt. Starte den Test unter
-                Transkription &amp; Audio erneut, um ihn zu aendern.
+                Transkription &amp; Audio erneut, um ihn zu ändern.
               </p>
             )}
           </div>
@@ -631,7 +632,7 @@ function AgentCard({
   );
 }
 
-export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChange, highlightSince, onboarding, onOnboardingContinue }: AdminPanelProps) {
+export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChange, highlightSince, onboarding, onOnboardingContinue, onOpenQualityLab }: AdminPanelProps) {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([]);
@@ -881,6 +882,7 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
                   onPrivacyChanged={setPrivacy}
                   refreshToken={keysRefresh}
                   onContinue={() => onOnboardingContinue?.()}
+                  onOpenQualityLab={onOpenQualityLab}
                 />
               )}
               <ChatGPTWebCard

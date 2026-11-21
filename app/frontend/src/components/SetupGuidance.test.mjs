@@ -16,4 +16,7 @@ test("first-run guidance is German and explains local setup without demanding Ge
   assert.match(copy, /Debate AI/);
   assert.match(copy, /Live-Debatten-Copilot/);
   assert.doesNotMatch(copy, /Live Debate Copilot/);
+  assert.match(copy, /Lokales Transkriptionslabor/);
+  assert.match(copy, /A\/B- und Sprachlabor öffnen/);
+  assert.match(copy, /onOpenQualityLab/);
 });

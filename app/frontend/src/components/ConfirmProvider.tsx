@@ -137,7 +137,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="confirm-title" className="font-display text-base font-semibold text-brand-dark-gray">
-              {dialog.title ?? (dialog.kind === "notice" ? "Notice" : "Are you sure?")}
+              {dialog.title ?? (dialog.kind === "notice" ? "Hinweis" : "Bist du sicher?")}
             </h2>
             <p className="mt-1.5 font-body text-sm text-brand-gray">{dialog.message}</p>
             <div className="mt-5 flex justify-end gap-2">
@@ -156,7 +156,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                   danger ? "bg-red-600 hover:bg-red-700" : "bg-brand-teal hover:bg-brand-teal-dark"
                 }`}
               >
-                {dialog.confirmLabel ?? "Confirm"}
+                {dialog.confirmLabel ?? "Bestätigen"}
               </button>
             </div>
           </div>

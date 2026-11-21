@@ -741,6 +741,8 @@ function MainApp() {
 
   const handleOpenApiKeys = useCallback(() => openAdmin("keys", true), [openAdmin]);
 
+  const handleOpenQualityLab = useCallback(() => openAdmin("labor"), [openAdmin]);
+
   // "Continue to first session" from the onboarding setup card: leave Admin
   // and drop straight into the new-session flow.
   const handleOnboardingContinue = useCallback(() => {
@@ -1257,6 +1259,7 @@ function MainApp() {
           onCloseOfferings={() => setShowOfferings(false)}
           onCloseKnowledge={() => setShowKnowledge(false)}
           onAdminOnboardingContinue={handleOnboardingContinue}
+          onOpenQualityLab={handleOpenQualityLab}
           onAdminTabChange={setAdminTab}
         />
       );

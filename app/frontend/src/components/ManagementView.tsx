@@ -17,6 +17,7 @@ interface Props {
   onCloseKnowledge: () => void;
   onCloseOfferings: () => void;
   onAdminOnboardingContinue: () => void;
+  onOpenQualityLab: () => void;
   onAdminTabChange: (tab: AdminTab) => void;
 }
 
@@ -32,6 +33,7 @@ export default function ManagementView({
   onCloseKnowledge,
   onCloseOfferings,
   onAdminOnboardingContinue,
+  onOpenQualityLab,
   onAdminTabChange,
 }: Props) {
   if (showAdmin) {
@@ -44,6 +46,7 @@ export default function ManagementView({
         highlightSince={highlightSince}
         onboarding={adminOnboarding}
         onOnboardingContinue={onAdminOnboardingContinue}
+        onOpenQualityLab={onOpenQualityLab}
       />
     );
   }

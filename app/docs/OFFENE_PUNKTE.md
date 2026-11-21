@@ -1,8 +1,8 @@
 # DebateAI – Offene Punkte
 
-Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
+Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der letzte verhaltensändernde Code-Stand ist `c18f3f4` und liegt auf `main`/`origin/main`. Lokal auf dem autorisierten Windows-Gerät ist der installierte Desktop-Build mit Health `200`, ChatGPT-Web GPT-6/xhigh, Gemini-Web-Katalog, CUDA-Sortformer und bestandenem GPU-Benchmark geprüft. Die relevanten Backend-Regressionen bestehen mit `77 passed`, die Desktop-Vertragsprüfungen mit `2 passed`, der Repository-Layout-Guard ist grün. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der geprüfte Stand ist `HEAD` auf `main`/`origin/main` (dieser Cleanup-Stand). Im autorisierten Windows-Checkout sind Frontend-Tests (378 bestanden), der Frontend-Produktionsbuild, die relevanten Backend-Regressionen (48 Tests plus 10 Subtests), die Desktop-ChatGPT-Vertragsprüfungen (5 Tests), der Repository-Layout-Guard und die Python-/JavaScript-Syntaxprüfungen grün. Der Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## P0 – vor einer belastbaren Produkt- oder Releasefreigabe
 
@@ -39,8 +39,8 @@ Stand: 2026-11-20. Diese Datei enthält nur Punkte, für die der aktuelle Tree o
 
 ### P1.10 A/B- und Sprachlabor als zugängliches Produktfeature
 
-- **Status:** offen/strukturell nicht nachweisbar im Hauptprodukt.
-- **Benötigt:** zugänglicher, blinder A/B-Vergleich mit Reveal und Export, unabhängige Datensätze, WER/CER/RTF sowie Rater-Übereinstimmung; das Calibration-Labor allein erfüllt diesen Produktvertrag nicht.
+- **Status:** im Hauptprodukt jetzt über Admin → Labor und den Onboarding-Schnelltest erreichbar; der vollständige Qualitätsnachweis bleibt offen.
+- **Benötigt:** zugänglicher, blinder A/B-Vergleich mit Reveal und Export, unabhängige Datensätze, WER/CER/RTF sowie Rater-Übereinstimmung; das eingebettete Transkriptionslabor und die Quality-/Video-Labs allein erfüllen diesen Produktvertrag nicht.
 
 ### P1.14 Löschpfad für externe, lokale und Browser-Artefakte
 

@@ -140,7 +140,7 @@ test("running revalidation reports observable batch progress", () => {
       completed_batches: 2,
       total_batches: 5,
     }),
-    "Revalidating 2/5 batches...",
+    "Prüfe 2/5 Blöcke …",
   );
 });
 

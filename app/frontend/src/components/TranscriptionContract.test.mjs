@@ -15,7 +15,7 @@ test("transcription UI fallback matches the German desktop default", async () =>
 test("local fit guidance names the experimental local captioner", async () => {
   const source = await read("./LocalModelFitCard.tsx");
 
-  assert.match(source, /experimentelle lokale Parakeet-Untertitler verfuegbar/);
+  assert.match(source, /experimentelle lokale Parakeet-Untertitler verfügbar/);
   assert.match(source, /Transkription &amp; Audio explizit/);
   assert.doesNotMatch(source, /Fuer Live-Zwischentitel gibt es derzeit keine lokale Option/);
 });

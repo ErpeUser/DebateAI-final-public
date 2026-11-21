@@ -15,6 +15,7 @@ interface ProviderOnboardingCardProps {
   // Bumped by the parent whenever a credential changes so readiness re-checks.
   refreshToken: number;
   onContinue: () => void;
+  onOpenQualityLab?: () => void;
 }
 
 // Contextual first-run setup state shown above Connections when the screen was
@@ -25,6 +26,7 @@ export default function ProviderOnboardingCard({
   onPrivacyChanged,
   refreshToken,
   onContinue,
+  onOpenQualityLab,
 }: ProviderOnboardingCardProps) {
   const [anyKeySaved, setAnyKeySaved] = useState(false);
   const [readiness, setReadiness] = useState<SetupReadiness | null>(null);
@@ -182,20 +184,31 @@ export default function ProviderOnboardingCard({
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div>
             <h4 className="font-display text-sm font-bold text-brand-dark-gray">
-              Modell-Labor direkt im Onboarding
+              Lokales Transkriptionslabor
             </h4>
             <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-              Vergleiche lokale Transkription mit echten Beispielen. Der Test läuft im
-              eingebetteten Labor und ändert keine Einstellungen automatisch.
+              Vergleiche lokale Transkription mit echten Beispielen. Dieser Test prüft
+              Audioqualität und Latenz; er ändert keine Einstellungen automatisch.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setShowLab((value) => !value)}
-            className="rounded-lg border border-brand-teal px-3.5 py-2 font-body text-xs font-semibold text-brand-teal transition-colors hover:bg-brand-teal/5"
-          >
-            {showLab ? "Labor schließen" : "Modell-Labor öffnen"}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            {onOpenQualityLab && (
+              <button
+                type="button"
+                onClick={onOpenQualityLab}
+                className="rounded-lg border border-brand-light-gray-1 px-3.5 py-2 font-body text-xs font-semibold text-brand-dark-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
+              >
+                A/B- und Sprachlabor öffnen
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => setShowLab((value) => !value)}
+              className="rounded-lg border border-brand-teal px-3.5 py-2 font-body text-xs font-semibold text-brand-teal transition-colors hover:bg-brand-teal/5"
+            >
+              {showLab ? "Labor schließen" : "Transkriptionslabor öffnen"}
+            </button>
+          </div>
         </div>
         {showLab && (
           <iframe

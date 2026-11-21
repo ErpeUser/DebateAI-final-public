@@ -106,7 +106,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
   const apply = async (side: LabSide) => {
     const candidate = candidateBySide[side];
     if (!run || !candidate || preferred !== side || ratings.A.both_unsuitable || ratings.B.both_unsuitable) return;
-    if (!window.confirm(`Variante ${side} wirklich produktiv ?bernehmen? Die bisherige Version bleibt f?r den Rollback erhalten.`)) return;
+    if (!window.confirm(`Variante ${side} wirklich produktiv übernehmen? Die bisherige Version bleibt für den Rollback erhalten.`)) return;
     setBusy(true); setError(null);
     try { await api.applyQualityLabVariant(run.run_id, candidate.variant_id); setNotice("Variante atomar übernommen. Die vorherige Version bleibt per Rollback verfügbar."); }
     catch (err) { setError(err instanceof Error ? err.message : "Übernahme fehlgeschlagen; aktive Version blieb unverändert."); }
