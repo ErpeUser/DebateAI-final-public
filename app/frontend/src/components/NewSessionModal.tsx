@@ -2,6 +2,42 @@ import { useEffect, useRef, useState } from "react";
 import type { MeetingType } from "../types";
 import { MEETING_TYPES } from "./PreCall/MeetingContextSetup";
 
+// The session wizard is the place where the user chooses the rhetoric mode
+// for the next conversation. Keep that choice in the browser so reopening the
+// wizard does not silently fall back to "Überzeugen" every time. Only the two
+// debate modes are persisted; the other meeting types are deliberately not
+// part of this compact wizard.
+export const LAST_DEBATE_MODE_KEY = "debateai:last-debate-mode";
+
+function isDebateMeetingType(
+  value: string | null,
+): value is Extract<MeetingType, "debate_persuasive" | "debate_forceful"> {
+  return value === "debate_persuasive" || value === "debate_forceful";
+}
+
+export function readLastDebateMode(): Extract<
+  MeetingType,
+  "debate_persuasive" | "debate_forceful"
+> {
+  if (typeof window === "undefined") return "debate_persuasive";
+  try {
+    const stored = window.localStorage.getItem(LAST_DEBATE_MODE_KEY);
+    return isDebateMeetingType(stored) ? stored : "debate_persuasive";
+  } catch {
+    // Storage can be disabled by a browser policy or private-mode setting.
+    return "debate_persuasive";
+  }
+}
+
+function rememberDebateMode(value: MeetingType): void {
+  if (!isDebateMeetingType(value) || typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(LAST_DEBATE_MODE_KEY, value);
+  } catch {
+    // A storage failure must not prevent creating the session.
+  }
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -24,7 +60,7 @@ function suggestedName(): string {
 export default function NewSessionModal({ open, onClose, onCreate }: Props) {
   const [name, setName] = useState("");
   const [meetingType, setMeetingType] =
-    useState<MeetingType>("debate_persuasive");
+    useState<MeetingType>(() => readLastDebateMode());
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -34,7 +70,7 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
   useEffect(() => {
     if (!open) return;
     setName("");
-    setMeetingType("debate_persuasive");
+    setMeetingType(readLastDebateMode());
     setCreating(false);
     setError(null);
     placeholder.current = suggestedName();
@@ -155,7 +191,10 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
                   key={type.value}
                   type="button"
                   aria-pressed={active}
-                  onClick={() => setMeetingType(type.value)}
+                  onClick={() => {
+                    setMeetingType(type.value);
+                    rememberDebateMode(type.value);
+                  }}
                   disabled={creating}
                   className={`rounded-lg border px-3 py-3 text-left transition-colors ${
                     active

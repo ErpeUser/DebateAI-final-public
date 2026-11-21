@@ -18,9 +18,10 @@ await build({
     contents: `
       import React from "react";
       import { renderToStaticMarkup } from "react-dom/server";
-      import NewSessionModal from "./NewSessionModal.tsx";
+      import NewSessionModal, { LAST_DEBATE_MODE_KEY, readLastDebateMode } from "./NewSessionModal.tsx";
       import { MEETING_TYPES } from "./PreCall/MeetingContextSetup.tsx";
       export { MEETING_TYPES };
+      export { LAST_DEBATE_MODE_KEY, readLastDebateMode };
       export function render() {
         return renderToStaticMarkup(React.createElement(NewSessionModal, {
           open: true,
@@ -39,7 +40,8 @@ await build({
   outfile: outputPath,
 });
 
-const { MEETING_TYPES, render } = createRequire(import.meta.url)(outputPath);
+const { LAST_DEBATE_MODE_KEY, MEETING_TYPES, readLastDebateMode, render } =
+  createRequire(import.meta.url)(outputPath);
 after(async () => rm(outputDir, { recursive: true, force: true }));
 
 test("keeps both advanced debate styles available", () => {
@@ -61,4 +63,38 @@ test("opens in German with both debate modes and persuasive preselected", () => 
   assert.doesNotMatch(html, /Allgemein \/ automatisch erkennen/);
   assert.match(html, /Abbrechen/);
   assert.match(html, /Erstellen/);
+});
+
+test("restores the last selected debate mode from browser storage", () => {
+  const previousWindow = globalThis.window;
+  const values = new Map([[LAST_DEBATE_MODE_KEY, "debate_forceful"]]);
+  globalThis.window = {
+    localStorage: {
+      getItem: (key) => values.get(key) ?? null,
+      setItem: (key, value) => values.set(key, value),
+    },
+  };
+  try {
+    assert.equal(readLastDebateMode(), "debate_forceful");
+    const html = render();
+    assert.match(html, /aria-pressed="false"[^>]*>.*Überzeugen/s);
+    assert.match(html, /aria-pressed="true"[^>]*>.*Brutal-sachlich/s);
+  } finally {
+    globalThis.window = previousWindow;
+  }
+});
+
+test("ignores invalid persisted meeting types and keeps the safe default", () => {
+  const previousWindow = globalThis.window;
+  globalThis.window = {
+    localStorage: {
+      getItem: () => "client_sales",
+      setItem: () => {},
+    },
+  };
+  try {
+    assert.equal(readLastDebateMode(), "debate_persuasive");
+  } finally {
+    globalThis.window = previousWindow;
+  }
 });
