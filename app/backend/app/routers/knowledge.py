@@ -16,6 +16,7 @@ from app.schemas import (
     KnowledgeSourceOut,
     KnowledgeSourceUpdate,
 )
+from app.services.cursor_pagination import InvalidCursor, decode_cursor, encode_cursor
 from app.services.knowledge import USER_SOURCE_TYPES
 from app.services.markdown_conversion import (
     MarkdownConversionError,
@@ -24,8 +25,8 @@ from app.services.markdown_conversion import (
 )
 from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.services.upload_limits import UploadTooLarge, read_bounded_upload
-from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile
-from sqlalchemy import delete, func, select
+from fastapi import APIRouter, Depends, File, HTTPException, Query, Response, UploadFile
+from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/knowledge", tags=["knowledge"])
@@ -62,21 +63,47 @@ async def _source_out(source: KnowledgeSource, db: AsyncSession) -> KnowledgeSou
 
 @router.get("", response_model=list[KnowledgeSourceOut])
 async def list_sources(
+    response: Response,
     limit: int = Query(200, ge=1, le=1000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(
+    statement = (
         select(KnowledgeSource, func.count(KnowledgeRecord.id))
         .outerjoin(KnowledgeRecord, KnowledgeRecord.source_id == KnowledgeSource.id)
         .group_by(KnowledgeSource.id)
         .order_by(KnowledgeSource.created_at, KnowledgeSource.id)
-        .limit(limit)
     )
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "knowledge_sources")
+            marker_created = datetime.fromisoformat(str(marker["created_at"]))
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid knowledge source cursor") from None
+        statement = statement.where(
+            or_(
+                KnowledgeSource.created_at > marker_created,
+                and_(
+                    KnowledgeSource.created_at == marker_created,
+                    KnowledgeSource.id > marker_id,
+                ),
+            )
+        )
+    result = await db.execute(statement.limit(limit + 1))
+    rows = list(result.all())
+    has_more = len(rows) > limit
+    rows = rows[:limit]
     out = []
-    for source, count in result.all():
+    for source, count in rows:
         item = KnowledgeSourceOut.model_validate(source)
         item.record_count = int(count or 0)
         out.append(item)
+    if has_more and rows:
+        last = rows[-1][0]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "knowledge_sources", created_at=last.created_at.isoformat(), id=str(last.id)
+        )
     return out
 
 
@@ -147,17 +174,52 @@ async def delete_source(source_id: uuid.UUID, db: AsyncSession = Depends(get_db)
 @router.get("/{source_id}/records", response_model=list[KnowledgeRecordOut])
 async def list_records(
     source_id: uuid.UUID,
+    response: Response,
     limit: int = Query(500, ge=1, le=2000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     await _get_source_or_404(source_id, db)
-    result = await db.execute(
+    statement = (
         select(KnowledgeRecord)
         .where(KnowledgeRecord.source_id == source_id)
         .order_by(KnowledgeRecord.title, KnowledgeRecord.created_at, KnowledgeRecord.id)
-        .limit(limit)
     )
-    return result.scalars().all()
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "knowledge_records")
+            marker_title = str(marker["title"])
+            marker_created = datetime.fromisoformat(str(marker["created_at"]))
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid knowledge record cursor") from None
+        statement = statement.where(
+            or_(
+                KnowledgeRecord.title > marker_title,
+                and_(
+                    KnowledgeRecord.title == marker_title,
+                    KnowledgeRecord.created_at > marker_created,
+                ),
+                and_(
+                    KnowledgeRecord.title == marker_title,
+                    KnowledgeRecord.created_at == marker_created,
+                    KnowledgeRecord.id > marker_id,
+                ),
+            )
+        )
+    result = await db.execute(statement.limit(limit + 1))
+    rows = list(result.scalars().all())
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    if has_more and rows:
+        last = rows[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "knowledge_records",
+            title=last.title,
+            created_at=last.created_at.isoformat(),
+            id=str(last.id),
+        )
+    return rows
 
 
 @router.post("/{source_id}/records", response_model=KnowledgeRecordOut)

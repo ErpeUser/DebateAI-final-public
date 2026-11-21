@@ -1,6 +1,7 @@
 import inspect
 import os
 import uuid
+from datetime import datetime
 
 from app.database import get_db
 from app.models import Document, Session
@@ -11,12 +12,13 @@ from app.services.file_parsing import (
     parse_text,
     safe_upload_filename,
 )
+from app.services.cursor_pagination import InvalidCursor, decode_cursor, encode_cursor
 from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
 from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.services.pii import shield
 from app.services.privacy import is_local_only
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
-from sqlalchemy import select
+from fastapi import APIRouter, Depends, HTTPException, Query, Response, UploadFile
+from sqlalchemy import and_, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/documents", tags=["documents"])
@@ -119,18 +121,41 @@ async def upload_document(
 @router.get("", response_model=list[DocumentOut])
 async def list_documents(
     session_id: uuid.UUID,
+    response: Response,
     limit: int = Query(200, ge=1, le=1000),
+    cursor: str | None = None,
     db: AsyncSession = Depends(get_db),
 ):
     if await db.get(Session, session_id) is None:
         raise HTTPException(404, "Session not found")
-    result = await db.execute(
+    statement = (
         select(Document)
         .where(Document.session_id == session_id)
         .order_by(Document.uploaded_at, Document.id)
-        .limit(limit)
     )
-    return result.scalars().all()
+    if cursor:
+        try:
+            marker = decode_cursor(cursor, "documents")
+            marker_uploaded = datetime.fromisoformat(str(marker["uploaded_at"]))
+            marker_id = uuid.UUID(str(marker["id"]))
+        except (InvalidCursor, KeyError, TypeError, ValueError):
+            raise HTTPException(400, "Invalid document cursor") from None
+        statement = statement.where(
+            or_(
+                Document.uploaded_at > marker_uploaded,
+                and_(Document.uploaded_at == marker_uploaded, Document.id > marker_id),
+            )
+        )
+    result = await db.execute(statement.limit(limit + 1))
+    rows = list(result.scalars().all())
+    has_more = len(rows) > limit
+    rows = rows[:limit]
+    if has_more and rows:
+        last = rows[-1]
+        response.headers["X-Next-Cursor"] = encode_cursor(
+            "documents", uploaded_at=last.uploaded_at.isoformat(), id=str(last.id)
+        )
+    return rows
 
 
 @router.delete("/{document_id}", status_code=204)
