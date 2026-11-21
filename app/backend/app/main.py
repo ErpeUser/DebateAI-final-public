@@ -565,13 +565,16 @@ async def _run_schema_migrations_unlocked() -> None:
         await asyncio.to_thread(command.stamp, config, "028_debate_claim_records")
         await asyncio.to_thread(command.upgrade, config, "head")
     else:
-        # A fresh create_all database includes every model constraint. Mark
-        # the current Alembic head directly so long revision ids do not pass
-        # through Alembic's legacy VARCHAR(32) bootstrap table.
+        # A fresh create_all database includes the current model tables and
+        # constraints, but migration-only objects (such as the composite list
+        # indexes) are not part of model metadata.  Stamp immediately before
+        # that tail and run it normally, rather than marking head directly and
+        # silently shipping a fresh database without those indexes.
         from alembic.script import ScriptDirectory
         from sqlalchemy import text
 
         head = ScriptDirectory.from_config(config).get_current_head()
+        tail_base = "032_transcript_discard_audits"
         async with engine.begin() as conn:
             await conn.exec_driver_sql(
                 "CREATE TABLE IF NOT EXISTS alembic_version "
@@ -580,8 +583,9 @@ async def _run_schema_migrations_unlocked() -> None:
             await conn.execute(text("DELETE FROM alembic_version"))
             await conn.execute(
                 text("INSERT INTO alembic_version (version_num) VALUES (:head)"),
-                {"head": head},
+                {"head": tail_base},
             )
+        await asyncio.to_thread(command.upgrade, config, head)
 
 
 async def _run_schema_migrations() -> None:

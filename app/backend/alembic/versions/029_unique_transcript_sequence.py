@@ -56,11 +56,24 @@ def upgrade():
         WHERE transcript_entries.id = ordered_rows.id
     """)
     )
-    op.create_unique_constraint(
-        _CONSTRAINT,
-        "transcript_entries",
-        ["session_id", "sequence"],
-    )
+    bind = op.get_bind()
+    if bind.dialect.name == "sqlite":
+        # SQLite cannot alter a table to add a named constraint in place.
+        # Alembic's batch mode copies the table, preserving the existing rows
+        # after the duplicate resequencing above, then recreates it with the
+        # same constraint.  This is required for legacy desktop databases,
+        # which are adopted on SQLite before the versioned tail is applied.
+        with op.batch_alter_table("transcript_entries", recreate="always") as batch:
+            batch.create_unique_constraint(
+                _CONSTRAINT,
+                ["session_id", "sequence"],
+            )
+    else:
+        op.create_unique_constraint(
+            _CONSTRAINT,
+            "transcript_entries",
+            ["session_id", "sequence"],
+        )
 
 
 def downgrade():
