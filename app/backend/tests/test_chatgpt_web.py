@@ -44,6 +44,12 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("--engine", command)
         self.assertIn("browser", command)
         self.assertIn("--browser-manual-login", command)
+        self.assertIn("--chatgpt-url", command)
+        self.assertEqual(
+            chatgpt_web.CHATGPT_TEMPORARY_URL,
+            command[command.index("--chatgpt-url") + 1],
+        )
+        self.assertIn("--browser-no-focus", command)
         self.assertIn("--model", command)
         self.assertIn("gpt-6", command)
         self.assertIn("--browser-model-strategy", command)

@@ -20,6 +20,11 @@ from app.services.identity import env_value
 
 MODEL_ID = "chatgpt-web:gpt-6"
 PROVIDER = "chatgpt-web"
+# Keep consumer-web runs isolated from the user's history and memory. Oracle
+# accepts this URL directly and still uses the dedicated signed-in profile for
+# the model-selection check; the temporary-chat flag only changes conversation
+# persistence/personalization in ChatGPT Web.
+CHATGPT_TEMPORARY_URL = "https://chatgpt.com/?temporary-chat=true"
 _ORACLE_LOCK = asyncio.Lock()
 _LOGIN_RESERVED = False
 
@@ -237,6 +242,7 @@ def oracle_command(
         str(_path("DEBATEAI_CHATGPT_WEB_NODE")),
         str(_path("DEBATEAI_CHATGPT_WEB_ORACLE")),
         "--engine", "browser",
+        "--chatgpt-url", CHATGPT_TEMPORARY_URL,
         "--browser-manual-login",
         "--browser-manual-login-profile-dir", str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
         "--model", "gpt-6",
