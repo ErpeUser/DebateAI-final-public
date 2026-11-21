@@ -287,7 +287,7 @@ Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal 
 
 ### P2.10 Listen-, Transcript- und Knowledge-APIs
 
-- **Status:** PARTIAL. Die Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` sowie jetzt Fragen, Direktiven, Dokumente, Knowledge-Quellen und Knowledge-Records akzeptieren versionsbehaftete, endpointgebundene Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Die bestehenden Frontend-Consumer für die fünf erweiterten Sammlungen folgen den opaken Cursorn automatisch und liefern weiterhin vollständige Arrays an `useSession` und `KnowledgeManager`. Vollständige Cursor-Consumer für die Kernlisten, SQL-seitige Chat-Priorisierung und ein begrenzter Last-/Multiworker-Nachweis bleiben offen.
+- **Status:** PARTIAL. Die Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` sowie jetzt Fragen, Direktiven, Dokumente, Knowledge-Quellen und Knowledge-Records akzeptieren versionsbehaftete, endpointgebundene Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Die bestehenden Frontend-Consumer für die fünf erweiterten Sammlungen und für die Kernlisten folgen den opaken Cursorn automatisch und liefern weiterhin vollständige Arrays an `useSession`, `MeetingChat` und `KnowledgeManager`. SQL-seitige Chat-Priorisierung und ein begrenzter Last-/Multiworker-Nachweis bleiben offen.
 - **Benötigt:** Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie für weitere UI-Consumer, ein begrenzter Lastnachweis und die noch fehlende SQL-seitige Chat-Priorisierung.
 
 #### P2.10a – Opaque-Cursor-Grundvertrag für Sitzungslisten
@@ -313,13 +313,13 @@ Ein Client ruft `/api/sessions?limit=2` ab, erhält zwei absteigend nach `create
 
 **4. Genaue Abweichung**
 
-Die API-Grundlage ist implementiert, aber weitere Listenendpunkte und ein UI-Weiterblättern fehlen. Der Cursorpfad ist deshalb kein vollständiger Produktabschluss für alle großen Listen.
+Die Kern-API und ihre bestehenden Frontend-Consumer folgen jetzt automatisch allen vorhandenen Seiten. Die Provisional-Transcript-Anzeige bleibt ausdrücklich auf der Legacy-Erstseite beziehungsweise dem WebSocket-Livekanal; ein Last-/Multiworker-Nachweis und die SQL-seitige Chat-Priorisierung fehlen weiterhin.
 
 **5. Unabhängige Abnahmetests**
 
 - **Test A – Vertrags- und Robustheitsprüfung:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination.py' -v`; prüft Versions-/Endpointbindung, Roundtrip und `X-Next-Cursor` nur bei tatsächlich weiteren Datensätzen. **Bestanden: 5/5.**
-- **Test B – Regression der bestehenden Session-Router:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_sessions_router.py' -v`; prüft weiterhin Start-, Ende-, Resume- und Delete-Verträge nach Einbau der Response-/Cursorparameter. **Bestanden: 4/4.**
-- Zusätzlich: Backend-`compileall` **bestanden**. Die erweiterten Listen-/UI-/Lasttests sind als P2.10b dokumentiert.
+- **Test B – unabhängige Frontend-Consumer-Abnahme:** `TMPDIR="$PWD/.tmp" node --test src/services/api.test.mjs`; prüft die mehrseitige Cursorfolge für `listSessions`, `listSegments` und `listTranscripts`, URL-sichere Cursor sowie Abbruch bei wiederholtem Cursor. **Bestanden: 12/12.**
+- Zusätzlich: Der Regressionstest `test_sessions_router.py` prüft weiterhin Start-, Ende-, Resume- und Delete-Verträge nach Einbau der Response-/Cursorparameter (**4/4**). Backend-`compileall` **bestanden**. Die erweiterten Listen-/UI-/Lasttests sind als P2.10b dokumentiert.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -339,19 +339,19 @@ Der Bestand verwendet bereits stabile Composite-Sortierungen und Limits. Die neu
 - [x] Bestehende Array-/Limit-Clients bleiben kompatibel.
 - [x] Weitere Seiten werden ausschließlich über `X-Next-Cursor` signalisiert.
 - [x] Test A und Test B bestehen.
-- [ ] Alle betroffenen Listen und das UI unterstützen Cursor-Seiten.
+- [x] Sitzungs-, Segment- und Transkript-Consumer folgen Cursor-Seiten automatisch; die bisherigen Array-Aufrufer bleiben unverändert.
 - [ ] Last- und Multiworker-Nachweis besteht.
 
 **9. Implementierungsnachweise**
 
-- Änderungen: `app/backend/app/services/cursor_pagination.py`, `app/backend/app/routers/sessions.py`, `app/backend/app/routers/transcripts.py`, `app/backend/tests/test_cursor_pagination.py`.
-- Commit-SHA: `c101be8a800ea6a06a67cbeb7186c4beb5626314` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Cursor 5/5, Sessions-Router 4/4, bestehende Transcript-/Backend-Regressionen und `compileall` grün.
-- Einschränkung: Die Frontend-Consumer für Sessions/Segmente/Transkripte und ein begrenzter Last-/Multiworker-Nachweis fehlen weiterhin.
+- Änderungen: `app/backend/app/services/cursor_pagination.py`, `app/backend/app/routers/sessions.py`, `app/backend/app/routers/transcripts.py`, `app/backend/tests/test_cursor_pagination.py`, `app/frontend/src/services/api.ts`, `app/frontend/src/services/api.test.mjs`.
+- Commit-SHAs: `c101be8a800ea6a06a67cbeb7186c4beb5626314` (API-Grundvertrag) und `b0b448f51f9259ce262a180a86dec420d7e1290b` (Kernlisten-Consumer; GitHub `main`, Branch-Readback verifiziert).
+- Ausgeführt: Cursor 5/5, Sessions-Router 4/4, Frontend-API 12/12, Frontend-Gesamtsuite 386/386, `npm run build`, Backend-`compileall` und Layout-Guard grün.
+- Einschränkung: Provisional-Transcript-UI bleibt live-only; ein begrenzter Last-/Multiworker-Nachweis und SQL-seitige Chat-Priorisierung fehlen weiterhin.
 
 **10. Codex-Desktop-Handoff bei Blockern**
 
-Für die nächste Ausbaustufe zuerst die echten Frontend-API-Consumer für Sessions, Fragen, Direktiven, Dokumente und Knowledge-Records auf `X-Next-Cursor` umstellen; danach pro Route zwei Seiten mit künstlichen Gleichständen und gelöschten Zwischenzeilen prüfen. Die Provisional-Transcript-Anzeige muss dabei entweder einen eigenen Cursorteil erhalten oder ausdrücklich live-only bleiben.
+Für die nächste Ausbaustufe den begrenzten Last-/Multiworker-Nachweis und die SQL-seitige Chat-Priorisierung ausführen. Die Provisional-Transcript-Anzeige bleibt ausdrücklich live-only, solange kein separater Cursorvertrag für diese ephemeren Zeilen beschlossen ist.
 
 #### P2.10b – Cursor-Fortsetzung für Fragen, Direktiven, Dokumente und Knowledge
 
@@ -375,13 +375,13 @@ Eine Sitzung enthält mehr als 200 Fragen, Direktiven oder Dokumente; eine Wisse
 
 **4. Genaue Abweichung**
 
-Die Funktion ist lokal und synthetisch nachgewiesen. Der vollständige Backend-Gesamtlauf ist in dieser Umgebung wegen unabhängiger fehlender optionaler Abhängigkeiten/Modelle nicht als Gesamtgate verwendbar; reale Windows-WebView-Nutzung, 10.000+-Seitenlast, Multiworker-Konsistenz und Provider-/Datenbank-Lastmessung fehlen. Die bereits implementierten Kernlisten haben noch keine gleichwertige automatische Frontend-Seitenfolge.
+Die Funktion ist lokal und synthetisch nachgewiesen. Der vollständige Backend-Gesamtlauf ist in dieser Umgebung wegen unabhängiger fehlender optionaler Abhängigkeiten/Modelle nicht als Gesamtgate verwendbar; reale Windows-WebView-Nutzung, 10.000+-Seitenlast, Multiworker-Konsistenz und Provider-/Datenbank-Lastmessung fehlen. Die Kernlisten-Consumer sind mit demselben gemeinsamen Helper ergänzt und liefern weiterhin das bestehende Arrayformat.
 
 **5. Unabhängige Abnahmetests**
 
 - **Test A – funktionale Backend-/SQL-Abnahme:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination_extended.py' -v`; prüft Header-/Marker-Verträge für alle fünf Routen, falsche und beschädigte Cursor sowie mit `aiosqlite` zwei echte Seiten mit identischen Zeitstempeln, stabilen ID-Tie-Breakern, exakter Reihenfolge, keinen Überschneidungen und keinem Cursor am Ende. **Bestanden: 3/3.**
-- **Test B – unabhängige Frontend-Consumer-Abnahme:** `TMPDIR="$PWD/.tmp" node --test src/services/api.test.mjs`; prüft eine mehrseitige opake Cursorfolge inklusive URL-Encoding und Reihenhalt sowie separat alle fünf Consumer, korrektes Ende ohne Header und Weitergabe eines HTTP-Fehlers. **Bestanden: 10/10, davon 2 neue Cursorfälle.**
-- Zusätzlich: `npm test` im Frontend **384/384**, `npm run build`, Backend-`compileall`, Knowledge-Mutationsschutz **41/41**, `git diff --check` und Repository-Layout-Guard **bestanden**. Der unabhängige Gesamt-Backendlauf bleibt wegen externer Testumgebungsfehlern offen; seine konkreten Blocker sind `socksio`/SOCKS, ein fehlendes ONNX-`ecapa`-Modell und ein Subprozess ohne `PYTHONPATH`.
+- **Test B – unabhängige Frontend-Consumer-Abnahme:** `TMPDIR="$PWD/.tmp" node --test src/services/api.test.mjs`; prüft eine mehrseitige opake Cursorfolge inklusive URL-Encoding und Reihenhalt sowie separat alle fünf Consumer, korrektes Ende ohne Header und Weitergabe eines HTTP-Fehlers. **Bestanden: 12/12, davon 4 Cursorfälle einschließlich der drei Kernlisten.**
+- Zusätzlich: `npm test` im Frontend **386/386**, `npm run build`, Backend-`compileall`, Knowledge-Mutationsschutz **41/41**, `git diff --check` und Repository-Layout-Guard **bestanden**. Der unabhängige Gesamt-Backendlauf bleibt wegen externer Testumgebungsfehlern offen; seine konkreten Blocker sind `socksio`/SOCKS, ein fehlendes ONNX-`ecapa`-Modell und ein Subprozess ohne `PYTHONPATH`.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -404,19 +404,20 @@ Der bestehende `app/backend/app/services/cursor_pagination.py`-Helper und die be
 - [x] Bestehende Array-Clients und die vorhandenen UI-Consumer bleiben kompatibel.
 - [x] Test A und Test B bestehen unabhängig voneinander.
 - [x] Frontend-Build, relevante Regressionen und Layout-Guard bestehen.
-- [ ] Kernlisten-Consumer, echte Windows-/WebView-Abnahme, Last- und Multiworker-Nachweis bestehen.
+- [x] Kernlisten-Consumer folgen Cursor-Seiten über den gemeinsamen Helper.
+- [ ] Echte Windows-/WebView-Abnahme, Last- und Multiworker-Nachweis bestehen.
 
 **9. Implementierungsnachweise**
 
 - Änderungen Backend: `questions.py`, `directives.py`, `documents.py`, `knowledge.py`, `test_cursor_pagination_extended.py`.
 - Backend-Commit: `4687dc718b876d77138e0b396b6baa660e6eff75`; Branch-Readback von `main` bestätigt.
 - Änderungen Frontend: `app/frontend/src/services/api.ts`, `app/frontend/src/services/api.test.mjs`.
-- Frontend-Commit: `47d45acb16e8a5ae879e3a1657ba58f33a94bebb`; Branch-Readback von `main` bestätigt.
-- Ausgeführte Nachweise: erweiterter Cursor 3/3, Kerncursor 5/5, Frontend-API 10/10, Frontend 384/384, `npm run build`, `compileall`, Knowledge-Guards, `git diff --check`, Layout-Guard.
+- Frontend-Commits: `47d45acb16e8a5ae879e3a1657ba58f33a94bebb` (fünf erweiterte Sammlungen) und `b0b448f51f9259ce262a180a86dec420d7e1290b` (Sessions, Segmente, Transkripte); Branch-Readback von `main` bestätigt.
+- Ausgeführte Nachweise: erweiterter Cursor 3/3, Kerncursor 5/5, Frontend-API 12/12, Frontend 386/386, `npm run build`, `compileall`, Knowledge-Guards, `git diff --check`, Layout-Guard.
 
 **10. Codex-Desktop-Handoff bei Blockern**
 
-Auf einem autorisierten Windows-/WebView2-Checkout zuerst `python app/scripts/github_sync.py --pull --strict` nach erfolgreicher CLI-Authentifizierung ausführen. Danach die Sitzungslisten-, Segment- und Transkript-Consumer auf dieselbe automatische Cursorfolge umstellen, eine Sitzung mit mindestens zwei Seiten je Liste laden und die Provisional-Transcript-Strategie prüfen. Anschließend einen 10.000+-Eintrags-Lastlauf, einen Zwei-Worker-Lauf mit identischer Datenbank und einen echten Knowledge-/Dokument-Upload-/Löschdurchlauf ausführen; Ergebnisse mit Route, Sortierung, Cursor, Commit-SHA und Laufzeit dokumentieren.
+Auf einem autorisierten Windows-/WebView2-Checkout zuerst `python app/scripts/github_sync.py --pull --strict` nach erfolgreicher CLI-Authentifizierung ausführen. Danach eine Sitzung mit mindestens zwei Seiten je Kernliste laden und die Provisional-Transcript-Strategie als live-only prüfen. Anschließend einen 10.000+-Eintrags-Lastlauf, einen Zwei-Worker-Lauf mit identischer Datenbank und einen echten Knowledge-/Dokument-Upload-/Löschdurchlauf ausführen; Ergebnisse mit Route, Sortierung, Cursor, Commit-SHA und Laufzeit dokumentieren.
 
 ### P2.11 Parallele Migrationsstarts
 
