@@ -132,6 +132,25 @@ class VaultTransactionTests(unittest.IsolatedAsyncioTestCase):
             rows = (await db.execute(select(PiiVaultEntry))).scalars().all()
             self.assertEqual(len(rows), 1)
 
+    async def test_forgetting_one_session_keeps_shared_scrub_value_for_the_other(self):
+        other_session_id = uuid.uuid4()
+        async with self.sessions() as db:
+            await vault.token_for(db, self.session_id, PERSON, "Alice Example")
+            await vault.token_for(db, other_session_id, PERSON, "Alice Example")
+            await db.commit()
+
+        self.assertIn(
+            ("Alice Example", PERSON), vault.known_plaintext_values()
+        )
+        vault.forget(self.session_id)
+        self.assertIn(
+            ("Alice Example", PERSON), vault.known_plaintext_values()
+        )
+        vault.forget(other_session_id)
+        self.assertNotIn(
+            ("Alice Example", PERSON), vault.known_plaintext_values()
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

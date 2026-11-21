@@ -484,6 +484,23 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(6, removed)
         self.assertEqual({}, ws_event_stream._journals)
 
+    def test_10000_session_registry_stays_within_journal_budget(self):
+        from app.services import ws_event_stream
+
+        ws_event_stream._journals.clear()
+        try:
+            for index in range(10_000):
+                ws_event_stream.event_journal(f"stress-{index}")
+
+            self.assertLessEqual(
+                len(ws_event_stream._journals),
+                ws_event_stream.DEFAULT_MAX_JOURNALS,
+            )
+            self.assertNotIn("stress-0", ws_event_stream._journals)
+            self.assertIn("stress-9999", ws_event_stream._journals)
+        finally:
+            ws_event_stream._journals.clear()
+
 
 if __name__ == "__main__":
     unittest.main()

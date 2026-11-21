@@ -275,7 +275,9 @@ async def token_for(
     transaction so a rolled-back transcript write leaves no orphan token.
     """
     digest = value_hmac(category, value)
-    _remember_plaintext(value, category)
+    # Keep the scrub index's ownership set accurate so deleting one session
+    # cannot unregister a value that another session still protects.
+    _remember_plaintext(value, category, session_id)
 
     # Both the digest and the category/ordinal pair are unique. Concurrent
     # imports can therefore collide on either constraint: retry from a fresh

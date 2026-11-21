@@ -350,9 +350,25 @@ def sweep_idle_journals(
     return len(expired)
 
 
+def _evict_one_idle_journal() -> bool:
+    """Evict the least-recently touched idle journal without a full sweep."""
+    for key, journal in _journals.items():
+        if journal.active_connections == 0:
+            _journals.pop(key, None)
+            return True
+    return False
+
+
 def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
     key = str(session_id)
-    if len(_journals) % 32 == 0:
+    if len(_journals) >= DEFAULT_MAX_JOURNALS:
+        # Reserve one slot for the journal being requested.  Without this
+        # reservation a registry of exactly max_journals grows by one on every
+        # periodic sweep before the over-capacity branch can run.  The direct
+        # LRU eviction keeps the 10,000-session path linear instead of doing
+        # a full sort over the registry for every new session.
+        _evict_one_idle_journal()
+    elif len(_journals) % 32 == 0:
         sweep_idle_journals()
     journal = _journals.get(key)
     if journal is None:
