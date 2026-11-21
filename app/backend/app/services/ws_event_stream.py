@@ -352,15 +352,25 @@ def sweep_idle_journals(
 
 def _evict_one_idle_journal() -> bool:
     """Evict the least-recently touched idle journal without a full sweep."""
-    for key, journal in _journals.items():
-        if journal.active_connections == 0:
-            _journals.pop(key, None)
-            return True
-    return False
+    candidate = min(
+        (
+            (journal._last_touch, key, journal)
+            for key, journal in _journals.items()
+            if journal.active_connections == 0
+        ),
+        default=None,
+    )
+    if candidate is None:
+        return False
+    _journals.pop(candidate[1], None)
+    return True
 
 
 def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
     key = str(session_id)
+    journal = _journals.get(key)
+    if journal is not None:
+        return journal
     if len(_journals) >= DEFAULT_MAX_JOURNALS:
         # Reserve one slot for the journal being requested.  Without this
         # reservation a registry of exactly max_journals grows by one on every

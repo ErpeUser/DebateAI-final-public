@@ -1,6 +1,7 @@
 import asyncio
 import unittest
 import uuid
+from unittest.mock import patch
 
 from app.services.ws_event_stream import ClientSendBuffer, SessionEventJournal
 
@@ -498,6 +499,48 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
             )
             self.assertNotIn("stress-0", ws_event_stream._journals)
             self.assertIn("stress-9999", ws_event_stream._journals)
+        finally:
+            ws_event_stream._journals.clear()
+
+    def test_existing_journal_lookup_does_not_evict_at_capacity(self):
+        from app.services import ws_event_stream
+
+        ws_event_stream._journals.clear()
+        try:
+            with patch.object(ws_event_stream, "DEFAULT_MAX_JOURNALS", 2):
+                first = ws_event_stream.event_journal("first")
+                second = ws_event_stream.event_journal("second")
+                self.assertIs(second, ws_event_stream.event_journal("second"))
+                self.assertEqual(
+                    {"first", "second"}, set(ws_event_stream._journals)
+                )
+                self.assertIs(first, ws_event_stream._journals["first"])
+        finally:
+            ws_event_stream._journals.clear()
+
+    def test_capacity_eviction_uses_last_touch_and_keeps_active_journal(self):
+        from app.services import ws_event_stream
+
+        ws_event_stream._journals.clear()
+        try:
+            with patch.object(ws_event_stream, "DEFAULT_MAX_JOURNALS", 3):
+                idle_old = ws_event_stream.event_journal("idle-old")
+                idle_recent = ws_event_stream.event_journal("idle-recent")
+                active = ws_event_stream.event_journal("active")
+                # Keep the active journal out of the idle eviction candidate
+                # set and make insertion order disagree with touch order.
+                generation = active.open_generation()
+                idle_old._last_touch = 20
+                idle_recent._last_touch = 10
+                # The patched cap is reached by the two idle entries plus the
+                # active one, so request a new session and verify that the
+                # oldest touched idle entry is selected.
+                ws_event_stream.event_journal("new")
+                self.assertNotIn("idle-recent", ws_event_stream._journals)
+                self.assertIn("idle-old", ws_event_stream._journals)
+                self.assertIn("active", ws_event_stream._journals)
+                self.assertIn("new", ws_event_stream._journals)
+                active.close_generation(generation)
         finally:
             ws_event_stream._journals.clear()
 
