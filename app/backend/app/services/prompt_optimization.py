@@ -14,14 +14,21 @@ import math
 import os
 import re
 import tempfile
-from dataclasses import dataclass, field
+from collections.abc import Iterable, Mapping, Sequence
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from hashlib import sha256
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any
 
 _PROMPT_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,119}$")
-_QUALITY_METRICS = ("naturalness", "factuality", "argument_strength", "source_honesty", "usability")
+_QUALITY_METRICS = (
+    "naturalness",
+    "factuality",
+    "argument_strength",
+    "source_honesty",
+    "usability",
+)
 
 
 def candidate_digest(content: str) -> str:
@@ -54,7 +61,11 @@ class EvaluationResult:
         object.__setattr__(self, "metrics", normalized)
 
     def to_dict(self) -> dict[str, Any]:
-        return {"case_id": self.case_id, "split": self.split, "metrics": dict(self.metrics)}
+        return {
+            "case_id": self.case_id,
+            "split": self.split,
+            "metrics": dict(self.metrics),
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -97,12 +108,16 @@ class EvaluationDecision:
         }
 
 
-def _index(results: Iterable[EvaluationResult]) -> dict[tuple[str, str], EvaluationResult]:
+def _index(
+    results: Iterable[EvaluationResult],
+) -> dict[tuple[str, str], EvaluationResult]:
     indexed: dict[tuple[str, str], EvaluationResult] = {}
     for result in results:
         key = (result.split, result.case_id)
         if key in indexed:
-            raise ValueError(f"Doppelte Evaluation fuer {result.split}/{result.case_id}.")
+            raise ValueError(
+                f"Doppelte Evaluation fuer {result.split}/{result.case_id}."
+            )
         indexed[key] = result
     return indexed
 
@@ -137,10 +152,19 @@ def compare_evaluations(
         missing = sorted(set(baseline) - set(candidate))
         extra = sorted(set(candidate) - set(baseline))
         if missing:
-            reasons.append("candidate fehlt Evaluationsfaelle: " + ", ".join(f"{split}/{case}" for split, case in missing))
+            reasons.append(
+                "candidate fehlt Evaluationsfaelle: "
+                + ", ".join(f"{split}/{case}" for split, case in missing)
+            )
         if extra:
-            reasons.append("candidate enthaelt unbekannte Evaluationsfaelle: " + ", ".join(f"{split}/{case}" for split, case in extra))
-    split_values: dict[str, dict[str, list[EvaluationResult]]] = {"fixed": {"baseline": [], "candidate": []}, "holdout": {"baseline": [], "candidate": []}}
+            reasons.append(
+                "candidate enthaelt unbekannte Evaluationsfaelle: "
+                + ", ".join(f"{split}/{case}" for split, case in extra)
+            )
+    split_values: dict[str, dict[str, list[EvaluationResult]]] = {
+        "fixed": {"baseline": [], "candidate": []},
+        "holdout": {"baseline": [], "candidate": []},
+    }
     for key in sorted(set(baseline) & set(candidate)):
         split, _case_id = key
         split_values[split]["baseline"].append(baseline[key])
@@ -153,18 +177,30 @@ def compare_evaluations(
     holdout_count = len(split_values["holdout"]["baseline"])
     fixed_count = len(split_values["fixed"]["baseline"])
     if holdout_count < policy.min_holdout_cases:
-        reasons.append(f"Holdout enthaelt nur {holdout_count} statt mindestens {policy.min_holdout_cases} Faelle.")
+        reasons.append(
+            f"Holdout enthaelt nur {holdout_count} statt mindestens {policy.min_holdout_cases} Faelle."
+        )
     for split in ("fixed", "holdout"):
         before = baseline_summary[split]
         after = candidate_summary[split]
         if not before or not after:
             continue
         for metric in _QUALITY_METRICS:
-            if any(metric in row.metrics for row in split_values[split]["baseline"]) != any(metric in row.metrics for row in split_values[split]["candidate"]):
+            if any(
+                metric in row.metrics for row in split_values[split]["baseline"]
+            ) != any(metric in row.metrics for row in split_values[split]["candidate"]):
                 reasons.append(f"{split} {metric} fehlt auf einer Bewertungsseite.")
                 continue
-            if any(metric in row.metrics for row in split_values[split]["baseline"]) and any(metric not in row.metrics for row in split_values[split]["baseline"] + split_values[split]["candidate"]):
-                reasons.append(f"{split} {metric} ist nicht in allen Bewertungsf?llen vorhanden.")
+            if any(
+                metric in row.metrics for row in split_values[split]["baseline"]
+            ) and any(
+                metric not in row.metrics
+                for row in split_values[split]["baseline"]
+                + split_values[split]["candidate"]
+            ):
+                reasons.append(
+                    f"{split} {metric} ist nicht in allen Bewertungsf?llen vorhanden."
+                )
                 continue
             delta = after.get(metric, 0.0) - before.get(metric, 0.0)
             if delta < -policy.max_quality_regression:
@@ -180,8 +216,13 @@ def compare_evaluations(
     for split, results in split_values.items():
         for side in ("baseline", "candidate"):
             for row in results[side]:
-                if any(metric not in row.metrics for metric in ("factuality", "source_honesty")):
-                    reasons.append(f"{split} {side} benoetigt factuality und source_honesty.")
+                if any(
+                    metric not in row.metrics
+                    for metric in ("factuality", "source_honesty")
+                ):
+                    reasons.append(
+                        f"{split} {side} benoetigt factuality und source_honesty."
+                    )
                     break
     return EvaluationDecision(
         approved=not reasons,
@@ -199,7 +240,13 @@ def _change_size(before: str, after: str) -> int:
     # when the strings happen to have equal length.
     import difflib
 
-    return sum(max(i2 - i1, j2 - j1) for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, before, after).get_opcodes() if tag != "equal")
+    return sum(
+        max(i2 - i1, j2 - j1)
+        for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(
+            None, before, after
+        ).get_opcodes()
+        if tag != "equal"
+    )
 
 
 class PromptOptimizationStore:
@@ -277,13 +324,19 @@ class PromptOptimizationStore:
         policy = policy or OptimizationPolicy()
         if auto_apply:
             if not explicit_auto_apply:
-                raise ValueError("Auto-Apply braucht eine ausdrueckliche Aktivierung (explicit enable).")
+                raise ValueError(
+                    "Auto-Apply braucht eine ausdrueckliche Aktivierung (explicit enable)."
+                )
             if not policy.auto_apply_enabled:
                 raise ValueError("Auto-Apply ist deaktiviert.")
         elif not approved_by_user:
-            raise ValueError("Die Promptuebernahme braucht eine ausdrueckliche Nutzerfreigabe (approval required).")
+            raise ValueError(
+                "Die Promptuebernahme braucht eine ausdrueckliche Nutzerfreigabe (approval required)."
+            )
         if user_managed:
-            raise ValueError("user-managed / benutzerangepasste Prompts duerfen nicht automatisch ueberschrieben werden.")
+            raise ValueError(
+                "user-managed / benutzerangepasste Prompts duerfen nicht automatisch ueberschrieben werden."
+            )
         path = self._prompt_path(prompt_name)
         new_content = str(candidate_content).strip()
         if not new_content:
@@ -292,13 +345,18 @@ class PromptOptimizationStore:
         # placeholder allowlist just because it arrived through the lab.
         try:
             from app.services.ai_config import _validate_prompt_content
+
             new_content = _validate_prompt_content(prompt_name, new_content)
         except ImportError:
             pass
-        previous_content = path.read_text(encoding="utf-8").strip() if path.is_file() else ""
+        previous_content = (
+            path.read_text(encoding="utf-8").strip() if path.is_file() else ""
+        )
         change_size = _change_size(previous_content, new_content)
         if change_size > policy.max_prompt_change_chars:
-            raise ValueError(f"Promptaenderung umfasst {change_size} Zeichen und ueberschreitet das Budget.")
+            raise ValueError(
+                f"Promptaenderung umfasst {change_size} Zeichen und ueberschreitet das Budget."
+            )
         decision = compare_evaluations(baseline_results, candidate_results, policy)
         timestamp = datetime.now(UTC).isoformat()
         base_hash = candidate_digest(previous_content)
@@ -319,8 +377,17 @@ class PromptOptimizationStore:
             state = self._read_state()
             state["records"].append(record)
             self._atomic_json(self.state_path, state)
-            return {"status": "rejected", "candidate_hash": new_hash, "reasons": list(decision.reasons), "evaluation": decision.to_dict()}
-        history_path = self.history_root / prompt_name / f"{timestamp.replace(':', '').replace('+', '_')}-{base_hash[:12]}.txt"
+            return {
+                "status": "rejected",
+                "candidate_hash": new_hash,
+                "reasons": list(decision.reasons),
+                "evaluation": decision.to_dict(),
+            }
+        history_path = (
+            self.history_root
+            / prompt_name
+            / f"{timestamp.replace(':', '').replace('+', '_')}-{base_hash[:12]}.txt"
+        )
         state = self._read_state()
         old_state = dict(state)
         try:
@@ -346,7 +413,12 @@ class PromptOptimizationStore:
                 path.unlink(missing_ok=True)
             self._atomic_json(self.state_path, old_state)
             raise
-        return {"status": "applied", "candidate_hash": new_hash, "evaluation": decision.to_dict(), "record": record}
+        return {
+            "status": "applied",
+            "candidate_hash": new_hash,
+            "evaluation": decision.to_dict(),
+            "record": record,
+        }
 
     def rollback_if_regressed(
         self,
@@ -364,14 +436,20 @@ class PromptOptimizationStore:
         state = self._read_state()
         active = state.get("active")
         if not isinstance(active, dict) or active.get("prompt_name") != prompt_name:
-            raise ValueError("Fuer diesen Prompt ist keine aktive Optimierung vorhanden.")
+            raise ValueError(
+                "Fuer diesen Prompt ist keine aktive Optimierung vorhanden."
+            )
         path = self._prompt_path(prompt_name)
         current = path.read_text(encoding="utf-8").strip() if path.is_file() else ""
         if candidate_digest(current) != str(active.get("candidate_hash") or ""):
             raise ValueError("Der aktive Prompt wurde seit der Aktivierung veraendert.")
         decision = compare_evaluations(baseline_results, current_results, policy)
         if decision.approved:
-            return {"status": "kept", "prompt_name": prompt_name, "evaluation": decision.to_dict()}
+            return {
+                "status": "kept",
+                "prompt_name": prompt_name,
+                "evaluation": decision.to_dict(),
+            }
         result = self.rollback(prompt_name)
         result["reason"] = "holdout regression"
         result["evaluation"] = decision.to_dict()
@@ -381,21 +459,29 @@ class PromptOptimizationStore:
         state = self._read_state()
         active = state.get("active")
         if not isinstance(active, dict) or active.get("prompt_name") != prompt_name:
-            raise ValueError("Fuer diesen Prompt ist keine wiederherstellbare Aktivierung vorhanden.")
+            raise ValueError(
+                "Fuer diesen Prompt ist keine wiederherstellbare Aktivierung vorhanden."
+            )
         path = self._prompt_path(prompt_name)
         current = path.read_text(encoding="utf-8").strip() if path.is_file() else ""
         previous = str(active.get("previous_content") or "").strip()
         timestamp = datetime.now(UTC).isoformat()
         self._atomic_text(path, previous) if previous else path.unlink(missing_ok=True)
-        state["records"].append({
-            "prompt_name": prompt_name,
-            "timestamp": timestamp,
-            "status": "rolled_back",
-            "mode": "rollback",
-            "base_hash": candidate_digest(current),
-            "candidate_hash": candidate_digest(previous),
-            "reason": "manual rollback",
-        })
+        state["records"].append(
+            {
+                "prompt_name": prompt_name,
+                "timestamp": timestamp,
+                "status": "rolled_back",
+                "mode": "rollback",
+                "base_hash": candidate_digest(current),
+                "candidate_hash": candidate_digest(previous),
+                "reason": "manual rollback",
+            }
+        )
         state["active"] = None
         self._atomic_json(self.state_path, state)
-        return {"status": "rolled_back", "prompt_name": prompt_name, "restored_hash": candidate_digest(previous)}
+        return {
+            "status": "rolled_back",
+            "prompt_name": prompt_name,
+            "restored_hash": candidate_digest(previous),
+        }

@@ -3,31 +3,30 @@ import json
 import logging
 import uuid
 from collections import deque
-from collections.abc import Callable
+from collections.abc import Awaitable, Callable
 from time import monotonic
-from typing import Any, Awaitable
+from typing import Any
 
-from fastapi import WebSocket
-
-from app.services.pii import shield
 from app.database import async_session
 from app.models import Directive
 from app.services.agents.activity import ActivityRegistry
 from app.services.agents.orchestrator import AgentOrchestrator
 from app.services.audio_store import SegmentAudioWriter
+from app.services.pii import shield
 from app.ws.audio_persistence import _append_audio_frames
 from app.ws.audio_runtime import (
-    MAX_DIARIZATION_BACKLOG_BYTES,
     _PCM_BYTES_PER_SECOND,
-    _QueuedAudioFrame,
+    MAX_DIARIZATION_BACKLOG_BYTES,
     _decode_audio_frame,
+    _QueuedAudioFrame,
     _record_audio_flow,
     _send_gateway_audio,
-    _shed_diarization_backlog,
     _send_status,
+    _shed_diarization_backlog,
     _split_track_established_after_frame,
     _split_track_established_after_message,
 )
+from fastapi import WebSocket
 
 logger = logging.getLogger("app.ws.audio_handler")
 
@@ -124,7 +123,9 @@ async def _handle_audio_frame(
             return False
         sample_counter = state.audio_sample_counters[track]
         state.audio_sample_counters[track] += len(pcm_data) // 2
-        captured_at_ms = int(metadata.get("captured_at_ms") or round(monotonic() * 1000))
+        captured_at_ms = int(
+            metadata.get("captured_at_ms") or round(monotonic() * 1000)
+        )
         device_id = str(metadata.get("device_id") or f"{origin}-track-{track}")[:160]
         state.audio_chunks_received += 1
         state.audio_bytes_received += len(pcm_data)
@@ -138,13 +139,15 @@ async def _handle_audio_frame(
             if now - last_levels[track] >= 0.1:
                 last_levels[track] = now
                 state.last_audio_level_at = last_levels
-                await websocket.send_json({
-                    "type": "audio_level",
-                    "data": {
-                        "track": track,
-                        "level": levels[track],
-                    },
-                })
+                await websocket.send_json(
+                    {
+                        "type": "audio_level",
+                        "data": {
+                            "track": track,
+                            "level": levels[track],
+                        },
+                    }
+                )
         audio_status_due = now - state.last_audio_status_at >= 5
         if audio_status_due:
             state.last_audio_status_at = now
@@ -240,9 +243,7 @@ async def _handle_audio_frame(
                 details={
                     "chunks": state.audio_chunks_received,
                     "bytes": state.audio_bytes_received,
-                    "seconds": (
-                        state.audio_bytes_received / _PCM_BYTES_PER_SECOND
-                    ),
+                    "seconds": (state.audio_bytes_received / _PCM_BYTES_PER_SECOND),
                     "track": track,
                     "origin": origin,
                     "sample_rate": sample_rate,
@@ -297,7 +298,9 @@ async def _handle_text_message(
         directive_text = str(data.get("text", ""))[:MAX_DIRECTIVE_CHARS].strip()
         if directive_text:
             async with async_session() as db:
-                directive_text = await shield.protect_text(db, session_id, directive_text)
+                directive_text = await shield.protect_text(
+                    db, session_id, directive_text
+                )
                 directive = Directive(session_id=session_id, text=directive_text)
                 db.add(directive)
                 await db.commit()

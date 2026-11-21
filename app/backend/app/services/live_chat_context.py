@@ -42,11 +42,7 @@ def format_live_documents(docs, budget: int = LIVE_DOCUMENTS_BUDGET_CHARS) -> st
     each truncated to its share, so one 4000-char local extract cannot crowd
     out the rest.
     """
-    docs = [
-        (name, (summary or "").strip())
-        for name, summary in (docs or [])
-        if name
-    ]
+    docs = [(name, (summary or "").strip()) for name, summary in (docs or []) if name]
     if not docs:
         return ""
 
@@ -79,7 +75,9 @@ def format_live_insights(
             "text": item.question,
             "rationale": item.rationale,
             "source_context": item.source_context,
-            "speaker": speaker_names.get(str(item.speaker_id), "") if item.speaker_id else "",
+            "speaker": speaker_names.get(str(item.speaker_id), "")
+            if item.speaker_id
+            else "",
             "answered": item.answered,
             "answer_summary": item.answer_summary,
             "needs_followup": item.needs_followup,
@@ -114,7 +112,9 @@ def _transcript_block(lines: list[tuple[str, str]], remaining: int) -> str:
     return "\n".join(kept)
 
 
-def build_live_prompt(context: dict, question: str, budget: int = LIVE_CONTEXT_BUDGET_CHARS) -> str:
+def build_live_prompt(
+    context: dict, question: str, budget: int = LIVE_CONTEXT_BUDGET_CHARS
+) -> str:
     """Small layers in full, then the transcript fills whatever budget remains."""
     sections: list[str] = [
         f"# Meeting\n{context.get('name', '')} ({context.get('meeting_type', '')})"
@@ -126,7 +126,9 @@ def build_live_prompt(context: dict, question: str, budget: int = LIVE_CONTEXT_B
 
     directives = [d for d in (context.get("directives") or []) if d.strip()]
     if directives:
-        sections.append("# Active directives\n" + "\n".join(f"- {d}" for d in directives))
+        sections.append(
+            "# Active directives\n" + "\n".join(f"- {d}" for d in directives)
+        )
 
     documents = format_live_documents(context.get("documents") or [])
     if documents:
@@ -145,7 +147,9 @@ def build_live_prompt(context: dict, question: str, budget: int = LIVE_CONTEXT_B
     # ground truth, so an oversized layer above (a pasted meeting context, a
     # flood of insights) may stretch the prompt but must not starve it.
     used = sum(len(s) + 2 for s in sections)
-    transcript = _transcript_block(context.get("lines") or [], max(budget - used, budget // 3))
+    transcript = _transcript_block(
+        context.get("lines") or [], max(budget - used, budget // 3)
+    )
     if transcript:
         sections.append(f"# Transcript so far\n{transcript}")
 

@@ -9,14 +9,13 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
 from app.services.update_signing import (
     canonical_update_bytes,
     platform_signing_request,
     sign_platform_manifest,
 )
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from desktop.scripts.build_release_manifest import (
     ASSETS,
     build_platform_manifest,
@@ -79,9 +78,11 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         wrong.write_bytes(b"bundle")
         with self.assertRaisesRegex(ValueError, "filename"):
             build_platform_manifest(wrong, TAG, COMMIT, "windows-x64")
-        with mock.patch.object(Path, "is_symlink", return_value=True):
-            with self.assertRaisesRegex(ValueError, "symlink"):
-                build_platform_manifest(path, TAG, COMMIT, "windows-x64")
+        with (
+            mock.patch.object(Path, "is_symlink", return_value=True),
+            self.assertRaisesRegex(ValueError, "symlink"),
+        ):
+            build_platform_manifest(path, TAG, COMMIT, "windows-x64")
         path.write_bytes(b"")
         with self.assertRaisesRegex(ValueError, "empty"):
             build_platform_manifest(path, TAG, COMMIT, "windows-x64")
@@ -92,10 +93,16 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         platform_out = self.root / "metadata" / "linux-x64.json"
         keys_file = self.root / "release_signing_keys.json"
         notes_file = self.root / "notes.md"
-        notes_file.write_text("## Reliable updates\n\nSafer restarts.\n", encoding="utf-8")
-        public = Ed25519PrivateKey.from_private_bytes(PRIVATE).public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw,
+        notes_file.write_text(
+            "## Reliable updates\n\nSafer restarts.\n", encoding="utf-8"
+        )
+        public = (
+            Ed25519PrivateKey.from_private_bytes(PRIVATE)
+            .public_key()
+            .public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
         )
         keys_file.write_text(
             json.dumps(
@@ -118,46 +125,90 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         }
         result = subprocess.run(
             [
-                sys.executable, str(CLI), "--asset", str(asset),
-                "--platform-id", "linux-x64", "--tag", TAG,
-                "--commit", COMMIT, "--published-at", PUBLISHED_AT,
-                "--keys-file", str(keys_file),
-                "--release-notes-file", str(notes_file),
-                "--release-out", str(release_out),
-                "--platform-out", str(platform_out),
-            ], cwd=ROOT, env=environment, capture_output=True, text=True,
+                sys.executable,
+                str(CLI),
+                "--asset",
+                str(asset),
+                "--platform-id",
+                "linux-x64",
+                "--tag",
+                TAG,
+                "--commit",
+                COMMIT,
+                "--published-at",
+                PUBLISHED_AT,
+                "--keys-file",
+                str(keys_file),
+                "--release-notes-file",
+                str(notes_file),
+                "--release-out",
+                str(release_out),
+                "--platform-out",
+                str(platform_out),
+            ],
+            check=False,
+            cwd=ROOT,
+            env=environment,
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(result.returncode, 0, result.stderr)
-        expected_release = json.dumps(
-            build_release_identity(TAG, COMMIT, PUBLISHED_AT),
-            sort_keys=True, separators=(",", ":"),
-        ).encode() + b"\n"
+        expected_release = (
+            json.dumps(
+                build_release_identity(TAG, COMMIT, PUBLISHED_AT),
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
         unsigned_platform = {
             **build_platform_manifest(asset, TAG, COMMIT, "linux-x64"),
             "published_at": PUBLISHED_AT,
             "release_notes": notes_file.read_text(encoding="utf-8"),
         }
-        expected_platform = json.dumps(
-            sign_platform_manifest(unsigned_platform, "test-key", PRIVATE),
-            sort_keys=True, separators=(",", ":"),
-        ).encode() + b"\n"
+        expected_platform = (
+            json.dumps(
+                sign_platform_manifest(unsigned_platform, "test-key", PRIVATE),
+                sort_keys=True,
+                separators=(",", ":"),
+            ).encode()
+            + b"\n"
+        )
         self.assertEqual(release_out.read_bytes(), expected_release)
         self.assertEqual(platform_out.read_bytes(), expected_platform)
-        self.assertNotIn(environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stdout)
-        self.assertNotIn(environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stderr)
+        self.assertNotIn(
+            environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stdout
+        )
+        self.assertNotIn(
+            environment["DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"], result.stderr
+        )
 
     def test_cli_requires_signing_secret_before_writing(self):
         asset = self.asset("windows-x64")
         result = subprocess.run(
             [
-                sys.executable, str(CLI), "--asset", str(asset),
-                "--platform-id", "windows-x64", "--tag", TAG,
-                "--commit", COMMIT, "--published-at", PUBLISHED_AT,
-                "--keys-file", str(self.root / "missing.json"),
-                "--release-notes-file", str(self.root / "missing.md"),
-                "--release-out", str(self.root / "release.json"),
-                "--platform-out", str(self.root / "platform.json"),
+                sys.executable,
+                str(CLI),
+                "--asset",
+                str(asset),
+                "--platform-id",
+                "windows-x64",
+                "--tag",
+                TAG,
+                "--commit",
+                COMMIT,
+                "--published-at",
+                PUBLISHED_AT,
+                "--keys-file",
+                str(self.root / "missing.json"),
+                "--release-notes-file",
+                str(self.root / "missing.md"),
+                "--release-out",
+                str(self.root / "release.json"),
+                "--platform-out",
+                str(self.root / "platform.json"),
             ],
+            check=False,
             cwd=ROOT,
             env={
                 key: value
@@ -178,16 +229,30 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         keys_file, notes_file = self._signing_inputs()
         result = subprocess.run(
             [
-                sys.executable, str(CLI), "--asset", str(asset),
-                "--platform-id", "linux-x64", "--tag", TAG,
-                "--commit", COMMIT, "--published-at", PUBLISHED_AT,
-                "--keys-file", str(keys_file),
-                "--release-notes-file", str(notes_file),
-                "--signing-request-out", str(request_out),
+                sys.executable,
+                str(CLI),
+                "--asset",
+                str(asset),
+                "--platform-id",
+                "linux-x64",
+                "--tag",
+                TAG,
+                "--commit",
+                COMMIT,
+                "--published-at",
+                PUBLISHED_AT,
+                "--keys-file",
+                str(keys_file),
+                "--release-notes-file",
+                str(notes_file),
+                "--signing-request-out",
+                str(request_out),
             ],
+            check=False,
             cwd=ROOT,
             env={
-                key: value for key, value in os.environ.items()
+                key: value
+                for key, value in os.environ.items()
                 if key != "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY"
             },
             capture_output=True,
@@ -210,33 +275,68 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         platform_out = self.root / "platform.json"
         keys_file, notes_file = self._signing_inputs()
         base = [
-            sys.executable, str(CLI), "--asset", str(asset),
-            "--platform-id", "linux-x64", "--tag", TAG,
-            "--commit", COMMIT, "--published-at", PUBLISHED_AT,
-            "--keys-file", str(keys_file), "--release-notes-file", str(notes_file),
+            sys.executable,
+            str(CLI),
+            "--asset",
+            str(asset),
+            "--platform-id",
+            "linux-x64",
+            "--tag",
+            TAG,
+            "--commit",
+            COMMIT,
+            "--published-at",
+            PUBLISHED_AT,
+            "--keys-file",
+            str(keys_file),
+            "--release-notes-file",
+            str(notes_file),
         ]
         request = subprocess.run(
             [*base, "--signing-request-out", str(request_out)],
-            cwd=ROOT, capture_output=True, text=True,
+            check=False,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(request.returncode, 0, request.stderr)
-        signature = base64.urlsafe_b64encode(
-            Ed25519PrivateKey.from_private_bytes(PRIVATE).sign(request_out.read_bytes())
-        ).rstrip(b"=").decode("ascii")
+        signature = (
+            base64.urlsafe_b64encode(
+                Ed25519PrivateKey.from_private_bytes(PRIVATE).sign(
+                    request_out.read_bytes()
+                )
+            )
+            .rstrip(b"=")
+            .decode("ascii")
+        )
         detached = subprocess.run(
             [
-                *base, "--detached-key-id", "test-key",
-                "--detached-signature", signature,
-                "--release-out", str(release_out), "--platform-out", str(platform_out),
-            ], cwd=ROOT, capture_output=True, text=True,
+                *base,
+                "--detached-key-id",
+                "test-key",
+                "--detached-signature",
+                signature,
+                "--release-out",
+                str(release_out),
+                "--platform-out",
+                str(platform_out),
+            ],
+            check=False,
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
         )
         self.assertEqual(detached.returncode, 0, detached.stderr)
         expected_platform = self.root / "expected-platform.json"
         local = subprocess.run(
             [
-                *base, "--release-out", str(self.root / "expected-release.json"),
-                "--platform-out", str(expected_platform),
+                *base,
+                "--release-out",
+                str(self.root / "expected-release.json"),
+                "--platform-out",
+                str(expected_platform),
             ],
+            check=False,
             cwd=ROOT,
             env={
                 **os.environ,
@@ -254,23 +354,47 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         asset = self.asset("linux-x64")
         keys_file, notes_file = self._signing_inputs()
         for label, options in (
-            ("invalid signature", ["--detached-key-id", "test-key", "--detached-signature", "x" * 86]),
+            (
+                "invalid signature",
+                ["--detached-key-id", "test-key", "--detached-signature", "x" * 86],
+            ),
             ("missing signature", ["--detached-key-id", "test-key"]),
-            ("wrong key", ["--detached-key-id", "other-key", "--detached-signature", "x" * 86]),
+            (
+                "wrong key",
+                ["--detached-key-id", "other-key", "--detached-signature", "x" * 86],
+            ),
         ):
             with self.subTest(label=label):
                 release_out = self.root / f"{label}-release.json"
                 platform_out = self.root / f"{label}-platform.json"
                 result = subprocess.run(
                     [
-                        sys.executable, str(CLI), "--asset", str(asset),
-                        "--platform-id", "linux-x64", "--tag", TAG,
-                        "--commit", COMMIT, "--published-at", PUBLISHED_AT,
-                        "--keys-file", str(keys_file),
-                        "--release-notes-file", str(notes_file), *options,
-                        "--release-out", str(release_out),
-                        "--platform-out", str(platform_out),
-                    ], cwd=ROOT, capture_output=True, text=True,
+                        sys.executable,
+                        str(CLI),
+                        "--asset",
+                        str(asset),
+                        "--platform-id",
+                        "linux-x64",
+                        "--tag",
+                        TAG,
+                        "--commit",
+                        COMMIT,
+                        "--published-at",
+                        PUBLISHED_AT,
+                        "--keys-file",
+                        str(keys_file),
+                        "--release-notes-file",
+                        str(notes_file),
+                        *options,
+                        "--release-out",
+                        str(release_out),
+                        "--platform-out",
+                        str(platform_out),
+                    ],
+                    check=False,
+                    cwd=ROOT,
+                    capture_output=True,
+                    text=True,
                 )
                 self.assertNotEqual(result.returncode, 0)
                 self.assertFalse(release_out.exists())
@@ -280,12 +404,24 @@ class PlatformReleaseManifestTests(unittest.TestCase):
         keys_file = self.root / "release_signing_keys.json"
         notes_file = self.root / "notes.md"
         notes_file.write_text("Release notes", encoding="utf-8")
-        public = Ed25519PrivateKey.from_private_bytes(PRIVATE).public_key().public_bytes(
-            serialization.Encoding.Raw, serialization.PublicFormat.Raw
+        public = (
+            Ed25519PrivateKey.from_private_bytes(PRIVATE)
+            .public_key()
+            .public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
         )
-        keys_file.write_text(json.dumps({"active": "test-key", "keys": {
-            "test-key": base64.urlsafe_b64encode(public).rstrip(b"=").decode()
-        }}), encoding="utf-8")
+        keys_file.write_text(
+            json.dumps(
+                {
+                    "active": "test-key",
+                    "keys": {
+                        "test-key": base64.urlsafe_b64encode(public)
+                        .rstrip(b"=")
+                        .decode()
+                    },
+                }
+            ),
+            encoding="utf-8",
+        )
         return keys_file, notes_file
 
 

@@ -26,7 +26,9 @@ def _target(on_prem: bool) -> EndpointTarget:
     return EndpointTarget(
         endpoint_id="lm-studio" if on_prem else "together",
         name="LM Studio" if on_prem else "Together",
-        base_url="http://localhost:1234/v1" if on_prem else "https://api.together.xyz/v1",
+        base_url="http://localhost:1234/v1"
+        if on_prem
+        else "https://api.together.xyz/v1",
         model="qwen3-8b",
         api_key="",
         on_prem=on_prem,
@@ -57,12 +59,15 @@ class AdmittedModelIdsTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_admits_self_hosted_and_bundled_refuses_cloud(self):
         admitted = await admitted_model_ids(
-            [ON_PREM_MODEL, PUBLIC_MODEL, CLOUD_MODEL, "local-whisper-base"], local_only=True
+            [ON_PREM_MODEL, PUBLIC_MODEL, CLOUD_MODEL, "local-whisper-base"],
+            local_only=True,
         )
         self.assertEqual({ON_PREM_MODEL, "local-whisper-base"}, admitted)
 
     async def test_mode_off_admits_everything(self):
-        admitted = await admitted_model_ids([CLOUD_MODEL, PUBLIC_MODEL], local_only=False)
+        admitted = await admitted_model_ids(
+            [CLOUD_MODEL, PUBLIC_MODEL], local_only=False
+        )
         self.assertEqual({CLOUD_MODEL, PUBLIC_MODEL}, admitted)
 
     async def test_blank_ids_are_dropped(self):
@@ -77,7 +82,9 @@ class AdmittedModelIdsTests(unittest.IsolatedAsyncioTestCase):
             return _target(True)
 
         with mock.patch.object(
-            privacy_mod, "resolve_target_standalone", mock.AsyncMock(side_effect=resolve)
+            privacy_mod,
+            "resolve_target_standalone",
+            mock.AsyncMock(side_effect=resolve),
         ):
             admitted = await admitted_model_ids(
                 [ON_PREM_MODEL, PUBLIC_MODEL, "local-whisper-base"], local_only=True
@@ -85,15 +92,26 @@ class AdmittedModelIdsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({ON_PREM_MODEL, "local-whisper-base"}, admitted)
 
     async def test_each_distinct_id_is_resolved_once(self):
-        await admitted_model_ids([ON_PREM_MODEL, ON_PREM_MODEL, ON_PREM_MODEL], local_only=True)
+        await admitted_model_ids(
+            [ON_PREM_MODEL, ON_PREM_MODEL, ON_PREM_MODEL], local_only=True
+        )
         self.assertEqual(1, privacy_mod.resolve_target_standalone.await_count)
 
 
 def _build_orchestrator(configs: dict, local_only: bool, admitted: set[str] | None):
     with (
-        patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
-        patch("app.services.agents.orchestrator.ConsolidatedAnalystAgent", return_value=MagicMock()),
-        patch("app.services.agents.orchestrator.ObjectionHandlerAgent", return_value=MagicMock()),
+        patch(
+            "app.services.agents.orchestrator.GeminiLiveSession",
+            return_value=AsyncMock(),
+        ),
+        patch(
+            "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "app.services.agents.orchestrator.ObjectionHandlerAgent",
+            return_value=MagicMock(),
+        ),
     ):
         return AgentOrchestrator(
             session_id=uuid4(),
@@ -110,7 +128,12 @@ def _build_orchestrator(configs: dict, local_only: bool, admitted: set[str] | No
 
 def _config(model_id: str, enabled: bool = True) -> MagicMock:
     return MagicMock(
-        enabled=enabled, model_id=model_id, prompt="", interval_seconds=15, sub_types="", lenses=""
+        enabled=enabled,
+        model_id=model_id,
+        prompt="",
+        interval_seconds=15,
+        sub_types="",
+        lenses="",
     )
 
 
@@ -125,7 +148,9 @@ class OrchestratorPrivacyAdmissionTests(unittest.TestCase):
         }
         orch = _build_orchestrator(configs, local_only=True, admitted={ON_PREM_MODEL})
         for slug in configs:
-            self.assertTrue(orch._is_enabled(slug), f"{slug} should run on a self-hosted model")
+            self.assertTrue(
+                orch._is_enabled(slug), f"{slug} should run on a self-hosted model"
+            )
         self.assertEqual([], orch.privacy_blocked_agents)
 
     def test_cloud_agents_are_still_refused_and_recorded(self):
@@ -139,7 +164,9 @@ class OrchestratorPrivacyAdmissionTests(unittest.TestCase):
 
     def test_a_public_endpoint_is_not_admitted(self):
         orch = _build_orchestrator(
-            {"consolidated_analyst": _config(PUBLIC_MODEL)}, local_only=True, admitted=set()
+            {"consolidated_analyst": _config(PUBLIC_MODEL)},
+            local_only=True,
+            admitted=set(),
         )
         self.assertFalse(orch._is_enabled("consolidated_analyst"))
 
@@ -154,14 +181,18 @@ class OrchestratorPrivacyAdmissionTests(unittest.TestCase):
 
     def test_mode_off_leaves_cloud_agents_enabled(self):
         orch = _build_orchestrator(
-            {"consolidated_analyst": _config(CLOUD_MODEL)}, local_only=False, admitted=None
+            {"consolidated_analyst": _config(CLOUD_MODEL)},
+            local_only=False,
+            admitted=None,
         )
         self.assertTrue(orch._is_enabled("consolidated_analyst"))
 
     def test_unresolved_admission_falls_back_to_bundled_local_only(self):
         # A caller that never resolved the set must not become permissive.
         orch = _build_orchestrator(
-            {"consolidated_analyst": _config(ON_PREM_MODEL)}, local_only=True, admitted=None
+            {"consolidated_analyst": _config(ON_PREM_MODEL)},
+            local_only=True,
+            admitted=None,
         )
         self.assertFalse(orch._is_enabled("consolidated_analyst"))
 
@@ -267,11 +298,15 @@ class StrategicSignalsPrivacyTests(unittest.IsolatedAsyncioTestCase):
 
 class LocalOnlyModeErrorMessageTests(unittest.TestCase):
     def test_names_the_agent_and_points_at_reassignment_first(self):
-        message = str(LocalOnlyModeError("call briefing synthesis", CLOUD_MODEL, "brief_arbiter"))
+        message = str(
+            LocalOnlyModeError("call briefing synthesis", CLOUD_MODEL, "brief_arbiter")
+        )
         self.assertIn("brief_arbiter", message)
         self.assertIn(CLOUD_MODEL, message)
         # Reassignment is the remedy that keeps the guarantee, so it leads.
-        self.assertLess(message.index("Admin -> Agents"), message.index("turn off Privacy First"))
+        self.assertLess(
+            message.index("Admin -> Agents"), message.index("turn off Privacy First")
+        )
 
     def test_still_reads_cleanly_without_a_model(self):
         message = str(LocalOnlyModeError("document upload to the Gemini Files API"))

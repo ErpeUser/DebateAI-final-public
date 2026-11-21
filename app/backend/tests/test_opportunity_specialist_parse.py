@@ -26,11 +26,15 @@ class ParseMappingsTests(unittest.TestCase):
 
     def test_bare_json_array(self):
         raw = '[{"id": "abc", "offering_match": "match"}]'
-        self.assertEqual(_parse_mappings(raw), [{"id": "abc", "offering_match": "match"}])
+        self.assertEqual(
+            _parse_mappings(raw), [{"id": "abc", "offering_match": "match"}]
+        )
 
     def test_fenced_json_array(self):
         raw = '```json\n[{"id": "abc", "offering_match": "match"}]\n```'
-        self.assertEqual(_parse_mappings(raw), [{"id": "abc", "offering_match": "match"}])
+        self.assertEqual(
+            _parse_mappings(raw), [{"id": "abc", "offering_match": "match"}]
+        )
 
     def test_garbage_with_embedded_array(self):
         raw = 'Here are the mappings: [{"id": "abc", "offering_match": "m"}] hope that helps!'

@@ -1,8 +1,8 @@
 import unittest
 
+from app.routers.imports import should_defer_import_speaker_assignment
 from app.services.batch_transcriber import _is_hallucination
 from app.services.speaker_ghost_filter import should_defer_new_speaker_segment
-from app.routers.imports import should_defer_import_speaker_assignment
 
 
 class GhostTranscriptFilterTests(unittest.TestCase):

@@ -10,22 +10,22 @@ import logging
 import shutil
 import threading
 
+from app.services import model_downloads
+from app.services.asr_backend import (
+    NEMOTRON_BACKEND_ID,
+    ASRBackend,
+    NemotronStreamingASRBackend,
+)
 from app.services.audio_utils import pcm16_to_float32
 from app.services.batch_transcriber import (
     TranscriptionError,
     _audio_has_speech_energy,
     filter_transcript_text,
 )
-from app.services import model_downloads
+from app.services.native_inference import NativeInferenceLane
+from app.services.runtime_activity import track
 from app.services.secrets import data_dir
 from app.services.transcription_language import language_code_or_none
-from app.services.runtime_activity import track
-from app.services.native_inference import NativeInferenceLane
-from app.services.asr_backend import (
-    ASRBackend,
-    NEMOTRON_BACKEND_ID,
-    NemotronStreamingASRBackend,
-)
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +48,9 @@ LOCAL_MODEL_QUANTIZATION = {
 }
 
 _loaded: dict[str, object] = {}
-_load_lock = threading.Lock()  # ponytail: global lock; per-model locks if parallel first-loads matter
+_load_lock = (
+    threading.Lock()
+)  # ponytail: global lock; per-model locks if parallel first-loads matter
 
 
 def _dir_size(path) -> int:
@@ -80,7 +82,9 @@ def _load_model(model_id: str, *, allow_download: bool = True):
             models_dir.mkdir(parents=True, exist_ok=True)
             path = models_dir / name
             if not allow_download and (not path.is_dir() or not any(path.iterdir())):
-                raise FileNotFoundError("Local ASR weights are absent; calibration never downloads models.")
+                raise FileNotFoundError(
+                    "Local ASR weights are absent; calibration never downloads models."
+                )
             # onnx-asr 0.11 treats any existing local_dir as offline.
             # ponytail: populated partial caches need manual deletion; add staged downloads if recovery matters.
             if path.is_dir() and not any(path.iterdir()):
@@ -103,7 +107,7 @@ def _load_model(model_id: str, *, allow_download: bool = True):
                     _loaded[model_id] = onnx_asr.load_model(
                         name, path, quantization=LOCAL_MODEL_QUANTIZATION.get(model_id)
                     )
-            except Exception as exc:  # noqa: BLE001 - recorded for the UI, then re-raised
+            except Exception as exc:
                 if watcher is not None:
                     model_downloads.fail(key, f"{type(exc).__name__}: {exc}")
                 # A failed onnx-asr load can leave a partial directory behind.
@@ -113,7 +117,9 @@ def _load_model(model_id: str, *, allow_download: bool = True):
                     if fetching and path.is_dir():
                         shutil.rmtree(path)
                 except OSError:
-                    logger.warning("Could not remove incomplete ASR cache %s", path, exc_info=True)
+                    logger.warning(
+                        "Could not remove incomplete ASR cache %s", path, exc_info=True
+                    )
                 raise
             else:
                 if watcher is not None:
@@ -151,15 +157,26 @@ def create_transcriber(
         )
 
         if model_id in OPENAI_TRANSCRIBE_MODEL_IDS:
-            return OpenAITranscriber(model_id=model_id, session_id=session_id, language=language)
-        return OpenAIChatTranscriber(model_id=model_id, session_id=session_id, language=language)
+            return OpenAITranscriber(
+                model_id=model_id, session_id=session_id, language=language
+            )
+        return OpenAIChatTranscriber(
+            model_id=model_id, session_id=session_id, language=language
+        )
     return BatchTranscriber(model_id=model_id, session_id=session_id, language=language)
 
 
 class LocalTranscriber:
     """Transcribes PCM16 16kHz mono segments with a local ONNX model."""
 
-    def __init__(self, model_id: str, sample_rate: int = 16000, language: str | None = None, *, allow_download: bool = True):
+    def __init__(
+        self,
+        model_id: str,
+        sample_rate: int = 16000,
+        language: str | None = None,
+        *,
+        allow_download: bool = True,
+    ):
         if model_id not in LOCAL_MODEL_MAP:
             raise ValueError(f"Unknown local ASR model: {model_id}")
         self._model_id = model_id
@@ -170,7 +187,9 @@ class LocalTranscriber:
         # and has no such option.
         code = language_code_or_none(language)
         self._recognize_kwargs = (
-            {"language": code} if code and "whisper" in LOCAL_MODEL_MAP[model_id] else {}
+            {"language": code}
+            if code and "whisper" in LOCAL_MODEL_MAP[model_id]
+            else {}
         )
         self._native_lane = NativeInferenceLane(f"asr:{model_id}")
 
@@ -178,11 +197,15 @@ class LocalTranscriber:
         if len(pcm_bytes) < self._sample_rate:  # less than 0.5s of audio
             return None
         if not _audio_has_speech_energy(pcm_bytes):
-            logger.info(f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)")
+            logger.info(
+                f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)"
+            )
             return None
 
         try:
-            model = await self._native_lane.run(_load_model, self._model_id, allow_download=self._allow_download)
+            model = await self._native_lane.run(
+                _load_model, self._model_id, allow_download=self._allow_download
+            )
             waveform = pcm16_to_float32(pcm_bytes)
             raw = await self._native_lane.run(
                 model.recognize,

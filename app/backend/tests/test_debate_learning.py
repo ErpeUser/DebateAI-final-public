@@ -50,9 +50,13 @@ class DebateLearningTests(unittest.IsolatedAsyncioTestCase):
             answer="Old answer",
             valid_until=(datetime.now(UTC) - timedelta(seconds=1)).isoformat(),
         )
-        self.assertNotIn(expired.id, [item.id for item in await load_good_debate_examples(reader)])
+        self.assertNotIn(
+            expired.id, [item.id for item in await load_good_debate_examples(reader)]
+        )
 
-    async def test_revoke_is_persistent_and_records_correction_without_truth_label(self):
+    async def test_revoke_is_persistent_and_records_correction_without_truth_label(
+        self,
+    ):
         values = {}
         db = _SettingsStore(values)
         example = await save_good_debate_example(

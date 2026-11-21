@@ -33,14 +33,18 @@ class ChatGPTWebAccountTests(unittest.TestCase):
 
         self.assertFalse(profile.exists())
         self.assertFalse(marker.exists())
-        self.assertEqual((archive / "browser-profile" / "Cookies").read_text(), "dedicated")
+        self.assertEqual(
+            (archive / "browser-profile" / "Cookies").read_text(), "dedicated"
+        )
         self.assertTrue((archive / "verified.json").is_file())
         self.assertEqual(untouched.read_text(), "keep")
 
     def test_disconnect_archives_verification_but_keeps_the_session_profile(self):
         from app.routers import chatgpt_web
 
-        root = Path(__file__).parents[1] / ".test-account-disconnect" / str(uuid.uuid4())
+        root = (
+            Path(__file__).parents[1] / ".test-account-disconnect" / str(uuid.uuid4())
+        )
         profile = root / "browser-profile"
         marker = root / "verified.json"
         home = root / "oracle-home"

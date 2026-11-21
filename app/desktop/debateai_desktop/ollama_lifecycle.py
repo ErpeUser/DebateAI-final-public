@@ -2,15 +2,15 @@
 
 from __future__ import annotations
 
-import os
 import json
+import os
 import shutil
 import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable
 
 from debateai_desktop.windows_console import hidden_startupinfo
 
@@ -33,7 +33,9 @@ def find_ollama() -> Path | None:
 
 def ollama_is_ready() -> bool:
     try:
-        with urllib.request.urlopen("http://127.0.0.1:11434/api/tags", timeout=0.5) as response:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:11434/api/tags", timeout=0.5
+        ) as response:
             return response.status == 200
     except Exception:
         return False
@@ -41,7 +43,9 @@ def ollama_is_ready() -> bool:
 
 def ollama_loaded_models() -> set[str]:
     try:
-        with urllib.request.urlopen("http://127.0.0.1:11434/api/ps", timeout=1) as response:
+        with urllib.request.urlopen(
+            "http://127.0.0.1:11434/api/ps", timeout=1
+        ) as response:
             payload = json.loads(response.read(1_000_000).decode("utf-8"))
         return {
             str(item.get("name") or item.get("model") or "").strip()

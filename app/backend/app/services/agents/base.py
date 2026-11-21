@@ -71,13 +71,15 @@ class TranscriptBuffer:
             lines = []
             for seg in self._segments:
                 if seg["ts"] >= cutoff:
-                    lines.append(format_transcript_segment(
-                        seg["text"],
-                        seg["speaker"],
-                        speaker_id=seg.get("speaker_id"),
-                        speaker_type=seg.get("speaker_type"),
-                        alias=(aliases or {}).get(str(seg.get("speaker_id") or "")),
-                    ))
+                    lines.append(
+                        format_transcript_segment(
+                            seg["text"],
+                            seg["speaker"],
+                            speaker_id=seg.get("speaker_id"),
+                            speaker_type=seg.get("speaker_type"),
+                            alias=(aliases or {}).get(str(seg.get("speaker_id") or "")),
+                        )
+                    )
             return "\n".join(lines) if lines else "(No recent transcript)"
 
     async def get_full(

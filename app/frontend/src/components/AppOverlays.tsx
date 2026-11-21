@@ -43,11 +43,11 @@ export default function AppOverlays({
       `${window.location.pathname}${query ? `?${query}` : ""}${window.location.hash}`,
     );
   }, [onOpenUpdate]);
-  const showDesktop = (
-    ["available", "downloading", "ready"].includes(update.status.state)
-    && !suppressDesktopUpdate
-  );
-  const showDownloads = downloads.active.length > 0 || downloads.failed.length > 0;
+  const showDesktop =
+    ["available", "downloading", "ready"].includes(update.status.state) &&
+    !suppressDesktopUpdate;
+  const showDownloads =
+    downloads.active.length > 0 || downloads.failed.length > 0;
   return (
     <>
       <NewSessionModal
@@ -72,7 +72,11 @@ export default function AppOverlays({
           {whatsNew && (
             <div className="flex items-center gap-3 rounded-xl bg-surface px-4 py-3 shadow-lg ring-1 ring-brand-light-gray-1">
               <p className="min-w-0 flex-1 font-body text-sm text-brand-dark-gray">
-                Debate AI wurde auf <span className="font-mono font-semibold">v{whatsNew.current}</span> aktualisiert
+                Debate AI wurde auf{" "}
+                <span className="font-mono font-semibold">
+                  v{whatsNew.current}
+                </span>{" "}
+                aktualisiert
               </p>
               <button
                 type="button"
@@ -91,8 +95,19 @@ export default function AppOverlays({
                 title="Schließen"
                 className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-brand-mid-gray transition-colors motion-reduce:transition-none hover:bg-brand-light-gray-2 hover:text-brand-dark-gray focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light"
               >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>

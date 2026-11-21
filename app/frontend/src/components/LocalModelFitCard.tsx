@@ -32,9 +32,12 @@ const ASR_YELLOW_RTF = 1.0;
 const ASR_LIVE_FEASIBLE = 0.33;
 const ASR_LIVE_MARGINAL = 0.66;
 
-const clampContention = (c: number) => Math.min(Math.max(c, MIN_CONTENTION), MAX_CONTENTION);
-const effective = (value: number, contention: number) => value * clampContention(contention);
-const roundUp = (value: number, step = ROUND_STEP) => (value <= 0 ? step : Math.ceil(value / step) * step);
+const clampContention = (c: number) =>
+  Math.min(Math.max(c, MIN_CONTENTION), MAX_CONTENTION);
+const effective = (value: number, contention: number) =>
+  value * clampContention(contention);
+const roundUp = (value: number, step = ROUND_STEP) =>
+  value <= 0 ? step : Math.ceil(value / step) * step;
 
 function classifyLatency(eff: number, budget: number): FitVerdict {
   if (eff <= 0) return "green";
@@ -69,11 +72,28 @@ const VERDICT_STYLE: Record<FitVerdict, string> = {
   yellow: "border-amber-200 bg-amber-50 text-amber-800",
   red: "border-red-200 bg-red-50 text-red-700",
 };
-const VERDICT_LABEL: Record<FitVerdict, string> = { green: "Hält Schritt", yellow: "Knapp", red: "Zu langsam" };
-const POST_CALL_LABEL: Record<FitVerdict, string> = { green: "Gut", yellow: "Langsam", red: "Zu langsam" };
-const FEASIBILITY: Record<Exclude<FitFeasibility, "">, { label: string; cls: string }> = {
-  feasible: { label: "Geeignet", cls: "border-emerald-200 bg-emerald-50 text-emerald-700" },
-  marginal: { label: "Grenzwertig", cls: "border-amber-200 bg-amber-50 text-amber-800" },
+const VERDICT_LABEL: Record<FitVerdict, string> = {
+  green: "Hält Schritt",
+  yellow: "Knapp",
+  red: "Zu langsam",
+};
+const POST_CALL_LABEL: Record<FitVerdict, string> = {
+  green: "Gut",
+  yellow: "Langsam",
+  red: "Zu langsam",
+};
+const FEASIBILITY: Record<
+  Exclude<FitFeasibility, "">,
+  { label: string; cls: string }
+> = {
+  feasible: {
+    label: "Geeignet",
+    cls: "border-emerald-200 bg-emerald-50 text-emerald-700",
+  },
+  marginal: {
+    label: "Grenzwertig",
+    cls: "border-amber-200 bg-amber-50 text-amber-800",
+  },
   no: { label: "Nicht geeignet", cls: "border-red-200 bg-red-50 text-red-700" },
 };
 
@@ -90,7 +110,9 @@ interface LocalModelFitCardProps {
   onIntervalsApplied?: () => void;
 }
 
-export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitCardProps) {
+export default function LocalModelFitCard({
+  onIntervalsApplied,
+}: LocalModelFitCardProps) {
   const [summary, setSummary] = useState<LocalFitSummary | null>(null);
   const [report, setReport] = useState<LocalFitReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -100,7 +122,9 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
   const [notice, setNotice] = useState<string | null>(null);
   const [contention, setContention] = useState(DEFAULT_CONTENTION);
   // Per-model, per-agent budget the user has set/applied: {model_id: {slug: seconds}}.
-  const [budgets, setBudgets] = useState<Record<string, Record<string, number>>>({});
+  const [budgets, setBudgets] = useState<
+    Record<string, Record<string, number>>
+  >({});
 
   const loadSummary = useCallback(async () => {
     setLoading(true);
@@ -116,16 +140,22 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       setError(null);
     } catch (err) {
       console.error("Failed to load local fit summary", err);
-      setError("Lokale Modelle konnten nicht geladen werden. Das Backend startet möglicherweise noch.");
+      setError(
+        "Lokale Modelle konnten nicht geladen werden. Das Backend startet möglicherweise noch.",
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { void loadSummary(); }, [loadSummary]);
+  useEffect(() => {
+    void loadSummary();
+  }, [loadSummary]);
   useEffect(() => {
     if (!error || summary) return;
-    const retry = window.setTimeout(() => { void loadSummary(); }, 3000);
+    const retry = window.setTimeout(() => {
+      void loadSummary();
+    }, 3000);
     return () => window.clearTimeout(retry);
   }, [error, summary, loadSummary]);
 
@@ -140,14 +170,17 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       setBudgets({}); // start from the server's stored budgets
     } catch (err) {
       console.error("Local fit test failed", err);
-      setError(err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.");
+      setError(
+        err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.",
+      );
     } finally {
       setRunning(false);
     }
   };
 
   const budgetFor = useCallback(
-    (modelId: string, role: FitRole) => budgets[modelId]?.[role.slug] ?? role.budget_seconds,
+    (modelId: string, role: FitRole) =>
+      budgets[modelId]?.[role.slug] ?? role.budget_seconds,
     [budgets],
   );
 
@@ -155,24 +188,52 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
     (modelId: string, role: FitRole): RoleView => {
       const eff = effective(role.latency_seconds, contention);
       if (role.post_call) {
-        return { role, budget: role.budget_seconds, verdict: classifyPostCall(eff), recommended: 0, changed: false };
+        return {
+          role,
+          budget: role.budget_seconds,
+          verdict: classifyPostCall(eff),
+          recommended: 0,
+          changed: false,
+        };
       }
       const budget = budgetFor(modelId, role);
       const recommended = recommendInterval(eff, budget);
-      return { role, budget, verdict: classifyLatency(eff, budget), recommended, changed: recommended !== budget };
+      return {
+        role,
+        budget,
+        verdict: classifyLatency(eff, budget),
+        recommended,
+        changed: recommended !== budget,
+      };
     },
     [contention, budgetFor],
   );
 
-  const persistBudget = async (modelId: string, slug: string, seconds: number) => {
-    const clamped = Math.min(Math.max(Math.round(seconds), MIN_INTERVAL), MAX_INTERVAL);
-    setBudgets((prev) => ({ ...prev, [modelId]: { ...prev[modelId], [slug]: clamped } }));
+  const persistBudget = async (
+    modelId: string,
+    slug: string,
+    seconds: number,
+  ) => {
+    const clamped = Math.min(
+      Math.max(Math.round(seconds), MIN_INTERVAL),
+      MAX_INTERVAL,
+    );
+    setBudgets((prev) => ({
+      ...prev,
+      [modelId]: { ...prev[modelId], [slug]: clamped },
+    }));
     try {
-      await api.applyLocalFitIntervals(modelId, [{ slug, interval_seconds: clamped }]);
+      await api.applyLocalFitIntervals(modelId, [
+        { slug, interval_seconds: clamped },
+      ]);
       onIntervalsApplied?.();
     } catch (err) {
       console.error("Saving budget failed", err);
-      setError(err instanceof Error ? err.message : "Zeitbudget konnte nicht gespeichert werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Zeitbudget konnte nicht gespeichert werden.",
+      );
     }
   };
 
@@ -187,13 +248,25 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
     setError(null);
     setNotice(null);
     try {
-      const { applied } = await api.applyLocalFitIntervals(model.model_id, updates);
-      setBudgets((prev) => ({ ...prev, [model.model_id]: { ...prev[model.model_id], ...applied } }));
-       setNotice(`${Object.keys(applied).length} Zeitbudget(s) für ${model.model_name} angewendet (Lastfaktor ${contention.toFixed(1)}x).`);
+      const { applied } = await api.applyLocalFitIntervals(
+        model.model_id,
+        updates,
+      );
+      setBudgets((prev) => ({
+        ...prev,
+        [model.model_id]: { ...prev[model.model_id], ...applied },
+      }));
+      setNotice(
+        `${Object.keys(applied).length} Zeitbudget(s) für ${model.model_name} angewendet (Lastfaktor ${contention.toFixed(1)}x).`,
+      );
       onIntervalsApplied?.();
     } catch (err) {
       console.error("Applying budgets failed", err);
-      setError(err instanceof Error ? err.message : "Zeitbudgets konnten nicht angewendet werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Zeitbudgets konnten nicht angewendet werden.",
+      );
     } finally {
       setApplyingModel(null);
     }
@@ -210,7 +283,11 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       setAsrReport(await api.runAsrFit(file));
     } catch (err) {
       console.error("ASR fit failed", err);
-      setAsrError(err instanceof Error ? err.message : "Geschwindigkeitstest der Transkription fehlgeschlagen.");
+      setAsrError(
+        err instanceof Error
+          ? err.message
+          : "Geschwindigkeitstest der Transkription fehlgeschlagen.",
+      );
     } finally {
       setAsrBusy(false);
     }
@@ -219,7 +296,10 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
   const recorder = useClipRecorder({
     maxSeconds: MAX_ASR_RECORD_SECONDS,
     baseName: "asr-clip",
-    onClip: (file) => { setAsrFile(file); void measureAsr(file); },
+    onClip: (file) => {
+      setAsrFile(file);
+      void measureAsr(file);
+    },
     onError: (message) => setAsrError(message),
   });
 
@@ -227,7 +307,8 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
   const capabilities = summary?.capabilities ?? null;
   const usableForById = useMemo(() => {
     const map: Record<string, string[]> = {};
-    for (const model of capabilities?.models ?? []) map[model.id] = model.usable_for;
+    for (const model of capabilities?.models ?? [])
+      map[model.id] = model.usable_for;
     return map;
   }, [capabilities]);
   // Prefer a real-voice measurement; fall back to the auto synthetic-clip run.
@@ -240,10 +321,13 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
     <div className="rounded-xl bg-surface p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="font-display text-base font-bold text-brand-dark-gray">Leistungstest lokaler Modelle</h3>
+          <h3 className="font-display text-base font-bold text-brand-dark-gray">
+            Leistungstest lokaler Modelle
+          </h3>
           <p className="mt-1 max-w-2xl font-body text-xs leading-relaxed text-brand-gray">
-            Misst einen typischen Durchlauf für jedes lokale Textmodell und die integrierten Sprachmodelle.
-            Bewertet wird die Geschwindigkeit, nicht die Antwortqualität.
+            Misst einen typischen Durchlauf für jedes lokale Textmodell und die
+            integrierten Sprachmodelle. Bewertet wird die Geschwindigkeit, nicht
+            die Antwortqualität.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -259,7 +343,11 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
             disabled={!hasModels || running || loading}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
           >
-            {running ? "Test läuft..." : report ? "Erneut testen" : "Leistung testen"}
+            {running
+              ? "Test läuft..."
+              : report
+                ? "Erneut testen"
+                : "Leistung testen"}
           </button>
         </div>
       </div>
@@ -270,8 +358,12 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
         <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
           <p className="font-body text-xs leading-relaxed text-brand-gray">
             Keine selbst betriebenen Textmodelle gefunden. Füge unter
-            <span className="font-semibold text-brand-dark-gray"> Verbindungen</span> einen lokalen
-            OpenAI-kompatiblen Endpunkt hinzu. Die integrierten Spracherkennungsmodelle werden unten weiterhin geprüft.
+            <span className="font-semibold text-brand-dark-gray">
+              {" "}
+              Verbindungen
+            </span>{" "}
+            einen lokalen OpenAI-kompatiblen Endpunkt hinzu. Die integrierten
+            Spracherkennungsmodelle werden unten weiterhin geprüft.
           </p>
         </div>
       )}
@@ -279,21 +371,25 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       {running && (
         <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
           <p className="font-body text-xs text-brand-gray">
-            Der Leistungstest läuft und misst Text- sowie Spracherkennungsmodelle. Beim ersten Lauf können
-            die Sprachmodelle heruntergeladen werden.
+            Der Leistungstest läuft und misst Text- sowie
+            Spracherkennungsmodelle. Beim ersten Lauf können die Sprachmodelle
+            heruntergeladen werden.
           </p>
         </div>
       )}
 
       {(validity || report?.measured_at) && !running && (
-        <p className={`mt-3 rounded border px-3 py-2 font-body text-xs ${
-          validity?.status === "superseded"
-            ? "border-amber-200 bg-amber-50 text-amber-800"
-            : "border-brand-light-gray-1 bg-brand-light-gray-2/30 text-brand-gray"
-        }`}>
+        <p
+          className={`mt-3 rounded border px-3 py-2 font-body text-xs ${
+            validity?.status === "superseded"
+              ? "border-amber-200 bg-amber-50 text-amber-800"
+              : "border-brand-light-gray-1 bg-brand-light-gray-2/30 text-brand-gray"
+          }`}
+        >
           {validity?.status === "aged"
             ? validity.reason
-            : (!validity || validity.status === "current") && report?.measured_at
+            : (!validity || validity.status === "current") &&
+                report?.measured_at
               ? `Gemessen am ${new Date(report.measured_at).toLocaleString()}`
               : validity?.reason}
         </p>
@@ -311,8 +407,18 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
                 contention={contention}
                 applying={applyingModel === model.model_id}
                 resolveRole={(role) => resolveRole(model.model_id, role)}
-                onEditBudget={(slug, seconds) => setBudgets((prev) => ({ ...prev, [model.model_id]: { ...prev[model.model_id], [slug]: seconds } }))}
-                onCommitBudget={(slug, seconds) => void persistBudget(model.model_id, slug, seconds)}
+                onEditBudget={(slug, seconds) =>
+                  setBudgets((prev) => ({
+                    ...prev,
+                    [model.model_id]: {
+                      ...prev[model.model_id],
+                      [slug]: seconds,
+                    },
+                  }))
+                }
+                onCommitBudget={(slug, seconds) =>
+                  void persistBudget(model.model_id, slug, seconds)
+                }
                 onApply={() => void applyRecommended(model)}
               />
             ))}
@@ -321,20 +427,27 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
       )}
 
       {notice && (
-        <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 font-body text-xs text-emerald-800">{notice}</p>
+        <p className="mt-3 rounded border border-emerald-200 bg-emerald-50 px-3 py-2 font-body text-xs text-emerald-800">
+          {notice}
+        </p>
       )}
       {error && (
-        <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700">{error}</p>
+        <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700">
+          {error}
+        </p>
       )}
 
       {/* Transcription keep-up (local ASR) */}
       <div className="mt-4 border-t border-brand-light-gray-1 pt-4">
         <div className="mb-2">
-          <h4 className="font-display text-sm font-bold text-brand-dark-gray">Echtzeitfähigkeit der lokalen Transkription</h4>
+          <h4 className="font-display text-sm font-bold text-brand-dark-gray">
+            Echtzeitfähigkeit der lokalen Transkription
+          </h4>
           <p className="mt-1 max-w-2xl font-body text-xs leading-relaxed text-brand-gray">
-            Echtzeitfaktor der integrierten Spracherkennungsmodelle. Der Leistungstest nutzt zunächst eine
-            synthetische Aufnahme; lade echte Sprache hoch oder zeichne sie auf, um präziser zu messen.
-            Die Prognose für Live-Untertitel ist experimentell.
+            Echtzeitfaktor der integrierten Spracherkennungsmodelle. Der
+            Leistungstest nutzt zunächst eine synthetische Aufnahme; lade echte
+            Sprache hoch oder zeichne sie auf, um präziser zu messen. Die
+            Prognose für Live-Untertitel ist experimentell.
           </p>
         </div>
 
@@ -355,11 +468,15 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
           </button>
           {recorder.supported && (
             <button
-              onClick={recorder.recording ? recorder.stop : () => void recorder.start()}
+              onClick={
+                recorder.recording ? recorder.stop : () => void recorder.start()
+              }
               disabled={asrBusy && !recorder.recording}
               className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-colors hover:bg-brand-teal hover:text-white disabled:cursor-not-allowed disabled:border-brand-light-gray-1 disabled:text-brand-mid-gray"
             >
-              {recorder.recording ? `Stopp (${recorder.seconds}s)` : "15 Sekunden aufnehmen"}
+              {recorder.recording
+                ? `Stopp (${recorder.seconds}s)`
+                : "15 Sekunden aufnehmen"}
             </button>
           )}
         </div>
@@ -367,7 +484,10 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
         {asr && (
           <div className="mt-3 overflow-x-auto rounded border border-brand-light-gray-1 p-3">
             <p className="mb-2 font-body text-[11px] text-brand-mid-gray">
-              {asr.estimated ? "Aus synthetischer Aufnahme geschätzt" : "Mit echter Sprache gemessen"} – {asr.audio_seconds.toFixed(1)} Sekunden Audio
+              {asr.estimated
+                ? "Aus synthetischer Aufnahme geschätzt"
+                : "Mit echter Sprache gemessen"}{" "}
+              – {asr.audio_seconds.toFixed(1)} Sekunden Audio
             </p>
             <table className="w-full border-collapse font-body text-xs">
               <thead>
@@ -387,31 +507,47 @@ export default function LocalModelFitCard({ onIntervalsApplied }: LocalModelFitC
           </div>
         )}
         {asrError && (
-          <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700">{asrError}</p>
+          <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700">
+            {asrError}
+          </p>
         )}
       </div>
 
       <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-2">
         <p className="font-body text-xs leading-relaxed text-brand-gray">
-          Um einen Agenten mit einem lokalen Modell auszuführen, wähle ihn zusätzlich im Bereich
-          Agenten aus. Die hier gesetzten Budgets gelten pro Modell und werden nur verwendet, wenn der
-          Agent dieses Modell nutzt. Für Live-Zwischentitel ist neben dem Cloud-Gateway auch der
-          experimentelle lokale Parakeet-Untertitler verfügbar. Er ist CPU-intensiv;
-          prüfe den Eignungstest und wähle ihn unter Transkription &amp; Audio explizit.
+          Um einen Agenten mit einem lokalen Modell auszuführen, wähle ihn
+          zusätzlich im Bereich Agenten aus. Die hier gesetzten Budgets gelten
+          pro Modell und werden nur verwendet, wenn der Agent dieses Modell
+          nutzt. Für Live-Zwischentitel ist neben dem Cloud-Gateway auch der
+          experimentelle lokale Parakeet-Untertitler verfügbar. Er ist
+          CPU-intensiv; prüfe den Eignungstest und wähle ihn unter Transkription
+          &amp; Audio explizit.
         </p>
       </div>
     </div>
   );
 }
 
-function ContentionSlider({ contention, onChange }: { contention: number; onChange: (c: number) => void }) {
+function ContentionSlider({
+  contention,
+  onChange,
+}: {
+  contention: number;
+  onChange: (c: number) => void;
+}) {
   return (
     <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">Angenommener Lastpuffer</p>
+          <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">
+            Angenommener Lastpuffer
+          </p>
           <p className="mt-0.5 font-body text-xs text-brand-gray">
-            Reserve für Aufnahme, Sprechertrennung und andere Apps: <span className="font-semibold text-brand-dark-gray">{contention.toFixed(1)}x</span> gemessene Latenz
+            Reserve für Aufnahme, Sprechertrennung und andere Apps:{" "}
+            <span className="font-semibold text-brand-dark-gray">
+              {contention.toFixed(1)}x
+            </span>{" "}
+            gemessene Latenz
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -456,10 +592,17 @@ function ModelFitBlock({
   const superseded = model.validity?.status === "superseded";
 
   return (
-    <div className={`rounded-lg border border-brand-light-gray-1 p-4 ${superseded ? "opacity-60" : ""}`}>
+    <div
+      className={`rounded-lg border border-brand-light-gray-1 p-4 ${superseded ? "opacity-60" : ""}`}
+    >
       <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="truncate font-display text-sm font-bold text-brand-dark-gray" title={model.model_id}>{model.model_name}</p>
+          <p
+            className="truncate font-display text-sm font-bold text-brand-dark-gray"
+            title={model.model_id}
+          >
+            {model.model_name}
+          </p>
           {superseded && (
             <span className="mt-1 inline-flex rounded-full border border-amber-200 bg-amber-50 px-2 py-0.5 font-body text-[10px] text-amber-800">
               Überholt
@@ -467,13 +610,19 @@ function ModelFitBlock({
           )}
           {model.status === "ok" && model.short && model.long ? (
             <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">
-              Kurz {model.short.latency_seconds.toFixed(1)} s - Lang {model.long.latency_seconds.toFixed(1)} s pro Aufruf
+              Kurz {model.short.latency_seconds.toFixed(1)} s - Lang{" "}
+              {model.long.latency_seconds.toFixed(1)} s pro Aufruf
             </p>
           ) : (
-            <p className="mt-0.5 font-body text-[11px] text-red-700">{model.reason || "Leistungstest fehlgeschlagen."}</p>
+            <p className="mt-0.5 font-body text-[11px] text-red-700">
+              {model.reason || "Leistungstest fehlgeschlagen."}
+            </p>
           )}
           {usableFor.length > 0 && (
-            <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">Nutzbar für: <span className="text-brand-gray">{usableFor.join(", ")}</span></p>
+            <p className="mt-0.5 font-body text-[11px] text-brand-mid-gray">
+              Nutzbar für:{" "}
+              <span className="text-brand-gray">{usableFor.join(", ")}</span>
+            </p>
           )}
         </div>
         {model.status === "ok" && changes > 0 && !superseded && (
@@ -482,7 +631,9 @@ function ModelFitBlock({
             disabled={applying}
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
           >
-            {applying ? "Wird angewendet ..." : `Empfohlene Zeitbudgets anwenden (${changes})`}
+            {applying
+              ? "Wird angewendet ..."
+              : `Empfohlene Zeitbudgets anwenden (${changes})`}
           </button>
         )}
       </div>
@@ -514,7 +665,9 @@ function ModelFitBlock({
             </tbody>
           </table>
           <p className="mt-2 font-body text-[10px] text-brand-mid-gray">
-            Nachbesprechungsassistenten laufen einmal am Gesprächsende (keine Live-Schleife); daher zeigen sie eine akzeptable Wartebewertung statt eines Zyklusbudgets.
+            Nachbesprechungsassistenten laufen einmal am Gesprächsende (keine
+            Live-Schleife); daher zeigen sie eine akzeptable Wartebewertung
+            statt eines Zyklusbudgets.
           </p>
         </div>
       )}
@@ -541,10 +694,21 @@ function RoleRow({
     <tr className="border-t border-brand-light-gray-1">
       <td className="py-1.5 pr-3 text-brand-dark-gray">
         {role.name}
-        {role.post_call && <span className="ml-1 text-[10px] text-brand-mid-gray">(nach dem Gespräch)</span>}
+        {role.post_call && (
+          <span className="ml-1 text-[10px] text-brand-mid-gray">
+            (nach dem Gespräch)
+          </span>
+        )}
       </td>
-      <td className="py-1.5 pr-3 capitalize text-brand-gray">{role.prompt_profile}</td>
-      <td className="py-1.5 pr-3 text-brand-gray" title={`${eff.toFixed(1)} s bei ${contention.toFixed(1)}x Last`}>{role.latency_seconds.toFixed(1)}s</td>
+      <td className="py-1.5 pr-3 capitalize text-brand-gray">
+        {role.prompt_profile}
+      </td>
+      <td
+        className="py-1.5 pr-3 text-brand-gray"
+        title={`${eff.toFixed(1)} s bei ${contention.toFixed(1)}x Last`}
+      >
+        {role.latency_seconds.toFixed(1)}s
+      </td>
       <td className="py-1.5 pr-3 text-brand-gray">
         {role.post_call ? (
           <span className="text-brand-mid-gray">Gesprächsende</span>
@@ -554,8 +718,14 @@ function RoleRow({
             min={MIN_INTERVAL}
             max={MAX_INTERVAL}
             value={budget}
-            onChange={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) onEditBudget(role.slug, v); }}
-            onBlur={(e) => { const v = parseInt(e.target.value, 10); if (!Number.isNaN(v)) onCommitBudget(role.slug, v); }}
+            onChange={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (!Number.isNaN(v)) onEditBudget(role.slug, v);
+            }}
+            onBlur={(e) => {
+              const v = parseInt(e.target.value, 10);
+              if (!Number.isNaN(v)) onCommitBudget(role.slug, v);
+            }}
             className="w-16 rounded border border-brand-light-gray-1 bg-surface px-2 py-0.5 text-xs text-brand-dark-gray focus:border-brand-teal"
           />
         ) : (
@@ -563,7 +733,9 @@ function RoleRow({
         )}
       </td>
       <td className="py-1.5 pr-3">
-        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VERDICT_STYLE[verdict]}`}>
+        <span
+          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VERDICT_STYLE[verdict]}`}
+        >
           {(role.post_call ? POST_CALL_LABEL : VERDICT_LABEL)[verdict]}
         </span>
       </td>
@@ -582,30 +754,52 @@ function RoleRow({
   );
 }
 
-function AsrRow({ model, contention }: { model: AsrModelFit; contention: number }) {
+function AsrRow({
+  model,
+  contention,
+}: {
+  model: AsrModelFit;
+  contention: number;
+}) {
   if (model.status !== "ok" || model.real_time_factor == null) {
     return (
       <tr className="border-t border-brand-light-gray-1">
         <td className="py-1.5 pr-3 text-brand-dark-gray">{model.model_name}</td>
-        <td className="py-1.5 pr-3 text-brand-mid-gray" colSpan={3}>{model.reason || "Leistungstest fehlgeschlagen."}</td>
+        <td className="py-1.5 pr-3 text-brand-mid-gray" colSpan={3}>
+          {model.reason || "Leistungstest fehlgeschlagen."}
+        </td>
       </tr>
     );
   }
   const effRtf = effective(model.real_time_factor, contention);
   const verdict = classifyRtf(effRtf);
-  const feasibility = model.short_real_time_factor != null
-    ? classifyFeasibility(effective(model.short_real_time_factor, contention))
-    : "";
+  const feasibility =
+    model.short_real_time_factor != null
+      ? classifyFeasibility(effective(model.short_real_time_factor, contention))
+      : "";
   return (
     <tr className="border-t border-brand-light-gray-1">
       <td className="py-1.5 pr-3 text-brand-dark-gray">{model.model_name}</td>
-      <td className="py-1.5 pr-3 text-brand-gray" title={`${effRtf.toFixed(2)}x bei ${contention.toFixed(1)}x Last`}>{model.real_time_factor.toFixed(2)}x</td>
+      <td
+        className="py-1.5 pr-3 text-brand-gray"
+        title={`${effRtf.toFixed(2)}x bei ${contention.toFixed(1)}x Last`}
+      >
+        {model.real_time_factor.toFixed(2)}x
+      </td>
       <td className="py-1.5 pr-3">
-        <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VERDICT_STYLE[verdict]}`}>{VERDICT_LABEL[verdict]}</span>
+        <span
+          className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${VERDICT_STYLE[verdict]}`}
+        >
+          {VERDICT_LABEL[verdict]}
+        </span>
       </td>
       <td className="py-1.5">
         {feasibility ? (
-          <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${FEASIBILITY[feasibility].cls}`}>{FEASIBILITY[feasibility].label}</span>
+          <span
+            className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${FEASIBILITY[feasibility].cls}`}
+          >
+            {FEASIBILITY[feasibility].label}
+          </span>
         ) : (
           <span className="text-brand-mid-gray">-</span>
         )}
@@ -614,18 +808,33 @@ function AsrRow({ model, contention }: { model: AsrModelFit; contention: number 
   );
 }
 
-function LocalCapabilityMap({ capabilities }: { capabilities: LocalCapabilities }) {
+function LocalCapabilityMap({
+  capabilities,
+}: {
+  capabilities: LocalCapabilities;
+}) {
   return (
     <div className="mt-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
-      <p className="mb-2 font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">Was auf diesem Rechner lokal laufen kann</p>
+      <p className="mb-2 font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">
+        Was auf diesem Rechner lokal laufen kann
+      </p>
       <ul className="space-y-1.5">
         {capabilities.services.map((service) => (
-          <li key={service.key} className="flex flex-wrap items-baseline gap-x-2 font-body text-xs">
-            <span className="font-medium text-brand-dark-gray">{service.label}:</span>
+          <li
+            key={service.key}
+            className="flex flex-wrap items-baseline gap-x-2 font-body text-xs"
+          >
+            <span className="font-medium text-brand-dark-gray">
+              {service.label}:
+            </span>
             {service.cloud_only ? (
-              <span className="text-amber-700">Keine lokale Option{service.note ? ` - ${service.note}` : ""}</span>
+              <span className="text-amber-700">
+                Keine lokale Option{service.note ? ` - ${service.note}` : ""}
+              </span>
             ) : (
-              <span className="text-brand-gray">{service.local_options.map((o) => o.name).join(", ")}</span>
+              <span className="text-brand-gray">
+                {service.local_options.map((o) => o.name).join(", ")}
+              </span>
             )}
           </li>
         ))}

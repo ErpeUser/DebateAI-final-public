@@ -1,12 +1,29 @@
 import { useEffect, useState } from "react";
-import type { ArgumentGraph, CallSegment, Directive, Document, ModelPricingResponse, PostProcessingProgress, Question, Session, SessionSynthesis, Speaker, TokenUsageSummary, TranscriptEntry } from "../../types";
+import type {
+  ArgumentGraph,
+  CallSegment,
+  Directive,
+  Document,
+  ModelPricingResponse,
+  PostProcessingProgress,
+  Question,
+  Session,
+  SessionSynthesis,
+  Speaker,
+  TokenUsageSummary,
+  TranscriptEntry,
+} from "../../types";
 import TranscriptReview from "./TranscriptReview";
 import CallAudioPanel from "./CallAudioPanel";
 import MeetingChat from "./MeetingChat";
 import QuestionSummary from "./QuestionSummary";
 import BriefingView from "./BriefingView";
 import OverviewView, { type OverviewTarget } from "./OverviewView";
-import PostCallTabs, { panelId, tabId, type PostCallTabDef } from "./PostCallTabs";
+import PostCallTabs, {
+  panelId,
+  tabId,
+  type PostCallTabDef,
+} from "./PostCallTabs";
 import ExportMenu from "./ExportMenu";
 import TokenUsagePanel from "./TokenUsagePanel";
 import DebateReviewCard from "./DebateReviewCard";
@@ -14,7 +31,10 @@ import ArgumentGraphView from "./ArgumentGraphView";
 import SpeakerNameMapper from "../SpeakerNameMapper";
 import EditableSessionName from "../EditableSessionName";
 import * as api from "../../services/api";
-import { formatPostProcessingSummary, parseSavedDrainSummary } from "../../lib/postProcessingSummary";
+import {
+  formatPostProcessingSummary,
+  parseSavedDrainSummary,
+} from "../../lib/postProcessingSummary";
 
 interface PostCallViewProps {
   session: Session;
@@ -38,7 +58,10 @@ interface PostCallViewProps {
   postProcessing?: PostProcessingProgress;
 }
 
-function formatDuration(startedAt: string | null, endedAt: string | null): string {
+function formatDuration(
+  startedAt: string | null,
+  endedAt: string | null,
+): string {
   if (!startedAt || !endedAt) return "Läuft";
   const ms = new Date(endedAt).getTime() - new Date(startedAt).getTime();
   const totalSeconds = Math.floor(ms / 1000);
@@ -51,13 +74,18 @@ function formatDuration(startedAt: string | null, endedAt: string | null): strin
 }
 
 function localizedProcessingMessage(message?: string): string {
-  if (!message || message === "Post-processing complete") return "Nachbereitung abgeschlossen";
+  if (!message || message === "Post-processing complete")
+    return "Nachbereitung abgeschlossen";
   return message;
 }
 
 function formatTime(iso: string | null): string {
   if (!iso) return "N/A";
-  return new Date(iso).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return new Date(iso).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }
 
 function formatDate(iso: string | null): string {
@@ -68,8 +96,14 @@ function formatDate(iso: string | null): string {
 function fileIcon(mimeType: string): string {
   if (mimeType.startsWith("image/")) return "🖼";
   if (mimeType.includes("pdf")) return "📄";
-  if (mimeType.includes("spreadsheet") || mimeType.includes("excel") || mimeType.includes("csv")) return "📊";
-  if (mimeType.includes("presentation") || mimeType.includes("powerpoint")) return "📑";
+  if (
+    mimeType.includes("spreadsheet") ||
+    mimeType.includes("excel") ||
+    mimeType.includes("csv")
+  )
+    return "📊";
+  if (mimeType.includes("presentation") || mimeType.includes("powerpoint"))
+    return "📑";
   if (mimeType.includes("word") || mimeType.includes("document")) return "📝";
   if (mimeType.startsWith("text/")) return "📃";
   return "📎";
@@ -77,12 +111,27 @@ function fileIcon(mimeType: string): string {
 
 function formatFileSize(mimeType: string): string {
   const parts = mimeType.split("/");
-  return parts[parts.length - 1].replace("vnd.openxmlformats-officedocument.", "").replace("spreadsheetml.sheet", "xlsx").replace("presentationml.presentation", "pptx").replace("wordprocessingml.document", "docx").toUpperCase();
+  return parts[parts.length - 1]
+    .replace("vnd.openxmlformats-officedocument.", "")
+    .replace("spreadsheetml.sheet", "xlsx")
+    .replace("presentationml.presentation", "pptx")
+    .replace("wordprocessingml.document", "docx")
+    .toUpperCase();
 }
 
 // Overview is the landing worksheet: the executive read over everything the
 // session captured. Insights stays the raw record behind it.
-type Tab = "overview" | "briefing" | "insights" | "arguments" | "transcript" | "chat" | "speakers" | "directives" | "documents" | "tokens";
+type Tab =
+  | "overview"
+  | "briefing"
+  | "insights"
+  | "arguments"
+  | "transcript"
+  | "chat"
+  | "speakers"
+  | "directives"
+  | "documents"
+  | "tokens";
 
 export default function PostCallView({
   session,
@@ -120,19 +169,34 @@ export default function PostCallView({
   const [tokenUsageLoading, setTokenUsageLoading] = useState(true);
   const [tokenUsageError, setTokenUsageError] = useState(false);
   const [tokenUsageRequest, setTokenUsageRequest] = useState(0);
-  const [modelPricing, setModelPricing] = useState<ModelPricingResponse | null>(null);
+  const [modelPricing, setModelPricing] = useState<ModelPricingResponse | null>(
+    null,
+  );
   const [briefingError, setBriefingError] = useState<string | null>(null);
-  const [argumentGraph, setArgumentGraph] = useState<ArgumentGraph | null>(null);
+  const [argumentGraph, setArgumentGraph] = useState<ArgumentGraph | null>(
+    null,
+  );
   const [argumentGraphLoading, setArgumentGraphLoading] = useState(false);
-  const [argumentGraphError, setArgumentGraphError] = useState<string | null>(null);
-  const speakerActionsLocked = Boolean(postProcessing?.active || postProcessing?.state === "background" || postProcessing?.state === "timeout" || postProcessing?.state === "error");
+  const [argumentGraphError, setArgumentGraphError] = useState<string | null>(
+    null,
+  );
+  const speakerActionsLocked = Boolean(
+    postProcessing?.active ||
+    postProcessing?.state === "background" ||
+    postProcessing?.state === "timeout" ||
+    postProcessing?.state === "error",
+  );
   const progressSummary = formatPostProcessingSummary(postProcessing?.details);
   // The live banner only exists for a client that was still connected when the
   // drain finished. A disconnect mid-drain used to lose the record entirely, so
   // fall back to what the backend saved on the session (ALP-103).
   const savedDrain = parseSavedDrainSummary(session.drain_summary);
-  const savedDrainSummary = savedDrain ? formatPostProcessingSummary(savedDrain) : null;
-  const showSavedDrain = Boolean(savedDrain) && !(postProcessing?.state === "completed" && postProcessing.confirmed);
+  const savedDrainSummary = savedDrain
+    ? formatPostProcessingSummary(savedDrain)
+    : null;
+  const showSavedDrain =
+    Boolean(savedDrain) &&
+    !(postProcessing?.state === "completed" && postProcessing.confirmed);
 
   // Overview's cost tile and the Tokens tab share one fetch. Keying the effect
   // on the boolean rather than the tab means moving between the two does not
@@ -144,10 +208,17 @@ export default function PostCallView({
   const [shieldedCount, setShieldedCount] = useState(0);
   useEffect(() => {
     let cancelled = false;
-    api.getSessionPiiSummary(session.id)
-      .then((summary) => { if (!cancelled) setShieldedCount(summary.total); })
-      .catch(() => { if (!cancelled) setShieldedCount(0); });
-    return () => { cancelled = true; };
+    api
+      .getSessionPiiSummary(session.id)
+      .then((summary) => {
+        if (!cancelled) setShieldedCount(summary.total);
+      })
+      .catch(() => {
+        if (!cancelled) setShieldedCount(0);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [session.id]);
 
   useEffect(() => {
@@ -155,7 +226,8 @@ export default function PostCallView({
     let cancelled = false;
     setTokenUsageLoading(true);
     setTokenUsageError(false);
-    api.getTokenUsage(session.id)
+    api
+      .getTokenUsage(session.id)
       .then((usage) => {
         if (!cancelled) setTokenUsage(usage);
       })
@@ -165,7 +237,9 @@ export default function PostCallView({
       .finally(() => {
         if (!cancelled) setTokenUsageLoading(false);
       });
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, [wantsUsage, postProcessing?.state, session.id, tokenUsageRequest]);
 
   // Pricing powers the Est. cost column; best-effort so a failed fetch just
@@ -173,12 +247,17 @@ export default function PostCallView({
   useEffect(() => {
     if (!wantsUsage || modelPricing) return;
     let cancelled = false;
-    api.getModelPricing()
+    api
+      .getModelPricing()
       .then((response) => {
         if (!cancelled) setModelPricing(response);
       })
-      .catch(() => { /* leave modelPricing null; tables render without costs */ });
-    return () => { cancelled = true; };
+      .catch(() => {
+        /* leave modelPricing null; tables render without costs */
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [wantsUsage, modelPricing]);
 
   useEffect(() => {
@@ -190,15 +269,25 @@ export default function PostCallView({
     let cancelled = false;
     setArgumentGraphLoading(true);
     setArgumentGraphError(null);
-    api.getArgumentGraph(session.id)
-      .then((graph) => { if (!cancelled) setArgumentGraph(graph); })
-      .catch((err) => {
-        if (!cancelled) setArgumentGraphError(
-          err instanceof Error ? err.message : "Der Argumentbaum konnte nicht geladen werden."
-        );
+    api
+      .getArgumentGraph(session.id)
+      .then((graph) => {
+        if (!cancelled) setArgumentGraph(graph);
       })
-      .finally(() => { if (!cancelled) setArgumentGraphLoading(false); });
-    return () => { cancelled = true; };
+      .catch((err) => {
+        if (!cancelled)
+          setArgumentGraphError(
+            err instanceof Error
+              ? err.message
+              : "Der Argumentbaum konnte nicht geladen werden.",
+          );
+      })
+      .finally(() => {
+        if (!cancelled) setArgumentGraphLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [activeTab, session.id]);
 
   const selectTab = (tab: Tab) => {
@@ -222,12 +311,24 @@ export default function PostCallView({
       try {
         await api.refreshSynthesis(session.id);
       } catch (err) {
-        setAnalyzeError(err instanceof Error ? `Analyse abgeschlossen, aber die Auswertung ist fehlgeschlagen: ${err.message}` : "Analyse abgeschlossen, aber die Auswertung ist fehlgeschlagen.");
+        setAnalyzeError(
+          err instanceof Error
+            ? `Analyse abgeschlossen, aber die Auswertung ist fehlgeschlagen: ${err.message}`
+            : "Analyse abgeschlossen, aber die Auswertung ist fehlgeschlagen.",
+        );
       }
     } catch (err) {
-      setAnalyzeError(err instanceof Error ? err.message : "Die Transkriptanalyse ist fehlgeschlagen.");
+      setAnalyzeError(
+        err instanceof Error
+          ? err.message
+          : "Die Transkriptanalyse ist fehlgeschlagen.",
+      );
     } finally {
-      await Promise.allSettled([onRefreshQuestions(), onRefreshSession(), onRefreshSynthesis()]);
+      await Promise.allSettled([
+        onRefreshQuestions(),
+        onRefreshSession(),
+        onRefreshSynthesis(),
+      ]);
       setAnalyzing(false);
     }
   };
@@ -238,7 +339,11 @@ export default function PostCallView({
     onRefreshSession();
   };
 
-  const handleCorrectTranscript = async (transcriptId: string, text: string, reason: string) => {
+  const handleCorrectTranscript = async (
+    transcriptId: string,
+    text: string,
+    reason: string,
+  ) => {
     await api.updateTranscriptText(session.id, transcriptId, text, reason);
     onRetranscribed?.();
   };
@@ -261,7 +366,10 @@ export default function PostCallView({
   // Calculate total duration across all segments
   const totalDurationMs = segments.reduce((sum, seg) => {
     if (seg.started_at && seg.ended_at) {
-      return sum + (new Date(seg.ended_at).getTime() - new Date(seg.started_at).getTime());
+      return (
+        sum +
+        (new Date(seg.ended_at).getTime() - new Date(seg.started_at).getTime())
+      );
     }
     return sum;
   }, 0);
@@ -269,34 +377,45 @@ export default function PostCallView({
   const totalHours = Math.floor(totalSeconds / 3600);
   const totalMinutes = Math.floor((totalSeconds % 3600) / 60);
   const totalSecs = totalSeconds % 60;
-  const totalDurationStr = totalHours > 0
-    ? `${totalHours}h ${totalMinutes}m ${totalSecs}s`
-    : totalMinutes > 0
-      ? `${totalMinutes}m ${totalSecs}s`
-      : `${totalSecs}s`;
+  const totalDurationStr =
+    totalHours > 0
+      ? `${totalHours}h ${totalMinutes}m ${totalSecs}s`
+      : totalMinutes > 0
+        ? `${totalMinutes}m ${totalSecs}s`
+        : `${totalSecs}s`;
 
   return (
     <div className="mx-auto max-w-5xl space-y-6">
       {/* Completion notes take the accent tint through the semantic tokens,
           like the amber notice below, so they sit quietly on both themes. */}
       {postProcessing?.state === "completed" && postProcessing.confirmed && (
-        <div role="status" className="rounded-lg border border-brand-teal/30 bg-brand-teal/10 px-4 py-3">
+        <div
+          role="status"
+          className="rounded-lg border border-brand-teal/30 bg-brand-teal/10 px-4 py-3"
+        >
           <p className="font-body text-sm font-semibold text-brand-dark-gray">
             {localizedProcessingMessage(postProcessing.message)}
           </p>
           {progressSummary && (
-            <p className="mt-1 font-body text-xs text-brand-gray">{progressSummary}</p>
+            <p className="mt-1 font-body text-xs text-brand-gray">
+              {progressSummary}
+            </p>
           )}
         </div>
       )}
 
       {showSavedDrain && savedDrain && (
-        <div role="status" className="rounded-lg border border-brand-teal/30 bg-brand-teal/10 px-4 py-3">
+        <div
+          role="status"
+          className="rounded-lg border border-brand-teal/30 bg-brand-teal/10 px-4 py-3"
+        >
           <p className="font-body text-sm font-semibold text-brand-dark-gray">
             {localizedProcessingMessage(savedDrain.message)}
           </p>
           {savedDrainSummary && (
-            <p className="mt-1 font-body text-xs text-brand-gray">{savedDrainSummary}</p>
+            <p className="mt-1 font-body text-xs text-brand-gray">
+              {savedDrainSummary}
+            </p>
           )}
         </div>
       )}
@@ -307,7 +426,8 @@ export default function PostCallView({
             Die Nachbereitung ist noch nicht bestätigt abgeschlossen.
           </p>
           <p className="mt-1 font-body text-xs text-brand-gray">
-            Sprecherzuordnung, Umbenennen, Zusammenführen und Argumentverbesserung bleiben bis zur Bestätigung pausiert.
+            Sprecherzuordnung, Umbenennen, Zusammenführen und
+            Argumentverbesserung bleiben bis zur Bestätigung pausiert.
           </p>
         </div>
       )}
@@ -326,17 +446,18 @@ export default function PostCallView({
             <div className="mt-4 space-y-2">
               {segments.length > 0 ? (
                 segments.map((seg) => (
-                  <div
-                    key={seg.id}
-                    className="flex items-center gap-4 text-sm"
-                  >
+                  <div key={seg.id} className="flex items-center gap-4 text-sm">
                     {/* A resume is ordinary, not a warning: neutral rather than amber. */}
-                    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                      seg.segment_number === 1
-                        ? "bg-brand-teal/10 text-brand-teal"
-                        : "bg-brand-light-gray-2 text-brand-gray"
-                    }`}>
-                      {seg.segment_number === 1 ? "Gespräch" : `Fortsetzung ${seg.segment_number - 1}`}
+                    <span
+                      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        seg.segment_number === 1
+                          ? "bg-brand-teal/10 text-brand-teal"
+                          : "bg-brand-light-gray-2 text-brand-gray"
+                      }`}
+                    >
+                      {seg.segment_number === 1
+                        ? "Gespräch"
+                        : `Fortsetzung ${seg.segment_number - 1}`}
                     </span>
                     <span className="text-brand-gray">
                       {formatTime(seg.started_at)} — {formatTime(seg.ended_at)}
@@ -350,15 +471,21 @@ export default function PostCallView({
                 // Fallback to session-level times if no segments exist
                 <div className="flex flex-wrap gap-6 text-sm text-brand-gray">
                   <div>
-                    <span className="font-medium text-brand-mid-gray">Beginn:</span>{" "}
+                    <span className="font-medium text-brand-mid-gray">
+                      Beginn:
+                    </span>{" "}
                     {formatTime(session.started_at)}
                   </div>
                   <div>
-                    <span className="font-medium text-brand-mid-gray">Ende:</span>{" "}
+                    <span className="font-medium text-brand-mid-gray">
+                      Ende:
+                    </span>{" "}
                     {formatTime(session.ended_at)}
                   </div>
                   <div>
-                    <span className="font-medium text-brand-mid-gray">Dauer:</span>{" "}
+                    <span className="font-medium text-brand-mid-gray">
+                      Dauer:
+                    </span>{" "}
                     {formatDuration(session.started_at, session.ended_at)}
                   </div>
                 </div>
@@ -373,12 +500,16 @@ export default function PostCallView({
               </div>
               {segments.length > 1 && (
                 <div>
-                  <span className="font-medium text-brand-mid-gray">Gesamtzeit:</span>{" "}
+                  <span className="font-medium text-brand-mid-gray">
+                    Gesamtzeit:
+                  </span>{" "}
                   {totalDurationStr} über {segments.length} Abschnitte
                 </div>
               )}
               <div>
-                <span className="font-medium text-brand-mid-gray">Argumente:</span>{" "}
+                <span className="font-medium text-brand-mid-gray">
+                  Argumente:
+                </span>{" "}
                 {questions.length}
               </div>
             </div>
@@ -396,8 +527,19 @@ export default function PostCallView({
                 className="inline-flex items-center gap-1.5 rounded-full border border-brand-teal/30 bg-brand-teal/10 px-2.5 py-1 font-body text-xs font-medium text-brand-teal"
                 title="Namen, Kontaktdaten und Kennungen dieser Debatte werden als Token gespeichert; die echten Werte werden nur hier angezeigt."
               >
-                <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden="true">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z" />
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M12 3l7 3v5c0 5-3.5 8.5-7 10-3.5-1.5-7-5-7-10V6l7-3z"
+                  />
                 </svg>
                 {shieldedCount} geschützt
               </span>
@@ -419,190 +561,219 @@ export default function PostCallView({
       <PostCallTabs tabs={tabs} activeTab={activeTab} onSelect={selectTab} />
 
       {/* Tab content: one panel, named by whichever tab is selected. */}
-      <div role="tabpanel" id={panelId(activeTab)} aria-labelledby={tabId(activeTab)}>
-      {activeTab === "overview" && (
-        <OverviewView
-          session={session}
-          questions={questions}
-          transcripts={transcripts}
-          speakers={speakers}
-          segments={segments}
-          synthesis={synthesis}
-          tokenUsage={tokenUsage}
-          tokenUsageLoading={tokenUsageLoading}
-          tokenUsageError={tokenUsageError}
-          modelPricing={modelPricing}
-          onNavigate={navigateFromOverview}
-          onAnalyze={transcripts.length > 0 && questions.length === 0 ? handleAnalyze : undefined}
-          analyzing={analyzing}
-          analyzeError={analyzeError}
-        />
-      )}
-      {activeTab === "briefing" && (
-        <BriefingView
-          session={session}
-          synthesis={synthesis}
-          signalHistoryCount={signalHistoryCount}
-          refreshing={refreshingBriefing}
-          error={briefingError}
-          onRefresh={async () => {
-            setRefreshingBriefing(true);
-            setBriefingError(null);
-            try {
-              await api.refreshSynthesis(session.id);
-              await onRefreshSynthesis();
-            } catch (err) {
-              setBriefingError(
-                err instanceof Error ? err.message : "Die Auswertung konnte nicht erstellt werden."
-              );
-            } finally {
-              setRefreshingBriefing(false);
-            }
-          }}
-        />
-      )}
-      {activeTab === "insights" && (
-        <QuestionSummary
-          questions={questions}
-          speakers={speakers}
-          showEnhanced={Boolean(session.speaker_context_enhanced_at)}
-          initialFilter={insightsFilter}
-        />
-      )}
-      {activeTab === "arguments" && (
-        <ArgumentGraphView
-          graph={argumentGraph}
-          loading={argumentGraphLoading}
-          error={argumentGraphError}
-        />
-      )}
-      {activeTab === "chat" && <MeetingChat key={session.id} session={session} />}
-      {activeTab === "transcript" && (
-        <>
-          <CallAudioPanel session={session} segments={segments} onRetranscribed={() => onRetranscribed?.()} />
-          <TranscriptReview
+      <div
+        role="tabpanel"
+        id={panelId(activeTab)}
+        aria-labelledby={tabId(activeTab)}
+      >
+        {activeTab === "overview" && (
+          <OverviewView
+            session={session}
+            questions={questions}
             transcripts={transcripts}
             speakers={speakers}
-            onRenameSpeaker={speakerActionsLocked ? undefined : handleRenameSpeaker}
-            onCorrectTranscript={speakerActionsLocked ? undefined : handleCorrectTranscript}
+            segments={segments}
+            synthesis={synthesis}
+            tokenUsage={tokenUsage}
+            tokenUsageLoading={tokenUsageLoading}
+            tokenUsageError={tokenUsageError}
+            modelPricing={modelPricing}
+            onNavigate={navigateFromOverview}
+            onAnalyze={
+              transcripts.length > 0 && questions.length === 0
+                ? handleAnalyze
+                : undefined
+            }
+            analyzing={analyzing}
+            analyzeError={analyzeError}
           />
-        </>
-      )}
+        )}
+        {activeTab === "briefing" && (
+          <BriefingView
+            session={session}
+            synthesis={synthesis}
+            signalHistoryCount={signalHistoryCount}
+            refreshing={refreshingBriefing}
+            error={briefingError}
+            onRefresh={async () => {
+              setRefreshingBriefing(true);
+              setBriefingError(null);
+              try {
+                await api.refreshSynthesis(session.id);
+                await onRefreshSynthesis();
+              } catch (err) {
+                setBriefingError(
+                  err instanceof Error
+                    ? err.message
+                    : "Die Auswertung konnte nicht erstellt werden.",
+                );
+              } finally {
+                setRefreshingBriefing(false);
+              }
+            }}
+          />
+        )}
+        {activeTab === "insights" && (
+          <QuestionSummary
+            questions={questions}
+            speakers={speakers}
+            showEnhanced={Boolean(session.speaker_context_enhanced_at)}
+            initialFilter={insightsFilter}
+          />
+        )}
+        {activeTab === "arguments" && (
+          <ArgumentGraphView
+            graph={argumentGraph}
+            loading={argumentGraphLoading}
+            error={argumentGraphError}
+          />
+        )}
+        {activeTab === "chat" && (
+          <MeetingChat key={session.id} session={session} />
+        )}
+        {activeTab === "transcript" && (
+          <>
+            <CallAudioPanel
+              session={session}
+              segments={segments}
+              onRetranscribed={() => onRetranscribed?.()}
+            />
+            <TranscriptReview
+              transcripts={transcripts}
+              speakers={speakers}
+              onRenameSpeaker={
+                speakerActionsLocked ? undefined : handleRenameSpeaker
+              }
+              onCorrectTranscript={
+                speakerActionsLocked ? undefined : handleCorrectTranscript
+              }
+            />
+          </>
+        )}
 
-      {activeTab === "speakers" && (
-        <SpeakerNameMapper
-          key={session.id}
-          session={session}
-          speakers={speakers}
-          onRefresh={onRefreshSpeakers}
-          onRefreshSession={onRefreshSession}
-          onRefreshQuestions={onRefreshQuestions}
-          onRefreshSynthesis={onRefreshSynthesis}
-          onOpenAdminAgents={onOpenAdminAgents}
-          disabled={speakerActionsLocked}
-          disabledReason="Die Nachbereitung muss abgeschlossen sein, bevor Sprecherzuordnungen oder Argumentverbesserungen geändert werden können."
-        />
-      )}
+        {activeTab === "speakers" && (
+          <SpeakerNameMapper
+            key={session.id}
+            session={session}
+            speakers={speakers}
+            onRefresh={onRefreshSpeakers}
+            onRefreshSession={onRefreshSession}
+            onRefreshQuestions={onRefreshQuestions}
+            onRefreshSynthesis={onRefreshSynthesis}
+            onOpenAdminAgents={onOpenAdminAgents}
+            disabled={speakerActionsLocked}
+            disabledReason="Die Nachbereitung muss abgeschlossen sein, bevor Sprecherzuordnungen oder Argumentverbesserungen geändert werden können."
+          />
+        )}
 
-      {activeTab === "documents" && (
-        <div className="rounded-xl bg-surface p-6 shadow-sm">
-          <h2 className="font-display text-lg font-semibold text-brand-dark-gray mb-4">
-            Geteilte Dateien
-          </h2>
-          {documents.length === 0 ? (
-            <p className="text-brand-mid-gray text-sm">Für dieses Gespräch wurden keine Dateien geteilt.</p>
-          ) : (
-            <div className="space-y-6">
-              <div>
-                <h3 className="text-sm font-semibold text-brand-gray uppercase tracking-wide mb-3">
-                  Vor dem Gespräch hochgeladen
-                </h3>
-                <div className="space-y-2">
-                  {userDocuments.map((doc) => (
-                    <div
-                      key={doc.id}
-                      className="flex items-center gap-4 rounded-lg border border-brand-light-gray-1 p-4 hover:bg-brand-light-gray-2/50 transition-colors"
-                    >
-                      <span className="text-2xl" aria-hidden="true">{fileIcon(doc.mime_type)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-brand-dark-gray truncate">
-                          {doc.filename}
-                        </p>
-                        <p className="text-xs text-brand-mid-gray mt-0.5">
-                          {formatFileSize(doc.mime_type)} &middot; Hochgeladen am {new Date(doc.uploaded_at).toLocaleString()}
-                        </p>
-                      </div>
-                      {doc.gemini_file_uri && (
-                        <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                          Von der KI indexiert
+        {activeTab === "documents" && (
+          <div className="rounded-xl bg-surface p-6 shadow-sm">
+            <h2 className="font-display text-lg font-semibold text-brand-dark-gray mb-4">
+              Geteilte Dateien
+            </h2>
+            {documents.length === 0 ? (
+              <p className="text-brand-mid-gray text-sm">
+                Für dieses Gespräch wurden keine Dateien geteilt.
+              </p>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-gray uppercase tracking-wide mb-3">
+                    Vor dem Gespräch hochgeladen
+                  </h3>
+                  <div className="space-y-2">
+                    {userDocuments.map((doc) => (
+                      <div
+                        key={doc.id}
+                        className="flex items-center gap-4 rounded-lg border border-brand-light-gray-1 p-4 hover:bg-brand-light-gray-2/50 transition-colors"
+                      >
+                        <span className="text-2xl" aria-hidden="true">
+                          {fileIcon(doc.mime_type)}
                         </span>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-sm font-semibold text-brand-gray uppercase tracking-wide mb-3">
-                  Vom KI-Assistenten erstellt
-                </h3>
-                <p className="text-brand-mid-gray text-sm italic">
-                  Für diese Debatte wurden keine KI-Artefakte erstellt.
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {activeTab === "directives" && (
-        <div className="rounded-xl bg-surface p-6 shadow-sm">
-          <h2 className="font-display text-lg font-semibold text-brand-dark-gray mb-4">
-            Kontext und Anweisungen
-          </h2>
-          {directives.length === 0 ? (
-            <p className="text-brand-mid-gray text-sm">Für dieses Gespräch wurden keine Anweisungen festgelegt.</p>
-          ) : (
-            <div className="space-y-3">
-              {directives.map((d) => (
-                <div
-                  key={d.id}
-                  className={`rounded-lg border p-4 ${
-                    d.active
-                      ? "border-brand-teal-light/30 bg-brand-teal/5"
-                      : "border-brand-light-gray-1 bg-brand-light-gray-2 opacity-60"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <p className="text-sm text-brand-dark-gray leading-relaxed">{d.text}</p>
-                    <span
-                      className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
-                        d.active
-                          ? "bg-brand-teal/10 text-brand-teal"
-                          : "bg-brand-light-gray-1 text-brand-mid-gray"
-                      }`}
-                    >
-                      {d.active ? "Aktiv" : "Inaktiv"}
-                    </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-brand-dark-gray truncate">
+                            {doc.filename}
+                          </p>
+                          <p className="text-xs text-brand-mid-gray mt-0.5">
+                            {formatFileSize(doc.mime_type)} &middot; Hochgeladen
+                            am {new Date(doc.uploaded_at).toLocaleString()}
+                          </p>
+                        </div>
+                        {doc.gemini_file_uri && (
+                          <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
+                            Von der KI indexiert
+                          </span>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <p className="mt-2 text-xs text-brand-mid-gray">
-                    Hinzugefügt am {new Date(d.created_at).toLocaleString()}
+                </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-brand-gray uppercase tracking-wide mb-3">
+                    Vom KI-Assistenten erstellt
+                  </h3>
+                  <p className="text-brand-mid-gray text-sm italic">
+                    Für diese Debatte wurden keine KI-Artefakte erstellt.
                   </p>
                 </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+              </div>
+            )}
+          </div>
+        )}
 
-      {activeTab === "tokens" && (
-        <TokenUsagePanel
-          tokenUsage={tokenUsage}
-          loading={tokenUsageLoading}
-          error={tokenUsageError}
-          pricing={modelPricing}
-          onRefresh={() => setTokenUsageRequest((value) => value + 1)}
-        />
-      )}
+        {activeTab === "directives" && (
+          <div className="rounded-xl bg-surface p-6 shadow-sm">
+            <h2 className="font-display text-lg font-semibold text-brand-dark-gray mb-4">
+              Kontext und Anweisungen
+            </h2>
+            {directives.length === 0 ? (
+              <p className="text-brand-mid-gray text-sm">
+                Für dieses Gespräch wurden keine Anweisungen festgelegt.
+              </p>
+            ) : (
+              <div className="space-y-3">
+                {directives.map((d) => (
+                  <div
+                    key={d.id}
+                    className={`rounded-lg border p-4 ${
+                      d.active
+                        ? "border-brand-teal-light/30 bg-brand-teal/5"
+                        : "border-brand-light-gray-1 bg-brand-light-gray-2 opacity-60"
+                    }`}
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <p className="text-sm text-brand-dark-gray leading-relaxed">
+                        {d.text}
+                      </p>
+                      <span
+                        className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${
+                          d.active
+                            ? "bg-brand-teal/10 text-brand-teal"
+                            : "bg-brand-light-gray-1 text-brand-mid-gray"
+                        }`}
+                      >
+                        {d.active ? "Aktiv" : "Inaktiv"}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-xs text-brand-mid-gray">
+                      Hinzugefügt am {new Date(d.created_at).toLocaleString()}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "tokens" && (
+          <TokenUsagePanel
+            tokenUsage={tokenUsage}
+            loading={tokenUsageLoading}
+            error={tokenUsageError}
+            pricing={modelPricing}
+            onRefresh={() => setTokenUsageRequest((value) => value + 1)}
+          />
+        )}
       </div>
     </div>
   );

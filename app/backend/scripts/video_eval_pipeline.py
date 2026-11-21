@@ -17,8 +17,8 @@ from app.services.video_eval_pipeline import (
     evaluate_rhetoric_profile,
     research_source_candidates,
     save_artifact,
-    update_style_profile,
     transcribe_with_google_cloud,
+    update_style_profile,
 )
 
 
@@ -31,7 +31,9 @@ def main() -> int:
     parser.add_argument("--language", default="de-DE")
     parser.add_argument("--project-id", default=None)
     parser.add_argument("--speaker-diarization", action="store_true")
-    parser.add_argument("--style-profile", default="", help="Persistent local rhetoric profile JSON")
+    parser.add_argument(
+        "--style-profile", default="", help="Persistent local rhetoric profile JSON"
+    )
     args = parser.parse_args()
     segments = transcribe_with_google_cloud(
         args.audio,

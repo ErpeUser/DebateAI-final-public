@@ -4,8 +4,7 @@ import uuid
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services import llm
-from app.services import briefing_synthesis
+from app.services import briefing_synthesis, llm
 from app.services.briefing_synthesis import (
     BRIEF_ARBITER_SLUG,
     BriefArbiterOutput,
@@ -13,11 +12,11 @@ from app.services.briefing_synthesis import (
     _build_context,
     _format_insights,
     _format_signal_history,
+    _model_json,
     _normalize_synthesis_owners,
     _question_dict,
-    _model_json,
-    agent_config_enabled,
     _response_contract,
+    agent_config_enabled,
 )
 from app.services.llm import parse_json_response
 
@@ -55,8 +54,16 @@ class BriefingSynthesisTests(unittest.TestCase):
 
     def test_agent_config_enabled_requires_present_enabled_agent(self):
         self.assertFalse(agent_config_enabled({}, BRIEF_ARBITER_SLUG))
-        self.assertFalse(agent_config_enabled({BRIEF_ARBITER_SLUG: MagicMock(enabled=False)}, BRIEF_ARBITER_SLUG))
-        self.assertTrue(agent_config_enabled({BRIEF_ARBITER_SLUG: MagicMock(enabled=True)}, BRIEF_ARBITER_SLUG))
+        self.assertFalse(
+            agent_config_enabled(
+                {BRIEF_ARBITER_SLUG: MagicMock(enabled=False)}, BRIEF_ARBITER_SLUG
+            )
+        )
+        self.assertTrue(
+            agent_config_enabled(
+                {BRIEF_ARBITER_SLUG: MagicMock(enabled=True)}, BRIEF_ARBITER_SLUG
+            )
+        )
 
     def test_asked_insight_includes_query_response_and_full_state(self):
         insight_id = uuid.uuid4()
@@ -193,7 +200,9 @@ class BriefingSynthesisTests(unittest.TestCase):
                     "title": f"Outcome {index}",
                     "summary": "summary " + ("x" * 1800),
                     "rationale": "rationale " + ("y" * 1800),
-                    "evidence_refs": [{"quote": "quote " + ("z" * 1200)} for _ in range(4)],
+                    "evidence_refs": [
+                        {"quote": "quote " + ("z" * 1200)} for _ in range(4)
+                    ],
                 }
                 for index in range(12)
             ],
@@ -263,10 +272,12 @@ class _OwnerResult:
 class _OwnerSession:
     def __init__(self, synthesis, speakers):
         self.closed = False
-        self.execute = AsyncMock(side_effect=[
-            _OwnerResult(scalar=synthesis),
-            _OwnerResult(values=speakers),
-        ])
+        self.execute = AsyncMock(
+            side_effect=[
+                _OwnerResult(scalar=synthesis),
+                _OwnerResult(values=speakers),
+            ]
+        )
 
 
 class _OwnerSessionManager:
@@ -346,11 +357,19 @@ class BriefingSynthesisAsyncTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("top_outcomes", retry_prompt)
 
     async def test_generate_json_records_usage_for_its_source(self):
-        usage = SimpleNamespace(prompt_token_count=4, candidates_token_count=1, total_token_count=5)
-        response = SimpleNamespace(parsed=BriefLensOutput(), text="", usage_metadata=usage)
-        client = SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(
-            generate_content=AsyncMock(return_value=response),
-        )))
+        usage = SimpleNamespace(
+            prompt_token_count=4, candidates_token_count=1, total_token_count=5
+        )
+        response = SimpleNamespace(
+            parsed=BriefLensOutput(), text="", usage_metadata=usage
+        )
+        client = SimpleNamespace(
+            aio=SimpleNamespace(
+                models=SimpleNamespace(
+                    generate_content=AsyncMock(return_value=response),
+                )
+            )
+        )
         session_id = uuid.uuid4()
         with (
             patch.object(llm.genai, "Client", return_value=client),
@@ -363,7 +382,9 @@ class BriefingSynthesisAsyncTests(unittest.IsolatedAsyncioTestCase):
                 session_id=session_id,
                 source="brief_meeting_lens",
             )
-        record.assert_awaited_once_with(session_id, "brief_meeting_lens", "gemini-3.5-flash", usage)
+        record.assert_awaited_once_with(
+            session_id, "brief_meeting_lens", "gemini-3.5-flash", usage
+        )
 
     async def test_post_call_context_includes_live_signal_history(self):
         history = [
@@ -435,7 +456,9 @@ class BriefingSynthesisAsyncTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertNotIn("Live strategic signal history", context.insights_text)
 
-    async def test_get_synthesis_materializes_one_speaker_map_then_normalizes_detached_row(self):
+    async def test_get_synthesis_materializes_one_speaker_map_then_normalizes_detached_row(
+        self,
+    ):
         session_id = uuid.uuid4()
         mapped_id = uuid.uuid4()
         fallback_id = uuid.uuid4()
@@ -473,7 +496,9 @@ class BriefingSynthesisAsyncTests(unittest.IsolatedAsyncioTestCase):
             result = await briefing_synthesis.get_session_synthesis(session_id)
 
         self.assertIs(synthesis, result)
-        self.assertEqual(["Maya Chen", "Speaker 2"], [item["owner"] for item in result.top_outcomes])
+        self.assertEqual(
+            ["Maya Chen", "Speaker 2"], [item["owner"] for item in result.top_outcomes]
+        )
         self.assertEqual(2, db.execute.await_count)
 
 

@@ -86,7 +86,11 @@ function EditableCell({
         className={`block w-full cursor-pointer rounded px-1 py-0.5 text-left transition-colors hover:bg-brand-light-gray-2 ${clamp ? "line-clamp-3" : ""} ${!value ? "italic text-brand-mid-gray" : ""}`}
         onClick={() => setEditing(true)}
         title={clamp && value ? value : "Zum Bearbeiten klicken"}
-        aria-label={value ? `Bearbeiten: ${value}` : `Bearbeiten: ${placeholder || "Feld"}`}
+        aria-label={
+          value
+            ? `Bearbeiten: ${value}`
+            : `Bearbeiten: ${placeholder || "Feld"}`
+        }
       >
         {renderValue ? renderValue(value) : value || placeholder || "—"}
       </button>
@@ -146,7 +150,12 @@ function TagChips({
   const [newTag, setNewTag] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const selected = new Set(value.split(",").map((s) => s.trim()).filter(Boolean));
+  const selected = new Set(
+    value
+      .split(",")
+      .map((s) => s.trim())
+      .filter(Boolean),
+  );
   // Include selected tags that aren't in the known list yet so they stay visible
   const allTags = [...new Set([...knownTags, ...selected])].sort();
 
@@ -240,13 +249,29 @@ function AddOfferingRow({
   const [tags, setTags] = useState("");
 
   const reset = () => {
-    setVendor(""); setProductName(""); setCategory(""); setSubcategory("");
-    setDescription(""); setUseCases(""); setNote(""); setTags("");
+    setVendor("");
+    setProductName("");
+    setCategory("");
+    setSubcategory("");
+    setDescription("");
+    setUseCases("");
+    setNote("");
+    setTags("");
   };
 
   const handleAdd = () => {
     if (!vendor || !productName) return;
-    onAdd({ vendor, product_name: productName, category, subcategory, description, use_cases: useCases, note, tags, active: true });
+    onAdd({
+      vendor,
+      product_name: productName,
+      category,
+      subcategory,
+      description,
+      use_cases: useCases,
+      note,
+      tags,
+      active: true,
+    });
     reset();
     setOpen(false);
   };
@@ -257,8 +282,18 @@ function AddOfferingRow({
         onClick={() => setOpen(true)}
         className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-light-gray-1 px-3 py-2 text-sm text-brand-mid-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
       >
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+        <svg
+          className="h-4 w-4"
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+          strokeWidth={2}
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M12 4.5v15m7.5-7.5h-15"
+          />
         </svg>
         Angebot hinzufügen
       </button>
@@ -269,44 +304,118 @@ function AddOfferingRow({
     <div className="rounded-lg border border-brand-teal-light/30 bg-brand-teal-light/5 p-4 space-y-3">
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Anbieter *</label>
-          <input value={vendor} onChange={(e) => setVendor(e.target.value)} placeholder="z. B. Fortinet" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Anbieter *
+          </label>
+          <input
+            value={vendor}
+            onChange={(e) => setVendor(e.target.value)}
+            placeholder="z. B. Fortinet"
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Produkt/Dienstleistung *</label>
-          <input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="z. B. FortiGate NGFW" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Produkt/Dienstleistung *
+          </label>
+          <input
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            placeholder="z. B. FortiGate NGFW"
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Kategorie</label>
-          <input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="z. B. Sicherheit" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Kategorie
+          </label>
+          <input
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            placeholder="z. B. Sicherheit"
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
       </div>
       <div className="grid grid-cols-3 gap-3">
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Unterkategorie</label>
-          <input value={subcategory} onChange={(e) => setSubcategory(e.target.value)} placeholder="z. B. Netzwerksicherheit" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Unterkategorie
+          </label>
+          <input
+            value={subcategory}
+            onChange={(e) => setSubcategory(e.target.value)}
+            placeholder="z. B. Netzwerksicherheit"
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Notiz</label>
-          <input value={note} onChange={(e) => setNote(e.target.value)} placeholder="z. B. mit Einrichtungsdienst verkauft" className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Notiz
+          </label>
+          <input
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="z. B. mit Einrichtungsdienst verkauft"
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
         <div className="flex items-end gap-2">
-          <button type="button" onClick={handleAdd} disabled={!vendor || !productName} className="rounded-lg bg-brand-teal px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:opacity-40">Hinzufügen</button>
-          <button type="button" onClick={() => { reset(); setOpen(false); }} className="rounded-lg border border-brand-light-gray-1 px-4 py-1.5 text-sm text-brand-gray transition-colors hover:bg-brand-light-gray-2">Abbrechen</button>
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={!vendor || !productName}
+            className="rounded-lg bg-brand-teal px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:opacity-40"
+          >
+            Hinzufügen
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              reset();
+              setOpen(false);
+            }}
+            className="rounded-lg border border-brand-light-gray-1 px-4 py-1.5 text-sm text-brand-gray transition-colors hover:bg-brand-light-gray-2"
+          >
+            Abbrechen
+          </button>
         </div>
       </div>
       <div>
-        <label className="block text-xs font-medium text-brand-gray mb-1">Schlagwörter</label>
-        <TagChips value={tags} onChange={setTags} knownTags={knownTags} onCreateTag={onCreateTag} />
+        <label className="block text-xs font-medium text-brand-gray mb-1">
+          Schlagwörter
+        </label>
+        <TagChips
+          value={tags}
+          onChange={setTags}
+          knownTags={knownTags}
+          onCreateTag={onCreateTag}
+        />
       </div>
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Beschreibung</label>
-          <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Funktion und Nutzen ..." rows={2} className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Beschreibung
+          </label>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Funktion und Nutzen ..."
+            rows={2}
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
         <div>
-          <label className="block text-xs font-medium text-brand-gray mb-1">Anwendungsfälle</label>
-          <textarea value={useCases} onChange={(e) => setUseCases(e.target.value)} placeholder="Gelöste Probleme ..." rows={2} className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal" />
+          <label className="block text-xs font-medium text-brand-gray mb-1">
+            Anwendungsfälle
+          </label>
+          <textarea
+            value={useCases}
+            onChange={(e) => setUseCases(e.target.value)}
+            placeholder="Gelöste Probleme ..."
+            rows={2}
+            className="w-full rounded border border-brand-light-gray-1 px-2 py-1.5 text-sm focus:border-brand-teal"
+          />
         </div>
       </div>
     </div>
@@ -352,7 +461,9 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const registerTag = useCallback((tag: string) => {
     setTags((prev) => (prev.includes(tag) ? prev : [...prev, tag].sort()));
@@ -361,7 +472,8 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
   const filtered = useMemo(() => {
     let list = offerings;
     if (filterVendor) list = list.filter((o) => o.vendor === filterVendor);
-    if (filterCategory) list = list.filter((o) => o.category === filterCategory);
+    if (filterCategory)
+      list = list.filter((o) => o.category === filterCategory);
     if (filterTag) list = list.filter((o) => o.tags?.includes(filterTag));
     if (search) {
       const s = search.toLowerCase();
@@ -373,13 +485,17 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
           o.vendor.toLowerCase().includes(s) ||
           (o.subcategory || "").toLowerCase().includes(s) ||
           (o.note || "").toLowerCase().includes(s) ||
-          (o.tags || "").toLowerCase().includes(s)
+          (o.tags || "").toLowerCase().includes(s),
       );
     }
     return list;
   }, [offerings, filterVendor, filterCategory, filterTag, search]);
 
-  const handleUpdate = async (id: string, field: string, value: string | boolean) => {
+  const handleUpdate = async (
+    id: string,
+    field: string,
+    value: string | boolean,
+  ) => {
     try {
       const updated = await api.updateOffering(id, { [field]: value });
       setOfferings((prev) => prev.map((o) => (o.id === id ? updated : o)));
@@ -391,7 +507,8 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
   const handleDelete = async (id: string) => {
     const ok = await confirm({
       title: "Angebot löschen",
-      message: "Dieses Angebot aus dem Katalog löschen? Dies kann nicht rückgängig gemacht werden.",
+      message:
+        "Dieses Angebot aus dem Katalog löschen? Dies kann nicht rückgängig gemacht werden.",
       confirmLabel: "Löschen",
       tone: "danger",
     });
@@ -410,7 +527,10 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       const created = await api.createOffering(data as any);
       setOfferings((prev) => [...prev, created]);
       // Refresh vendor/category lists
-      const [v, c] = await Promise.all([api.listOfferingVendors(), api.listOfferingCategories()]);
+      const [v, c] = await Promise.all([
+        api.listOfferingVendors(),
+        api.listOfferingCategories(),
+      ]);
       setVendors(v);
       setCategories(c);
     } catch (err) {
@@ -425,9 +545,11 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
     setImportResult(null);
     try {
       const result = await api.importOfferings(file);
-      setImportResult(`${result.created} Angebote importiert (${result.skipped} übersprungen)`);
+      setImportResult(
+        `${result.created} Angebote importiert (${result.skipped} übersprungen)`,
+      );
       await load();
-    } catch (err) {
+    } catch {
       setImportResult("Import fehlgeschlagen. Dateiformat prüfen.");
     } finally {
       setImporting(false);
@@ -440,9 +562,13 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       const replace = offerings.length > 0;
       const result = await api.seedOfferings(replace);
       if (result.created) {
-        setImportResult(`${result.created} Beispielangebote ${replace ? "ersetzt" : "angelegt"}`);
+        setImportResult(
+          `${result.created} Beispielangebote ${replace ? "ersetzt" : "angelegt"}`,
+        );
       } else {
-        setImportResult(result.message || "Beispieldaten sind bereits vorhanden");
+        setImportResult(
+          result.message || "Beispieldaten sind bereits vorhanden",
+        );
       }
       await load();
     } catch (err) {
@@ -461,14 +587,27 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
             className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
             title="Zurück zu den Gesprächen"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+              />
             </svg>
           </button>
           <div>
-            <h1 className="font-display text-lg font-bold text-brand-dark-gray">Angebotskatalog</h1>
+            <h1 className="font-display text-lg font-bold text-brand-dark-gray">
+              Angebotskatalog
+            </h1>
             <p className="font-body text-xs text-brand-mid-gray">
-              Produkte und Dienstleistungen verwalten, die der Chancen-Agent zuordnet
+              Produkte und Dienstleistungen verwalten, die der Chancen-Agent
+              zuordnet
             </p>
           </div>
         </div>
@@ -477,13 +616,23 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
             type="button"
             onClick={handleSeed}
             className="rounded-lg border border-brand-teal-light/30 px-3 py-1.5 text-sm font-medium text-brand-teal transition-colors hover:bg-brand-teal-light/10"
-            title={offerings.length > 0
-              ? "Alle Angebote durch den aktuellen Beispielkatalog ersetzen"
-              : "Beispielkatalog mit gängigen Anbieterprodukten und eigenen Diensten laden"}
+            title={
+              offerings.length > 0
+                ? "Alle Angebote durch den aktuellen Beispielkatalog ersetzen"
+                : "Beispielkatalog mit gängigen Anbieterprodukten und eigenen Diensten laden"
+            }
           >
-            {offerings.length > 0 ? "Beispieldaten zurücksetzen" : "Beispieldaten laden"}
+            {offerings.length > 0
+              ? "Beispieldaten zurücksetzen"
+              : "Beispieldaten laden"}
           </button>
-          <input ref={fileRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImport} className="hidden" />
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".csv,.xlsx,.xls"
+            onChange={handleImport}
+            className="hidden"
+          />
           <button
             type="button"
             onClick={() => fileRef.current?.click()}
@@ -501,10 +650,26 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       {/* Import result banner */}
       {importResult && (
         <div className="flex items-center justify-between border-b border-brand-teal-light/20 bg-brand-teal-light/5 px-6 py-2">
-          <span className="font-body text-sm text-brand-teal">{importResult}</span>
-          <button type="button" onClick={() => setImportResult(null)} className="text-brand-mid-gray hover:text-brand-dark-gray">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          <span className="font-body text-sm text-brand-teal">
+            {importResult}
+          </span>
+          <button
+            type="button"
+            onClick={() => setImportResult(null)}
+            className="text-brand-mid-gray hover:text-brand-dark-gray"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -513,36 +678,54 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       {/* Filters */}
       <div className="flex items-center gap-3 border-b border-brand-light-gray-1 bg-surface px-6 py-2">
         <div className="flex items-center gap-1.5">
-          <span className="font-body text-xs font-medium text-brand-mid-gray">Anbieter:</span>
+          <span className="font-body text-xs font-medium text-brand-mid-gray">
+            Anbieter:
+          </span>
           <select
             value={filterVendor}
             onChange={(e) => setFilterVendor(e.target.value)}
             className="rounded border border-brand-light-gray-1 bg-surface px-2 py-1 text-xs text-brand-dark-gray focus:border-brand-teal"
           >
             <option value="">Alle</option>
-            {vendors.map((v) => <option key={v} value={v}>{v}</option>)}
+            {vendors.map((v) => (
+              <option key={v} value={v}>
+                {v}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="font-body text-xs font-medium text-brand-mid-gray">Kategorie:</span>
+          <span className="font-body text-xs font-medium text-brand-mid-gray">
+            Kategorie:
+          </span>
           <select
             value={filterCategory}
             onChange={(e) => setFilterCategory(e.target.value)}
             className="rounded border border-brand-light-gray-1 bg-surface px-2 py-1 text-xs text-brand-dark-gray focus:border-brand-teal"
           >
             <option value="">Alle</option>
-            {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="font-body text-xs font-medium text-brand-mid-gray">Schlagwort:</span>
+          <span className="font-body text-xs font-medium text-brand-mid-gray">
+            Schlagwort:
+          </span>
           <select
             value={filterTag}
             onChange={(e) => setFilterTag(e.target.value)}
             className="rounded border border-brand-light-gray-1 bg-surface px-2 py-1 text-xs text-brand-dark-gray focus:border-brand-teal"
           >
             <option value="">Alle</option>
-            {tags.map((t) => <option key={t} value={t}>{t}</option>)}
+            {tags.map((t) => (
+              <option key={t} value={t}>
+                {t}
+              </option>
+            ))}
           </select>
         </div>
         <div className="flex-1">
@@ -556,7 +739,12 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
         {(filterVendor || filterCategory || filterTag || search) && (
           <button
             type="button"
-            onClick={() => { setFilterVendor(""); setFilterCategory(""); setFilterTag(""); setSearch(""); }}
+            onClick={() => {
+              setFilterVendor("");
+              setFilterCategory("");
+              setFilterTag("");
+              setSearch("");
+            }}
             className="text-xs text-brand-mid-gray hover:text-brand-teal"
           >
             Filter leeren
@@ -568,44 +756,79 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       <div className="flex-1 overflow-auto p-4">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <span className="font-body text-sm text-brand-mid-gray">Angebote werden geladen ...</span>
+            <span className="font-body text-sm text-brand-mid-gray">
+              Angebote werden geladen ...
+            </span>
           </div>
         ) : offerings.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center">
-            <p className="font-body text-sm text-brand-mid-gray mb-3">Noch keine Angebote im Katalog.</p>
+            <p className="font-body text-sm text-brand-mid-gray mb-3">
+              Noch keine Angebote im Katalog.
+            </p>
             <p className="font-body text-xs text-brand-mid-gray mb-4">
-              „Beispieldaten laden“ füllt den Katalog mit Beispielen;
-              alternativ eigene Daten per CSV/Excel importieren.
+              „Beispieldaten laden“ füllt den Katalog mit Beispielen; alternativ
+              eigene Daten per CSV/Excel importieren.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
-            <AddOfferingRow onAdd={handleAdd} knownTags={tags} onCreateTag={registerTag} />
+            <AddOfferingRow
+              onAdd={handleAdd}
+              knownTags={tags}
+              onCreateTag={registerTag}
+            />
 
             <div className="overflow-x-auto rounded-lg border border-brand-light-gray-1 bg-surface">
               <table className="w-full min-w-[640px] text-left text-xs">
                 <thead>
                   <tr className="border-b border-brand-light-gray-1 bg-brand-light-gray-2/50">
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Anbieter</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Produkt/Dienstleistung</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Kategorie</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Unterkategorie</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Beschreibung</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Anwendungsfälle</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Notiz</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">Schlagwörter</th>
-                    <th className="px-3 py-2 font-display font-semibold text-brand-gray w-16">Aktiv</th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Anbieter
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Produkt/Dienstleistung
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Kategorie
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Unterkategorie
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Beschreibung
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Anwendungsfälle
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Notiz
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                      Schlagwörter
+                    </th>
+                    <th className="px-3 py-2 font-display font-semibold text-brand-gray w-16">
+                      Aktiv
+                    </th>
                     <th className="px-3 py-2 w-10"></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filtered.map((o) => (
-                    <tr key={o.id} className="border-b border-brand-light-gray-1 last:border-0 hover:bg-brand-light-gray-2/30 transition-colors">
+                    <tr
+                      key={o.id}
+                      className="border-b border-brand-light-gray-1 last:border-0 hover:bg-brand-light-gray-2/30 transition-colors"
+                    >
                       <td className="px-3 py-2 align-top">
-                        <EditableCell value={o.vendor} onSave={(v) => handleUpdate(o.id, "vendor", v)} />
+                        <EditableCell
+                          value={o.vendor}
+                          onSave={(v) => handleUpdate(o.id, "vendor", v)}
+                        />
                       </td>
                       <td className="px-3 py-2 align-top font-medium text-brand-dark-gray">
-                        <EditableCell value={o.product_name} onSave={(v) => handleUpdate(o.id, "product_name", v)} />
+                        <EditableCell
+                          value={o.product_name}
+                          onSave={(v) => handleUpdate(o.id, "product_name", v)}
+                        />
                       </td>
                       <td className="px-3 py-2 align-top">
                         <EditableCell
@@ -616,7 +839,10 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                             v ? (
                               <span
                                 className="inline-flex w-fit items-center rounded-full px-1.5 py-0.5 text-[10px] font-medium"
-                                style={{ backgroundColor: `${categoryColor(v)}15`, color: categoryColor(v) }}
+                                style={{
+                                  backgroundColor: `${categoryColor(v)}15`,
+                                  color: categoryColor(v),
+                                }}
                               >
                                 {v}
                               </span>
@@ -627,16 +853,38 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                         />
                       </td>
                       <td className="px-3 py-2 align-top">
-                        <EditableCell value={o.subcategory || ""} onSave={(v) => handleUpdate(o.id, "subcategory", v)} placeholder="Unterkategorie hinzufügen ..." />
+                        <EditableCell
+                          value={o.subcategory || ""}
+                          onSave={(v) => handleUpdate(o.id, "subcategory", v)}
+                          placeholder="Unterkategorie hinzufügen ..."
+                        />
                       </td>
                       <td className="px-3 py-2 align-top max-w-[200px]">
-                        <EditableCell value={o.description} onSave={(v) => handleUpdate(o.id, "description", v)} multiline clamp placeholder="Beschreibung hinzufügen ..." />
+                        <EditableCell
+                          value={o.description}
+                          onSave={(v) => handleUpdate(o.id, "description", v)}
+                          multiline
+                          clamp
+                          placeholder="Beschreibung hinzufügen ..."
+                        />
                       </td>
                       <td className="px-3 py-2 align-top max-w-[180px]">
-                        <EditableCell value={o.use_cases} onSave={(v) => handleUpdate(o.id, "use_cases", v)} multiline clamp placeholder="Anwendungsfälle hinzufügen ..." />
+                        <EditableCell
+                          value={o.use_cases}
+                          onSave={(v) => handleUpdate(o.id, "use_cases", v)}
+                          multiline
+                          clamp
+                          placeholder="Anwendungsfälle hinzufügen ..."
+                        />
                       </td>
                       <td className="px-3 py-2 align-top max-w-[160px]">
-                        <EditableCell value={o.note} onSave={(v) => handleUpdate(o.id, "note", v)} multiline clamp placeholder="Notiz hinzufügen ..." />
+                        <EditableCell
+                          value={o.note}
+                          onSave={(v) => handleUpdate(o.id, "note", v)}
+                          multiline
+                          clamp
+                          placeholder="Notiz hinzufügen ..."
+                        />
                       </td>
                       <td className="px-3 py-2 align-top">
                         <TagChips
@@ -649,11 +897,19 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                       <td className="px-3 py-2 align-top text-center">
                         <button
                           type="button"
-                          onClick={() => handleUpdate(o.id, "active", !o.active)}
+                          onClick={() =>
+                            handleUpdate(o.id, "active", !o.active)
+                          }
                           className={`h-5 w-9 rounded-full transition-colors ${o.active ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
-                          title={o.active ? "Aktiv – zum Deaktivieren klicken" : "Inaktiv – zum Aktivieren klicken"}
+                          title={
+                            o.active
+                              ? "Aktiv – zum Deaktivieren klicken"
+                              : "Inaktiv – zum Aktivieren klicken"
+                          }
                         >
-                          <span className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${o.active ? "translate-x-4" : "translate-x-0.5"}`} />
+                          <span
+                            className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${o.active ? "translate-x-4" : "translate-x-0.5"}`}
+                          />
                         </button>
                       </td>
                       <td className="px-3 py-2 align-top">
@@ -663,8 +919,18 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
                           className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-500"
                           title="Angebot löschen"
                         >
-                          <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                          <svg
+                            className="h-3.5 w-3.5"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                            />
                           </svg>
                         </button>
                       </td>
@@ -676,7 +942,9 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
 
             {filtered.length === 0 && offerings.length > 0 && (
               <div className="py-8 text-center">
-                <p className="font-body text-sm text-brand-mid-gray">Keine Angebote entsprechen den Filtern.</p>
+                <p className="font-body text-sm text-brand-mid-gray">
+                  Keine Angebote entsprechen den Filtern.
+                </p>
               </div>
             )}
           </div>
@@ -686,7 +954,9 @@ export default function OfferingsManager({ onBack }: OfferingsManagerProps) {
       {/* Import format hint */}
       <div className="border-t border-brand-light-gray-1 bg-surface px-6 py-2">
         <p className="font-body text-[10px] text-brand-mid-gray">
-          CSV/Excel import columns: vendor, product_name, category, subcategory, description, use_cases, note, tags. Legacy column names (discipline, delivery_model, practice) are accepted as aliases.
+          CSV/Excel import columns: vendor, product_name, category, subcategory,
+          description, use_cases, note, tags. Legacy column names (discipline,
+          delivery_model, practice) are accepted as aliases.
         </p>
       </div>
     </div>

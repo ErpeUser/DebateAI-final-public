@@ -35,7 +35,9 @@ class RedactTextTests(unittest.TestCase):
         line = "Using response_format 'json_schema' for endpoint:lm-studio:qwen"
         self.assertEqual(line, redaction.redact_text(line))
         # The header shapes still cover a short key where it is a credential.
-        self.assertNotIn("lm-studio", redaction.redact_text("Authorization: Bearer lm-studio"))
+        self.assertNotIn(
+            "lm-studio", redaction.redact_text("Authorization: Bearer lm-studio")
+        )
 
     def test_endpoint_slugs_are_exempt_even_when_long(self):
         slug = "my-gpu-box-endpoint-name"
@@ -50,7 +52,11 @@ class RedactTextTests(unittest.TestCase):
         self.assertEqual(0, redaction.registered_secret_count())
 
     def test_bearer_tokens_are_scrubbed_regardless_of_length(self):
-        for text in ("Authorization: Bearer short", "Bearer abc", "authorization=Bearer x1"):
+        for text in (
+            "Authorization: Bearer short",
+            "Bearer abc",
+            "authorization=Bearer x1",
+        ):
             with self.subTest(text=text):
                 result = redaction.redact_text(text)
                 self.assertNotIn("short", result)
@@ -123,7 +129,9 @@ class LogRedactionTests(unittest.TestCase):
         redaction.clear_registered_secrets()
 
     def test_formatted_message_and_args_are_scrubbed(self):
-        self.logger.warning("provider error for %s with %s", "openai", f"Bearer {OPAQUE_KEY}")
+        self.logger.warning(
+            "provider error for %s with %s", "openai", f"Bearer {OPAQUE_KEY}"
+        )
         self.logger.info(f"connect failed: key={GOOGLE_KEY}")
         output = self.stream.getvalue()
         self.assertNotIn(OPAQUE_KEY, output)
@@ -132,7 +140,9 @@ class LogRedactionTests(unittest.TestCase):
 
     def test_exception_text_and_traceback_are_scrubbed(self):
         try:
-            raise RuntimeError(f"Client error for url 'https://x.example/v1/models?key={OPAQUE_KEY}'")
+            raise RuntimeError(
+                f"Client error for url 'https://x.example/v1/models?key={OPAQUE_KEY}'"
+            )
         except RuntimeError:
             self.logger.exception("call failed")
         output = self.stream.getvalue()
@@ -158,7 +168,9 @@ class FilterTests(unittest.TestCase):
     def test_filter_scrubs_records_built_by_the_plain_factory(self):
         redaction.register_secret(OPAQUE_KEY)
         self.addCleanup(redaction.clear_registered_secrets)
-        record = logging.LogRecord("x", logging.INFO, __file__, 1, "key %s", (OPAQUE_KEY,), None)
+        record = logging.LogRecord(
+            "x", logging.INFO, __file__, 1, "key %s", (OPAQUE_KEY,), None
+        )
         try:
             raise ValueError(OPAQUE_KEY)
         except ValueError:

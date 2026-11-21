@@ -18,7 +18,9 @@ function count(details: Record<string, unknown>, key: string): number {
   return Number.isFinite(value) && value > 0 ? value : 0;
 }
 
-export function formatPostProcessingSummary(details?: Record<string, unknown>): string | null {
+export function formatPostProcessingSummary(
+  details?: Record<string, unknown>,
+): string | null {
   if (!details) return null;
   const newInsights = count(details, "insights_saved");
   const updates = count(details, "synthesizer_ops");
@@ -30,9 +32,15 @@ export function formatPostProcessingSummary(details?: Record<string, unknown>): 
       : null;
 
   const parts = [
-    newInsights ? `${newInsights} ${newInsights === 1 ? "neues Argument" : "neue Argumente"}` : null,
-    updates ? `${updates} ${updates === 1 ? "Argument aktualisiert" : "Argumente aktualisiert"}` : null,
-    matches ? `${matches} ${matches === 1 ? "Materialtreffer" : "Materialtreffer"}` : null,
+    newInsights
+      ? `${newInsights} ${newInsights === 1 ? "neues Argument" : "neue Argumente"}`
+      : null,
+    updates
+      ? `${updates} ${updates === 1 ? "Argument aktualisiert" : "Argumente aktualisiert"}`
+      : null,
+    matches
+      ? `${matches} ${matches === 1 ? "Materialtreffer" : "Materialtreffer"}`
+      : null,
   ].filter(Boolean);
 
   if (parts.length === 0 && total === null) return null;
@@ -58,7 +66,9 @@ export function parseSavedDrainSummary(
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed)
+      ? parsed
+      : null;
   } catch {
     return null;
   }

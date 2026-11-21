@@ -1,6 +1,6 @@
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import test from "node:test";
 
 import {
   createDialogController,
@@ -10,37 +10,39 @@ import {
   jsonRequest,
   replaceByEmail,
   timeNode,
-} from '../site/admin/admin-core.js';
-import * as authorization from '../site/admin/authorization.js';
-import * as earlyAccess from '../site/admin/early-access.js';
-import * as users from '../site/admin/users.js';
-import { createDocument, jsonResponse, textOf } from './admin-test-helpers.js';
+} from "../site/admin/admin-core.js";
+import * as authorization from "../site/admin/authorization.js";
+import * as earlyAccess from "../site/admin/early-access.js";
+import * as users from "../site/admin/users.js";
+import { createDocument, jsonResponse, textOf } from "./admin-test-helpers.js";
 
-const read = (path) => readFileSync(new URL(path, import.meta.url), 'utf8');
-const html = read('../site/admin/index.html');
-const sharedCss = read('../site/style.css');
-const adminCss = read('../site/admin/admin.css');
+const read = (path) => readFileSync(new URL(path, import.meta.url), "utf8");
+const html = read("../site/admin/index.html");
+const sharedCss = read("../site/style.css");
+const adminCss = read("../site/admin/admin.css");
 const css = `${sharedCss}\n${adminCss}`;
-const bootstrapSource = read('../site/admin/admin.js');
-const coreSource = read('../site/admin/admin-core.js');
+const bootstrapSource = read("../site/admin/admin.js");
+const coreSource = read("../site/admin/admin-core.js");
 const routeSources = [
-  read('../site/admin/early-access.js'),
-  read('../site/admin/users.js'),
-  read('../site/admin/authorization.js'),
+  read("../site/admin/early-access.js"),
+  read("../site/admin/users.js"),
+  read("../site/admin/authorization.js"),
 ];
-const config = JSON.parse(read('./wrangler.jsonc'));
+const config = JSON.parse(
+  read("./wrangler.jsonc").replace(/,\s*([}\]])/g, "$1"),
+);
 
 function routeHarness() {
   const document = createDocument();
-  const content = document.createElement('section');
-  const count = document.createElement('span');
-  const refreshed = document.createElement('time');
-  const status = document.createElement('p');
+  const content = document.createElement("section");
+  const count = document.createElement("span");
+  const refreshed = document.createElement("time");
+  const status = document.createElement("p");
   const shell = { content, count, refreshed, status };
   return { document, shell };
 }
 
-test('admin shell exposes protected native route navigation', () => {
+test("admin shell exposes protected native route navigation", () => {
   assert.match(html, /<html lang="en">/);
   assert.match(html, /class="skip-link"/);
   assert.equal((html.match(/<nav\b/g) || []).length, 1);
@@ -53,111 +55,180 @@ test('admin shell exposes protected native route navigation', () => {
   assert.match(html, /id="result-count"/);
   assert.match(html, /id="last-refreshed"/);
   assert.match(html, /id="refresh"/);
-  assert.match(html, /id="admin-status"[^>]+role="status"[^>]+aria-live="polite"/);
+  assert.match(
+    html,
+    /id="admin-status"[^>]+role="status"[^>]+aria-live="polite"/,
+  );
 });
 
-test('admin bootstrap is a small pathname module importer', () => {
-  assert.match(bootstrapSource, /const routes = new Map\(\[\s*\['\/', '\.\/users\.js'\],\s*\['\/users', '\.\/users\.js'\],\s*\['\/early-access', '\.\/early-access\.js'\],\s*\['\/authorization', '\.\/authorization\.js'\],\s*\]\);/);
+test("admin bootstrap is a small pathname module importer", () => {
+  assert.match(
+    bootstrapSource,
+    /const routes = new Map\(\[\s*\['\/', '\.\/users\.js'\],\s*\['\/users', '\.\/users\.js'\],\s*\['\/early-access', '\.\/early-access\.js'\],\s*\['\/authorization', '\.\/authorization\.js'\],\s*\]\);/,
+  );
   assert.match(bootstrapSource, /location\.pathname/);
   assert.match(bootstrapSource, /import\(modulePath\)/);
   assert.doesNotMatch(bootstrapSource, /fetch\(['"]\/api\/admin/);
 });
 
-test('admin core uses safe ephemeral browser APIs', () => {
-  const assets = [coreSource, html, ...routeSources].join('\n');
+test("admin core uses safe ephemeral browser APIs", () => {
+  const assets = [coreSource, html, ...routeSources].join("\n");
   assert.doesNotMatch(assets, /innerHTML|outerHTML|insertAdjacentHTML/);
-  assert.doesNotMatch(assets, /localStorage|sessionStorage|document\.cookie|console\./);
+  assert.doesNotMatch(
+    assets,
+    /localStorage|sessionStorage|document\.cookie|console\./,
+  );
   assert.match(coreSource, /navigator\.clipboard\.writeText/);
   assert.match(coreSource, /addEventListener\('pagehide'/);
-  assert.doesNotMatch(coreSource, /Approve|Reject|Reset password|Sign out|Revoke|Save grants/);
+  assert.doesNotMatch(
+    coreSource,
+    /Approve|Reject|Reset password|Sign out|Revoke|Save grants/,
+  );
 });
 
-test('admin core builds safe nodes and bounded JSON requests', async () => {
+test("admin core builds safe nodes and bounded JSON requests", async () => {
   const document = createDocument();
-  const node = element('p', 'state', '<strong>plain</strong>', document);
-  assert.equal(node.name, 'p');
-  assert.equal(node.className, 'state');
-  assert.equal(node.textContent, '<strong>plain</strong>');
+  const node = element("p", "state", "<strong>plain</strong>", document);
+  assert.equal(node.name, "p");
+  assert.equal(node.className, "state");
+  assert.equal(node.textContent, "<strong>plain</strong>");
 
   const calls = [];
-  const value = await jsonRequest('/api/admin/users', undefined, undefined, async (path, init) => {
-    calls.push({ path, init });
-    return jsonResponse({ items: [] });
-  });
-  assert.deepEqual(value, { items: [] });
-  assert.deepEqual(calls, [{
-    path: '/api/admin/users',
-    init: { method: 'GET', headers: { accept: 'application/json' }, cache: 'no-store' },
-  }]);
-  assert.deepEqual(
-    replaceByEmail([{ email: 'a@example.com' }], { email: 'a@example.com', state: 'active' }),
-    [{ email: 'a@example.com', state: 'active' }],
+  const value = await jsonRequest(
+    "/api/admin/users",
+    undefined,
+    undefined,
+    async (path, init) => {
+      calls.push({ path, init });
+      return jsonResponse({ items: [] });
+    },
   );
-  assert.deepEqual(replaceByEmail([], { email: 'a@example.com' }), []);
-  assert.equal(timeNode(null, 'Not yet', document).textContent, 'Not yet');
+  assert.deepEqual(value, { items: [] });
+  assert.deepEqual(calls, [
+    {
+      path: "/api/admin/users",
+      init: {
+        method: "GET",
+        headers: { accept: "application/json" },
+        cache: "no-store",
+      },
+    },
+  ]);
+  assert.deepEqual(
+    replaceByEmail([{ email: "a@example.com" }], {
+      email: "a@example.com",
+      state: "active",
+    }),
+    [{ email: "a@example.com", state: "active" }],
+  );
+  assert.deepEqual(replaceByEmail([], { email: "a@example.com" }), []);
+  assert.equal(timeNode(null, "Not yet", document).textContent, "Not yet");
 });
 
-test('shared dialog and list-detail controllers clear plaintext and restore focus', async () => {
+test("shared dialog and list-detail controllers clear plaintext and restore focus", async () => {
   const ids = [
-    'confirm-dialog', 'confirm-dialog-title', 'confirm-dialog-description',
-    'confirm-cancel', 'confirm-submit', 'credential-dialog', 'credential-text',
-    'credential-status', 'credential-copy', 'credential-save', 'credential-close',
+    "confirm-dialog",
+    "confirm-dialog-title",
+    "confirm-dialog-description",
+    "confirm-cancel",
+    "confirm-submit",
+    "credential-dialog",
+    "credential-text",
+    "credential-status",
+    "credential-copy",
+    "credential-save",
+    "credential-close",
   ];
   const document = createDocument(ids);
   const pageListeners = new Map();
-  const trigger = document.createElement('button');
+  const trigger = document.createElement("button");
   const clipboard = [];
   const dialogs = createDialogController({
     document,
-    navigator: { clipboard: { async writeText(value) { clipboard.push(value); } } },
-    addEventListener(type, listener) { pageListeners.set(type, listener); },
-    URL: { createObjectURL: () => 'blob:value', revokeObjectURL() {} },
+    navigator: {
+      clipboard: {
+        async writeText(value) {
+          clipboard.push(value);
+        },
+      },
+    },
+    addEventListener(type, listener) {
+      pageListeners.set(type, listener);
+    },
+    URL: { createObjectURL: () => "blob:value", revokeObjectURL() {} },
     Blob,
   });
-  dialogs.showCredential({ text: 'temporary secret', email: 'person@example.com', returnFocus: trigger });
-  assert.equal(document.getElementById('credential-text').value, 'temporary secret');
-  await document.getElementById('credential-copy').click();
-  assert.deepEqual(clipboard, ['temporary secret']);
-  await document.getElementById('credential-dialog').close();
-  assert.equal(document.getElementById('credential-text').value, '');
+  dialogs.showCredential({
+    text: "temporary secret",
+    email: "person@example.com",
+    returnFocus: trigger,
+  });
+  assert.equal(
+    document.getElementById("credential-text").value,
+    "temporary secret",
+  );
+  await document.getElementById("credential-copy").click();
+  assert.deepEqual(clipboard, ["temporary secret"]);
+  await document.getElementById("credential-dialog").close();
+  assert.equal(document.getElementById("credential-text").value, "");
   assert.equal(document.activeElement, trigger);
-  dialogs.showCredential({ text: 'another secret', email: 'person@example.com' });
-  pageListeners.get('pagehide')();
-  assert.equal(document.getElementById('credential-text').value, '');
+  dialogs.showCredential({
+    text: "another secret",
+    email: "person@example.com",
+  });
+  pageListeners.get("pagehide")();
+  assert.equal(document.getElementById("credential-text").value, "");
 
-  const root = document.createElement('section');
-  const list = document.createElement('div');
-  const detail = document.createElement('div');
-  const heading = document.createElement('h2');
-  const back = document.createElement('button');
-  const row = document.createElement('button');
-  const controller = createListDetailController({ root, list, detail, heading, back });
+  const root = document.createElement("section");
+  const list = document.createElement("div");
+  const detail = document.createElement("div");
+  const heading = document.createElement("h2");
+  const back = document.createElement("button");
+  const row = document.createElement("button");
+  const controller = createListDetailController({
+    root,
+    list,
+    detail,
+    heading,
+    back,
+  });
   controller.showDetail(row);
-  assert.equal(root.dataset.view, 'detail');
+  assert.equal(root.dataset.view, "detail");
   assert.equal(document.activeElement, heading);
   await back.click();
-  assert.equal(root.dataset.view, 'list');
+  assert.equal(root.dataset.view, "list");
   assert.equal(document.activeElement, row);
 });
 
-test('shared directory frame preserves accessible optional search', () => {
+test("shared directory frame preserves accessible optional search", () => {
   const { document, shell } = routeHarness();
   const frame = createDirectoryFrame({
-    document, shell, title: 'Directory', caption: 'Records',
-    headings: ['Email', 'State'], backLabel: 'Back',
-    emptyHeading: 'Select', emptyDescription: 'Choose one.',
-    searchId: 'search-test', searchValue: 'query',
+    document,
+    shell,
+    title: "Directory",
+    caption: "Records",
+    headings: ["Email", "State"],
+    backLabel: "Back",
+    emptyHeading: "Select",
+    emptyDescription: "Choose one.",
+    searchId: "search-test",
+    searchValue: "query",
   });
-  assert.equal(frame.search.type, 'search');
-  assert.equal(frame.search.value, 'query');
-  assert.equal(frame.search.getAttribute('aria-label'), 'Search by email');
-  assert.equal(frame.searchStatus.getAttribute('aria-live'), 'polite');
+  assert.equal(frame.search.type, "search");
+  assert.equal(frame.search.value, "query");
+  assert.equal(frame.search.getAttribute("aria-label"), "Search by email");
+  assert.equal(frame.searchStatus.getAttribute("aria-live"), "polite");
   frame.mount();
   assert.equal(shell.content.children.length, 1);
   const plain = createDirectoryFrame({
-    document, shell, title: 'Requests', caption: 'Pending',
-    headings: ['Email'], backLabel: 'Back',
-    emptyHeading: 'Select', emptyDescription: 'Choose one.',
+    document,
+    shell,
+    title: "Requests",
+    caption: "Pending",
+    headings: ["Email"],
+    backLabel: "Back",
+    emptyHeading: "Select",
+    emptyDescription: "Choose one.",
   });
   assert.equal(plain.search, null);
   plain.mount();
@@ -165,38 +236,66 @@ test('shared directory frame preserves accessible optional search', () => {
 });
 
 const routeCases = [
-  ['Early access', earlyAccess, '/api/admin/interests', {
-    email: 'request@example.com', status: 'interested', source: 'homepage',
-    consent_version: '2026-07-11', consent_at: '2026-07-11 12:00:00',
-    created_at: '2026-07-11 12:00:00', release_decision: 'pending',
-  }],
-  ['Users', users, '/api/admin/users', {
-    email: 'person@example.com', state: 'active', source: 'homepage',
-    requested_at: '2026-07-11 12:00:00', approved_at: '2026-07-11 12:05:00',
-    must_change_password: true, password_expires_at: '2026-07-14 12:05:00',
-    password_changed_at: null, revoked_at: null, active_session_count: 1,
-    latest_session_expires_at: '2026-07-11 13:00:00',
-  }],
-  ['Authorization', authorization, '/api/admin/authorization', {
-    email: 'person@example.com', account_state: 'active', include_latest: true,
-    versions: ['v0.2.1'], updated_at: '2026-07-11 12:10:00',
-  }],
+  [
+    "Early access",
+    earlyAccess,
+    "/api/admin/interests",
+    {
+      email: "request@example.com",
+      status: "interested",
+      source: "homepage",
+      consent_version: "2026-07-11",
+      consent_at: "2026-07-11 12:00:00",
+      created_at: "2026-07-11 12:00:00",
+      release_decision: "pending",
+    },
+  ],
+  [
+    "Users",
+    users,
+    "/api/admin/users",
+    {
+      email: "person@example.com",
+      state: "active",
+      source: "homepage",
+      requested_at: "2026-07-11 12:00:00",
+      approved_at: "2026-07-11 12:05:00",
+      must_change_password: true,
+      password_expires_at: "2026-07-14 12:05:00",
+      password_changed_at: null,
+      revoked_at: null,
+      active_session_count: 1,
+      latest_session_expires_at: "2026-07-11 13:00:00",
+    },
+  ],
+  [
+    "Authorization",
+    authorization,
+    "/api/admin/authorization",
+    {
+      email: "person@example.com",
+      account_state: "active",
+      include_latest: true,
+      versions: ["v0.2.1"],
+      updated_at: "2026-07-11 12:10:00",
+    },
+  ],
 ];
 
 const releaseCatalog = {
-  items: [{ version: 'v0.2.1', published_at: '2026-07-11 12:00:00' }],
-  latest_version: 'v0.2.1',
+  items: [{ version: "v0.2.1", published_at: "2026-07-11 12:00:00" }],
+  latest_version: "v0.2.1",
   available: true,
 };
 
 function routeEndpoints(endpoint) {
-  return endpoint === '/api/admin/authorization'
-    ? [endpoint, '/api/admin/releases']
+  return endpoint === "/api/admin/authorization"
+    ? [endpoint, "/api/admin/releases"]
     : [endpoint];
 }
 
 function routeRead(path, item) {
-  return path === '/api/admin/releases' ? releaseCatalog : { items: [item] };
+  return path === "/api/admin/releases" ? releaseCatalog : { items: [item] };
 }
 
 for (const [name, module, endpoint, item] of routeCases) {
@@ -213,13 +312,19 @@ for (const [name, module, endpoint, item] of routeCases) {
         return jsonResponse(routeRead(path, item));
       },
     });
-    assert.equal(typeof mounted.refresh, 'function');
+    assert.equal(typeof mounted.refresh, "function");
     await mounted.refresh();
-    assert.deepEqual(calls.map(({ path }) => path), routeEndpoints(endpoint));
-    assert.match(textOf(shell.content), new RegExp(item.email.replace('.', '\\.')));
+    assert.deepEqual(
+      calls.map(({ path }) => path),
+      routeEndpoints(endpoint),
+    );
+    assert.match(
+      textOf(shell.content),
+      new RegExp(item.email.replace(".", "\\.")),
+    );
     assert.match(textOf(shell.content), /Select/i);
-    assert.equal(shell.count.textContent, '1');
-    assert.equal(shell.content.getAttribute('aria-busy'), null);
+    assert.equal(shell.count.textContent, "1");
+    assert.equal(shell.content.getAttribute("aria-busy"), null);
   });
 
   test(`${name} route renders empty and error states`, async () => {
@@ -229,9 +334,10 @@ for (const [name, module, endpoint, item] of routeCases) {
       document,
       shell,
       dialogs: {},
-      fetcher: async () => fail
-        ? jsonResponse({ message: 'private detail' }, { ok: false })
-        : jsonResponse({ items: [] }),
+      fetcher: async () =>
+        fail
+          ? jsonResponse({ message: "private detail" }, { ok: false })
+          : jsonResponse({ items: [] }),
     });
     await mounted.refresh();
     assert.match(textOf(shell.content), /No /i);
@@ -242,7 +348,7 @@ for (const [name, module, endpoint, item] of routeCases) {
   });
 }
 
-test('read-only routes select a row, render detail, and restore focus on Back', async () => {
+test("read-only routes select a row, render detail, and restore focus on Back", async () => {
   for (const [, module, endpoint, item] of routeCases) {
     const { document, shell } = routeHarness();
     const mounted = module.mount({
@@ -255,20 +361,26 @@ test('read-only routes select a row, render detail, and restore focus on Back', 
       },
     });
     await mounted.refresh();
-    const row = shell.content.querySelectorAll('.row-select')[0];
+    const row = shell.content.querySelectorAll(".row-select")[0];
     await row.click();
-    assert.equal(shell.content.querySelectorAll('.list-detail')[0].dataset.view, 'detail');
-    assert.equal(document.activeElement.name, 'h2');
+    assert.equal(
+      shell.content.querySelectorAll(".list-detail")[0].dataset.view,
+      "detail",
+    );
+    assert.equal(document.activeElement.name, "h2");
     assert.equal(document.activeElement.textContent, item.email);
     assert.match(textOf(shell.content), /Identity|Consent|Latest releases/);
-    const back = shell.content.querySelectorAll('.back-button')[0];
+    const back = shell.content.querySelectorAll(".back-button")[0];
     await back.click();
-    assert.equal(shell.content.querySelectorAll('.list-detail')[0].dataset.view, 'list');
+    assert.equal(
+      shell.content.querySelectorAll(".list-detail")[0].dataset.view,
+      "list",
+    );
     assert.equal(document.activeElement, row);
   }
 });
 
-test('read-only routes expose loading while their owned GET is pending', async () => {
+test("read-only routes expose loading while their owned GET is pending", async () => {
   for (const [, module, endpoint] of routeCases) {
     const { document, shell } = routeHarness();
     const pendingReads = [];
@@ -279,24 +391,31 @@ test('read-only routes expose loading while their owned GET is pending', async (
       dialogs: {},
       fetcher(path, init) {
         calls.push({ path, init });
-        return new Promise((resolve) => { pendingReads.push({ path, resolve }); });
+        return new Promise((resolve) => {
+          pendingReads.push({ path, resolve });
+        });
       },
     });
     const pending = mounted.refresh();
-    assert.equal(shell.content.getAttribute('aria-busy'), 'true');
+    assert.equal(shell.content.getAttribute("aria-busy"), "true");
     assert.match(textOf(shell.content), /Loading/);
-    assert.deepEqual(calls.map(({ path }) => path), routeEndpoints(endpoint));
+    assert.deepEqual(
+      calls.map(({ path }) => path),
+      routeEndpoints(endpoint),
+    );
     for (const read of pendingReads) {
-      read.resolve(jsonResponse(read.path === '/api/admin/releases'
-        ? releaseCatalog
-        : { items: [] }));
+      read.resolve(
+        jsonResponse(
+          read.path === "/api/admin/releases" ? releaseCatalog : { items: [] },
+        ),
+      );
     }
     await pending;
-    assert.equal(shell.content.getAttribute('aria-busy'), null);
+    assert.equal(shell.content.getAttribute("aria-busy"), null);
   }
 });
 
-test('read-only route Retry performs a second owned GET', async () => {
+test("read-only route Retry performs a second owned GET", async () => {
   for (const [, module, endpoint] of routeCases) {
     const { document, shell } = routeHarness();
     const calls = [];
@@ -309,26 +428,28 @@ test('read-only route Retry performs a second owned GET', async () => {
         const ownedRead = calls.filter((call) => call.path === endpoint).length;
         return ownedRead === 1 && path === endpoint
           ? jsonResponse({}, { ok: false })
-          : jsonResponse(path === '/api/admin/releases' ? releaseCatalog : { items: [] });
+          : jsonResponse(
+              path === "/api/admin/releases" ? releaseCatalog : { items: [] },
+            );
       },
     });
     await mounted.refresh();
-    const retry = shell.content.querySelectorAll('button')[0];
-    assert.equal(retry.textContent, 'Retry');
+    const retry = shell.content.querySelectorAll("button")[0];
+    assert.equal(retry.textContent, "Retry");
     await retry.click();
     assert.deepEqual(
       calls.map(({ path }) => path),
       [...routeEndpoints(endpoint), ...routeEndpoints(endpoint)],
     );
-    assert.ok(calls.every(({ init }) => init.method === 'GET'));
+    assert.ok(calls.every(({ init }) => init.method === "GET"));
     assert.match(textOf(shell.content), /No /i);
   }
 });
 
-test('Users and Authorization expose labelled case-insensitive email search', async () => {
+test("Users and Authorization expose labelled case-insensitive email search", async () => {
   for (const [module, endpoint] of [
-    [users, '/api/admin/users'],
-    [authorization, '/api/admin/authorization'],
+    [users, "/api/admin/users"],
+    [authorization, "/api/admin/authorization"],
   ]) {
     const { document, shell } = routeHarness();
     const mounted = module.mount({
@@ -336,31 +457,36 @@ test('Users and Authorization expose labelled case-insensitive email search', as
       shell,
       dialogs: {},
       fetcher: async (path) => {
-        if (path === '/api/admin/releases') return jsonResponse(releaseCatalog);
+        if (path === "/api/admin/releases") return jsonResponse(releaseCatalog);
         assert.equal(path, endpoint);
-        const item = endpoint === '/api/admin/authorization'
-          ? {
-            account_state: 'active', include_latest: true, versions: [],
-            updated_at: '2026-07-11 12:00:00',
-          }
-          : { state: 'active' };
-        return jsonResponse({ items: [
-          { email: 'Alpha@Example.com', ...item },
-          { email: 'beta@example.com', ...item },
-        ] });
+        const item =
+          endpoint === "/api/admin/authorization"
+            ? {
+                account_state: "active",
+                include_latest: true,
+                versions: [],
+                updated_at: "2026-07-11 12:00:00",
+              }
+            : { state: "active" };
+        return jsonResponse({
+          items: [
+            { email: "Alpha@Example.com", ...item },
+            { email: "beta@example.com", ...item },
+          ],
+        });
       },
     });
     await mounted.refresh();
-    const search = shell.content.querySelectorAll('input')[0];
-    assert.equal(search.getAttribute('aria-label'), 'Search by email');
-    search.value = 'ALPHA@EXAMPLE';
-    await search.dispatchEvent({ type: 'input' });
+    const search = shell.content.querySelectorAll("input")[0];
+    assert.equal(search.getAttribute("aria-label"), "Search by email");
+    search.value = "ALPHA@EXAMPLE";
+    await search.dispatchEvent({ type: "input" });
     assert.match(textOf(shell.content), /Alpha@Example\.com/);
     assert.doesNotMatch(textOf(shell.content), /beta@example\.com/);
   }
 });
 
-test('admin shell styles dense responsive list-detail without page overflow', () => {
+test("admin shell styles dense responsive list-detail without page overflow", () => {
   assert.match(css, /--accent:\s*#0f766e/);
   assert.match(adminCss, /grid-template-columns:\s*208px minmax\(0, 1fr\)/);
   assert.match(adminCss, /font-variant-numeric:\s*tabular-nums/);
@@ -375,21 +501,30 @@ test('admin shell styles dense responsive list-detail without page overflow', ()
   assert.doesNotMatch(adminCss, /animation\s*:/);
 });
 
-test('admin shell uses fluid intermediate tracks beside the fixed rail', () => {
-  const listDetailRule = adminCss.match(/\.list-detail\s*\{([^}]*)\}/)?.[1] || '';
-  const headerRule = adminCss.match(/\.route-header\s*\{([^}]*)\}/)?.[1] || '';
-  assert.match(listDetailRule, /grid-template-columns:\s*minmax\(0, 3fr\) minmax\(0, 2fr\)/);
+test("admin shell uses fluid intermediate tracks beside the fixed rail", () => {
+  const listDetailRule =
+    adminCss.match(/\.list-detail\s*\{([^}]*)\}/)?.[1] || "";
+  const headerRule = adminCss.match(/\.route-header\s*\{([^}]*)\}/)?.[1] || "";
+  assert.match(
+    listDetailRule,
+    /grid-template-columns:\s*minmax\(0, 3fr\) minmax\(0, 2fr\)/,
+  );
   assert.doesNotMatch(listDetailRule, /minmax\((?:360|280)px/);
   assert.match(headerRule, /flex-wrap:\s*wrap/);
   assert.match(css, /\.skip-link\s*\{[^}]*min-height:\s*44px/s);
 });
 
-test('private admin assets contain no identity or Access configuration', () => {
-  const assets = [html, css, bootstrapSource, coreSource, ...routeSources].join('\n');
-  assert.doesNotMatch(assets, /ADMIN_EMAIL|ACCESS_AUD|ACCESS_TEAM_DOMAIN|cloudflareaccess\.com/i);
+test("private admin assets contain no identity or Access configuration", () => {
+  const assets = [html, css, bootstrapSource, coreSource, ...routeSources].join(
+    "\n",
+  );
+  assert.doesNotMatch(
+    assets,
+    /ADMIN_EMAIL|ACCESS_AUD|ACCESS_TEAM_DOMAIN|cloudflareaccess\.com/i,
+  );
 });
 
-test('Wrangler leaves deployment routes to the operator overlay', () => {
+test("Wrangler leaves deployment routes to the operator overlay", () => {
   assert.deepEqual(config.routes, []);
   assert.doesNotMatch(JSON.stringify(config), /backchannel\.page/i);
 });

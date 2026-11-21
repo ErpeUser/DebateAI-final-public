@@ -27,8 +27,13 @@ function historyTime(value: string): string {
  * One captured strategic signal. Shared by the post-call history panel and the
  * live call view's Strategic insight filter so both read the same way.
  */
-export default function StrategicSignalCard({ item }: { item: SignalHistoryItem }) {
-  const title = item.title?.trim() || item.summary?.trim() || "Unbenanntes Signal";
+export default function StrategicSignalCard({
+  item,
+}: {
+  item: SignalHistoryItem;
+}) {
+  const title =
+    item.title?.trim() || item.summary?.trim() || "Unbenanntes Signal";
   const summary = item.summary?.trim() || "";
   const distinctSummary = Boolean(item.title?.trim() && summary);
 
@@ -42,15 +47,22 @@ export default function StrategicSignalCard({ item }: { item: SignalHistoryItem 
           {item.count === 1 ? "Einmal gesehen" : `${item.count}-mal gesehen`}
         </span>
       </div>
-      <h4 className="mt-2 font-body text-sm font-semibold text-brand-dark-gray">{title}</h4>
+      <h4 className="mt-2 font-body text-sm font-semibold text-brand-dark-gray">
+        {title}
+      </h4>
       {distinctSummary && (
-        <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">{summary}</p>
+        <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
+          {summary}
+        </p>
       )}
       {item.rationale?.trim() && (
-        <p className="mt-2 font-body text-xs leading-relaxed text-brand-mid-gray">{item.rationale}</p>
+        <p className="mt-2 font-body text-xs leading-relaxed text-brand-mid-gray">
+          {item.rationale}
+        </p>
       )}
       <p className="mt-2 font-body text-[11px] text-brand-mid-gray">
-        Erstmals {historyTime(item.first_seen)} – zuletzt {historyTime(item.last_seen)}
+        Erstmals {historyTime(item.first_seen)} – zuletzt{" "}
+        {historyTime(item.last_seen)}
       </p>
     </article>
   );

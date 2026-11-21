@@ -25,9 +25,6 @@ import logging
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
 from app.models import AgentConfig
 from app.services.app_settings import get_app_setting, set_app_setting
@@ -40,6 +37,8 @@ from app.services.custom_endpoints import (
     resolve_target_standalone,
 )
 from app.services.secrets import get_secret
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +140,9 @@ def _from_target(target, model_id: str) -> OpenAIEndpoint:
             f"Endpoint '{target.name}' is turned off; enable it in Admin -> Connections "
             f"or pick another model"
         )
-    return OpenAIEndpoint(base_url=target.base_url, model=target.model, api_key=target.api_key)
+    return OpenAIEndpoint(
+        base_url=target.base_url, model=target.model, api_key=target.api_key
+    )
 
 
 async def resolve_endpoint_with(
@@ -198,7 +199,8 @@ async def get_endpoint_config(db: AsyncSession) -> dict:
         "model_id": stored_model,
         # What requests actually use.
         "effective_base_url": stored_url or fallback_base_url(),
-        "effective_model_id": stored_model or settings.OPENAI_COMPATIBLE_MODEL_ID.strip(),
+        "effective_model_id": stored_model
+        or settings.OPENAI_COMPATIBLE_MODEL_ID.strip(),
         "fallback_base_url": fallback_base_url(),
     }
 
@@ -218,7 +220,12 @@ async def set_endpoint_config(
 
 # Default ports of the servers this feature was built against, used only to
 # give a migrated endpoint a recognizable name.
-_PORT_NAMES = {"1234": "LM Studio", "11434": "Ollama", "8000": "vLLM", "4000": "LiteLLM"}
+_PORT_NAMES = {
+    "1234": "LM Studio",
+    "11434": "Ollama",
+    "8000": "vLLM",
+    "4000": "LiteLLM",
+}
 
 
 def _guess_endpoint_name(base_url: str) -> str:
@@ -248,7 +255,9 @@ async def migrate_legacy_endpoint(db: AsyncSession) -> str | None:
         base_url=base_url,
         # The provider-wide compatible key becomes this endpoint's key; the
         # credential row is left alone so the env fallback keeps working.
-        api_key=await get_secret(db, f"credentials.{OPENAI_COMPATIBLE_PROVIDER}.api_key"),
+        api_key=await get_secret(
+            db, f"credentials.{OPENAI_COMPATIBLE_PROVIDER}.api_key"
+        ),
         models=[{"id": wire_model}],
     )
     new_model_id = build_model_id(endpoint.id, wire_model)

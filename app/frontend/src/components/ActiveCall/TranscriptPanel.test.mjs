@@ -13,7 +13,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentDir = dirname(fileURLToPath(new URL("./TranscriptPanel.tsx", import.meta.url)));
+const componentDir = dirname(
+  fileURLToPath(new URL("./TranscriptPanel.tsx", import.meta.url)),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "transcript-panel-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -40,7 +42,8 @@ await build({
   outfile: outputPath,
 });
 
-const { render, findTranscriptMatches, highlightParts, transcriptEntryKey } = createRequire(import.meta.url)(outputPath);
+const { render, findTranscriptMatches, highlightParts, transcriptEntryKey } =
+  createRequire(import.meta.url)(outputPath);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
@@ -61,7 +64,10 @@ const transcripts = [
 ].map(entry);
 
 test("transcript rows use persisted ids instead of array positions", () => {
-  assert.equal(transcriptEntryKey({ ...entry("hello", 1), id: "persisted-1" }, 9), "persisted-1");
+  assert.equal(
+    transcriptEntryKey({ ...entry("hello", 1), id: "persisted-1" }, 9),
+    "persisted-1",
+  );
   assert.equal(
     transcriptEntryKey({ ...entry("live", 2), id: "" }, 9),
     "2026-08-31T10:00:00Z:live:9",
@@ -99,7 +105,10 @@ test("regex metacharacters in the query are treated literally", () => {
 test("highlighting round-trips the text and marks every occurrence", () => {
   const parts = highlightParts("Ceiling talk about the ceiling", "ceiling");
 
-  assert.equal(parts.map((part) => part.text).join(""), "Ceiling talk about the ceiling");
+  assert.equal(
+    parts.map((part) => part.text).join(""),
+    "Ceiling talk about the ceiling",
+  );
   assert.deepEqual(
     parts.filter((part) => part.hit).map((part) => part.text),
     ["Ceiling", "ceiling"],
@@ -108,7 +117,9 @@ test("highlighting round-trips the text and marks every occurrence", () => {
 
 test("a durable provisional revision shows an honest saved-draft status", () => {
   const html = render({
-    transcripts: [{ ...entry("Noch nicht final.", 1), provisional: true, revision: 2 }],
+    transcripts: [
+      { ...entry("Noch nicht final.", 1), provisional: true, revision: 2 },
+    ],
     speakers: [],
     collapsed: false,
   });

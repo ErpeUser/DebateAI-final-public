@@ -14,9 +14,9 @@ import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.services.redaction import redact_text
 from app.services import external_audit
 from app.services.identity import env_value
+from app.services.redaction import redact_text
 
 MODEL_ID = "chatgpt-web:gpt-6"
 PROVIDER = "chatgpt-web"
@@ -53,7 +53,11 @@ def browser_busy() -> bool:
 
 def _path(name: str) -> Path:
     suffix = name.rsplit("_", 1)[-1]
-    value = _setting(suffix) if name.startswith("DEBATEAI_CHATGPT_WEB_") else os.environ.get(name, "").strip()
+    value = (
+        _setting(suffix)
+        if name.startswith("DEBATEAI_CHATGPT_WEB_")
+        else os.environ.get(name, "").strip()
+    )
     return Path(value) if value else Path()
 
 
@@ -116,7 +120,10 @@ def configured() -> bool:
         return False
     failure = _verification_failure_path()
     try:
-        return not failure.is_file() or Path(marker).stat().st_mtime_ns > failure.stat().st_mtime_ns
+        return (
+            not failure.is_file()
+            or Path(marker).stat().st_mtime_ns > failure.stat().st_mtime_ns
+        )
     except OSError:
         return False
 
@@ -134,7 +141,9 @@ def verification_failure() -> str:
         payload = json.loads(failure.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError):
         return "Die letzte ChatGPT-Web-Pruefung ist fehlgeschlagen."
-    return str(payload.get("message") or "Die letzte ChatGPT-Web-Pruefung ist fehlgeschlagen.")
+    return str(
+        payload.get("message") or "Die letzte ChatGPT-Web-Pruefung ist fehlgeschlagen."
+    )
 
 
 def _record_verification_failure(message: str) -> None:
@@ -143,7 +152,9 @@ def _record_verification_failure(message: str) -> None:
         return
     failure.parent.mkdir(parents=True, exist_ok=True)
     temporary = failure.with_suffix(".json.new")
-    temporary.write_text(json.dumps({"message": message}, ensure_ascii=False), encoding="utf-8")
+    temporary.write_text(
+        json.dumps({"message": message}, ensure_ascii=False), encoding="utf-8"
+    )
     temporary.replace(failure)
 
 
@@ -172,11 +183,21 @@ def research_status() -> dict[str, object]:
     if not isinstance(payload, dict):
         return {**default, "state": "invalid"}
     allowed = {
-        "provider", "model", "model_confirmed", "research_mode",
-        "search_requested", "search_confirmed", "state",
-        "requested_at", "completed_at", "error_class",
+        "provider",
+        "model",
+        "model_confirmed",
+        "research_mode",
+        "search_requested",
+        "search_confirmed",
+        "state",
+        "requested_at",
+        "completed_at",
+        "error_class",
     }
-    return {**default, **{key: value for key, value in payload.items() if key in allowed}}
+    return {
+        **default,
+        **{key: value for key, value in payload.items() if key in allowed},
+    }
 
 
 def _write_research_status(
@@ -212,13 +233,17 @@ def _write_research_status(
 
 
 def _thinking_time(reasoning_effort: str | None) -> str:
-    return "extra-high" if (reasoning_effort or "").casefold() == "xhigh" else "extended"
+    return (
+        "extra-high" if (reasoning_effort or "").casefold() == "xhigh" else "extended"
+    )
 
 
 def research_mode(prompt: str, *, source: str = "") -> str | None:
     """Enable browser research only for an explicit research request."""
     normalized_source = source.casefold().replace("-", "_")
-    if any(token in normalized_source for token in ("research", "recherche", "fact_check")):
+    if any(
+        token in normalized_source for token in ("research", "recherche", "fact_check")
+    ):
         return "search"
     lowered = prompt.casefold()
     explicit_markers = (
@@ -241,17 +266,26 @@ def oracle_command(
     command = [
         str(_path("DEBATEAI_CHATGPT_WEB_NODE")),
         str(_path("DEBATEAI_CHATGPT_WEB_ORACLE")),
-        "--engine", "browser",
-        "--chatgpt-url", CHATGPT_TEMPORARY_URL,
+        "--engine",
+        "browser",
+        "--chatgpt-url",
+        CHATGPT_TEMPORARY_URL,
         "--browser-manual-login",
-        "--browser-manual-login-profile-dir", str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
-        "--model", "gpt-6",
-        "--browser-model-strategy", "current",
-        "--browser-thinking-time", _thinking_time(reasoning_effort),
+        "--browser-manual-login-profile-dir",
+        str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
+        "--model",
+        "gpt-6",
+        "--browser-model-strategy",
+        "current",
+        "--browser-thinking-time",
+        _thinking_time(reasoning_effort),
         "--browser-no-focus",
-        "--browser-archive", "auto",
-        "--browser-profile-lock-timeout", "2m",
-        "--browser-timeout", "10m",
+        "--browser-archive",
+        "auto",
+        "--browser-profile-lock-timeout",
+        "2m",
+        "--browser-timeout",
+        "10m",
     ]
     if research in {"search", "deep"}:
         command.extend(["--browser-research", research])
@@ -266,7 +300,7 @@ async def _terminate_child(process: asyncio.subprocess.Process) -> None:
     process.terminate()
     try:
         await asyncio.wait_for(process.wait(), timeout=5)
-    except asyncio.TimeoutError:
+    except TimeoutError:
         process.kill()
         await asyncio.wait_for(process.wait(), timeout=5)
 
@@ -286,7 +320,11 @@ async def _reap_before_release(process: asyncio.subprocess.Process) -> None:
 
 
 def _record_refusal(source: str, research: str | None, error_class: str) -> None:
-    category = "research_claim" if research in {"search", "deep"} else external_audit.data_category_for_source(source)
+    category = (
+        "research_claim"
+        if research in {"search", "deep"}
+        else external_audit.data_category_for_source(source)
+    )
     external_audit.record_external_request(
         provider_route="chatgpt-web:gpt-6",
         approval=False,
@@ -304,11 +342,14 @@ def _require_ready(source: str, research_mode_value: str | None) -> None:
         raise RuntimeError("ChatGPT Web ist in dieser Installation nicht verfuegbar.")
     if not configured():
         _record_refusal(source, research_mode_value, "VerificationRequired")
-        raise RuntimeError("ChatGPT Web ist nicht mehr bestaetigt. Bitte erneut anmelden.")
+        raise RuntimeError(
+            "ChatGPT Web ist nicht mehr bestaetigt. Bitte erneut anmelden."
+        )
     if _LOGIN_RESERVED:
         _record_refusal(source, research_mode_value, "LoginBusy")
-        raise RuntimeError("Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen.")
-
+        raise RuntimeError(
+            "Die ChatGPT-Anmeldung laeuft gerade. Bitte danach erneut versuchen."
+        )
 
 
 async def generate(
@@ -364,11 +405,15 @@ async def generate(
             model_id=MODEL_ID,
         )
         env = os.environ.copy()
-        env.update({
-            "ORACLE_HOME_DIR": str(home),
-            "ORACLE_BROWSER_PROFILE_DIR": str(_path("DEBATEAI_CHATGPT_WEB_PROFILE")),
-            "NO_COLOR": "1",
-        })
+        env.update(
+            {
+                "ORACLE_HOME_DIR": str(home),
+                "ORACLE_BROWSER_PROFILE_DIR": str(
+                    _path("DEBATEAI_CHATGPT_WEB_PROFILE")
+                ),
+                "NO_COLOR": "1",
+            }
+        )
         flags = 0x08000000 if os.name == "nt" else 0
         content = f"{system.strip()}\n\n{prompt.strip()}" if system else prompt.strip()
         process = None
@@ -384,18 +429,22 @@ async def generate(
                         creationflags=flags,
                     )
                     stdout, stderr = await process.communicate(content.encode("utf-8"))
-            except (asyncio.TimeoutError, asyncio.CancelledError):
+            except (TimeoutError, asyncio.CancelledError):
                 if process is not None:
                     await _reap_before_release(process)
                 raise
             if process.returncode:
                 diagnostic = stderr or stdout
-                detail = redact_text(diagnostic.decode("utf-8", "replace"))[-1200:].strip()
+                detail = redact_text(diagnostic.decode("utf-8", "replace"))[
+                    -1200:
+                ].strip()
                 if not detail:
                     detail = f"Oracle wurde mit Code {process.returncode} beendet."
                 if "Unable to locate the ChatGPT model selector button" in detail:
                     _record_verification_failure(detail)
-                raise RuntimeError(f"ChatGPT Web konnte die Anfrage nicht ausfuehren: {detail}")
+                raise RuntimeError(
+                    f"ChatGPT Web konnte die Anfrage nicht ausfuehren: {detail}"
+                )
             answer = output.read_text(encoding="utf-8").strip()
             if not answer:
                 raise RuntimeError("ChatGPT Web hat keine Antwort geliefert.")

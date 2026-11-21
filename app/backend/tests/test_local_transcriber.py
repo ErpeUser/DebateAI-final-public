@@ -22,7 +22,10 @@ class LocalModelCacheTests(unittest.TestCase):
 
         for model_id, name, quantization in models:
             for state in ("absent", "empty", "populated"):
-                with self.subTest(model_id=model_id, state=state), tempfile.TemporaryDirectory() as tmp:
+                with (
+                    self.subTest(model_id=model_id, state=state),
+                    tempfile.TemporaryDirectory() as tmp,
+                ):
                     local_transcriber._loaded.clear()
                     root = Path(tmp)
                     path = root / "asr-models" / name
@@ -53,7 +56,9 @@ class LocalModelCacheTests(unittest.TestCase):
                     ):
                         self.assertIs(sentinel, local_transcriber._load_model(model_id))
 
-                    fake_onnx_asr.load_model.assert_called_once_with(name, path, quantization=quantization)
+                    fake_onnx_asr.load_model.assert_called_once_with(
+                        name, path, quantization=quantization
+                    )
 
 
 if __name__ == "__main__":

@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./AgentActivityPanel.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./AgentActivityPanel.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "agent-activity-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -26,8 +28,9 @@ await build({
   outfile: outputPath,
 });
 
-const { activityEmptyMessage, isRunningLate, summarizeAgents } =
-  createRequire(import.meta.url)(outputPath);
+const { activityEmptyMessage, isRunningLate, summarizeAgents } = createRequire(
+  import.meta.url,
+)(outputPath);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });

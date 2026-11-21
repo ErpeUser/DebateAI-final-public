@@ -14,4 +14,6 @@ class HealthReadinessTests(unittest.IsolatedAsyncioTestCase):
             response = await readiness()
 
         self.assertEqual(503, response.status_code)
-        self.assertEqual(b'{"status":"degraded","database":"unavailable"}', response.body)
+        self.assertEqual(
+            b'{"status":"degraded","database":"unavailable"}', response.body
+        )

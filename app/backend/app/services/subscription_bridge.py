@@ -7,8 +7,6 @@ import json
 import os
 from pathlib import Path
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import CustomEndpoint
 from app.services.custom_endpoints import (
     create_endpoint,
@@ -16,8 +14,9 @@ from app.services.custom_endpoints import (
     probe,
     update_endpoint,
 )
-from app.services.secrets import get_secret, set_secret
 from app.services.identity import env_value, set_env
+from app.services.secrets import get_secret, set_secret
+from sqlalchemy.ext.asyncio import AsyncSession
 
 BRIDGE_ENDPOINT_ID = "subscription-ai"
 BRIDGE_NAME = "Subscription AI"

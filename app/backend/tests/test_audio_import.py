@@ -4,9 +4,8 @@ import unittest
 import uuid
 from unittest.mock import ANY, AsyncMock, Mock, patch
 
-from fastapi import BackgroundTasks
-
 from app.routers.imports import _diarize_pcm, _transcribe_audio_diarized, import_audio
+from fastapi import BackgroundTasks
 
 
 class FakeUpload:
@@ -62,7 +61,9 @@ class AudioImportRuntimeBoundaryTests(unittest.TestCase):
             ),
         ):
             asyncio.run(import_audio(session_id, FakeUpload(), background_tasks, db))
-            with patch("app.routers.imports.async_session", return_value=SessionContext()):
+            with patch(
+                "app.routers.imports.async_session", return_value=SessionContext()
+            ):
                 asyncio.run(background_tasks())
 
         transcribe.assert_awaited_once_with(
@@ -182,11 +183,16 @@ class AudioImportRuntimeBoundaryTests(unittest.TestCase):
                 "app.routers.imports._persist_diarized_segments",
                 new=AsyncMock(return_value=0),
             ),
-            patch("app.routers.imports.asyncio.to_thread", new=AsyncMock(side_effect=run_inline)),
+            patch(
+                "app.routers.imports.asyncio.to_thread",
+                new=AsyncMock(side_effect=run_inline),
+            ),
         ):
             asyncio.run(_transcribe_audio_diarized(b"audio", "wav", session_id, db))
 
-        feed_handoffs = [function for function in handed_off if function is diarizer.feed_audio]
+        feed_handoffs = [
+            function for function in handed_off if function is diarizer.feed_audio
+        ]
         self.assertEqual(2, len(feed_handoffs))
 
     def test_a_flushed_segment_keeps_its_end_of_audio_fallback_position(self):

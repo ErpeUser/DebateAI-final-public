@@ -6,7 +6,6 @@ Create Date: 2026-07-07
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "015"
@@ -62,7 +61,9 @@ def downgrade():
     )
     op.add_column(
         "offerings",
-        sa.Column("discipline", sa.String(length=255), nullable=False, server_default=""),
+        sa.Column(
+            "discipline", sa.String(length=255), nullable=False, server_default=""
+        ),
     )
     op.alter_column(
         "offerings",

@@ -6,9 +6,20 @@ import { migrateLegacyStorage } from "./storageMigration.ts";
 function memoryStorage(initial = {}, beforeWrite = () => {}) {
   const storage = Object.assign(Object.create(null), initial);
   Object.defineProperties(storage, {
-    getItem: { value: (key) => Object.hasOwn(storage, key) ? storage[key] : null },
-    setItem: { value: (key, value) => { beforeWrite(key, value); storage[key] = String(value); } },
-    removeItem: { value: (key) => { delete storage[key]; } },
+    getItem: {
+      value: (key) => (Object.hasOwn(storage, key) ? storage[key] : null),
+    },
+    setItem: {
+      value: (key, value) => {
+        beforeWrite(key, value);
+        storage[key] = String(value);
+      },
+    },
+    removeItem: {
+      value: (key) => {
+        delete storage[key];
+      },
+    },
     key: { value: (index) => Object.keys(storage)[index] ?? null },
     length: { get: () => Object.keys(storage).length },
   });
@@ -35,7 +46,10 @@ for (const [legacy, canonical] of mappings) {
   });
 
   test(`conflict preserves both values: ${legacy}`, () => {
-    const storage = memoryStorage({ [legacy]: "old distinct value", [canonical]: "current custom value" });
+    const storage = memoryStorage({
+      [legacy]: "old distinct value",
+      [canonical]: "current custom value",
+    });
     migrateLegacyStorage(storage);
     assert.equal(storage.getItem(canonical), "current custom value");
     assert.equal(storage.getItem(legacy), "old distinct value");
@@ -59,19 +73,26 @@ for (const [legacy, canonical] of [mappings[5], mappings[7]]) {
 }
 
 test("retries are idempotent and cannot overwrite later canonical customization", () => {
-  const initial = Object.fromEntries(mappings.map(([legacy], i) => [legacy, `original-${i}`]));
+  const initial = Object.fromEntries(
+    mappings.map(([legacy], i) => [legacy, `original-${i}`]),
+  );
   const storage = memoryStorage(initial);
   migrateLegacyStorage(storage);
   storage.setItem("debateai:theme", "later customization");
   const afterFirst = { ...storage };
   migrateLegacyStorage(storage);
   assert.deepEqual({ ...storage }, afterFirst);
-  for (const [legacy, value] of Object.entries(initial)) assert.equal(storage.getItem(legacy), value);
+  for (const [legacy, value] of Object.entries(initial))
+    assert.equal(storage.getItem(legacy), value);
   assert.equal(storage.getItem("debateai:theme"), "later customization");
 });
 
 test("unknown legacy keys and unrelated data remain untouched", () => {
-  const initial = { "backchannel:unknown": "preserve", "other-app:theme": "blue", "debateai:custom": "custom" };
+  const initial = {
+    "backchannel:unknown": "preserve",
+    "other-app:theme": "blue",
+    "debateai:custom": "custom",
+  };
   const storage = memoryStorage(initial);
   migrateLegacyStorage(storage);
   assert.deepEqual({ ...storage }, initial);
@@ -85,26 +106,44 @@ test("an empty installation gains no invented preferences", () => {
 
 test("partial quota failure retains every source and permits a safe retry", () => {
   let fail = true;
-  const storage = memoryStorage({
-    "backchannel:audio-devices": "device-original",
-    "backchannel:call-bar-mode": "mode-original",
-    "backchannel:meeting-chat:session-2": "chat-original",
-  }, (key) => {
-    if (fail && key === "debateai:call-bar-mode") throw new DOMException("Full", "QuotaExceededError");
+  const storage = memoryStorage(
+    {
+      "backchannel:audio-devices": "device-original",
+      "backchannel:call-bar-mode": "mode-original",
+      "backchannel:meeting-chat:session-2": "chat-original",
+    },
+    (key) => {
+      if (fail && key === "debateai:call-bar-mode")
+        throw new DOMException("Full", "QuotaExceededError");
+    },
+  );
+  assert.throws(() => migrateLegacyStorage(storage), {
+    name: "QuotaExceededError",
   });
-  assert.throws(() => migrateLegacyStorage(storage), { name: "QuotaExceededError" });
   assert.equal(storage.getItem("backchannel:audio-devices"), "device-original");
   assert.equal(storage.getItem("backchannel:call-bar-mode"), "mode-original");
-  assert.equal(storage.getItem("backchannel:meeting-chat:session-2"), "chat-original");
+  assert.equal(
+    storage.getItem("backchannel:meeting-chat:session-2"),
+    "chat-original",
+  );
   assert.equal(storage.getItem("debateai:audio-devices"), "device-original");
   assert.equal(storage.getItem("debateai:call-bar-mode"), null);
   fail = false;
   storage.setItem("debateai:audio-devices", "customized-after-failure");
   migrateLegacyStorage(storage);
-  assert.equal(storage.getItem("debateai:audio-devices"), "customized-after-failure");
+  assert.equal(
+    storage.getItem("debateai:audio-devices"),
+    "customized-after-failure",
+  );
   assert.equal(storage.getItem("debateai:call-bar-mode"), "mode-original");
-  assert.equal(storage.getItem("debateai:meeting-chat:session-2"), "chat-original");
-  assert.equal(storage.getItem("backchannel:meeting-chat:session-2"), "chat-original");
+  assert.equal(
+    storage.getItem("debateai:meeting-chat:session-2"),
+    "chat-original",
+  );
+  assert.equal(
+    storage.getItem("backchannel:meeting-chat:session-2"),
+    "chat-original",
+  );
 });
 
 test("multiple conversation suffixes are copied without merging identities", () => {
@@ -115,7 +154,10 @@ test("multiple conversation suffixes are copied without merging identities", () 
   });
   migrateLegacyStorage(storage);
   assert.equal(storage.getItem("debateai:meeting-chat:session-1"), "first");
-  assert.equal(storage.getItem("debateai:meeting-chat:session-1:reply"), "reply");
+  assert.equal(
+    storage.getItem("debateai:meeting-chat:session-1:reply"),
+    "reply",
+  );
   assert.equal(storage.getItem("debateai:ask-model:session-1"), "model");
   assert.equal(storage.length, 6);
 });

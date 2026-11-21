@@ -167,7 +167,7 @@ def _read_all(path: Path) -> tuple[np.ndarray, int]:
 
 def _plan(rate: int, span_ms: float) -> tuple[int, int]:
     """Block size (a power of two near _BLOCK_MS) and partition count."""
-    block = 1 << max(6, int(round(np.log2(max(rate * _BLOCK_MS / 1000.0, 64)))))
+    block = 1 << max(6, round(np.log2(max(rate * _BLOCK_MS / 1000.0, 64))))
     partitions = max(1, int(np.ceil(span_ms / 1000.0 * rate / block)))
     return block, partitions
 
@@ -196,22 +196,23 @@ def delay_trajectory(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray 
     starts = np.arange(0, n - segment + 1, hop)
     lags = np.full(len(starts), np.nan)
     for i, start in enumerate(starts):
-        a = mic[start: start + segment]
-        b = ref[start: start + segment]
+        a = mic[start : start + segment]
+        b = ref[start : start + segment]
         spectrum = np.fft.rfft(a, size) * np.conj(np.fft.rfft(b, size))
         magnitude = np.abs(spectrum)
-        spectrum = np.divide(spectrum, magnitude, out=np.zeros_like(spectrum),
-                             where=magnitude > 1e-12)
+        spectrum = np.divide(
+            spectrum, magnitude, out=np.zeros_like(spectrum), where=magnitude > 1e-12
+        )
         correlation = np.fft.irfft(spectrum, size)[: max_lag + 2]
         peak = int(np.argmax(correlation))
-        floor = float(np.sqrt(np.mean(correlation ** 2)))
+        floor = float(np.sqrt(np.mean(correlation**2)))
         if floor <= 0 or correlation[peak] < _TRAJECTORY_CONFIDENCE * floor:
             continue
         if 0 < peak < len(correlation) - 1:
             # Parabolic interpolation: the drift is a fraction of a sample per
             # second, so integer resolution would quantize it into a staircase
             # the filter then has to chase.
-            left, mid, right = correlation[peak - 1: peak + 2]
+            left, mid, right = correlation[peak - 1 : peak + 2]
             denominator = left - 2 * mid + right
             offset = 0.5 * (left - right) / denominator if denominator else 0.0
             lags[i] = peak + np.clip(offset, -0.5, 0.5)
@@ -228,9 +229,9 @@ def delay_trajectory(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray 
     index = np.flatnonzero(good)
     values = lags[index]
     half = _TRAJECTORY_MEDIAN // 2
-    smoothed = np.array([
-        np.median(values[max(0, i - half): i + half + 1]) for i in range(len(values))
-    ])
+    smoothed = np.array(
+        [np.median(values[max(0, i - half) : i + half + 1]) for i in range(len(values))]
+    )
     return np.interp(np.arange(len(lags)), index, smoothed)
 
 
@@ -256,8 +257,12 @@ def _align_reference(ref: np.ndarray, trajectory: np.ndarray, rate: int) -> np.n
     # Ignoring that offsets the whole curve by half a segment, which at 18 ppm
     # is a permanent half-sample of misalignment - small, but bought for free.
     centres = np.arange(blocks) * hop + hop
-    shift = np.interp((centres - segment / 2) / hop_traj,
-                      np.arange(len(trajectory)), trajectory) - margin
+    shift = (
+        np.interp(
+            (centres - segment / 2) / hop_traj, np.arange(len(trajectory)), trajectory
+        )
+        - margin
+    )
     whole = np.floor(shift).astype(np.int64)
     fraction = shift - whole
 
@@ -271,14 +276,14 @@ def _align_reference(ref: np.ndarray, trajectory: np.ndarray, rate: int) -> np.n
     offsets = np.arange(nfft)
     for first in range(0, blocks, step):
         last = min(first + step, blocks)
-        base = (np.arange(first, last) * hop - whole[first:last] + pad)
+        base = np.arange(first, last) * hop - whole[first:last] + pad
         frames = padded[base[:, None] + offsets[None, :]] * window
         spectra = np.fft.rfft(frames, axis=-1)
         spectra *= np.exp(-2j * np.pi * np.outer(fraction[first:last], ramp) / nfft)
         frames = np.fft.irfft(spectra, nfft, axis=-1)
         for j in range(last - first):
             start = (first + j) * hop
-            out[start: start + nfft] += frames[j]
+            out[start : start + nfft] += frames[j]
     return out[:n]
 
 
@@ -302,7 +307,8 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
     else:
         logger.info(
             "[audio_echo] delay trajectory %.0f to %.0f ms over the call",
-            trajectory.min() / rate * 1000, trajectory.max() / rate * 1000,
+            trajectory.min() / rate * 1000,
+            trajectory.max() / rate * 1000,
         )
         ref = _align_reference(ref, trajectory, rate)
         span_ms = _SPAN_MS
@@ -320,11 +326,11 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
     # Reference activity per block, and the loud-block level the power floor and
     # the activity gate are both expressed relative to.
     block_power = (ref.reshape(blocks, block) ** 2).mean(axis=1)
-    loud = block_power[block_power > _SILENCE_RMS ** 2]
+    loud = block_power[block_power > _SILENCE_RMS**2]
     if not loud.size:
         return whole_mic.copy()
     active_level = float(np.percentile(loud, 75))
-    gate = max(active_level * 10 ** (_ACTIVE_LEVEL_DB / 10), _SILENCE_RMS ** 2)
+    gate = max(active_level * 10 ** (_ACTIVE_LEVEL_DB / 10), _SILENCE_RMS**2)
     regularization = _POWER_REGULARIZATION * partitions * nfft * active_level
 
     fore = np.zeros((partitions, bins), dtype=np.complex128)
@@ -349,16 +355,16 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
     live_from = len(schedule) - blocks
 
     for index, t in enumerate(schedule):
-        spectrum = np.fft.rfft(padded_ref[t * block: t * block + nfft])
+        spectrum = np.fft.rfft(padded_ref[t * block : t * block + nfft])
         slot = t % partitions
         spectra[slot] = spectrum
         spectra[slot + partitions] = spectrum
-        powers[slot] = spectrum.real ** 2 + spectrum.imag ** 2
+        powers[slot] = spectrum.real**2 + spectrum.imag**2
         powers[slot + partitions] = powers[slot]
-        history = spectra[slot + 1: slot + 1 + partitions]
+        history = spectra[slot + 1 : slot + 1 + partitions]
 
         estimate = np.fft.irfft(np.einsum("pk,pk->k", back, history))[block:]
-        near = mic[t * block: (t + 1) * block]
+        near = mic[t * block : (t + 1) * block]
         back_error = near - estimate
         if fore.any():
             fore_estimate = np.fft.irfft(np.einsum("pk,pk->k", fore, history))[block:]
@@ -370,13 +376,19 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
         emit = fore_error
         if active:
             mic_energy = decay * mic_energy + (1 - decay) * float(near @ near)
-            fore_energy = decay * fore_energy + (1 - decay) * float(fore_error @ fore_error)
-            back_energy = decay * back_energy + (1 - decay) * float(back_error @ back_error)
+            fore_energy = decay * fore_energy + (1 - decay) * float(
+                fore_error @ fore_error
+            )
+            back_energy = decay * back_energy + (1 - decay) * float(
+                back_error @ back_error
+            )
             decided += 1
 
             if decided >= _MIN_DECISION_BLOCKS:
-                if (back_energy < _PROMOTE_MARGIN * fore_energy
-                        and back_energy < _PASSTHROUGH_MARGIN * mic_energy):
+                if (
+                    back_energy < _PROMOTE_MARGIN * fore_energy
+                    and back_energy < _PASSTHROUGH_MARGIN * mic_energy
+                ):
                     # Cross-fade rather than switch: the two filters differ, and
                     # a hard swap steps the waveform mid-syllable.
                     emit = fore_error + fade * (back_error - fore_error)
@@ -398,7 +410,7 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
                     demotions += 1
 
         if index >= live_from:
-            out[t * block: (t + 1) * block] = emit
+            out[t * block : (t + 1) * block] = emit
 
         if not active:
             continue
@@ -421,11 +433,14 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
             explained = float(estimate @ near) / near_energy if near_energy > 0 else 0.0
             step = _STEP * min(1.0, max(_STEP_FLOOR, explained))
 
-        span_power = powers[slot + 1: slot + 1 + partitions].sum(axis=0)
-        smoothed_power = (_POWER_SMOOTHING * smoothed_power
-                          + (1 - _POWER_SMOOTHING) * span_power)
+        span_power = powers[slot + 1 : slot + 1 + partitions].sum(axis=0)
+        smoothed_power = (
+            _POWER_SMOOTHING * smoothed_power + (1 - _POWER_SMOOTHING) * span_power
+        )
         error_spectrum = np.fft.rfft(np.concatenate((silent_head, back_error)))
-        back += history.conj() * (step * error_spectrum / (smoothed_power + regularization))
+        back += history.conj() * (
+            step * error_spectrum / (smoothed_power + regularization)
+        )
 
         # Round-robin gradient constraint: each partition must stay a
         # block-length impulse response, or the overlap-save output stops being
@@ -438,13 +453,17 @@ def cancel_echo(mic: np.ndarray, ref: np.ndarray, rate: int) -> np.ndarray:
     logger.info(
         "[audio_echo] %d blocks, adapted in %d (%.0f%%), %d filter promotions, "
         "%d resets",
-        blocks, adapted, 100.0 * adapted / max(blocks, 1), promotions, demotions,
+        blocks,
+        adapted,
+        100.0 * adapted / max(blocks, 1),
+        promotions,
+        demotions,
     )
 
     # The trailing partial block is passed through rather than dropped, so the
     # caller can rely on getting back exactly what it handed over.
     if len(out) < n:
-        out = np.concatenate((out, whole_mic[len(out):]))
+        out = np.concatenate((out, whole_mic[len(out) :]))
     return out
 
 

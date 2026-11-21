@@ -35,7 +35,9 @@ class ExplicitNullOperationTests(unittest.TestCase):
         self.assertNotIn("rationale", op)
 
     def test_a_self_hosted_omission_and_a_hosted_null_agree(self):
-        hosted = _without_nulls({"op": "answer", "answer_summary": "Yes", "followup": None})
+        hosted = _without_nulls(
+            {"op": "answer", "answer_summary": "Yes", "followup": None}
+        )
         self_hosted = _without_nulls({"op": "answer", "answer_summary": "Yes"})
 
         self.assertEqual(self_hosted, hosted)
@@ -123,7 +125,9 @@ class ExplicitNullInsertTests(unittest.IsolatedAsyncioTestCase):
         async def _get(*_a, **_k):
             return question
 
-        db = SimpleNamespace(add=lambda o: None, flush=lambda: asyncio.sleep(0), get=_get)
+        db = SimpleNamespace(
+            add=lambda o: None, flush=lambda: asyncio.sleep(0), get=_get
+        )
 
         await _apply_operations_in_db(
             db,
@@ -167,7 +171,11 @@ class DrainHeartbeatTests(unittest.IsolatedAsyncioTestCase):
     async def test_it_repeats_the_running_stage_so_the_socket_is_never_silent(self):
         sent: list = []
         latest = {
-            "event": {"stage": "insight_reconciliation", "message": "Reconciling...", "progress": 60}
+            "event": {
+                "stage": "insight_reconciliation",
+                "message": "Reconciling...",
+                "progress": 60,
+            }
         }
 
         await self._run(sent, latest, ticks=2)

@@ -15,11 +15,11 @@ import unittest
 
 from app.services import seed_agents
 from app.services.agents import prompt_layout, prompts
-from app.services.meeting_context import format_prompt_layers
 from app.services.agents.consolidated_analyst import (
     SPEAKER_ATTRIBUTION_APPENDIX,
     ConsolidatedAnalystAgent,
 )
+from app.services.meeting_context import format_prompt_layers
 
 # Templates whose placeholders are filled per cycle from live call state.
 ORDERED_TEMPLATES = [
@@ -84,12 +84,22 @@ class PromptOrderingTests(unittest.TestCase):
         # to the appendix constant, so a substring check would match the
         # correctly-placed copy too. What matters is that it appears once and
         # that nothing static trails the transcript.
-        self.assertEqual(1, agent._prompt_template.count("## Speaker Attribution Requirements"))
-        self.assertFalse(agent._prompt_template.rstrip().endswith(SPEAKER_ATTRIBUTION_APPENDIX.rstrip()))
-        self.assertLessEqual(len(trailing_static(agent._prompt_template)), MAX_TRAILING_STATIC_CHARS)
+        self.assertEqual(
+            1, agent._prompt_template.count("## Speaker Attribution Requirements")
+        )
+        self.assertFalse(
+            agent._prompt_template.rstrip().endswith(
+                SPEAKER_ATTRIBUTION_APPENDIX.rstrip()
+            )
+        )
+        self.assertLessEqual(
+            len(trailing_static(agent._prompt_template)), MAX_TRAILING_STATIC_CHARS
+        )
 
     def test_a_custom_prompt_without_the_section_still_gets_it(self):
-        agent = ConsolidatedAnalystAgent(prompt_override="Custom prompt {transcript_window}")
+        agent = ConsolidatedAnalystAgent(
+            prompt_override="Custom prompt {transcript_window}"
+        )
         self.assertIn("## Speaker Attribution Requirements", agent._prompt_template)
 
 
@@ -118,7 +128,9 @@ class StoredPromptsOverrideTheReorderTests(unittest.TestCase):
         self.assertFalse(hasattr(seed_agents, "LEGACY_ORDERING_MARKERS"))
 
     def test_a_stored_prompt_beats_the_module_default(self):
-        agent = ConsolidatedAnalystAgent(prompt_override="MY STORED PROMPT {lens_sections}")
+        agent = ConsolidatedAnalystAgent(
+            prompt_override="MY STORED PROMPT {lens_sections}"
+        )
         self.assertIn("MY STORED PROMPT", agent._prompt_template)
         self.assertNotIn("You are a multi-disciplinary analyst", agent._prompt_template)
 
@@ -152,9 +164,12 @@ class NoStaticBlockAfterTheFirstVolatileSectionTests(unittest.TestCase):
         # Not in prompts.py, and it runs once per batch of a revalidation run.
         from app.services.speaker_context_enhancer import ENHANCEMENT_PROMPT_TEMPLATE
 
-        self.assertEqual([], prompt_layout.static_after_volatile(
-            prompt_layout.stable_first(ENHANCEMENT_PROMPT_TEMPLATE)
-        ))
+        self.assertEqual(
+            [],
+            prompt_layout.static_after_volatile(
+                prompt_layout.stable_first(ENHANCEMENT_PROMPT_TEMPLATE)
+            ),
+        )
 
     def test_the_reorder_is_a_no_op_on_an_already_ordered_template(self):
         # A stored prompt that is already correct must come back byte-identical,
@@ -176,12 +191,21 @@ class LayoutTransformTests(unittest.TestCase):
 
     def test_static_sections_are_hoisted_and_relative_order_is_kept(self):
         reordered = prompt_layout.stable_first(self.TEMPLATE)
-        self.assertLess(reordered.index("## Output Format"), reordered.index("## Recent Transcript"))
-        self.assertLess(reordered.index("## Call Directives"), reordered.index("## Recent Transcript"))
+        self.assertLess(
+            reordered.index("## Output Format"), reordered.index("## Recent Transcript")
+        )
+        self.assertLess(
+            reordered.index("## Call Directives"),
+            reordered.index("## Recent Transcript"),
+        )
         # Order within each group survives: preamble, then context, then the
         # contract, then directives.
-        self.assertLess(reordered.index("You are an agent."), reordered.index("## Meeting Context"))
-        self.assertLess(reordered.index("## Output Format"), reordered.index("## Call Directives"))
+        self.assertLess(
+            reordered.index("You are an agent."), reordered.index("## Meeting Context")
+        )
+        self.assertLess(
+            reordered.index("## Output Format"), reordered.index("## Call Directives")
+        )
 
     def test_the_reorder_moves_text_and_never_changes_it(self):
         reordered = prompt_layout.stable_first(self.TEMPLATE)
@@ -234,7 +258,9 @@ class LayoutTransformTests(unittest.TestCase):
         system, user = prompt_layout.format_layers(
             "All one piece: {transcript_window}", transcript_window="Hi"
         )
-        self.assertIsNone(system, "None, not empty string: the caller sends no system turn")
+        self.assertIsNone(
+            system, "None, not empty string: the caller sends no system turn"
+        )
         self.assertEqual("All one piece: Hi", user)
 
 

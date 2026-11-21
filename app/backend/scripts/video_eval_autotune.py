@@ -18,14 +18,18 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from app.services.video_eval_evaluator import build_split_manifest, load_video_artifacts, save_manifest
+from app.services.ai_config import research_settings
 from app.services.prompt_optimization import (
     EvaluationResult,
     OptimizationPolicy,
     PromptOptimizationStore,
     compare_evaluations,
 )
-from app.services.ai_config import research_settings
+from app.services.video_eval_evaluator import (
+    build_split_manifest,
+    load_video_artifacts,
+    save_manifest,
+)
 from video_eval_batch import _assert_unique_video_ids, process
 
 
@@ -41,12 +45,12 @@ async def _request_tuning_review(summary: dict[str, Any]) -> dict[str, Any]:
         "Recommend prompt/routing/Few-shot changes before real fine-tuning. Do not "
         "claim a blind win without scored pairs and do not mention providers in any "
         "candidate user-facing prompt.\\n\\nSUMMARY:\\n" + _json(summary)
-
     )
     answer = ""
     provider = "unavailable"
     try:
         from app.services.chatgpt_web import configured, generate, runtime_available
+
         if configured() and runtime_available():
             answer = await generate(
                 prompt,
@@ -60,25 +64,49 @@ async def _request_tuning_review(summary: dict[str, Any]) -> dict[str, Any]:
     if not answer:
         try:
             from app.services.llm import generate_text
+
             providers = set(research_settings().get("providers") or [])
-            model = next((
-                item for item in (
-                    "endpoint:gemini-web:gemini-3.1-pro",
-                    "gemini-3.1-pro-preview",
-                    "endpoint:subscription-ai:gpt-6-sol",
-                ) if (
-                    (item.startswith("endpoint:gemini-web:") and "gemini_web" in providers)
-                    or (item.startswith("gemini-") and "gemini_api" in providers)
-                    or (item.startswith("endpoint:subscription-ai:") and "cliproxyapi" in providers)
-                )
-            ), "")
+            model = next(
+                (
+                    item
+                    for item in (
+                        "endpoint:gemini-web:gemini-3.1-pro",
+                        "gemini-3.1-pro-preview",
+                        "endpoint:subscription-ai:gpt-6-sol",
+                    )
+                    if (
+                        (
+                            item.startswith("endpoint:gemini-web:")
+                            and "gemini_web" in providers
+                        )
+                        or (item.startswith("gemini-") and "gemini_api" in providers)
+                        or (
+                            item.startswith("endpoint:subscription-ai:")
+                            and "cliproxyapi" in providers
+                        )
+                    )
+                ),
+                "",
+            )
             if model:
-                answer = await generate_text(model, prompt, system="Return strict JSON only.", source="video_autotune_review")
+                answer = await generate_text(
+                    model,
+                    prompt,
+                    system="Return strict JSON only.",
+                    source="video_autotune_review",
+                )
                 provider = "ai_web_fallback"
         except Exception:
             answer = ""
     if not answer:
-        return {"provider": provider, "status": "unavailable", "prompt_variants": [], "agent_comparison": [], "routing_recommendation": "", "fine_tuning_readiness": "insufficient evidence"}
+        return {
+            "provider": provider,
+            "status": "unavailable",
+            "prompt_variants": [],
+            "agent_comparison": [],
+            "routing_recommendation": "",
+            "fine_tuning_readiness": "insufficient evidence",
+        }
     raw = str(answer).strip()
     fence = chr(96) * 3
     if raw.startswith(fence):
@@ -87,9 +115,20 @@ async def _request_tuning_review(summary: dict[str, Any]) -> dict[str, Any]:
     try:
         payload = json.loads(raw)
     except (TypeError, ValueError):
-        return {"provider": provider, "status": "invalid_json", "raw": raw[:12000], "prompt_variants": [], "agent_comparison": []}
+        return {
+            "provider": provider,
+            "status": "invalid_json",
+            "raw": raw[:12000],
+            "prompt_variants": [],
+            "agent_comparison": [],
+        }
     if not isinstance(payload, dict):
-        return {"provider": provider, "status": "invalid_shape", "prompt_variants": [], "agent_comparison": []}
+        return {
+            "provider": provider,
+            "status": "invalid_shape",
+            "prompt_variants": [],
+            "agent_comparison": [],
+        }
     return {"provider": provider, "status": "completed", **payload}
 
 
@@ -105,7 +144,9 @@ def evaluation_results_from_fixture(raw: object) -> list[EvaluationResult]:
         metrics = row.get("metrics")
         if not case_id or not isinstance(metrics, dict):
             raise ValueError(f"evaluation row {index} needs case_id and metrics")
-        rows.append(EvaluationResult(case_id, str(row.get("split") or "fixed"), metrics))
+        rows.append(
+            EvaluationResult(case_id, str(row.get("split") or "fixed"), metrics)
+        )
     return rows
 
 
@@ -121,15 +162,23 @@ def load_evaluation_results_from_payload(payload: object) -> list[EvaluationResu
         case_id = str(row.get("case_id") or row.get("id") or "").strip()
         split = str(row.get("split") or "").strip().casefold()
         metrics = row.get("metrics")
-        if not case_id or split not in {"fixed", "holdout"} or not isinstance(metrics, dict):
-            raise ValueError(f"Evaluation {index} braucht case_id, split=fixed|holdout und metrics")
+        if (
+            not case_id
+            or split not in {"fixed", "holdout"}
+            or not isinstance(metrics, dict)
+        ):
+            raise ValueError(
+                f"Evaluation {index} braucht case_id, split=fixed|holdout und metrics"
+            )
         result.append(EvaluationResult(case_id=case_id, split=split, metrics=metrics))
     return result
 
 
 def load_evaluation_results(path: str | Path) -> list[EvaluationResult]:
     source = Path(path)
-    return load_evaluation_results_from_payload(json.loads(source.read_text(encoding="utf-8")))
+    return load_evaluation_results_from_payload(
+        json.loads(source.read_text(encoding="utf-8"))
+    )
 
 
 def build_optimization_report(
@@ -191,6 +240,7 @@ def apply_prompt_proposal(
         risks=risks or [],
     )
 
+
 def apply_optimization(
     prompt_root: str | Path,
     prompt_name: str,
@@ -227,6 +277,7 @@ def apply_optimization(
             return {"status": "rejected", "reason": str(exc), "applied": False}
         raise
 
+
 def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
     """Normalize a plain URL list into the batch processor contract."""
     if not isinstance(raw_items, list):
@@ -237,10 +288,12 @@ def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
             value = item.strip()
             if not value:
                 raise ValueError(f"video-list item {index + 1} is empty")
-            normalized.append({
-                "video_id": f"video-{index + 1:04d}",
-                "video_page_url": value,
-            })
+            normalized.append(
+                {
+                    "video_id": f"video-{index + 1:04d}",
+                    "video_page_url": value,
+                }
+            )
             continue
         if not isinstance(item, dict):
             raise ValueError(
@@ -249,14 +302,24 @@ def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
         row = dict(item)
         if not str(row.get("video_id") or row.get("id") or "").strip():
             row["video_id"] = f"video-{index + 1:04d}"
-        if not any(
-            str(row.get(key) or "").strip()
-            for key in (
-                "audio", "video", "media_path",
-                "media_url", "video_url", "audio_url",
-                "video_page_url", "video_page", "page_url", "source_url",
+        if (
+            not any(
+                str(row.get(key) or "").strip()
+                for key in (
+                    "audio",
+                    "video",
+                    "media_path",
+                    "media_url",
+                    "video_url",
+                    "audio_url",
+                    "video_page_url",
+                    "video_page",
+                    "page_url",
+                    "source_url",
+                )
             )
-        ) and str(row.get("url") or "").strip():
+            and str(row.get("url") or "").strip()
+        ):
             row["video_page_url"] = str(row["url"]).strip()
         normalized.append(row)
     return normalized
@@ -264,25 +327,55 @@ def _normalize_video_items(raw_items: object) -> list[dict[str, Any]]:
 
 def _run_checks(repo_root: str, command: str) -> dict[str, Any]:
     if not repo_root or not command:
-        return {"status": "not_requested", "command": "", "returncode": None, "output": ""}
+        return {
+            "status": "not_requested",
+            "command": "",
+            "returncode": None,
+            "output": "",
+        }
     try:
         completed = subprocess.run(
-            shlex.split(command), cwd=repo_root, capture_output=True, text=True, timeout=1800
+            shlex.split(command),
+            cwd=repo_root,
+            capture_output=True,
+            text=True,
+            timeout=1800,
         )
         output = (completed.stdout + "\n" + completed.stderr)[-12000:]
-        return {"status": "passed" if completed.returncode == 0 else "failed", "command": command, "returncode": completed.returncode, "output": output}
+        return {
+            "status": "passed" if completed.returncode == 0 else "failed",
+            "command": command,
+            "returncode": completed.returncode,
+            "output": output,
+        }
     except Exception as exc:
-        return {"status": "error", "command": command, "returncode": None, "output": str(exc)}
+        return {
+            "status": "error",
+            "command": command,
+            "returncode": None,
+            "output": str(exc),
+        }
 
 
-async def run(video_list: Path, out_dir: Path, *, language: str, diarization: bool, style_profile: str, repo_root: str, test_command: str) -> Path:
+async def run(
+    video_list: Path,
+    out_dir: Path,
+    *,
+    language: str,
+    diarization: bool,
+    style_profile: str,
+    repo_root: str,
+    test_command: str,
+) -> Path:
     raw_items = json.loads(video_list.read_text(encoding="utf-8"))
     items = _normalize_video_items(raw_items)
     _assert_unique_video_ids(items)
     out_dir.mkdir(parents=True, exist_ok=True)
     artifact_paths: list[Path] = []
     for item in items:
-        artifact_paths.append(await process(item, out_dir, language, diarization, style_profile))
+        artifact_paths.append(
+            await process(item, out_dir, language, diarization, style_profile)
+        )
     records = load_video_artifacts(artifact_paths)
     manifest = build_split_manifest(records)
     manifest_path = save_manifest(manifest, out_dir / "evaluation-manifest.json")
@@ -326,14 +419,22 @@ def main() -> int:
     parser.add_argument("--speaker-diarization", action="store_true")
     parser.add_argument("--style-profile", default="")
     parser.add_argument("--repo-root", default="")
-    parser.add_argument("--test-command", default="python -m pytest app/backend/tests/test_video_eval_pipeline.py")
+    parser.add_argument(
+        "--test-command",
+        default="python -m pytest app/backend/tests/test_video_eval_pipeline.py",
+    )
     args = parser.parse_args()
-    path = asyncio.run(run(
-        Path(args.video_list), Path(args.out_dir),
-        language=args.language, diarization=args.speaker_diarization,
-        style_profile=args.style_profile, repo_root=args.repo_root,
-        test_command=args.test_command if args.repo_root else "",
-    ))
+    path = asyncio.run(
+        run(
+            Path(args.video_list),
+            Path(args.out_dir),
+            language=args.language,
+            diarization=args.speaker_diarization,
+            style_profile=args.style_profile,
+            repo_root=args.repo_root,
+            test_command=args.test_command if args.repo_root else "",
+        )
+    )
     print(path)
     return 0
 

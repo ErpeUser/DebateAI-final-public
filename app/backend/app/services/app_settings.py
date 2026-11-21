@@ -1,8 +1,7 @@
-from datetime import datetime, timezone
-
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.models import AppSetting
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def get_app_setting(db: AsyncSession, key: str, default: str = "") -> str:
@@ -17,6 +16,6 @@ async def set_app_setting(db: AsyncSession, key: str, value: str) -> AppSetting:
         db.add(setting)
     else:
         setting.value = value
-    setting.updated_at = datetime.now(timezone.utc)
+    setting.updated_at = datetime.now(UTC)
     await db.flush()
     return setting

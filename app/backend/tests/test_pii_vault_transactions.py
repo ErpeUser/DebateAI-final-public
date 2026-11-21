@@ -8,21 +8,24 @@ import uuid
 from pathlib import Path
 from unittest.mock import patch
 
+from app.models import PiiVaultEntry, Speaker
+from app.services.pii import shield, vault
+from app.services.pii.recognizers import PERSON
 from cryptography.fernet import Fernet
 from sqlalchemy import event, select
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
-from app.models import PiiVaultEntry, Speaker
-from app.services.pii import shield, vault
-from app.services.pii.recognizers import PERSON
 
-
-@unittest.skipUnless(importlib.util.find_spec("aiosqlite"), "optional aiosqlite test dependency")
+@unittest.skipUnless(
+    importlib.util.find_spec("aiosqlite"), "optional aiosqlite test dependency"
+)
 class VaultTransactionTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self):
         self.directory = tempfile.TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
-        key_patch = patch.dict(os.environ, {"CREDENTIALS_MASTER_KEY": Fernet.generate_key().decode()})
+        key_patch = patch.dict(
+            os.environ, {"CREDENTIALS_MASTER_KEY": Fernet.generate_key().decode()}
+        )
         key_patch.start()
         self.addCleanup(key_patch.stop)
         vault.reset_keys_for_tests()
@@ -58,11 +61,16 @@ class VaultTransactionTests(unittest.IsolatedAsyncioTestCase):
             await vault.token_for(first, self.session_id, PERSON, "Alice Example")
             await first.rollback()
         async with self.sessions() as second:
-            token = await vault.token_for(second, self.session_id, PERSON, "Alice Example")
+            token = await vault.token_for(
+                second, self.session_id, PERSON, "Alice Example"
+            )
             await second.commit()
         vault.forget()
         async with self.sessions() as reader:
-            self.assertEqual(await vault.reveal_map(reader, self.session_id), {token: "Alice Example"})
+            self.assertEqual(
+                await vault.reveal_map(reader, self.session_id),
+                {token: "Alice Example"},
+            )
 
     async def test_uncommitted_token_and_roster_are_invisible_to_other_sessions(self):
         async with self.sessions() as writer, self.sessions() as reader:
@@ -70,7 +78,9 @@ class VaultTransactionTests(unittest.IsolatedAsyncioTestCase):
             roster = await shield.session_roster(writer, self.session_id, self.settings)
             self.assertEqual([entry.value for entry in roster], ["Alice Example"])
             self.assertEqual(await vault.reveal_map(reader, self.session_id), {})
-            self.assertEqual(await shield.session_roster(reader, self.session_id, self.settings), [])
+            self.assertEqual(
+                await shield.session_roster(reader, self.session_id, self.settings), []
+            )
             await reader.rollback()
             await writer.rollback()
 
@@ -80,30 +90,44 @@ class VaultTransactionTests(unittest.IsolatedAsyncioTestCase):
             await shield.session_roster(db, self.session_id, self.settings)
             await db.rollback()
             self.assertEqual(await vault.entry_count(db, self.session_id), 0)
-            self.assertEqual(await shield.session_roster(db, self.session_id, self.settings), [])
+            self.assertEqual(
+                await shield.session_roster(db, self.session_id, self.settings), []
+            )
             await vault.token_for(db, self.session_id, PERSON, "Bob Example")
             await db.commit()
-            self.assertEqual(await vault.reveal_map(db, self.session_id), {"[PERSON_1]": "Bob Example"})
+            self.assertEqual(
+                await vault.reveal_map(db, self.session_id),
+                {"[PERSON_1]": "Bob Example"},
+            )
 
-    async def test_caller_savepoint_rollback_drops_token_from_outer_transaction_cache(self):
-        async with self.sessions() as db:
-            async with db.begin():
-                savepoint = await db.begin_nested()
-                await vault.token_for(db, self.session_id, PERSON, "Alice Example")
-                await shield.session_roster(db, self.session_id, self.settings)
-                await savepoint.rollback()
-                self.assertEqual(await vault.entry_count(db, self.session_id), 0)
-                self.assertEqual(await shield.session_roster(db, self.session_id, self.settings), [])
-                token = await vault.token_for(db, self.session_id, PERSON, "Alice Example")
+    async def test_caller_savepoint_rollback_drops_token_from_outer_transaction_cache(
+        self,
+    ):
+        async with self.sessions() as db, db.begin():
+            savepoint = await db.begin_nested()
+            await vault.token_for(db, self.session_id, PERSON, "Alice Example")
+            await shield.session_roster(db, self.session_id, self.settings)
+            await savepoint.rollback()
+            self.assertEqual(await vault.entry_count(db, self.session_id), 0)
+            self.assertEqual(
+                await shield.session_roster(db, self.session_id, self.settings), []
+            )
+            token = await vault.token_for(db, self.session_id, PERSON, "Alice Example")
         vault.forget()
         async with self.sessions() as reader:
-            self.assertEqual(await vault.reveal_map(reader, self.session_id), {token: "Alice Example"})
+            self.assertEqual(
+                await vault.reveal_map(reader, self.session_id),
+                {token: "Alice Example"},
+            )
 
     async def test_committed_token_remains_reusable_without_duplicate_rows(self):
         async with self.sessions() as db:
             token = await vault.token_for(db, self.session_id, PERSON, "Alice Example")
             await db.commit()
-            self.assertEqual(await vault.token_for(db, self.session_id, PERSON, "alice example"), token)
+            self.assertEqual(
+                await vault.token_for(db, self.session_id, PERSON, "alice example"),
+                token,
+            )
             await db.commit()
             rows = (await db.execute(select(PiiVaultEntry))).scalars().all()
             self.assertEqual(len(rows), 1)

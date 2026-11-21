@@ -43,18 +43,20 @@ from __future__ import annotations
 import re
 
 # Placeholders whose value is different on essentially every cycle.
-VOLATILE_PLACEHOLDERS = frozenset({
-    "transcript_window",
-    "transcript_text",
-    "insights_json",
-    "insights_text",
-    "active_questions",
-    "recent_objections",
-    "opportunities_json",
-    "signal_history_text",
-    "meeting_lens_json",
-    "discovery_lens_json",
-})
+VOLATILE_PLACEHOLDERS = frozenset(
+    {
+        "transcript_window",
+        "transcript_text",
+        "insights_json",
+        "insights_text",
+        "active_questions",
+        "recent_objections",
+        "opportunities_json",
+        "signal_history_text",
+        "meeting_lens_json",
+        "discovery_lens_json",
+    }
+)
 
 _HEADING = re.compile(r"^##\s", re.MULTILINE)
 # A doubled brace is a literal brace in a JSON example, not a placeholder.
@@ -75,7 +77,9 @@ def sections(template: str) -> list[str]:
     if not starts:
         return [template]
     bounds = ([0] if starts[0] > 0 else []) + starts
-    return [template[start:end] for start, end in zip(bounds, bounds[1:] + [len(template)])]
+    return [
+        template[start:end] for start, end in zip(bounds, bounds[1:] + [len(template)])
+    ]
 
 
 def is_volatile(section: str) -> bool:
@@ -146,7 +150,7 @@ def trailing_static(template: str) -> str:
     matches = list(_PLACEHOLDER.finditer(template))
     if not matches:
         return ""
-    return template[matches[-1].end():].strip()
+    return template[matches[-1].end() :].strip()
 
 
 def static_after_volatile(template: str) -> list[str]:

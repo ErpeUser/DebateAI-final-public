@@ -22,15 +22,14 @@ import re
 import time
 import uuid
 from collections import Counter
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
+from app.models import Speaker, TranscriptEntry
+from app.services.pii.vault import TOKEN_PATTERN
+from app.services.transcript_revisions import append_refiner_revision
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import Speaker, TranscriptEntry
-from app.services.transcript_revisions import append_refiner_revision
-from app.services.pii.vault import TOKEN_PATTERN
 
 logger = logging.getLogger(__name__)
 
@@ -47,6 +46,7 @@ CONTEXT_ENTRIES = 4
 
 MIN_LENGTH_RATIO = 0.5
 MAX_LENGTH_RATIO = 1.6
+
 
 def live_refiner_is_idle(
     *,
@@ -80,6 +80,7 @@ def live_refiner_is_idle(
         return True
     current = time.monotonic() if now is None else now
     return current - last_transcript_at >= max(0.0, idle_grace_seconds)
+
 
 # Synthetic rows the live handler writes on a resume; not speech.
 _MARKER_PREFIX = "--- Session Resumed"
@@ -154,13 +155,24 @@ def build_prompt(
         lines.extend(f"  {speaker}: {text}" for speaker, text in context)
         lines.append("")
     lines.append("Lines to correct. Return every id with its corrected text:")
-    lines.extend(f"  [{entry_id}] {speaker}: {text}" for entry_id, speaker, text in targets)
+    lines.extend(
+        f"  [{entry_id}] {speaker}: {text}" for entry_id, speaker, text in targets
+    )
     return "\n".join(lines)
 
 
 async def _speaker_labels(db: AsyncSession, session_id: uuid.UUID) -> dict[str, str]:
-    rows = (await db.execute(select(Speaker).where(Speaker.session_id == session_id))).scalars().all()
-    return {str(s.id): (s.display_name if s.display_name and s.display_name_enabled else s.name) for s in rows}
+    rows = (
+        (await db.execute(select(Speaker).where(Speaker.session_id == session_id)))
+        .scalars()
+        .all()
+    )
+    return {
+        str(s.id): (
+            s.display_name if s.display_name and s.display_name_enabled else s.name
+        )
+        for s in rows
+    }
 
 
 async def refine_batch(
@@ -173,15 +185,19 @@ async def refine_batch(
     source: str = REFINER_SOURCE,
 ) -> list[TranscriptEntry]:
     """Refine ``entries`` in place (not committed). Returns the changed rows."""
-    from app.services.llm import generate_json
     from app.services.agents.prompt_resources import load_prompt_resource
+    from app.services.llm import generate_json
 
     if not entries:
         return []
     labels = await _speaker_labels(db, session_id)
 
     def label(entry: TranscriptEntry) -> str:
-        return labels.get(str(entry.speaker_id), "Unknown") if entry.speaker_id else "Unknown"
+        return (
+            labels.get(str(entry.speaker_id), "Unknown")
+            if entry.speaker_id
+            else "Unknown"
+        )
 
     prompt = build_prompt(
         [(str(e.id), label(e), e.text) for e in entries],
@@ -196,7 +212,7 @@ async def refine_batch(
     )
     by_id = {str(e.id): e for e in entries}
     changed: list[TranscriptEntry] = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for item in reply.entries if reply else []:
         entry = by_id.get(item.id)
         if entry is None:
@@ -246,12 +262,16 @@ async def refine_session(
     works on a recent window; a post-import pass takes them all).
     """
     rows = (
-        await db.execute(
-            select(TranscriptEntry)
-            .where(TranscriptEntry.session_id == session_id)
-            .order_by(TranscriptEntry.sequence)
+        (
+            await db.execute(
+                select(TranscriptEntry)
+                .where(TranscriptEntry.session_id == session_id)
+                .order_by(TranscriptEntry.sequence)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     pending = [r for r in rows if is_refinable(r)]
     if limit is not None:
         pending = pending[-limit:]
@@ -260,13 +280,19 @@ async def refine_session(
     index = {r.id: i for i, r in enumerate(rows)}
     changed: list[TranscriptEntry] = []
     for start in range(0, len(pending), batch_size):
-        batch = pending[start:start + batch_size]
+        batch = pending[start : start + batch_size]
         first = index[batch[0].id]
-        context = rows[max(0, first - CONTEXT_ENTRIES):first]
+        context = rows[max(0, first - CONTEXT_ENTRIES) : first]
         try:
-            changed.extend(await refine_batch(db, session_id, model_id, batch, context, source=source))
-        except Exception:  # noqa: BLE001 - a failed batch leaves the originals standing
-            logger.warning("Transcript refinement batch failed; originals kept", exc_info=True)
+            changed.extend(
+                await refine_batch(
+                    db, session_id, model_id, batch, context, source=source
+                )
+            )
+        except Exception:
+            logger.warning(
+                "Transcript refinement batch failed; originals kept", exc_info=True
+            )
             continue
         await db.flush()
     return changed

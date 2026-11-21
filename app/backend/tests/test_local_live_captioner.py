@@ -109,9 +109,13 @@ class LocalLiveCaptionerTests(unittest.IsolatedAsyncioTestCase):
         # The pending buffer was drained by the commit.
         self.assertEqual(len(cap._pending), 0)
 
-    async def test_retranscribes_a_bounded_rolling_window_as_one_replaceable_hypothesis(self):
+    async def test_retranscribes_a_bounded_rolling_window_as_one_replaceable_hypothesis(
+        self,
+    ):
         cap = self._captioner()
-        transcriber = SequenceTranscriber(["erste Hypothese", "erste korrigierte Hypothese"])
+        transcriber = SequenceTranscriber(
+            ["erste Hypothese", "erste korrigierte Hypothese"]
+        )
         cap._transcriber = transcriber
         cap.session = True
         gen = cap.receive_responses()
@@ -170,7 +174,9 @@ class LocalLiveCaptionerTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("Ja. Hallo, test, test, test.", event["data"])
 
-    async def test_fixed_german_caption_suppresses_english_until_german_is_available(self):
+    async def test_fixed_german_caption_suppresses_english_until_german_is_available(
+        self,
+    ):
         transcriber = SequenceTranscriber(
             ["That's like for Bolton side.", "Das ist die falsche Seite."]
         )

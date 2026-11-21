@@ -19,7 +19,13 @@ class NormalizeRecordImportRowTests(unittest.TestCase):
         self.assertEqual(normalized["body"], "b")
 
     def test_extra_columns_go_to_meta(self):
-        row = {"title": "A", "body": "b", "Category": "Security", "vendor": "Cisco", "empty": ""}
+        row = {
+            "title": "A",
+            "body": "b",
+            "Category": "Security",
+            "vendor": "Cisco",
+            "empty": "",
+        }
         normalized = normalize_record_import_row(row)
         meta = json.loads(normalized["meta"])
         self.assertEqual(meta, {"category": "Security", "vendor": "Cisco"})
@@ -30,7 +36,9 @@ class NormalizeRecordImportRowTests(unittest.TestCase):
         self.assertEqual(normalized["body"], "")
 
     def test_none_values_treated_as_empty(self):
-        normalized = normalize_record_import_row({"title": None, "body": "b", "note": None})
+        normalized = normalize_record_import_row(
+            {"title": None, "body": "b", "note": None}
+        )
         self.assertEqual(normalized["title"], "")
         self.assertEqual(json.loads(normalized["meta"]), {})
 

@@ -1,28 +1,53 @@
-import { pbkdf2 } from '@noble/hashes/pbkdf2.js';
-import { sha256 } from '@noble/hashes/sha2.js';
+import { pbkdf2 } from "@noble/hashes/pbkdf2.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 
 export const PASSWORD_ITERATIONS = 600_000;
 export const TEMPORARY_PASSWORD_TTL_SECONDS = 259_200;
 export const CHANGE_SESSION_TTL_SECONDS = 1_800;
 export const SESSION_TTL_SECONDS = 604_800;
-export const SESSION_COOKIE = '__Host-debateai_release';
+export const SESSION_COOKIE = "__Host-debateai_release";
 
-const UPPER = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-const LOWER = 'abcdefghijkmnopqrstuvwxyz';
-const NUMBER = '23456789';
-const SYMBOL = '!#$%&*+?@';
+const UPPER = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+const LOWER = "abcdefghijkmnopqrstuvwxyz";
+const NUMBER = "23456789";
+const SYMBOL = "!#$%&*+?@";
 const PASSWORD_ALPHABET = UPPER + LOWER + NUMBER + SYMBOL;
-const VERSION_PATTERN = /^(?=.{2,32}$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
-const MANIFEST_KEY_PATTERN = /^releases\/((?=.{2,32}\/manifest\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/manifest\.json$/;
-const RELEASE_KEY_PATTERN = /^releases\/((?=.{2,32}\/release\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/release\.json$/;
-const PLATFORM_KEY_PATTERN = /^releases\/((?=.{2,32}\/platforms\/)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/platforms\/(windows-x64|macos-arm64|linux-x64)\.json$/;
+const VERSION_PATTERN =
+  /^(?=.{2,32}$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)$/;
+const MANIFEST_KEY_PATTERN =
+  /^releases\/((?=.{2,32}\/manifest\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/manifest\.json$/;
+const RELEASE_KEY_PATTERN =
+  /^releases\/((?=.{2,32}\/release\.json$)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/release\.json$/;
+const PLATFORM_KEY_PATTERN =
+  /^releases\/((?=.{2,32}\/platforms\/)v(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*)\.(?:0|[1-9][0-9]*))\/platforms\/(windows-x64|macos-arm64|linux-x64)\.json$/;
 const ASSET_TUPLES = new Map([
   // Releases v0.1.x/v0.2.x were migrated with the historical Backchannel
   // filenames. New builds use the DebateAI names, but both names identify
   // the same trusted platform tuple and must remain readable from R2.
-  ['windows-x64', ['Windows x64', ['DebateAI-windows-x64.zip', 'Backchannel-windows-x64.zip'], 'application/zip']],
-  ['macos-arm64', ['macOS arm64', ['DebateAI-macos-arm64.zip', 'Backchannel-macos-arm64.zip'], 'application/zip']],
-  ['linux-x64', ['Linux x64', ['DebateAI-linux-x64.tar.gz', 'Backchannel-linux-x64.tar.gz'], 'application/gzip']],
+  [
+    "windows-x64",
+    [
+      "Windows x64",
+      ["DebateAI-windows-x64.zip", "Backchannel-windows-x64.zip"],
+      "application/zip",
+    ],
+  ],
+  [
+    "macos-arm64",
+    [
+      "macOS arm64",
+      ["DebateAI-macos-arm64.zip", "Backchannel-macos-arm64.zip"],
+      "application/zip",
+    ],
+  ],
+  [
+    "linux-x64",
+    [
+      "Linux x64",
+      ["DebateAI-linux-x64.tar.gz", "Backchannel-linux-x64.tar.gz"],
+      "application/gzip",
+    ],
+  ],
 ]);
 const DUMMY_SALT = new Uint8Array(16);
 
@@ -39,7 +64,7 @@ function randomIndexReader(randomBytes) {
       if (offset === bytes.length) {
         bytes = randomBytes(64);
         if (!(bytes instanceof Uint8Array) || bytes.length === 0) {
-          throw new TypeError('Random byte source must return bytes');
+          throw new TypeError("Random byte source must return bytes");
         }
         offset = 0;
       }
@@ -52,18 +77,22 @@ function randomIndexReader(randomBytes) {
 
 function encodeBase64Url(bytes) {
   return btoa(String.fromCharCode(...bytes))
-    .replaceAll('+', '-')
-    .replaceAll('/', '_')
-    .replace(/=+$/, '');
+    .replaceAll("+", "-")
+    .replaceAll("/", "_")
+    .replace(/=+$/, "");
 }
 
 function decodeBase64Url(value, expectedLength) {
-  if (typeof value !== 'string' || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
+  if (typeof value !== "string" || !/^[A-Za-z0-9_-]+$/.test(value)) return null;
   try {
-    const padded = value.replaceAll('-', '+').replaceAll('_', '/')
-      + '='.repeat((4 - (value.length % 4)) % 4);
-    const bytes = Uint8Array.from(atob(padded), (character) => character.charCodeAt(0));
-    if (bytes.length !== expectedLength || encodeBase64Url(bytes) !== value) return null;
+    const padded =
+      value.replaceAll("-", "+").replaceAll("_", "/") +
+      "=".repeat((4 - (value.length % 4)) % 4);
+    const bytes = Uint8Array.from(atob(padded), (character) =>
+      character.charCodeAt(0),
+    );
+    if (bytes.length !== expectedLength || encodeBase64Url(bytes) !== value)
+      return null;
     return bytes;
   } catch {
     return null;
@@ -74,18 +103,21 @@ function derivePbkdf2(password, salt, iterations, length) {
   return pbkdf2(sha256, password, salt, { c: iterations, dkLen: length });
 }
 
-async function derivePassword(password, salt, iterations, derive = derivePbkdf2) {
-  return new Uint8Array(derive(
-    new TextEncoder().encode(password),
-    salt,
-    iterations,
-    32,
-  ));
+async function derivePassword(
+  password,
+  salt,
+  iterations,
+  derive = derivePbkdf2,
+) {
+  return new Uint8Array(
+    derive(new TextEncoder().encode(password), salt, iterations, 32),
+  );
 }
 
 function equalBytes(left, right) {
   const native = globalThis.crypto.subtle.timingSafeEqual;
-  if (typeof native === 'function') return native.call(globalThis.crypto.subtle, left, right);
+  if (typeof native === "function")
+    return native.call(globalThis.crypto.subtle, left, right);
   let difference = left.length ^ right.length;
   for (let i = 0; i < Math.max(left.length, right.length); i += 1) {
     difference |= (left[i % left.length] ?? 0) ^ (right[i % right.length] ?? 0);
@@ -108,16 +140,19 @@ export function generateTemporaryPassword(randomBytes = secureRandomBytes) {
     const other = randomIndex(i + 1);
     [characters[i], characters[other]] = [characters[other], characters[i]];
   }
-  return characters.join('');
+  return characters.join("");
 }
 
-export async function hashPassword(password, { salt, iterations = PASSWORD_ITERATIONS } = {}) {
+export async function hashPassword(
+  password,
+  { salt, iterations = PASSWORD_ITERATIONS } = {},
+) {
   const saltBytes = salt === undefined ? secureRandomBytes(16) : salt;
   if (!(saltBytes instanceof Uint8Array) || saltBytes.length === 0) {
-    throw new TypeError('Salt must contain bytes');
+    throw new TypeError("Salt must contain bytes");
   }
   if (!Number.isSafeInteger(iterations) || iterations < 1) {
-    throw new TypeError('Iterations must be a positive safe integer');
+    throw new TypeError("Iterations must be a positive safe integer");
   }
   const hash = await derivePassword(password, saltBytes, iterations);
   return {
@@ -134,51 +169,70 @@ export async function verifyPassword(password, record, derive) {
     await derivePassword(password, DUMMY_SALT, PASSWORD_ITERATIONS, derive);
     return false;
   }
-  const actual = await derivePassword(password, salt, PASSWORD_ITERATIONS, derive);
+  const actual = await derivePassword(
+    password,
+    salt,
+    PASSWORD_ITERATIONS,
+    derive,
+  );
   return equalBytes(actual, expected);
 }
 
 export async function createSessionToken(randomBytes = secureRandomBytes) {
   const bytes = randomBytes(32);
   if (!(bytes instanceof Uint8Array) || bytes.length !== 32) {
-    throw new TypeError('Session token source must return 32 bytes');
+    throw new TypeError("Session token source must return 32 bytes");
   }
-  const hash = new Uint8Array(await globalThis.crypto.subtle.digest('SHA-256', bytes));
+  const hash = new Uint8Array(
+    await globalThis.crypto.subtle.digest("SHA-256", bytes),
+  );
   return { token: encodeBase64Url(bytes), tokenHash: encodeBase64Url(hash) };
 }
 
 function exactKeys(value, keys) {
-  return Object.keys(value).length === keys.length && keys.every((key) => key in value);
+  return (
+    Object.keys(value).length === keys.length &&
+    keys.every((key) => key in value)
+  );
 }
 
 function validUtcTimestamp(value) {
-  if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)) {
+  if (
+    typeof value !== "string" ||
+    !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(value)
+  ) {
     return false;
   }
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) return false;
-  const normalized = value.includes('.') ? value : value.replace('Z', '.000Z');
+  const normalized = value.includes(".") ? value : value.replace("Z", ".000Z");
   return new Date(timestamp).toISOString() === normalized;
 }
 
 export function parseManifest(value, expectedVersion) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)
-    || !exactKeys(value, ['version', 'published_at', 'commit', 'assets'])
-    || !VERSION_PATTERN.test(value.version)
-    || (expectedVersion !== undefined && value.version !== expectedVersion)
-    || !validUtcTimestamp(value.published_at)
-    || !/^[0-9a-f]{40}$/.test(value.commit)
-    || !Array.isArray(value.assets)
-    || value.assets.length === 0) {
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !exactKeys(value, ["version", "published_at", "commit", "assets"]) ||
+    !VERSION_PATTERN.test(value.version) ||
+    (expectedVersion !== undefined && value.version !== expectedVersion) ||
+    !validUtcTimestamp(value.published_at) ||
+    !/^[0-9a-f]{40}$/.test(value.commit) ||
+    !Array.isArray(value.assets) ||
+    value.assets.length === 0
+  ) {
     return null;
   }
 
   const ids = new Set();
   const filenames = new Set();
   for (const asset of value.assets) {
-    if (!parseAsset(asset, value.version)
-      || ids.has(asset.id)
-      || filenames.has(asset.filename)) {
+    if (
+      !parseAsset(asset, value.version) ||
+      ids.has(asset.id) ||
+      filenames.has(asset.filename)
+    ) {
       return null;
     }
     ids.add(asset.id);
@@ -188,64 +242,104 @@ export function parseManifest(value, expectedVersion) {
 }
 
 function parseAsset(asset, version) {
-  if (!asset || typeof asset !== 'object' || Array.isArray(asset)
-    || !exactKeys(asset, ['id', 'platform', 'filename', 'key', 'size', 'sha256', 'content_type'])
-    || !/^[a-z0-9-]{1,32}$/.test(asset.id)) return null;
+  if (
+    !asset ||
+    typeof asset !== "object" ||
+    Array.isArray(asset) ||
+    !exactKeys(asset, [
+      "id",
+      "platform",
+      "filename",
+      "key",
+      "size",
+      "sha256",
+      "content_type",
+    ]) ||
+    !/^[a-z0-9-]{1,32}$/.test(asset.id)
+  )
+    return null;
   const tuple = ASSET_TUPLES.get(asset.id);
-  return tuple
-    && asset.platform === tuple[0]
-    && tuple[1].includes(asset.filename)
-    && asset.content_type === tuple[2]
-    && asset.key === `releases/${version}/${asset.filename}`
-    && Number.isSafeInteger(asset.size)
-    && asset.size > 0
-    && /^[0-9a-f]{64}$/.test(asset.sha256) ? asset : null;
+  return tuple &&
+    asset.platform === tuple[0] &&
+    tuple[1].includes(asset.filename) &&
+    asset.content_type === tuple[2] &&
+    asset.key === `releases/${version}/${asset.filename}` &&
+    Number.isSafeInteger(asset.size) &&
+    asset.size > 0 &&
+    /^[0-9a-f]{64}$/.test(asset.sha256)
+    ? asset
+    : null;
 }
 
 export function parseReleaseIdentity(value, expectedVersion) {
-  if (!value || typeof value !== 'object' || Array.isArray(value)
-    || !exactKeys(value, ['version', 'published_at', 'commit'])
-    || !VERSION_PATTERN.test(value.version)
-    || (expectedVersion !== undefined && value.version !== expectedVersion)
-    || !validUtcTimestamp(value.published_at)
-    || !/^[0-9a-f]{40}$/.test(value.commit)) return null;
+  if (
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    !exactKeys(value, ["version", "published_at", "commit"]) ||
+    !VERSION_PATTERN.test(value.version) ||
+    (expectedVersion !== undefined && value.version !== expectedVersion) ||
+    !validUtcTimestamp(value.published_at) ||
+    !/^[0-9a-f]{40}$/.test(value.commit)
+  )
+    return null;
   return value;
 }
 
 function parseUpdate(value) {
-  return value && typeof value === 'object' && !Array.isArray(value)
-    && exactKeys(value, ['key_id', 'schema', 'signature'])
-    && /^[a-z0-9-]{1,40}$/.test(value.key_id)
-    && value.schema === 1
-    && /^[A-Za-z0-9_-]{86}$/.test(value.signature)
+  return value &&
+    typeof value === "object" &&
+    !Array.isArray(value) &&
+    exactKeys(value, ["key_id", "schema", "signature"]) &&
+    /^[a-z0-9-]{1,40}$/.test(value.key_id) &&
+    value.schema === 1 &&
+    /^[A-Za-z0-9_-]{86}$/.test(value.signature)
     ? value
     : null;
 }
 
 function validReleaseNotes(value) {
-  return typeof value === 'string' && value.length > 0
-    && new TextEncoder().encode(value).byteLength <= 8192;
+  return (
+    typeof value === "string" &&
+    value.length > 0 &&
+    new TextEncoder().encode(value).byteLength <= 8192
+  );
 }
 
 export function parsePlatformManifest(value, identity, platformId) {
-  if (!parseReleaseIdentity(identity)
-    || !value || typeof value !== 'object' || Array.isArray(value)) return null;
-  const unsigned = exactKeys(value, ['version', 'commit', 'asset']);
-  const signed = exactKeys(
-    value,
-    ['version', 'commit', 'published_at', 'release_notes', 'asset', 'update'],
-  );
-  if ((!unsigned && !signed)
-    || value.version !== identity.version || value.commit !== identity.commit
-    || (signed && (value.published_at !== identity.published_at
-      || !validReleaseNotes(value.release_notes) || !parseUpdate(value.update)))) return null;
+  if (
+    !parseReleaseIdentity(identity) ||
+    !value ||
+    typeof value !== "object" ||
+    Array.isArray(value)
+  )
+    return null;
+  const unsigned = exactKeys(value, ["version", "commit", "asset"]);
+  const signed = exactKeys(value, [
+    "version",
+    "commit",
+    "published_at",
+    "release_notes",
+    "asset",
+    "update",
+  ]);
+  if (
+    (!unsigned && !signed) ||
+    value.version !== identity.version ||
+    value.commit !== identity.commit ||
+    (signed &&
+      (value.published_at !== identity.published_at ||
+        !validReleaseNotes(value.release_notes) ||
+        !parseUpdate(value.update)))
+  )
+    return null;
   const asset = parseAsset(value.asset, identity.version);
   return asset?.id === platformId ? value : null;
 }
 
 async function readJson(bucket, key) {
   const object = await bucket.get(key);
-  if (!object || typeof object.json !== 'function') return null;
+  if (!object || typeof object.json !== "function") return null;
   return object.json();
 }
 
@@ -259,9 +353,9 @@ export async function loadReleaseCatalog(bucket) {
   do {
     let page;
     try {
-      page = await bucket.list({ prefix: 'releases/', cursor });
+      page = await bucket.list({ prefix: "releases/", cursor });
     } catch {
-      diagnostics.push('catalog-unavailable');
+      diagnostics.push("catalog-unavailable");
       break;
     }
     for (const { key } of page.objects ?? []) {
@@ -283,23 +377,26 @@ export async function loadReleaseCatalog(bucket) {
     }
     cursor = page.truncated ? page.cursor : undefined;
     if (page.truncated && !cursor) {
-      diagnostics.push('catalog-invalid');
+      diagnostics.push("catalog-invalid");
       break;
     }
   } while (cursor);
 
-  const progressiveVersions = new Set([...releaseKeys.keys(), ...platformKeys.keys()]);
+  const progressiveVersions = new Set([
+    ...releaseKeys.keys(),
+    ...platformKeys.keys(),
+  ]);
   for (const [version, key] of legacyKeys) {
     if (progressiveVersions.has(version)) {
-      diagnostics.push('manifest-conflict');
+      diagnostics.push("manifest-conflict");
       continue;
     }
     try {
       const manifest = parseManifest(await readJson(bucket, key), version);
       if (manifest) manifests.set(manifest.version, manifest);
-      else diagnostics.push('manifest-invalid');
+      else diagnostics.push("manifest-invalid");
     } catch {
-      diagnostics.push('manifest-unavailable');
+      diagnostics.push("manifest-unavailable");
     }
   }
 
@@ -307,15 +404,18 @@ export async function loadReleaseCatalog(bucket) {
     if (legacyKeys.has(version)) continue;
     const releaseKey = releaseKeys.get(version);
     if (!releaseKey) {
-      diagnostics.push('release-unavailable');
+      diagnostics.push("release-unavailable");
       continue;
     }
     let identity;
     try {
-      identity = parseReleaseIdentity(await readJson(bucket, releaseKey), version);
-      if (!identity) diagnostics.push('release-invalid');
+      identity = parseReleaseIdentity(
+        await readJson(bucket, releaseKey),
+        version,
+      );
+      if (!identity) diagnostics.push("release-invalid");
     } catch {
-      diagnostics.push('release-unavailable');
+      diagnostics.push("release-unavailable");
     }
     if (!identity) continue;
 
@@ -327,53 +427,63 @@ export async function loadReleaseCatalog(bucket) {
       if (!key) continue;
       try {
         const platform = parsePlatformManifest(
-          await readJson(bucket, key), identity, platformId,
+          await readJson(bucket, key),
+          identity,
+          platformId,
         );
         if (platform) {
           if (platform.update) {
-            if (releaseNotes === undefined) releaseNotes = platform.release_notes;
-            else if (releaseNotes !== platform.release_notes) notesConflict = true;
+            if (releaseNotes === undefined)
+              releaseNotes = platform.release_notes;
+            else if (releaseNotes !== platform.release_notes)
+              notesConflict = true;
           }
-          assets.push(platform.update
-            ? { ...platform.asset, update: platform.update }
-            : platform.asset);
-        }
-        else diagnostics.push('platform-invalid');
+          assets.push(
+            platform.update
+              ? { ...platform.asset, update: platform.update }
+              : platform.asset,
+          );
+        } else diagnostics.push("platform-invalid");
       } catch {
-        diagnostics.push('platform-unavailable');
+        diagnostics.push("platform-unavailable");
       }
     }
     if (notesConflict) {
-      diagnostics.push('release-notes-conflict');
+      diagnostics.push("release-notes-conflict");
       continue;
     }
-    if (assets.length > 0) manifests.set(version, {
-      ...identity,
-      ...(releaseNotes === undefined ? {} : { release_notes: releaseNotes }),
-      assets,
-    });
+    if (assets.length > 0)
+      manifests.set(version, {
+        ...identity,
+        ...(releaseNotes === undefined ? {} : { release_notes: releaseNotes }),
+        assets,
+      });
   }
 
   let latestVersion = null;
   try {
-    const latest = await readJson(bucket, 'releases/latest.json');
-    if (latest && typeof latest === 'object' && !Array.isArray(latest)
-      && exactKeys(latest, ['version'])
-      && VERSION_PATTERN.test(latest.version)
-      && manifests.has(latest.version)) {
+    const latest = await readJson(bucket, "releases/latest.json");
+    if (
+      latest &&
+      typeof latest === "object" &&
+      !Array.isArray(latest) &&
+      exactKeys(latest, ["version"]) &&
+      VERSION_PATTERN.test(latest.version) &&
+      manifests.has(latest.version)
+    ) {
       latestVersion = latest.version;
     } else {
-      diagnostics.push('latest-invalid');
+      diagnostics.push("latest-invalid");
     }
   } catch {
-    diagnostics.push('latest-unavailable');
+    diagnostics.push("latest-unavailable");
   }
   return { latestVersion, manifests, diagnostics };
 }
 
 function compareVersionsNewestFirst(left, right) {
-  const leftParts = left.slice(1).split('.').map(BigInt);
-  const rightParts = right.slice(1).split('.').map(BigInt);
+  const leftParts = left.slice(1).split(".").map(BigInt);
+  const rightParts = right.slice(1).split(".").map(BigInt);
   for (let i = 0; i < 3; i += 1) {
     if (leftParts[i] > rightParts[i]) return -1;
     if (leftParts[i] < rightParts[i]) return 1;
@@ -383,12 +493,21 @@ function compareVersionsNewestFirst(left, right) {
 
 export function resolveEntitlements(account, explicitVersions, catalog) {
   const versions = new Set();
-  if (account?.include_latest === 1 && VERSION_PATTERN.test(catalog?.latestVersion)) {
+  if (
+    account?.include_latest === 1 &&
+    VERSION_PATTERN.test(catalog?.latestVersion)
+  ) {
     versions.add(catalog.latestVersion);
   }
-  for (const version of Array.isArray(explicitVersions) ? explicitVersions : []) {
-    if (typeof version === 'string' && VERSION_PATTERN.test(version)
-      && catalog?.manifests?.has(version)) versions.add(version);
+  for (const version of Array.isArray(explicitVersions)
+    ? explicitVersions
+    : []) {
+    if (
+      typeof version === "string" &&
+      VERSION_PATTERN.test(version) &&
+      catalog?.manifests?.has(version)
+    )
+      versions.add(version);
   }
   return [...versions]
     .sort(compareVersionsNewestFirst)
@@ -400,20 +519,29 @@ export function releaseSummary(manifest) {
     version: manifest.version,
     published_at: manifest.published_at,
     assets: manifest.assets.map(({ id, platform, filename, size, sha256 }) => ({
-      id, platform, filename, size, sha256,
+      id,
+      platform,
+      filename,
+      size,
+      sha256,
     })),
   };
 }
 
 export function publicUpdateDescriptor(manifest, assetId) {
-  if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)
-    || !parseReleaseIdentity({
+  if (
+    !manifest ||
+    typeof manifest !== "object" ||
+    Array.isArray(manifest) ||
+    !parseReleaseIdentity({
       version: manifest.version,
       published_at: manifest.published_at,
       commit: manifest.commit,
-    })
-    || !validReleaseNotes(manifest.release_notes)
-    || !Array.isArray(manifest.assets)) return null;
+    }) ||
+    !validReleaseNotes(manifest.release_notes) ||
+    !Array.isArray(manifest.assets)
+  )
+    return null;
   const asset = manifest.assets.find((value) => value?.id === assetId);
   const update = parseUpdate(asset?.update);
   if (!asset || !update) return null;
@@ -447,7 +575,7 @@ export function publicUpdateDescriptor(manifest, assetId) {
 
 export function parseSingleRange(header, size) {
   if (header == null) return null;
-  if (!Number.isSafeInteger(size) || size <= 0 || typeof header !== 'string') {
+  if (!Number.isSafeInteger(size) || size <= 0 || typeof header !== "string") {
     return { unsatisfiable: true };
   }
   const match = /^bytes=(\d*)-(\d*)$/.exec(header);

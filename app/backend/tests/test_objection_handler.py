@@ -2,17 +2,15 @@ import unittest
 import uuid
 from unittest.mock import AsyncMock, patch
 
-from pydantic import ValidationError
-
 from app.services.agents.objection_handler import (
     DebateRecommendation,
     LiveDebateResponse,
     ObjectionHandlerAgent,
     ObjectionHandlerOutput,
-    normalize_standard_strategies,
     _compose_rationale,
+    normalize_standard_strategies,
 )
-
+from pydantic import ValidationError
 
 SPEAKER_ID = str(uuid.uuid4())
 SPEAKERS = [{"id": SPEAKER_ID, "name": "Speaker 1"}]
@@ -43,12 +41,14 @@ def _model_recommendation() -> DebateRecommendation:
 
 class StandardStrategyTests(unittest.TestCase):
     def test_normalizer_returns_three_distinct_options_with_metadata(self):
-        recommendation = _model_recommendation().model_copy(update={
-            "claim_id": "claim-1",
-            "claim_revision": 2,
-            "transcript_revision": 4,
-            "generation_id": "generation-1",
-        })
+        recommendation = _model_recommendation().model_copy(
+            update={
+                "claim_id": "claim-1",
+                "claim_revision": 2,
+                "transcript_revision": 4,
+                "generation_id": "generation-1",
+            }
+        )
         options = normalize_standard_strategies(recommendation)
         self.assertEqual(3, len(options))
         self.assertEqual(3, len({item["id"] for item in options}))
@@ -57,12 +57,14 @@ class StandardStrategyTests(unittest.TestCase):
         self.assertEqual({4}, {item["transcript_revision"] for item in options})
 
     def test_normalizer_replaces_empty_or_duplicate_model_options(self):
-        recommendation = _model_recommendation().model_copy(update={
-            "strategy_options": [
-                {"kind": "answer", "text": "Gleicher Satz"},
-                {"kind": "counter_question", "text": "Gleicher Satz"},
-            ],
-        })
+        recommendation = _model_recommendation().model_copy(
+            update={
+                "strategy_options": [
+                    {"kind": "answer", "text": "Gleicher Satz"},
+                    {"kind": "counter_question", "text": "Gleicher Satz"},
+                ],
+            }
+        )
         options = normalize_standard_strategies(recommendation)
         self.assertEqual(3, len(options))
         self.assertEqual(3, len({item["text"].casefold() for item in options}))
@@ -76,7 +78,9 @@ class ComposeRationaleTests(unittest.TestCase):
         self.assertIn("(Severity: high)", rationale)
 
     def test_skips_missing_fields_and_bad_severity(self):
-        rationale = _compose_rationale({"response_now": "Say this.", "severity": "urgent"})
+        rationale = _compose_rationale(
+            {"response_now": "Say this.", "severity": "urgent"}
+        )
         self.assertEqual(rationale, "Respond now: Say this.")
 
 
@@ -117,7 +121,9 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         payload = recommendation.model_dump()
         self.assertEqual("question", payload.get("primary_move"))
         self.assertEqual("partial", payload.get("question_status"))
-        self.assertEqual("Warum gilt dieser Massstab nur hier?", payload.get("open_question"))
+        self.assertEqual(
+            "Warum gilt dieser Massstab nur hier?", payload.get("open_question")
+        )
         self.assertEqual(1, len(payload.get("follow_ups", [])))
 
     async def test_follow_ups_are_limited_to_two(self):
@@ -152,9 +158,7 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
                 analogy="Das ist wie ein Urteil ohne Beweisaufnahme.",
             )
         )
-        complete = ObjectionHandlerOutput(
-            recommendation=_model_recommendation()
-        )
+        complete = ObjectionHandlerOutput(recommendation=_model_recommendation())
         generate = AsyncMock(side_effect=[incomplete, complete])
         agent = ObjectionHandlerAgent()
 
@@ -221,7 +225,9 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("economy", generate.await_args.kwargs["resource_profile"])
 
-    async def test_live_prompt_handles_noisy_asr_without_inventing_personal_history(self):
+    async def test_live_prompt_handles_noisy_asr_without_inventing_personal_history(
+        self,
+    ):
         output = LiveDebateResponse(**_model_recommendation().model_dump())
         generate = AsyncMock(return_value=output)
 
@@ -292,7 +298,9 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("NATUERLICH", system)
         self.assertIn("gesprochenem Deutsch", system)
 
-    async def test_prompt_requests_word_limits_ranking_and_conservative_question_state(self):
+    async def test_prompt_requests_word_limits_ranking_and_conservative_question_state(
+        self,
+    ):
         agent = ObjectionHandlerAgent()
         generate = AsyncMock(
             return_value=ObjectionHandlerOutput(
@@ -301,9 +309,13 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with patch("app.services.agents.objection_handler.generate_json", new=generate):
-            await agent.run_cycle("External: Das beantwortet die Frage nur teilweise.", [], SPEAKERS)
+            await agent.run_cycle(
+                "External: Das beantwortet die Frage nur teilweise.", [], SPEAKERS
+            )
 
-        request_text = generate.await_args.args[1] + generate.await_args.kwargs["system"]
+        request_text = (
+            generate.await_args.args[1] + generate.await_args.kwargs["system"]
+        )
         self.assertIn("25 Woerter", request_text)
         self.assertIn("6-14 Woerter", request_text)
         self.assertIn("primary_move", request_text)
@@ -357,14 +369,18 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         generate = AsyncMock(
             side_effect=[
                 ObjectionHandlerOutput(recommendation=first, items=[]),
-                ObjectionHandlerOutput(recommendation=_model_recommendation(), items=[]),
+                ObjectionHandlerOutput(
+                    recommendation=_model_recommendation(), items=[]
+                ),
             ]
         )
         agent = ObjectionHandlerAgent()
 
         with patch("app.services.agents.objection_handler.generate_json", new=generate):
             await agent.run_cycle("External: Irgendwo stand das.", [], SPEAKERS)
-            await agent.run_cycle("Team: Welche konkrete Quelle belegt das?", [], SPEAKERS)
+            await agent.run_cycle(
+                "Team: Welche konkrete Quelle belegt das?", [], SPEAKERS
+            )
 
         second_prompt = generate.await_args_list[1].args[1]
         self.assertIn("partial", second_prompt)
@@ -397,7 +413,9 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        with patch("app.services.agents.objection_handler.generate_json", new=mock_generate):
+        with patch(
+            "app.services.agents.objection_handler.generate_json", new=mock_generate
+        ):
             await agent.run_cycle("Speaker 1: same text", [], SPEAKERS)
             self.assertEqual("no_findings", agent.last_outcome["kind"])
             await agent.run_cycle("Speaker 1: same text", [], SPEAKERS)
@@ -424,7 +442,6 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(2, generate.await_count)
         self.assertEqual(output.recommendation, agent.latest_recommendation)
 
-
     async def test_surfaced_objections_fed_back_into_prompt(self):
         agent = ObjectionHandlerAgent()
         mock_generate = AsyncMock(
@@ -438,7 +455,9 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
             ]
         )
 
-        with patch("app.services.agents.objection_handler.generate_json", new=mock_generate):
+        with patch(
+            "app.services.agents.objection_handler.generate_json", new=mock_generate
+        ):
             await agent.run_cycle("Speaker 1: window one", [], SPEAKERS)
             await agent.run_cycle("Speaker 1: window two", [], SPEAKERS)
 
@@ -449,7 +468,7 @@ class ObjectionHandlerCycleTests(unittest.IsolatedAsyncioTestCase):
         agent = ObjectionHandlerAgent()
         output = ObjectionHandlerOutput(
             recommendation=_model_recommendation(),
-            items=[_model_item(speaker_id=str(uuid.uuid4()))]
+            items=[_model_item(speaker_id=str(uuid.uuid4()))],
         )
 
         with patch(

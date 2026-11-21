@@ -40,8 +40,15 @@ class DebateSource(BaseModel):
 class LogicalRelation(BaseModel):
     target_claim_id: str
     relation: Literal[
-        "contradicts", "concedes", "counterevidence", "premise", "condition",
-        "double_standard", "answers", "topic_shift", "supports",
+        "contradicts",
+        "concedes",
+        "counterevidence",
+        "premise",
+        "condition",
+        "double_standard",
+        "answers",
+        "topic_shift",
+        "supports",
     ]
     confidence: float = Field(ge=0.0, le=1.0)
     verified: bool = False

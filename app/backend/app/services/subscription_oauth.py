@@ -11,7 +11,6 @@ from dataclasses import dataclass
 from urllib.parse import urlparse
 
 import httpx
-
 from app.services.identity import env_value
 
 GEMINI_PROVIDER = "gemini-cli"
@@ -60,7 +59,11 @@ def connection() -> BridgeConnection | None:
     if not raw_url or not key:
         return None
     parsed = urlparse(raw_url)
-    if parsed.scheme != "http" or parsed.hostname not in {"127.0.0.1", "localhost", "::1"}:
+    if parsed.scheme != "http" or parsed.hostname not in {
+        "127.0.0.1",
+        "localhost",
+        "::1",
+    }:
         return None
     root_url = f"{parsed.scheme}://{parsed.netloc}"
     return BridgeConnection(root_url=root_url, key=key)
@@ -131,12 +134,18 @@ async def start_login(provider: str) -> dict[str, str]:
         raise SubscriptionOAuthError(
             "Die lokale OAuth-Anmeldung konnte nicht gestartet werden."
         ) from exc
-    auth_url = str(payload.get("url") or "").strip() if isinstance(payload, dict) else ""
+    auth_url = (
+        str(payload.get("url") or "").strip() if isinstance(payload, dict) else ""
+    )
     state = str(payload.get("state") or "").strip() if isinstance(payload, dict) else ""
-    status = str(payload.get("status") or "").strip() if isinstance(payload, dict) else ""
+    status = (
+        str(payload.get("status") or "").strip() if isinstance(payload, dict) else ""
+    )
     parsed = urlparse(auth_url)
     if status != "ok" or parsed.scheme != "https" or not parsed.netloc:
-        raise SubscriptionOAuthError("Die lokale OAuth-Bridge lieferte keine sichere Anmeldeadresse.")
+        raise SubscriptionOAuthError(
+            "Die lokale OAuth-Bridge lieferte keine sichere Anmeldeadresse."
+        )
     _state(state)
     return {"provider": selected, "auth_url": auth_url, "state": state}
 
@@ -156,7 +165,9 @@ async def login_status(state: str) -> dict[str, str]:
             response.raise_for_status()
             payload = response.json()
     except (httpx.HTTPError, ValueError, TypeError) as exc:
-        raise SubscriptionOAuthError("Der Anmeldestatus konnte nicht gelesen werden.") from exc
+        raise SubscriptionOAuthError(
+            "Der Anmeldestatus konnte nicht gelesen werden."
+        ) from exc
     status = str(payload.get("status") or "error").strip().casefold()
     if status not in {"wait", "ok", "error"}:
         status = "error"
@@ -205,11 +216,17 @@ async def verify_preferred_gemini_high() -> dict[str, str]:
         ) from exc
     choices = result.get("choices") if isinstance(result, dict) else None
     if not isinstance(choices, list) or not choices:
-        raise SubscriptionOAuthError(f"{selected_model} lieferte keine pruefbare Antwort.")
+        raise SubscriptionOAuthError(
+            f"{selected_model} lieferte keine pruefbare Antwort."
+        )
     message = choices[0].get("message") if isinstance(choices[0], dict) else None
-    content = str(message.get("content") or "").strip() if isinstance(message, dict) else ""
+    content = (
+        str(message.get("content") or "").strip() if isinstance(message, dict) else ""
+    )
     if not content:
-        raise SubscriptionOAuthError(f"{selected_model} lieferte keine pruefbare Antwort.")
+        raise SubscriptionOAuthError(
+            f"{selected_model} lieferte keine pruefbare Antwort."
+        )
     return {
         "model": str(result.get("model") or selected_model),
         "thinking": "high",

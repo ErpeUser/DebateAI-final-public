@@ -7,7 +7,6 @@ import time
 import uuid
 from dataclasses import dataclass
 
-
 _CONTINUATION_WORDS = {
     "aber",
     "also",
@@ -25,9 +24,14 @@ _CONTINUATION_WORDS = {
 
 def _looks_like_continuation(text: str) -> bool:
     stripped = text.lstrip()
-    first_letter = next((character for character in stripped if character.isalpha()), "")
+    first_letter = next(
+        (character for character in stripped if character.isalpha()), ""
+    )
     first_word = re.split(r"\W+", stripped.casefold(), maxsplit=1)[0]
-    return bool(first_letter and first_letter.islower()) or first_word in _CONTINUATION_WORDS
+    return (
+        bool(first_letter and first_letter.islower())
+        or first_word in _CONTINUATION_WORDS
+    )
 
 
 @dataclass(frozen=True)
@@ -49,11 +53,15 @@ class TurnAssembler:
         self._revision = 0
         self._updated_at = 0.0
 
-    def add(self, speaker_id: str | None, text: str, *, now: float | None = None) -> TurnRevision:
+    def add(
+        self, speaker_id: str | None, text: str, *, now: float | None = None
+    ) -> TurnRevision:
         now = time.monotonic() if now is None else now
         speaker = speaker_id or "unknown"
         gap = now - self._updated_at
-        previous_open = bool(self._text) and not re.search(r"[.!?][\"')\]]?$", self._text)
+        previous_open = bool(self._text) and not re.search(
+            r"[.!?][\"')\]]?$", self._text
+        )
         lexical_continuation = _looks_like_continuation(text)
         # Very short gaps are commonly VAD cuts inside one clause. Beyond that
         # point require a lexical continuation cue; ASR punctuation alone is

@@ -22,7 +22,6 @@ from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit, urlunsplit
 from urllib.request import urlopen
 
-
 NEMO_SPEECH_CPP_VERSION = "0.3.0"
 NEMOTRON_BACKEND_ID = "local-nemotron-nemo-speech-cpp"
 NEMOTRON_REALTIME_PATH = "/v1/audio/transcriptions/realtime"
@@ -83,7 +82,9 @@ def _installed_runtime_version(executable: Path) -> str:
         )
     except (OSError, subprocess.SubprocessError):
         return ""
-    match = re.search(r"(?<!\d)v?(\d+\.\d+\.\d+)(?!\d)", completed.stdout + completed.stderr)
+    match = re.search(
+        r"(?<!\d)v?(\d+\.\d+\.\d+)(?!\d)", completed.stdout + completed.stderr
+    )
     return match.group(1) if match else ""
 
 
@@ -93,9 +94,9 @@ def _http_base_url() -> str:
 
 def _server_readiness(base_url: str) -> tuple[bool, str]:
     try:
-        with urlopen(f"{base_url}/ready", timeout=0.75) as response:  # noqa: S310 - local opt-in URL
+        with urlopen(f"{base_url}/ready", timeout=0.75) as response:
             payload = json.loads(response.read().decode("utf-8"))
-    except Exception as exc:  # noqa: BLE001 - capability probes are non-fatal
+    except Exception as exc:
         return False, f"server is not ready ({type(exc).__name__})"
     if payload.get("ready") is not True:
         return False, "server reported not ready"
@@ -109,7 +110,9 @@ def optional_nemotron_capability() -> ASRBackendCapability:
     installed = executable.is_file() and model.is_file()
     version = _installed_runtime_version(executable) if executable.is_file() else ""
     capable = installed and version == NEMO_SPEECH_CPP_VERSION
-    ready, ready_reason = _server_readiness(_http_base_url()) if capable else (False, "")
+    ready, ready_reason = (
+        _server_readiness(_http_base_url()) if capable else (False, "")
+    )
     if not installed:
         reason = "Not installed (set NEMO_SPEECH_CPP_BIN and NEMOTRON_ASR_MODEL)."
     elif not capable:
@@ -147,8 +150,12 @@ class ManagedNemoSpeechServer:
             if self._process is not None and self._process.poll() is None:
                 return
             if not self._executable.is_file() or not self._model.is_file():
-                raise RuntimeError("NeMo-Speech.cpp executable or model is not installed")
-            version = await asyncio.to_thread(_installed_runtime_version, self._executable)
+                raise RuntimeError(
+                    "NeMo-Speech.cpp executable or model is not installed"
+                )
+            version = await asyncio.to_thread(
+                _installed_runtime_version, self._executable
+            )
             if version != NEMO_SPEECH_CPP_VERSION:
                 raise RuntimeError(
                     f"NeMo-Speech.cpp {NEMO_SPEECH_CPP_VERSION} is required; found {version or 'unknown'}"
@@ -267,7 +274,9 @@ class NemotronStreamingASRBackend:
             await self._server_manager.start()
             deadline = asyncio.get_running_loop().time() + self._event_timeout
             while True:
-                ready, reason = await asyncio.to_thread(_server_readiness, self._base_url)
+                ready, reason = await asyncio.to_thread(
+                    _server_readiness, self._base_url
+                )
                 if ready:
                     return
                 if asyncio.get_running_loop().time() >= deadline:
@@ -292,7 +301,11 @@ class NemotronStreamingASRBackend:
         if not isinstance(event, dict) or not isinstance(event.get("type"), str):
             raise RuntimeError("NeMo-Speech.cpp returned a malformed event")
         if event["type"] == "error":
-            message = event.get("message") or event.get("error", {}).get("message") or "unknown error"
+            message = (
+                event.get("message")
+                or event.get("error", {}).get("message")
+                or "unknown error"
+            )
             raise RuntimeError(f"NeMo-Speech.cpp realtime error: {message}")
         return event
 
@@ -312,7 +325,9 @@ class NemotronStreamingASRBackend:
                 "verbatim": False,
                 "word_timestamps": True,
             }
-            await socket.send(json.dumps({"type": "session.update", "session": session}))
+            await socket.send(
+                json.dumps({"type": "session.update", "session": session})
+            )
             updated = await asyncio.wait_for(self._event(socket), self._event_timeout)
             if updated["type"] != "session.updated":
                 raise RuntimeError(f"Expected session.updated, got {updated['type']}")
@@ -334,11 +349,19 @@ class NemotronStreamingASRBackend:
         if self._closed:
             raise RuntimeError("Nemotron streaming backend is closed")
         stream = self._streams.get(track)
-        if stream is not None and stream.receiver is not None and not stream.receiver.done():
+        if (
+            stream is not None
+            and stream.receiver is not None
+            and not stream.receiver.done()
+        ):
             return stream
         async with self._stream_lock:
             stream = self._streams.get(track)
-            if stream is not None and stream.receiver is not None and not stream.receiver.done():
+            if (
+                stream is not None
+                and stream.receiver is not None
+                and not stream.receiver.done()
+            ):
                 return stream
             if stream is not None:
                 stream = await self._replace_stream(track, stream)
@@ -383,7 +406,9 @@ class NemotronStreamingASRBackend:
         except Exception as exc:  # receiver failure is surfaced by flush/feed reconnect
             await stream.finals.put(exc)
 
-    async def _replace_stream(self, track: Hashable, previous: _TrackStream) -> _TrackStream:
+    async def _replace_stream(
+        self, track: Hashable, previous: _TrackStream
+    ) -> _TrackStream:
         replay = bytes(previous.pending_audio)
         await self._close_stream(previous)
         if self._closed:
@@ -416,7 +441,9 @@ class NemotronStreamingASRBackend:
         deadline = asyncio.get_running_loop().time() + self._event_timeout
         for attempt in range(2):
             try:
-                await stream.socket.send(json.dumps({"type": "input_audio_buffer.commit"}))
+                await stream.socket.send(
+                    json.dumps({"type": "input_audio_buffer.commit"})
+                )
                 remaining = deadline - asyncio.get_running_loop().time()
                 if remaining <= 0:
                     raise TimeoutError

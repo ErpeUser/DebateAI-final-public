@@ -3,8 +3,8 @@
 from __future__ import annotations
 
 import asyncio
-import html
 import hashlib
+import html
 import ipaddress
 import json
 import re
@@ -18,23 +18,21 @@ ResearchMode = Literal["live", "deep"]
 from urllib.parse import parse_qs, unquote, urljoin, urlsplit, urlunsplit
 
 import httpx
-from pydantic import BaseModel, Field
-
 from app.config import settings
-from app.services.ai_config import research_settings, unavailable_cooldown_seconds
 from app.services import external_audit
-from app.services.provider_capabilities import classify_provider_failure
+from app.services.ai_config import research_settings, unavailable_cooldown_seconds
 from app.services.pii.recognizers import (
     ADDRESS,
     CARD,
     EMAIL,
     IP,
-    PHONE,
     PERSON,
+    PHONE,
     SSN,
     find_patterns,
 )
-
+from app.services.provider_capabilities import classify_provider_failure
+from pydantic import BaseModel, Field
 
 _USER_AGENT = "DebateAI/0.6.6 (https://github.com/ErpeUser/DebateAI)"
 _HEADERS = {"User-Agent": _USER_AGENT, "Api-User-Agent": _USER_AGENT}
@@ -250,7 +248,6 @@ def _extract_published_at(content: bytes) -> str:
     return ""
 
 
-
 def _canonical_url(value: object) -> str | None:
     raw = str(value or "").strip()
     if not raw:
@@ -329,7 +326,9 @@ async def _bounded_get(
         response = await client.get(url, params=params, headers=_HEADERS)
         response.raise_for_status()
         headers = getattr(response, "headers", {}) or {}
-        content_type = str(headers.get("content-type", "text/plain")).split(";", 1)[0].casefold()
+        content_type = (
+            str(headers.get("content-type", "text/plain")).split(";", 1)[0].casefold()
+        )
         if content_type not in accepted_types:
             raise ValueError("Research response content type is not allowed")
         if content_type == "application/json" and hasattr(response, "json"):
@@ -531,8 +530,7 @@ def _trusted_original_url(value: str) -> bool:
 
 def _relevant_passage(text: str, query: str) -> str:
     terms = {
-        token for token in re.findall(r"[\wäöüß]+", query.casefold())
-        if len(token) >= 5
+        token for token in re.findall(r"[\wäöüß]+", query.casefold()) if len(token) >= 5
     }
     sentences = [
         sentence.strip()
@@ -556,9 +554,8 @@ async def _read_trusted_original(
     query: str,
     claim: str = "",
 ) -> ResearchSource:
-    can_read_ai_source = (
-        source.source_type == "ai_web"
-        and isinstance(client, httpx.AsyncClient)
+    can_read_ai_source = source.source_type == "ai_web" and isinstance(
+        client, httpx.AsyncClient
     )
     if source.verification_status == "read" or (
         not _trusted_original_url(source.url) and not can_read_ai_source
@@ -645,14 +642,16 @@ async def _read_trusted_original(
     if not passage:
         return source
     published_at = _extract_published_at(content) or source.published_at
-    return source.model_copy(update={
-        "verification_status": "read",
-        "retrieval_status": "read",
-        "source_type": "original",
-        "passage": passage,
-        "published_at": published_at,
-        "content_hash": hashlib.sha256(passage.encode("utf-8")).hexdigest(),
-    })
+    return source.model_copy(
+        update={
+            "verification_status": "read",
+            "retrieval_status": "read",
+            "source_type": "original",
+            "passage": passage,
+            "published_at": published_at,
+            "content_hash": hashlib.sha256(passage.encode("utf-8")).hexdigest(),
+        }
+    )
 
 
 def _research_provider_status(provider: str) -> dict[str, object]:
@@ -697,6 +696,7 @@ def _research_provider_ready(
     if provider == "chatgpt_web":
         try:
             from app.services import chatgpt_web
+
             if not chatgpt_web.runtime_available():
                 reason = "runtime_unavailable"
             elif not chatgpt_web.configured():
@@ -713,6 +713,7 @@ def _research_provider_ready(
                 gemini_web_cookie_configured,
                 gemini_web_models,
             )
+
             if not gemini_web_cookie_configured():
                 reason = "login_required"
             elif not gemini_web_models():
@@ -796,8 +797,10 @@ async def _ai_web_sources(
     prompt = (
         "Recherchiere diese Debattenaussage mit Originalquellen. "
         "Gib pro Quelle eine kurze Begründung und die vollständige URL aus. "
-        "Keine Wikipedia- oder DuckDuckGo-Links. Aussage: " + claim[:800] +
-        " Recherchefrage: " + query[:500]
+        "Keine Wikipedia- oder DuckDuckGo-Links. Aussage: "
+        + claim[:800]
+        + " Recherchefrage: "
+        + query[:500]
     )
     models = {
         "gemini_web": "endpoint:gemini-web:gemini-3.1-pro",
@@ -805,7 +808,9 @@ async def _ai_web_sources(
         "cliproxyapi": "endpoint:subscription-ai:gpt-6-sol",
     }
     answers: list[tuple[str, str]] = []
-    provider_order = list(providers) if isinstance(providers, list) else sorted(providers)
+    provider_order = (
+        list(providers) if isinstance(providers, list) else sorted(providers)
+    )
     for provider in provider_order:
         if provider not in {"chatgpt_web", "gemini_web", "gemini_api", "cliproxyapi"}:
             continue
@@ -861,9 +866,8 @@ async def _ai_web_sources(
             hostname = (urlsplit(canonical).hostname or "").casefold().rstrip(".")
             if (
                 hostname == "wikipedia.org"
-                or hostname.endswith(".wikipedia.org")
+                or hostname.endswith((".wikipedia.org", ".duckduckgo.com"))
                 or hostname == "duckduckgo.com"
-                or hostname.endswith(".duckduckgo.com")
             ):
                 continue
             if canonical in seen:
@@ -874,7 +878,9 @@ async def _ai_web_sources(
         ResearchSource(
             title="KI-Recherche: " + (urlsplit(url).hostname or "Quelle"),
             url=url,
-            snippet=" ".join(answer for provider_name, answer in answers if provider_name == provider)[:900],
+            snippet=" ".join(
+                answer for provider_name, answer in answers if provider_name == provider
+            )[:900],
             passage="",
             provider=provider,
             claim=claim,
@@ -887,6 +893,8 @@ async def _ai_web_sources(
         )
         for provider, url in urls[: settings.DEBATE_RESEARCH_MAX_SOURCES]
     ]
+
+
 async def _research_with_client(
     client: httpx.AsyncClient,
     claim: str,
@@ -991,14 +999,18 @@ async def _research_with_client(
             if len(original_indexes) >= original_limit:
                 break
         if original_indexes and configured["original_sources_required"]:
-            read_results = await asyncio.gather(*(
-                _read_trusted_original(client, sources[index], query, claim)
-                for index in original_indexes
-            ))
+            read_results = await asyncio.gather(
+                *(
+                    _read_trusted_original(client, sources[index], query, claim)
+                    for index in original_indexes
+                )
+            )
             for index, read_source in zip(original_indexes, read_results):
                 sources[index] = read_source
         sources.sort(key=source_priority)
-        sources = sources[: min(settings.DEBATE_RESEARCH_MAX_SOURCES, configured["steps"] * 2)]
+        sources = sources[
+            : min(settings.DEBATE_RESEARCH_MAX_SOURCES, configured["steps"] * 2)
+        ]
         if (
             configured["original_sources_required"]
             and any(source.source_type == "ai_web" for source in sources)
@@ -1037,7 +1049,9 @@ async def research_claim(
 ) -> ResearchResult:
     clean_claim = _clean_text(claim)
     clean_query = _clean_text(query)
-    if not is_safe_research_query(clean_query) or not is_safe_research_claim(clean_claim):
+    if not is_safe_research_query(clean_query) or not is_safe_research_claim(
+        clean_claim
+    ):
         return ResearchResult(
             claim=clean_claim,
             query=clean_query,
@@ -1073,6 +1087,7 @@ async def research_claim(
 
     task = _research_inflight.get(key)
     if task is None:
+
         async def run() -> ResearchResult:
             try:
                 return await asyncio.wait_for(
@@ -1092,7 +1107,9 @@ async def research_claim(
                     error="Research timed out",
                 )
 
-        task = asyncio.create_task(run(), name=f"research:{hashlib.sha256(key.encode()).hexdigest()[:10]}")
+        task = asyncio.create_task(
+            run(), name=f"research:{hashlib.sha256(key.encode()).hexdigest()[:10]}"
+        )
         _research_inflight[key] = task
         task.add_done_callback(
             lambda completed, cache_key=key: (
@@ -1117,7 +1134,11 @@ async def research_claim(
 
 
 def _result_for_claim(result: ResearchResult, claim: str) -> ResearchResult:
-    return result.model_copy(update={
-        "claim": claim,
-        "sources": [source.model_copy(update={"claim": claim}) for source in result.sources],
-    })
+    return result.model_copy(
+        update={
+            "claim": claim,
+            "sources": [
+                source.model_copy(update={"claim": claim}) for source in result.sources
+            ],
+        }
+    )

@@ -15,7 +15,9 @@ from sqlalchemy import create_engine
 class MigrationTransactionTests(unittest.TestCase):
     def _run(self, fail):
         with tempfile.TemporaryDirectory() as directory, ExitStack() as cleanup:
-            engine = create_engine("sqlite:///" + str(Path(directory) / "migration.sqlite"))
+            engine = create_engine(
+                "sqlite:///" + str(Path(directory) / "migration.sqlite")
+            )
             cleanup.callback(engine.dispose)
             with engine.begin() as connection:
                 connection.exec_driver_sql("CREATE TABLE proof (value TEXT NOT NULL)")
@@ -29,7 +31,9 @@ class MigrationTransactionTests(unittest.TestCase):
                 def exec_driver_sql(self, sql):
                     # Preserve real autobegin while adapting PostgreSQL ALTER
                     # syntax to the isolated SQLite transaction test.
-                    return self.connection.exec_driver_sql("SELECT 1" if "ALTER COLUMN" in sql else sql)
+                    return self.connection.exec_driver_sql(
+                        "SELECT 1" if "ALTER COLUMN" in sql else sql
+                    )
 
             class AsyncConnection:
                 def __init__(self, connection):
@@ -54,8 +58,10 @@ class MigrationTransactionTests(unittest.TestCase):
 
             class Environment:
                 config = SimpleNamespace(
-                    config_file_name=None, config_ini_section="alembic",
-                    get_section=lambda *_: {}, set_main_option=lambda *_: None,
+                    config_file_name=None,
+                    config_ini_section="alembic",
+                    get_section=lambda *_: {},
+                    set_main_option=lambda *_: None,
                 )
 
                 def is_offline_mode(self):
@@ -71,12 +77,19 @@ class MigrationTransactionTests(unittest.TestCase):
                     return self.migration.begin_transaction()
 
                 def run_migrations(self):
-                    self.connection.exec_driver_sql("INSERT INTO proof VALUES ('migrated')")
+                    self.connection.exec_driver_sql(
+                        "INSERT INTO proof VALUES ('migrated')"
+                    )
                     if fail:
                         raise RuntimeError("migration failed")
 
-            with patch("alembic.context", Environment()), \
-                 patch("sqlalchemy.ext.asyncio.async_engine_from_config", return_value=EngineAdapter()):
+            with (
+                patch("alembic.context", Environment()),
+                patch(
+                    "sqlalchemy.ext.asyncio.async_engine_from_config",
+                    return_value=EngineAdapter(),
+                ),
+            ):
                 env_path = Path(__file__).resolve().parents[1] / "alembic" / "env.py"
                 if fail:
                     with self.assertRaisesRegex(RuntimeError, "migration failed"):
@@ -84,7 +97,9 @@ class MigrationTransactionTests(unittest.TestCase):
                 else:
                     runpy.run_path(str(env_path))
             with engine.connect() as connection:
-                return connection.exec_driver_sql("SELECT COUNT(*) FROM proof").scalar_one()
+                return connection.exec_driver_sql(
+                    "SELECT COUNT(*) FROM proof"
+                ).scalar_one()
 
     def test_successful_migration_survives_connection_close(self):
         self.assertEqual(self._run(False), 1)

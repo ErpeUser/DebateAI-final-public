@@ -11,7 +11,6 @@ from dataclasses import dataclass
 
 import numpy as np
 import onnxruntime as ort
-
 from app.config import settings
 
 try:
@@ -104,7 +103,9 @@ def _get_embed_model() -> ort.InferenceSession:
     return _embed_session
 
 
-def _compute_fbank(pcm_float: np.ndarray, sample_rate: int = 16000, n_mels: int = 80) -> np.ndarray:
+def _compute_fbank(
+    pcm_float: np.ndarray, sample_rate: int = 16000, n_mels: int = 80
+) -> np.ndarray:
     """Kaldi-compatible log Mel fbank matching WeSpeaker's training frontend.
 
     25ms/10ms hamming frames, dither off, int16 sample scale, and mean-only
@@ -152,7 +153,7 @@ def _numpy_fbank(pcm_float: np.ndarray, sample_rate: int, n_mels: int) -> np.nda
     for i in range(num_frames):
         start = i * frame_shift
         end = min(start + frame_length, len(emphasized))
-        frames[i, :end - start] = emphasized[start:end]
+        frames[i, : end - start] = emphasized[start:end]
 
     # Hamming window
     window = np.hamming(frame_length).astype(np.float32)
@@ -160,7 +161,7 @@ def _numpy_fbank(pcm_float: np.ndarray, sample_rate: int, n_mels: int) -> np.nda
 
     # FFT
     mag = np.abs(np.fft.rfft(frames, n=n_fft))
-    power = mag ** 2
+    power = mag**2
 
     # Mel filterbank
     low_freq = 20.0
@@ -203,7 +204,9 @@ def _extract_embedding(pcm_float: np.ndarray, sample_rate: int = 16000) -> np.nd
     return embedding
 
 
-def extract_speaker_embedding(pcm_float: np.ndarray, sample_rate: int = 16000) -> np.ndarray:
+def extract_speaker_embedding(
+    pcm_float: np.ndarray, sample_rate: int = 16000
+) -> np.ndarray:
     """Extract a normalized speaker embedding from float32 audio."""
     return _extract_embedding(pcm_float, sample_rate)
 
@@ -225,7 +228,11 @@ class VoiceActivityDetector:
         """Process a 512-sample frame, return speech probability."""
         session = _get_vad_model()
         # Prepend context from previous frame (required by Silero VAD)
-        frame_with_ctx = np.concatenate([self._context, frame_float]).reshape(1, -1).astype(np.float32)
+        frame_with_ctx = (
+            np.concatenate([self._context, frame_float])
+            .reshape(1, -1)
+            .astype(np.float32)
+        )
 
         inputs = {
             "input": frame_with_ctx,
@@ -234,7 +241,7 @@ class VoiceActivityDetector:
         }
         output, self._state = session.run(None, inputs)
         # Update context with last 64 samples of current input
-        self._context = frame_with_ctx[0, -self.CONTEXT_SIZE:].copy()
+        self._context = frame_with_ctx[0, -self.CONTEXT_SIZE :].copy()
         return float(output[0][0])
 
     def is_speech(self, frame_float: np.ndarray) -> bool:
@@ -257,8 +264,16 @@ class SpeakerRegistry:
     """Manages speaker voice profiles with cosine similarity matching."""
 
     def __init__(self, threshold: float | None = None, max_profiles: int | None = None):
-        self._threshold = threshold if threshold is not None else settings.SPEAKER_SIMILARITY_THRESHOLD
-        configured_limit = max_profiles if max_profiles is not None else settings.MAX_SPEAKER_PROFILES_PER_TRACK
+        self._threshold = (
+            threshold
+            if threshold is not None
+            else settings.SPEAKER_SIMILARITY_THRESHOLD
+        )
+        configured_limit = (
+            max_profiles
+            if max_profiles is not None
+            else settings.MAX_SPEAKER_PROFILES_PER_TRACK
+        )
         self._max_profiles = max(1, configured_limit)
         self._profiles: list[_SpeakerProfile] = []
         self._next_id = 1
@@ -308,7 +323,9 @@ class SpeakerRegistry:
         best_fallback, fallback_sim = self._best_profile(embedding, fallback_only=True)
         if not allow_create:
             if not best_fallback:
-                logger.info("Deferring short segment without an eligible speaker profile")
+                logger.info(
+                    "Deferring short segment without an eligible speaker profile"
+                )
                 return "auto_unknown"
             logger.info(
                 "Reusing closest speaker %s for %s (similarity %.3f)",
@@ -330,7 +347,9 @@ class SpeakerRegistry:
             return "auto_unknown"
 
         # New speaker
-        while any(profile.speaker_id == f"auto_{self._next_id}" for profile in self._profiles):
+        while any(
+            profile.speaker_id == f"auto_{self._next_id}" for profile in self._profiles
+        ):
             self._next_id += 1
         new_id = f"auto_{self._next_id}"
         self._next_id += 1
@@ -364,7 +383,9 @@ class SpeakerRegistry:
             if not profile.fallback_for_unmatched:
                 return
             sample_count = profile.sample_count
-            profile.embedding = (profile.embedding * sample_count + embedding) / (sample_count + 1)
+            profile.embedding = (profile.embedding * sample_count + embedding) / (
+                sample_count + 1
+            )
             norm = np.linalg.norm(profile.embedding)
             if norm > 0:
                 profile.embedding = profile.embedding / norm
@@ -403,10 +424,18 @@ class SpeakerDiarizer:
         self._bytes_per_sample = 2  # PCM16
 
         # Config
-        self._silence_gap_samples = int(settings.SILENCE_GAP_MS * self._sample_rate / 1000)
-        self._max_segment_samples = int(settings.MAX_SEGMENT_MS * self._sample_rate / 1000)
-        self._min_segment_samples = int(settings.MIN_SEGMENT_MS * self._sample_rate / 1000)
-        self._min_new_speaker_samples = int(settings.MIN_NEW_SPEAKER_MS * self._sample_rate / 1000)
+        self._silence_gap_samples = int(
+            settings.SILENCE_GAP_MS * self._sample_rate / 1000
+        )
+        self._max_segment_samples = int(
+            settings.MAX_SEGMENT_MS * self._sample_rate / 1000
+        )
+        self._min_segment_samples = int(
+            settings.MIN_SEGMENT_MS * self._sample_rate / 1000
+        )
+        self._min_new_speaker_samples = int(
+            settings.MIN_NEW_SPEAKER_MS * self._sample_rate / 1000
+        )
         self._coherence_window_samples = int(
             settings.SPEAKER_COHERENCE_WINDOW_MS * self._sample_rate / 1000
         )
@@ -481,7 +510,9 @@ class SpeakerDiarizer:
             # (109us vs 16us per 1000ms chunk) for no benefit (ALP-290).
             del self._pending_audio[:frame_bytes]
 
-            frame_float = np.frombuffer(frame_pcm, dtype=np.int16).astype(np.float32) / 32768.0
+            frame_float = (
+                np.frombuffer(frame_pcm, dtype=np.int16).astype(np.float32) / 32768.0
+            )
             speech_prob = self._vad.process_frame(frame_float)
             is_speech = speech_prob >= self._vad._threshold
 
@@ -497,13 +528,13 @@ class SpeakerDiarizer:
             # (ALP-290).
             self._diag_frames += 1
             energy = float(np.dot(frame_float, frame_float))
-            if energy > self._diag_max_energy:
-                self._diag_max_energy = energy
-            if speech_prob > self._diag_max_prob:
-                self._diag_max_prob = speech_prob
+            self._diag_max_energy = max(self._diag_max_energy, energy)
+            self._diag_max_prob = max(self._diag_max_prob, speech_prob)
             # 512 samples/frame @ 16kHz = 32ms; 312 frames ~= 10s
             if self._diag_frames >= 312:
-                max_rms = math.sqrt(self._diag_max_energy / VoiceActivityDetector.FRAME_SAMPLES)
+                max_rms = math.sqrt(
+                    self._diag_max_energy / VoiceActivityDetector.FRAME_SAMPLES
+                )
                 logger.info(
                     f"VAD diag (10s window): max_rms={max_rms:.4f} "
                     f"max_speech_prob={self._diag_max_prob:.3f} "
@@ -543,7 +574,10 @@ class SpeakerDiarizer:
         segments = self.flush_segments()
         # ponytail: legacy API loses split speaker attribution; remove after external callers migrate.
         return (
-            DiarizedSegment(segments[0].speaker_id, b"".join(segment.pcm_bytes for segment in segments))
+            DiarizedSegment(
+                segments[0].speaker_id,
+                b"".join(segment.pcm_bytes for segment in segments),
+            )
             if segments
             else None
         )
@@ -580,7 +614,9 @@ class SpeakerDiarizer:
         if self._fixed_speaker_id:
             return self._assign_adaptive_track(pcm_bytes, start_sample)
 
-        pcm_float = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        pcm_float = (
+            np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        )
         try:
             full_embedding = _extract_embedding(pcm_float, self._sample_rate)
         except Exception as e:
@@ -596,7 +632,9 @@ class SpeakerDiarizer:
     ) -> list[DiarizedSegment]:
         self._adaptive_segment_count += 1
         must_sample = self._adaptive_state != "stable_1to1"
-        scheduled_sample = self._adaptive_segment_count % self._adaptive_sample_interval == 0
+        scheduled_sample = (
+            self._adaptive_segment_count % self._adaptive_sample_interval == 0
+        )
         if not (must_sample or scheduled_sample):
             return [DiarizedSegment(self._fixed_speaker_id, pcm_bytes, start_sample)]
 
@@ -616,7 +654,9 @@ class SpeakerDiarizer:
             return [DiarizedSegment(speaker_id, pcm_bytes, start_sample)]
         self._adaptive_sample_positions.append(position)
 
-        pcm_float = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        pcm_float = (
+            np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+        )
         try:
             sample = _extract_embedding(pcm_float, self._sample_rate)
         except Exception as exc:
@@ -650,7 +690,9 @@ class SpeakerDiarizer:
             ):
                 self._set_adaptive_state("stable_1to1")
             if self._adaptive_state == "stable_1to1":
-                return [DiarizedSegment(self._fixed_speaker_id, pcm_bytes, start_sample)]
+                return [
+                    DiarizedSegment(self._fixed_speaker_id, pcm_bytes, start_sample)
+                ]
             return self._assign_embedding(pcm_bytes, start_sample, sample)
 
         self._adaptive_match_count = 0
@@ -699,7 +741,7 @@ class SpeakerDiarizer:
         """Return adjacent coherence groups, or None when no split is justified."""
         window_bytes = self._coherence_window_samples * self._bytes_per_sample
         windows = [
-            pcm_bytes[start:start + window_bytes]
+            pcm_bytes[start : start + window_bytes]
             for start in range(0, len(pcm_bytes), window_bytes)
         ]
         min_bytes = self._min_segment_samples * self._bytes_per_sample
@@ -747,7 +789,9 @@ class SpeakerDiarizer:
         segments: list[DiarizedSegment] = []
         group_start = start_sample
         for group_pcm, group_embedding in groups:
-            speaker_id = self._registry.match_or_create(group_embedding, allow_create=False)
+            speaker_id = self._registry.match_or_create(
+                group_embedding, allow_create=False
+            )
             if segments and segments[-1].speaker_id == speaker_id:
                 segments[-1].pcm_bytes += group_pcm
             else:

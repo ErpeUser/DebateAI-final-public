@@ -77,7 +77,9 @@ class RevealingWebSocket:
                     await db.commit()
                     return
                 await db.commit()
-        if isinstance(data, (dict, list)) and vault.has_tokens(json.dumps(data, ensure_ascii=False)):
+        if isinstance(data, (dict, list)) and vault.has_tokens(
+            json.dumps(data, ensure_ascii=False)
+        ):
             from app.database import async_session
 
             async with async_session() as db:
@@ -91,13 +93,21 @@ class RevealingWebSocket:
         if self._sender_error is not None:
             raise self._sender_error
         self._drained.clear()
-        accepted = await self._send_buffer.put({"payload": data, "mode": mode, "type": data.get("type") if isinstance(data, dict) else "raw"})
+        accepted = await self._send_buffer.put(
+            {
+                "payload": data,
+                "mode": mode,
+                "type": data.get("type") if isinstance(data, dict) else "raw",
+            }
+        )
         if not accepted and self._send_buffer.needs_resync:
-            await self._send_buffer.replace_with_snapshot({
-                "payload": self._journal.snapshot(0),
-                "mode": "text",
-                "type": "session_snapshot",
-            })
+            await self._send_buffer.replace_with_snapshot(
+                {
+                    "payload": self._journal.snapshot(0),
+                    "mode": "text",
+                    "type": "session_snapshot",
+                }
+            )
         elif not accepted and not self._send_buffer.qsize():
             self._drained.set()
 
@@ -109,21 +119,23 @@ class RevealingWebSocket:
     ) -> None:
         """Queue reconnect state without assigning it a new session event id."""
         self._drained.clear()
-        await self._send_buffer.replace_with_snapshot({
-            "payload": self._journal.snapshot(
-                after_sequence,
-                after_epoch=after_epoch,
-            ),
-            "mode": "text",
-            "type": "session_snapshot",
-        })
+        await self._send_buffer.replace_with_snapshot(
+            {
+                "payload": self._journal.snapshot(
+                    after_sequence,
+                    after_epoch=after_epoch,
+                ),
+                "mode": "text",
+                "type": "session_snapshot",
+            }
+        )
 
     async def close(self, *args, **kwargs):
         await self._flush()
         if self._sender_error is None:
             try:
                 await asyncio.wait_for(self._drained.wait(), timeout=2.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
         await self._send_buffer.close()
         if not self._sender_task.done():

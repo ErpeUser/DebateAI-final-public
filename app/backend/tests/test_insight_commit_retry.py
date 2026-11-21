@@ -1,13 +1,12 @@
 """Synthetic transaction-boundary coverage; no database or provider is used."""
 
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import UUID, uuid4
 
 from app.services.agents.base import TranscriptBuffer
 from app.services.agents.orchestrator import AgentOrchestrator
-
 
 MODULE = "app.services.agents.orchestrator"
 TEXT = "Validate the rollout plan with the project team"
@@ -54,7 +53,7 @@ class SyntheticSession:
         self.store.clock += self.store.commit_delay
         for row in self.pending:
             row.id = uuid4()
-            row.created_at = datetime(2026, 11, 16, tzinfo=timezone.utc)
+            row.created_at = datetime(2026, 11, 16, tzinfo=UTC)
         self.store.rows.extend(self.pending)
         self.pending.clear()
 
@@ -158,8 +157,10 @@ class InsightCommitRetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.emit(speaker_id=SPEAKER_B))
         self.assertFalse(await self.emit(speaker_id=SPEAKER_A))
         self.assertFalse(await self.emit(speaker_id=SPEAKER_B))
-        self.assertEqual([row.speaker_id for row in self.store.rows],
-                         [UUID(SPEAKER_A), UUID(SPEAKER_B)])
+        self.assertEqual(
+            [row.speaker_id for row in self.store.rows],
+            [UUID(SPEAKER_A), UUID(SPEAKER_B)],
+        )
         self.assertEqual(len(self.socket.messages), 2)
 
     async def test_invalid_speaker_labels_do_not_create_new_identity(self):
@@ -175,14 +176,19 @@ class InsightCommitRetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(self.store.rows), 2)
 
     async def test_legacy_type_and_owner_suppression_is_preserved(self):
-        self.assertTrue(await self.emit(item_type="observation", agent_source="analyst"))
-        self.assertFalse(await self.emit(item_type="question", agent_source="objection_handler"))
+        self.assertTrue(
+            await self.emit(item_type="observation", agent_source="analyst")
+        )
+        self.assertFalse(
+            await self.emit(item_type="question", agent_source="objection_handler")
+        )
         self.assertEqual(len(self.store.rows), 1)
         self.assertEqual(self.store.rows[0].item_type, "observation")
         self.assertEqual(self.store.rows[0].agent_source, "analyst")
         self.assertEqual(self.orchestrator.active_questions, [])
-        self.assertEqual(self.orchestrator._board_stubs,
-                         [{"item_type": "observation", "text": TEXT}])
+        self.assertEqual(
+            self.orchestrator._board_stubs, [{"item_type": "observation", "text": TEXT}]
+        )
 
     async def test_model_claim_ids_do_not_bypass_replay_suppression(self):
         self.assertTrue(await self.emit(claim_id="model-claim-one"))
@@ -191,8 +197,12 @@ class InsightCommitRetryTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_scrubbed_text_is_the_committed_dedup_text(self):
         self.assertTrue(await self.emit(question="S1 should validate the rollout plan"))
-        self.assertFalse(await self.emit(question="Alex should validate the rollout plan"))
-        self.assertEqual(self.store.rows[0].question, "Alex should validate the rollout plan")
+        self.assertFalse(
+            await self.emit(question="Alex should validate the rollout plan")
+        )
+        self.assertEqual(
+            self.store.rows[0].question, "Alex should validate the rollout plan"
+        )
         self.assertEqual(len(self.store.rows), 1)
 
     async def test_insight_replay_does_not_remove_accepted_human_repetitions(self):

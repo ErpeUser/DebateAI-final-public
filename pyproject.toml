@@ -1,0 +1,4 @@
+[tool.deptry]
+# Intentional CLI entry points, optional stacks, and local script modules.
+per_rule_ignores = { DEP001 = ["benchmark_blind_pair", "benchmark_debate_copilot", "install_sortformer", "video_eval_batch", "build_release_manifest", "desktop", "backend"], DEP002 = ["uvicorn", "asyncpg", "python-multipart", "pyinstaller"], DEP003 = ["torch", "app"], DEP004 = ["pytest", "pptx"] }
+known_first_party = ["app", "desktop", "backend"]

@@ -1,11 +1,11 @@
 import unittest
+from types import SimpleNamespace
 
 from app.services.argument_graph import (
     ArgumentGraph,
     argument_graph_from_records,
     update_argument_graph,
 )
-from types import SimpleNamespace
 
 
 def recommendation(**overrides):
@@ -28,39 +28,67 @@ def recommendation(**overrides):
 class ArgumentGraphTests(unittest.TestCase):
     def test_graph_is_derived_from_latest_normalized_claim_record(self):
         older = SimpleNamespace(
-            claim_id="claim-1", revision=1, original_text="Alter Text",
-            speaker_id="speaker-1", atomic_claims=[], sources=[], relations=[],
+            claim_id="claim-1",
+            revision=1,
+            original_text="Alter Text",
+            speaker_id="speaker-1",
+            atomic_claims=[],
+            sources=[],
+            relations=[],
             feedback={"presentation": {"answer_now": "Alte Antwort"}},
         )
         newer = SimpleNamespace(
-            claim_id="claim-1", revision=2, original_text="Neuer Text",
-            speaker_id="speaker-1", atomic_claims=[],
-            sources=[{"url": "https://example.org/source"}], relations=[],
+            claim_id="claim-1",
+            revision=2,
+            original_text="Neuer Text",
+            speaker_id="speaker-1",
+            atomic_claims=[],
+            sources=[{"url": "https://example.org/source"}],
+            relations=[],
             feedback={"presentation": {"answer_now": "Neue Antwort"}},
         )
 
         graph = argument_graph_from_records("session-1", [older, newer])
 
-        self.assertEqual("Neuer Text", next(n for n in graph.nodes if n.kind == "claim").text)
+        self.assertEqual(
+            "Neuer Text", next(n for n in graph.nodes if n.kind == "claim").text
+        )
         response = next(n for n in graph.nodes if n.kind == "response")
         self.assertEqual("Neue Antwort", response.text)
         self.assertEqual(["https://example.org/source"], response.evidence_urls)
 
     def test_rebuilt_graph_keeps_the_durable_claim_revision(self):
         record = SimpleNamespace(
-            claim_id="claim-1", revision=7, original_text="Korrigierter Text",
-            speaker_id="speaker-1", atomic_claims=[], sources=[], relations=[],
+            claim_id="claim-1",
+            revision=7,
+            original_text="Korrigierter Text",
+            speaker_id="speaker-1",
+            atomic_claims=[],
+            sources=[],
+            relations=[],
             feedback={"presentation": {"answer_now": "Aktuelle Antwort"}},
         )
 
         graph = argument_graph_from_records("session-1", [record])
 
-        self.assertEqual(7, next(node for node in graph.nodes if node.kind == "claim").revision)
-        self.assertEqual(7, next(node for node in graph.nodes if node.kind == "response").revision)
-    def test_recommendation_becomes_a_claim_with_linked_response_points_and_question(self):
-        graph = update_argument_graph(ArgumentGraph(session_id="session-1"), recommendation())
+        self.assertEqual(
+            7, next(node for node in graph.nodes if node.kind == "claim").revision
+        )
+        self.assertEqual(
+            7, next(node for node in graph.nodes if node.kind == "response").revision
+        )
 
-        self.assertEqual({"claim", "response", "point", "question"}, {node.kind for node in graph.nodes})
+    def test_recommendation_becomes_a_claim_with_linked_response_points_and_question(
+        self,
+    ):
+        graph = update_argument_graph(
+            ArgumentGraph(session_id="session-1"), recommendation()
+        )
+
+        self.assertEqual(
+            {"claim", "response", "point", "question"},
+            {node.kind for node in graph.nodes},
+        )
         self.assertIn("rebuts", {edge.relation for edge in graph.edges})
         self.assertIn("supports", {edge.relation for edge in graph.edges})
         self.assertIn("questions", {edge.relation for edge in graph.edges})
@@ -68,7 +96,9 @@ class ArgumentGraphTests(unittest.TestCase):
         self.assertEqual(["https://example.test/source"], response.evidence_urls)
 
     def test_a_better_revision_replaces_children_without_losing_the_claim(self):
-        graph = update_argument_graph(ArgumentGraph(session_id="session-1"), recommendation())
+        graph = update_argument_graph(
+            ArgumentGraph(session_id="session-1"), recommendation()
+        )
         graph = update_argument_graph(
             graph,
             recommendation(
@@ -85,10 +115,15 @@ class ArgumentGraphTests(unittest.TestCase):
         response = next(node for node in graph.nodes if node.kind == "response")
         self.assertIn("fünf Jahre", response.text)
         self.assertEqual(2, response.revision)
-        self.assertNotIn("Welche Folgekosten wurden eingerechnet?", [node.text for node in graph.nodes])
+        self.assertNotIn(
+            "Welche Folgekosten wurden eingerechnet?",
+            [node.text for node in graph.nodes],
+        )
 
     def test_distinct_claims_and_open_questions_survive_later_turns(self):
-        graph = update_argument_graph(ArgumentGraph(session_id="session-1"), recommendation())
+        graph = update_argument_graph(
+            ArgumentGraph(session_id="session-1"), recommendation()
+        )
         graph = update_argument_graph(
             graph,
             recommendation(
@@ -102,10 +137,14 @@ class ArgumentGraphTests(unittest.TestCase):
         self.assertEqual(2, sum(node.kind == "claim" for node in graph.nodes))
         self.assertEqual(2, sum(node.kind == "question" for node in graph.nodes))
 
-    def test_semantic_memory_marks_paraphrases_as_related_not_logically_continuing(self):
+    def test_semantic_memory_marks_paraphrases_as_related_not_logically_continuing(
+        self,
+    ):
         graph = update_argument_graph(
             ArgumentGraph(session_id="session-1"),
-            recommendation(claim_id="claim-1", target_claim="Der Staat soll Preise deckeln."),
+            recommendation(
+                claim_id="claim-1", target_claim="Der Staat soll Preise deckeln."
+            ),
         )
         graph = update_argument_graph(
             graph,
@@ -116,17 +155,21 @@ class ArgumentGraphTests(unittest.TestCase):
             ),
         )
 
-        self.assertTrue(any(
-            edge.source_id == "claim:claim-2"
-            and edge.target_id == "claim:claim-1"
-            and edge.relation == "related"
-            for edge in graph.edges
-        ))
+        self.assertTrue(
+            any(
+                edge.source_id == "claim:claim-2"
+                and edge.target_id == "claim:claim-1"
+                and edge.relation == "related"
+                for edge in graph.edges
+            )
+        )
 
     def test_model_relations_remain_visible_but_are_not_mislabeled_as_verified(self):
         graph = update_argument_graph(
             ArgumentGraph(session_id="session-1"),
-            recommendation(claim_id="claim-1", target_claim="Die Massnahme senkt die Kosten."),
+            recommendation(
+                claim_id="claim-1", target_claim="Die Massnahme senkt die Kosten."
+            ),
         )
         graph = update_argument_graph(
             graph,
@@ -158,7 +201,8 @@ class ArgumentGraphTests(unittest.TestCase):
         self.assertIn("contradicts", relations)
         self.assertIn("double_standard", relations)
         double_standard = next(
-            edge for edge in graph.edges
+            edge
+            for edge in graph.edges
             if edge.source_id == "claim:claim-2"
             and edge.target_id == "claim:claim-1"
             and edge.relation == "double_standard"

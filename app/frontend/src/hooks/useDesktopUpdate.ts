@@ -1,16 +1,16 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as api from "../services/desktopUpdateApi";
-import type {
-  DesktopUpdateController,
-  DesktopUpdateStatus,
-} from "../types";
+import type { DesktopUpdateController, DesktopUpdateStatus } from "../types";
 function errorText(error: unknown): string {
   return error instanceof Error
     ? error.message.slice(0, 240)
     : "Die Aktualisierung konnte nicht abgeschlossen werden.";
 }
 
-function pollingInterval(state: DesktopUpdateStatus["state"], pollMs: number): number {
+function pollingInterval(
+  state: DesktopUpdateStatus["state"],
+  pollMs: number,
+): number {
   return state === "downloading" || state === "applying" ? 1000 : pollMs;
 }
 
@@ -52,15 +52,19 @@ export function useDesktopUpdate(pollMs = 5000): DesktopUpdateController {
   }, [setIfMounted]);
 
   const token = useCallback(async () => {
-    if (!tokenRef.current) tokenRef.current = await api.getDesktopInstanceToken();
+    if (!tokenRef.current)
+      tokenRef.current = await api.getDesktopInstanceToken();
     return tokenRef.current;
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
     void refresh();
-    void api.getDesktopInstanceToken()
-      .then((value) => { tokenRef.current = value; })
+    void api
+      .getDesktopInstanceToken()
+      .then((value) => {
+        tokenRef.current = value;
+      })
       .catch(() => {});
     return () => {
       mountedRef.current = false;
@@ -69,7 +73,9 @@ export function useDesktopUpdate(pollMs = 5000): DesktopUpdateController {
 
   useEffect(() => {
     const timer = window.setInterval(
-      () => { void refresh(); },
+      () => {
+        void refresh();
+      },
       pollingInterval(status.state, pollMs),
     );
     return () => window.clearInterval(timer);
@@ -78,7 +84,12 @@ export function useDesktopUpdate(pollMs = 5000): DesktopUpdateController {
   const check = useCallback(async () => {
     if (actionRef.current) return;
     actionRef.current = true;
-    setStatus((current) => ({ ...current, enabled: true, state: "checking", error: "" }));
+    setStatus((current) => ({
+      ...current,
+      enabled: true,
+      state: "checking",
+      error: "",
+    }));
     try {
       setIfMounted(await api.checkDesktopUpdate(await token()));
     } catch (error) {

@@ -69,7 +69,10 @@ const SIDEBAR_STORAGE_KEY = "debateai:sidebar-collapsed";
 
 function readStoredCollapsed(): boolean {
   try {
-    return typeof localStorage !== "undefined" && localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1";
+    return (
+      typeof localStorage !== "undefined" &&
+      localStorage.getItem(SIDEBAR_STORAGE_KEY) === "1"
+    );
   } catch {
     return false;
   }
@@ -93,9 +96,16 @@ const COLLAPSED_GROUPS_STORAGE_KEY = "debateai:sidebar-collapsed-groups";
 
 export function readCollapsedGroups(): Set<string> {
   try {
-    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY) : null;
+    const raw =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(COLLAPSED_GROUPS_STORAGE_KEY)
+        : null;
     const parsed = raw ? JSON.parse(raw) : null;
-    return new Set(Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : []);
+    return new Set(
+      Array.isArray(parsed)
+        ? parsed.filter((id): id is string => typeof id === "string")
+        : [],
+    );
   } catch {
     return new Set();
   }
@@ -103,7 +113,10 @@ export function readCollapsedGroups(): Set<string> {
 
 function storeCollapsedGroups(ids: Set<string>) {
   try {
-    localStorage.setItem(COLLAPSED_GROUPS_STORAGE_KEY, JSON.stringify([...ids]));
+    localStorage.setItem(
+      COLLAPSED_GROUPS_STORAGE_KEY,
+      JSON.stringify([...ids]),
+    );
   } catch {
     /* see storeCollapsed */
   }
@@ -114,7 +127,10 @@ function storeCollapsedGroups(ids: Set<string>) {
 // that persists this cannot loop. An empty roster means "not loaded yet",
 // never "every group was deleted": pruning against it would throw away the
 // user's choices on the first paint after every reload.
-export function pruneCollapsedGroups(collapsed: Set<string>, groups: { id: string }[]): Set<string> {
+export function pruneCollapsedGroups(
+  collapsed: Set<string>,
+  groups: { id: string }[],
+): Set<string> {
   if (groups.length === 0) return collapsed;
   const known = new Set(groups.map((g) => g.id));
   const kept = [...collapsed].filter((id) => known.has(id));
@@ -125,7 +141,10 @@ const THEME_STORAGE_KEY = "debateai:theme";
 
 function readStoredTheme(): "light" | "dark" | null {
   try {
-    const saved = typeof localStorage !== "undefined" ? localStorage.getItem(THEME_STORAGE_KEY) : null;
+    const saved =
+      typeof localStorage !== "undefined"
+        ? localStorage.getItem(THEME_STORAGE_KEY)
+        : null;
     return saved === "light" || saved === "dark" ? saved : null;
   } catch {
     return null;
@@ -157,7 +176,8 @@ function usePrefersReducedMotion(): boolean {
 }
 
 // Everything a keyboard can land on inside the drawer, for the focus trap.
-const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+const FOCUSABLE =
+  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 const SIDEBAR_ID = "bc-sidebar";
 
 // ── Pure helpers (exported for tests) ──────────────────────────────────
@@ -206,16 +226,36 @@ function StateDot({ state }: { state: Session["state"] }) {
     );
   }
   if (state === "pre_call") {
-    return <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full border-[1.5px] border-brand-teal" />;
+    return (
+      <span
+        aria-hidden="true"
+        className="inline-block h-2 w-2 rounded-full border-[1.5px] border-brand-teal"
+      />
+    );
   }
-  return <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full bg-brand-light-gray-1" />;
+  return (
+    <span
+      aria-hidden="true"
+      className="inline-block h-2 w-2 rounded-full bg-brand-light-gray-1"
+    />
+  );
 }
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
-  return <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-mid-gray">{children}</span>;
+  return (
+    <span className="text-[11px] font-semibold uppercase tracking-wider text-brand-mid-gray">
+      {children}
+    </span>
+  );
 }
 
-function ToolLink({ icon: Icon, label, active, onClick, compact }: {
+function ToolLink({
+  icon: Icon,
+  label,
+  active,
+  onClick,
+  compact,
+}: {
   icon: LucideIcon;
   label: string;
   active?: boolean;
@@ -231,7 +271,9 @@ function ToolLink({ icon: Icon, label, active, onClick, compact }: {
         aria-current={active ? "page" : undefined}
         title={label}
         className={`flex h-11 w-11 items-center justify-center rounded-lg transition-colors ${
-          active ? "bg-brand-teal/10 text-brand-teal" : "text-brand-gray hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
+          active
+            ? "bg-brand-teal/10 text-brand-teal"
+            : "text-brand-gray hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
         }`}
       >
         <Icon className="h-[18px] w-[18px]" aria-hidden="true" />
@@ -244,7 +286,9 @@ function ToolLink({ icon: Icon, label, active, onClick, compact }: {
       onClick={onClick}
       aria-current={active ? "page" : undefined}
       className={`bc-row flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[13px] transition-colors ${
-        active ? "bc-accent-text bg-brand-teal/10 font-semibold" : "font-medium text-brand-gray hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
+        active
+          ? "bc-accent-text bg-brand-teal/10 font-semibold"
+          : "font-medium text-brand-gray hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
       }`}
     >
       <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
@@ -262,14 +306,26 @@ const MENU_ROW = 30;
  *  the menu itself, so a Move to list taller than the viewport can still be
  *  wheel-scrolled to its lower groups. Duck-typed on nodeType so it runs
  *  outside a DOM. */
-export function scrollClosesMenu(menu: { contains(node: Node): boolean } | null, target: EventTarget | null): boolean {
+export function scrollClosesMenu(
+  menu: { contains(node: Node): boolean } | null,
+  target: EventTarget | null,
+): boolean {
   if (!menu || !target) return true;
   const node = target as Node;
   if (typeof node.nodeType !== "number") return true;
   return !menu.contains(node);
 }
 
-function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, onDelete }: {
+function SessionMenu({
+  id,
+  anchor,
+  session,
+  groups,
+  onClose,
+  onRename,
+  onMove,
+  onDelete,
+}: {
   id: string;
   anchor: HTMLElement;
   session: Session;
@@ -294,7 +350,10 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
     const height = Math.min(estimated, window.innerHeight - 16);
     const below = window.innerHeight - rect.bottom > height + 8;
     const top = below ? rect.bottom + 4 : Math.max(8, rect.top - height - 4);
-    const left = Math.max(8, Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8));
+    const left = Math.max(
+      8,
+      Math.min(rect.right - MENU_WIDTH, window.innerWidth - MENU_WIDTH - 8),
+    );
     return { top, left };
   }, [anchor, groups.length]);
 
@@ -306,7 +365,11 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
   useEffect(() => {
     const close = () => onCloseRef.current();
     const onPointer = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node) && !anchor.contains(event.target as Node)) {
+      if (
+        menuRef.current &&
+        !menuRef.current.contains(event.target as Node) &&
+        !anchor.contains(event.target as Node)
+      ) {
         close();
       }
     };
@@ -327,7 +390,10 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
         return;
       }
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-        const items = Array.from(menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ?? []);
+        const items = Array.from(
+          menuRef.current?.querySelectorAll<HTMLElement>("[role^=menuitem]") ??
+            [],
+        );
         if (items.length === 0) return;
         event.preventDefault();
         const index = items.indexOf(document.activeElement as HTMLElement);
@@ -360,7 +426,8 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
     action();
   };
 
-  const itemClass = "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-brand-dark-gray transition-colors hover:bg-brand-light-gray-2 focus-visible:bg-brand-light-gray-2";
+  const itemClass =
+    "flex w-full items-center gap-2 px-3 py-1.5 text-left text-[13px] text-brand-dark-gray transition-colors hover:bg-brand-light-gray-2 focus-visible:bg-brand-light-gray-2";
 
   return createPortal(
     <div
@@ -371,13 +438,26 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
       className="bc-scroll fixed z-50 max-h-[calc(100vh-16px)] overflow-y-auto rounded-lg border border-brand-light-gray-1 bg-surface py-1 shadow-lg"
       style={{ top: position.top, left: position.left, width: MENU_WIDTH }}
     >
-      <button type="button" role="menuitem" className={itemClass} onClick={() => activate(onRename)}>
-        <Pencil className="h-3.5 w-3.5 text-brand-mid-gray" aria-hidden="true" />
+      <button
+        type="button"
+        role="menuitem"
+        className={itemClass}
+        onClick={() => activate(onRename)}
+      >
+        <Pencil
+          className="h-3.5 w-3.5 text-brand-mid-gray"
+          aria-hidden="true"
+        />
         Umbenennen
       </button>
       <div className="my-1 border-t border-brand-light-gray-1" />
       <div role="group" aria-labelledby={`${id}-move`}>
-        <p id={`${id}-move`} className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-brand-mid-gray">Verschieben nach</p>
+        <p
+          id={`${id}-move`}
+          className="px-3 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider text-brand-mid-gray"
+        >
+          Verschieben nach
+        </p>
         <button
           type="button"
           role="menuitemradio"
@@ -386,7 +466,12 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
           onClick={() => activate(() => onMove(null))}
         >
           <span className="flex h-3.5 w-3.5 items-center justify-center">
-            {!session.group_id && <Check className="h-3.5 w-3.5 text-brand-teal" aria-hidden="true" />}
+            {!session.group_id && (
+              <Check
+                className="h-3.5 w-3.5 text-brand-teal"
+                aria-hidden="true"
+              />
+            )}
           </span>
           Keine Gruppe
         </button>
@@ -400,7 +485,12 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
             onClick={() => activate(() => onMove(group.id))}
           >
             <span className="flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-              {session.group_id === group.id && <Check className="h-3.5 w-3.5 text-brand-teal" aria-hidden="true" />}
+              {session.group_id === group.id && (
+                <Check
+                  className="h-3.5 w-3.5 text-brand-teal"
+                  aria-hidden="true"
+                />
+              )}
             </span>
             <span className="truncate">{group.name}</span>
           </button>
@@ -423,7 +513,15 @@ function SessionMenu({ id, anchor, session, groups, onClose, onRename, onMove, o
 
 // ── Draggable session row ──────────────────────────────────────────────
 
-function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRename, onDelete }: {
+function SessionRow({
+  session,
+  isActive,
+  onClick,
+  groups,
+  onMoveToGroup,
+  onRename,
+  onDelete,
+}: {
   session: Session;
   isActive: boolean;
   onClick: () => void;
@@ -432,7 +530,8 @@ function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRenam
   onRename: (sessionId: string, name: string) => Promise<void>;
   onDelete: (sessionId: string) => Promise<void>;
 }) {
-  const { listeners, setNodeRef, setActivatorNodeRef, isDragging } = useDraggable({ id: session.id });
+  const { listeners, setNodeRef, setActivatorNodeRef, isDragging } =
+    useDraggable({ id: session.id });
   const [menuOpen, setMenuOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(session.name);
@@ -448,14 +547,16 @@ function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRenam
   const commitRename = async () => {
     setEditing(false);
     const trimmed = draft.trim();
-    if (trimmed && trimmed !== session.name) await onRename(session.id, trimmed);
+    if (trimmed && trimmed !== session.name)
+      await onRename(session.id, trimmed);
     else setDraft(session.name);
   };
 
   const handleDelete = async () => {
     const ok = await confirm({
       title: "Debatte löschen",
-      message: "Diese Debatte und alle zugehörigen Daten löschen? Das kann nicht rückgängig gemacht werden.",
+      message:
+        "Diese Debatte und alle zugehörigen Daten löschen? Das kann nicht rückgängig gemacht werden.",
       confirmLabel: "Löschen",
       tone: "danger",
     });
@@ -475,8 +576,12 @@ function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRenam
           onChange={(event) => setDraft(event.target.value)}
           onBlur={() => void commitRename()}
           onKeyDown={(event) => {
-            if (event.key === "Enter") (event.target as HTMLInputElement).blur();
-            if (event.key === "Escape") { setDraft(session.name); setEditing(false); }
+            if (event.key === "Enter")
+              (event.target as HTMLInputElement).blur();
+            if (event.key === "Escape") {
+              setDraft(session.name);
+              setEditing(false);
+            }
           }}
           aria-label="Name der Debatte"
           className="my-1 ml-2 h-6 w-full min-w-0 rounded border border-brand-teal bg-surface px-1.5 text-sm text-brand-dark-gray"
@@ -490,7 +595,9 @@ function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRenam
           aria-current={isActive ? "page" : undefined}
           title={session.name}
           className={`bc-row flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md pl-2 pr-1 text-left text-sm ${
-            isActive ? "bc-accent-text font-semibold" : "font-medium text-brand-dark-gray"
+            isActive
+              ? "bc-accent-text font-semibold"
+              : "font-medium text-brand-dark-gray"
           }`}
         >
           <span className="flex h-4 w-4 shrink-0 items-center justify-center">
@@ -545,7 +652,10 @@ function SessionRow({ session, isActive, onClick, groups, onMoveToGroup, onRenam
 
 // ── Droppable group folder ─────────────────────────────────────────────
 
-type GroupDeleteDependencies = Pick<ReturnType<typeof useConfirm>, "confirm" | "toast"> & {
+type GroupDeleteDependencies = Pick<
+  ReturnType<typeof useConfirm>,
+  "confirm" | "toast"
+> & {
   deleteGroup: (id: string) => Promise<void>;
   refreshGroups: () => void;
   refreshSessions: () => void;
@@ -574,7 +684,14 @@ export async function deleteGroupWithConfirmation(
   }
 }
 
-export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete, sessionCount }: {
+export function DroppableGroup({
+  group,
+  children,
+  isExpanded,
+  onToggle,
+  onDelete,
+  sessionCount,
+}: {
   group: SessionGroup;
   children: React.ReactNode;
   isExpanded: boolean;
@@ -586,7 +703,10 @@ export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete
   const sessionsId = `bc-group-${group.id}-sessions`;
 
   return (
-    <div ref={setNodeRef} className={`rounded-md transition-colors ${isOver ? "bg-brand-teal/5 ring-1 ring-brand-teal/20" : ""}`}>
+    <div
+      ref={setNodeRef}
+      className={`rounded-md transition-colors ${isOver ? "bg-brand-teal/5 ring-1 ring-brand-teal/20" : ""}`}
+    >
       <div className="group flex items-center rounded-md transition-colors hover:bg-brand-light-gray-2">
         <button
           type="button"
@@ -604,8 +724,16 @@ export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete
               aria-hidden="true"
             />
           </span>
-          <span className="truncate text-sm font-semibold text-brand-dark-gray" title={group.name}>{group.name}</span>
-          <span className="ml-auto shrink-0 pl-2 text-xs tabular-nums text-brand-mid-gray" aria-label={`${sessionCount} Gespräche`}>
+          <span
+            className="truncate text-sm font-semibold text-brand-dark-gray"
+            title={group.name}
+          >
+            {group.name}
+          </span>
+          <span
+            className="ml-auto shrink-0 pl-2 text-xs tabular-nums text-brand-mid-gray"
+            aria-label={`${sessionCount} Gespräche`}
+          >
             {sessionCount}
           </span>
         </button>
@@ -620,10 +748,16 @@ export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete
         </button>
       </div>
       {/* Always in the DOM so aria-controls resolves; hidden when collapsed. */}
-      <div id={sessionsId} hidden={!isExpanded} className="ml-[11px] border-l border-brand-light-gray-1/70 pl-1.5">
+      <div
+        id={sessionsId}
+        hidden={!isExpanded}
+        className="ml-[11px] border-l border-brand-light-gray-1/70 pl-1.5"
+      >
         {isExpanded && children}
         {isExpanded && sessionCount === 0 && (
-          <p className="py-1.5 pl-2 text-xs text-brand-mid-gray">{isOver ? "Hier ablegen" : "Keine Gespräche"}</p>
+          <p className="py-1.5 pl-2 text-xs text-brand-mid-gray">
+            {isOver ? "Hier ablegen" : "Keine Gespräche"}
+          </p>
         )}
       </div>
     </div>
@@ -634,7 +768,10 @@ export function DroppableGroup({ group, children, isExpanded, onToggle, onDelete
 function DroppableUngrouped({ children }: { children: React.ReactNode }) {
   const { setNodeRef, isOver } = useDroppable({ id: "group-ungrouped" });
   return (
-    <div ref={setNodeRef} className={`rounded-md transition-colors ${isOver ? "bg-brand-teal/5 ring-1 ring-brand-teal/20" : ""}`}>
+    <div
+      ref={setNodeRef}
+      className={`rounded-md transition-colors ${isOver ? "bg-brand-teal/5 ring-1 ring-brand-teal/20" : ""}`}
+    >
       {children}
     </div>
   );
@@ -660,10 +797,12 @@ export default function Layout({
   onRefreshSessions,
   children,
 }: LayoutProps) {
-  const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(readStoredCollapsed);
+  const [sidebarCollapsed, setSidebarCollapsed] =
+    useState<boolean>(readStoredCollapsed);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isDesktop, setIsDesktop] = useState(true);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(readCollapsedGroups);
+  const [collapsedGroups, setCollapsedGroups] =
+    useState<Set<string>>(readCollapsedGroups);
   const [creatingGroup, setCreatingGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
   const [query, setQuery] = useState("");
@@ -704,8 +843,9 @@ export default function Layout({
           return;
         }
         if (event.key !== "Tab" || !asideRef.current) return;
-        const focusables = Array.from(asideRef.current.querySelectorAll<HTMLElement>(FOCUSABLE))
-          .filter((el) => el.offsetParent !== null);
+        const focusables = Array.from(
+          asideRef.current.querySelectorAll<HTMLElement>(FOCUSABLE),
+        ).filter((el) => el.offsetParent !== null);
         if (focusables.length === 0) return;
         const first = focusables[0];
         const last = focusables[focusables.length - 1];
@@ -758,7 +898,9 @@ export default function Layout({
   const [theme, setTheme] = useState<"light" | "dark">(() => {
     const saved = readStoredTheme();
     if (saved) return saved;
-    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
   });
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -779,7 +921,7 @@ export default function Layout({
   }, [collapsedGroups]);
 
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
   );
 
   const showSearch = sessions.length >= SEARCH_THRESHOLD;
@@ -793,10 +935,15 @@ export default function Layout({
   }, [showSearch]);
 
   const grouped = useMemo(() => {
-    const visible = filtering ? filterSessions(sessions, groups, query) : sessions;
+    const visible = filtering
+      ? filterSessions(sessions, groups, query)
+      : sessions;
     const ungrouped = orderSessions(visible.filter((s) => !s.group_id));
     const byGroup = groups
-      .map((g) => ({ group: g, sessions: orderSessions(visible.filter((s) => s.group_id === g.id)) }))
+      .map((g) => ({
+        group: g,
+        sessions: orderSessions(visible.filter((s) => s.group_id === g.id)),
+      }))
       // While filtering, a group with no matches is noise; when not, every group shows.
       .filter(({ sessions: list }) => !filtering || list.length > 0);
     return { ungrouped, byGroup, visibleCount: visible.length };
@@ -808,7 +955,8 @@ export default function Layout({
     if (filtering) return;
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       return next;
     });
   };
@@ -817,11 +965,14 @@ export default function Layout({
   // so a partially collapsed section reads "Collapse all" and one press
   // settles it rather than inverting each group.
   const allGroupsCollapsed =
-    grouped.byGroup.length > 0 && grouped.byGroup.every(({ group }) => collapsedGroups.has(group.id));
+    grouped.byGroup.length > 0 &&
+    grouped.byGroup.every(({ group }) => collapsedGroups.has(group.id));
 
   const toggleAllGroups = () => {
     if (filtering) return;
-    setCollapsedGroups(allGroupsCollapsed ? new Set() : new Set(groups.map((g) => g.id)));
+    setCollapsedGroups(
+      allGroupsCollapsed ? new Set() : new Set(groups.map((g) => g.id)),
+    );
   };
 
   const handleCreateGroup = async () => {
@@ -842,7 +993,10 @@ export default function Layout({
     });
   };
 
-  const handleMoveToGroup = async (sessionId: string, groupId: string | null) => {
+  const handleMoveToGroup = async (
+    sessionId: string,
+    groupId: string | null,
+  ) => {
     await api.updateSession(sessionId, { group_id: groupId } as any);
     onRefreshSessions();
   };
@@ -879,10 +1033,13 @@ export default function Layout({
     }
   };
 
-  const draggedSession = draggedId ? sessions.find((s) => s.id === draggedId) : null;
+  const draggedSession = draggedId
+    ? sessions.find((s) => s.id === draggedId)
+    : null;
   const hasGroups = groups.length > 0;
   // While filtering, the heading only earns its place above a visible group.
-  const showGroupsHeading = creatingGroup || (hasGroups && (!filtering || grouped.byGroup.length > 0));
+  const showGroupsHeading =
+    creatingGroup || (hasGroups && (!filtering || grouped.byGroup.length > 0));
 
   const renderSession = (session: Session) => (
     <SessionRow
@@ -905,9 +1062,14 @@ export default function Layout({
         onChange={(e) => setNewGroupName(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === "Enter") void handleCreateGroup();
-          if (e.key === "Escape") { setCreatingGroup(false); setNewGroupName(""); }
+          if (e.key === "Escape") {
+            setCreatingGroup(false);
+            setNewGroupName("");
+          }
         }}
-        onBlur={() => { if (!newGroupName.trim()) setCreatingGroup(false); }}
+        onBlur={() => {
+          if (!newGroupName.trim()) setCreatingGroup(false);
+        }}
         placeholder="Gruppenname"
         aria-label="Neuer Gruppenname"
         className="h-8 w-full rounded-md border border-brand-teal bg-surface px-2 text-sm text-brand-dark-gray placeholder:text-brand-mid-gray"
@@ -930,18 +1092,35 @@ export default function Layout({
           >
             <Menu className="h-5 w-5" aria-hidden="true" />
           </button>
-          <img className="h-7 w-7 rounded-md" src="/icons/icon-192.png" alt="" aria-hidden="true" />
+          <img
+            className="h-7 w-7 rounded-md"
+            src="/icons/icon-192.png"
+            alt=""
+            aria-hidden="true"
+          />
           <div className="leading-none">
-            <span className="font-display text-[19px] font-bold tracking-tight text-brand-dark-gray">Debate AI</span>
-            <span className="ml-2 hidden font-mono text-[9px] uppercase tracking-[0.16em] text-brand-mid-gray sm:inline">Live-Copilot</span>
+            <span className="font-display text-[19px] font-bold tracking-tight text-brand-dark-gray">
+              Debate AI
+            </span>
+            <span className="ml-2 hidden font-mono text-[9px] uppercase tracking-[0.16em] text-brand-mid-gray sm:inline">
+              Live-Copilot
+            </span>
           </div>
         </div>
         <button
           type="button"
           onClick={() => setTheme((t) => (t === "dark" ? "light" : "dark"))}
           className="flex h-9 w-9 items-center justify-center rounded-lg text-brand-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal"
-          aria-label={theme === "dark" ? "Zum hellen Design wechseln" : "Zum dunklen Design wechseln"}
-          title={theme === "dark" ? "Zum hellen Design wechseln" : "Zum dunklen Design wechseln"}
+          aria-label={
+            theme === "dark"
+              ? "Zum hellen Design wechseln"
+              : "Zum dunklen Design wechseln"
+          }
+          title={
+            theme === "dark"
+              ? "Zum hellen Design wechseln"
+              : "Zum dunklen Design wechseln"
+          }
         >
           {theme === "dark" ? (
             <Sun className="h-5 w-5" aria-hidden="true" />
@@ -971,7 +1150,10 @@ export default function Layout({
           aria-label="Seitenleiste"
         >
           {collapsed ? (
-            <div key="rail" className="bc-fade-in flex h-full w-full flex-col items-center">
+            <div
+              key="rail"
+              className="bc-fade-in flex h-full w-full flex-col items-center"
+            >
               <div className="flex flex-col items-center gap-1 p-2">
                 <button
                   type="button"
@@ -982,7 +1164,10 @@ export default function Layout({
                   aria-controls={SIDEBAR_ID}
                   title="Seitenleiste ausklappen"
                 >
-                  <PanelLeftOpen className="h-[18px] w-[18px]" aria-hidden="true" />
+                  <PanelLeftOpen
+                    className="h-[18px] w-[18px]"
+                    aria-hidden="true"
+                  />
                 </button>
                 <button
                   type="button"
@@ -1003,14 +1188,17 @@ export default function Layout({
               >
                 {orderSessions(sessions).map((session) => {
                   const isActive = session.id === activeSessionId;
-                  const initial = session.name.trim().charAt(0).toUpperCase() || "S";
+                  const initial =
+                    session.name.trim().charAt(0).toUpperCase() || "S";
                   return (
                     <button
                       key={session.id}
                       type="button"
                       onClick={() => onSelectSession(session.id)}
                       className={`relative flex h-11 w-11 shrink-0 items-center justify-center rounded-lg text-xs font-semibold transition-colors ${
-                        isActive ? "bg-brand-teal text-white shadow-sm" : "bg-brand-light-gray-2 text-brand-gray hover:bg-brand-teal/10 hover:text-brand-teal"
+                        isActive
+                          ? "bg-brand-teal text-white shadow-sm"
+                          : "bg-brand-light-gray-2 text-brand-gray hover:bg-brand-teal/10 hover:text-brand-teal"
                       }`}
                       aria-label={`${session.name} öffnen, ${sessionStateLabel(session.state).toLowerCase()}`}
                       aria-current={isActive ? "page" : undefined}
@@ -1018,7 +1206,10 @@ export default function Layout({
                     >
                       {initial}
                       {session.state === "active" && (
-                        <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400 ring-1 ring-surface" aria-hidden="true" />
+                        <span
+                          className="absolute right-1 top-1 h-2 w-2 rounded-full bg-green-400 ring-1 ring-surface"
+                          aria-hidden="true"
+                        />
                       )}
                     </button>
                   );
@@ -1026,9 +1217,27 @@ export default function Layout({
               </nav>
 
               <div className="flex w-full flex-col items-center gap-1 border-t border-brand-light-gray-1 p-2">
-                <ToolLink compact icon={Package} label="Material" active={showingOfferings} onClick={onOpenOfferings} />
-                <ToolLink compact icon={BookOpen} label="Quellen" active={showingKnowledge} onClick={onOpenKnowledge} />
-                <ToolLink compact icon={Settings} label="Einstellungen" active={showingAdmin} onClick={onOpenAdmin} />
+                <ToolLink
+                  compact
+                  icon={Package}
+                  label="Material"
+                  active={showingOfferings}
+                  onClick={onOpenOfferings}
+                />
+                <ToolLink
+                  compact
+                  icon={BookOpen}
+                  label="Quellen"
+                  active={showingKnowledge}
+                  onClick={onOpenKnowledge}
+                />
+                <ToolLink
+                  compact
+                  icon={Settings}
+                  label="Einstellungen"
+                  active={showingAdmin}
+                  onClick={onOpenAdmin}
+                />
               </div>
             </div>
           ) : (
@@ -1051,7 +1260,10 @@ export default function Layout({
                   aria-controls={SIDEBAR_ID}
                   title="Seitenleiste einklappen"
                 >
-                  <PanelLeftClose className="h-[18px] w-[18px]" aria-hidden="true" />
+                  <PanelLeftClose
+                    className="h-[18px] w-[18px]"
+                    aria-hidden="true"
+                  />
                 </button>
                 <button
                   type="button"
@@ -1066,12 +1278,20 @@ export default function Layout({
               {showSearch && (
                 <div className="px-3 pb-2">
                   <div className="relative">
-                    <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-brand-mid-gray" aria-hidden="true" />
+                    <Search
+                      className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-brand-mid-gray"
+                      aria-hidden="true"
+                    />
                     <input
                       type="search"
                       value={query}
                       onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) => { if (e.key === "Escape" && query) { e.stopPropagation(); setQuery(""); } }}
+                      onKeyDown={(e) => {
+                        if (e.key === "Escape" && query) {
+                          e.stopPropagation();
+                          setQuery("");
+                        }
+                      }}
                       onFocus={() => setQueryFocused(true)}
                       onBlur={() => setQueryFocused(false)}
                       placeholder="Gespräch suchen"
@@ -1083,7 +1303,7 @@ export default function Layout({
                       <button
                         type="button"
                         onClick={() => setQuery("")}
-                    aria-label="Suche leeren"
+                        aria-label="Suche leeren"
                         className="bc-action absolute right-1 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
                       >
                         <X className="h-3.5 w-3.5" aria-hidden="true" />
@@ -1099,16 +1319,29 @@ export default function Layout({
                 </div>
               )}
 
-              <DndContext sensors={sensors} onDragStart={(e) => setDraggedId(e.active.id as string)} onDragEnd={handleDragEnd}>
-                <nav className="bc-scroll flex-1 overflow-y-auto overflow-x-clip px-2 pb-3" aria-label="Debatten">
+              <DndContext
+                sensors={sensors}
+                onDragStart={(e) => setDraggedId(e.active.id as string)}
+                onDragEnd={handleDragEnd}
+              >
+                <nav
+                  className="bc-scroll flex-1 overflow-y-auto overflow-x-clip px-2 pb-3"
+                  aria-label="Debatten"
+                >
                   {sessions.length === 0 ? (
                     <div className="px-2 pt-6 text-center">
-                      <p className="text-sm font-medium text-brand-dark-gray">Noch keine Debatten</p>
-                      <p className="mt-1 text-xs text-brand-mid-gray">Starte mit „Neue Debatte“.</p>
+                      <p className="text-sm font-medium text-brand-dark-gray">
+                        Noch keine Debatten
+                      </p>
+                      <p className="mt-1 text-xs text-brand-mid-gray">
+                        Starte mit „Neue Debatte“.
+                      </p>
                     </div>
                   ) : filtering && grouped.visibleCount === 0 ? (
                     <div className="px-2 pt-6 text-center">
-                      <p className="text-sm text-brand-dark-gray">Keine Gespräche passen zu &ldquo;{query.trim()}&rdquo;</p>
+                      <p className="text-sm text-brand-dark-gray">
+                        Keine Gespräche passen zu &ldquo;{query.trim()}&rdquo;
+                      </p>
                       <button
                         type="button"
                         onClick={() => setQuery("")}
@@ -1128,14 +1361,28 @@ export default function Layout({
                                 <button
                                   type="button"
                                   onClick={toggleAllGroups}
-                                  aria-label={allGroupsCollapsed ? "Alle Gruppen ausklappen" : "Alle Gruppen einklappen"}
-                                  title={allGroupsCollapsed ? "Alle ausklappen" : "Alle einklappen"}
+                                  aria-label={
+                                    allGroupsCollapsed
+                                      ? "Alle Gruppen ausklappen"
+                                      : "Alle Gruppen einklappen"
+                                  }
+                                  title={
+                                    allGroupsCollapsed
+                                      ? "Alle ausklappen"
+                                      : "Alle einklappen"
+                                  }
                                   className="bc-action flex h-7 w-7 items-center justify-center rounded text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
                                 >
                                   {allGroupsCollapsed ? (
-                                    <ChevronsUpDown className="h-3.5 w-3.5" aria-hidden="true" />
+                                    <ChevronsUpDown
+                                      className="h-3.5 w-3.5"
+                                      aria-hidden="true"
+                                    />
                                   ) : (
-                                    <ChevronsDownUp className="h-3.5 w-3.5" aria-hidden="true" />
+                                    <ChevronsDownUp
+                                      className="h-3.5 w-3.5"
+                                      aria-hidden="true"
+                                    />
                                   )}
                                 </button>
                               )}
@@ -1146,25 +1393,32 @@ export default function Layout({
                                 title="Neue Gruppe"
                                 className="bc-action flex h-7 w-7 items-center justify-center rounded text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
                               >
-                                <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                                <FolderPlus
+                                  className="h-3.5 w-3.5"
+                                  aria-hidden="true"
+                                />
                               </button>
                             </div>
                           )}
                         </div>
                       )}
                       {creatingGroup && newGroupInput}
-                      {grouped.byGroup.map(({ group, sessions: groupSessions }) => (
-                        <DroppableGroup
-                          key={group.id}
-                          group={group}
-                          isExpanded={filtering || !collapsedGroups.has(group.id)}
-                          onToggle={() => toggleGroup(group.id)}
-                          onDelete={() => handleDeleteGroup(group)}
-                          sessionCount={groupSessions.length}
-                        >
-                          {groupSessions.map(renderSession)}
-                        </DroppableGroup>
-                      ))}
+                      {grouped.byGroup.map(
+                        ({ group, sessions: groupSessions }) => (
+                          <DroppableGroup
+                            key={group.id}
+                            group={group}
+                            isExpanded={
+                              filtering || !collapsedGroups.has(group.id)
+                            }
+                            onToggle={() => toggleGroup(group.id)}
+                            onDelete={() => handleDeleteGroup(group)}
+                            sessionCount={groupSessions.length}
+                          >
+                            {groupSessions.map(renderSession)}
+                          </DroppableGroup>
+                        ),
+                      )}
 
                       {grouped.ungrouped.length > 0 && (
                         <>
@@ -1185,7 +1439,10 @@ export default function Layout({
                           onClick={() => setCreatingGroup(true)}
                           className="bc-row mt-2 flex h-8 w-full items-center gap-2 rounded-md px-2 text-xs font-medium text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
                         >
-                          <FolderPlus className="h-3.5 w-3.5" aria-hidden="true" />
+                          <FolderPlus
+                            className="h-3.5 w-3.5"
+                            aria-hidden="true"
+                          />
                           Neue Gruppe
                         </button>
                       )}
@@ -1200,16 +1457,33 @@ export default function Layout({
                       <span className="flex h-4 w-4 shrink-0 items-center justify-center">
                         <StateDot state={draggedSession.state} />
                       </span>
-                      <span className="truncate text-sm font-medium text-brand-dark-gray">{draggedSession.name}</span>
+                      <span className="truncate text-sm font-medium text-brand-dark-gray">
+                        {draggedSession.name}
+                      </span>
                     </div>
                   )}
                 </DragOverlay>
               </DndContext>
 
               <div className="border-t border-brand-light-gray-1 p-2">
-                <ToolLink icon={Package} label="Material" active={showingOfferings} onClick={onOpenOfferings} />
-                <ToolLink icon={BookOpen} label="Quellen" active={showingKnowledge} onClick={onOpenKnowledge} />
-                <ToolLink icon={Settings} label="Einstellungen" active={showingAdmin} onClick={onOpenAdmin} />
+                <ToolLink
+                  icon={Package}
+                  label="Material"
+                  active={showingOfferings}
+                  onClick={onOpenOfferings}
+                />
+                <ToolLink
+                  icon={BookOpen}
+                  label="Quellen"
+                  active={showingKnowledge}
+                  onClick={onOpenKnowledge}
+                />
+                <ToolLink
+                  icon={Settings}
+                  label="Einstellungen"
+                  active={showingAdmin}
+                  onClick={onOpenAdmin}
+                />
               </div>
             </div>
           )}

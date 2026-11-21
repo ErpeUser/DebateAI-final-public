@@ -1,19 +1,21 @@
 import unittest
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from app.services.fit_staleness import (
     AGED,
     CURRENT,
+    FIT_SCHEMA_VERSION,
     INCOMPATIBLE,
     SUPERSEDED,
-    FIT_SCHEMA_VERSION,
     assess_fit_record,
     stamp_fit_record,
 )
 
-
-NOW = datetime(2026, 7, 28, 12, 0, tzinfo=timezone.utc)
-SUBJECT = {"model_id": "endpoint:box:qwen", "endpoint_fingerprint": "http://box/v1|on_prem=true"}
+NOW = datetime(2026, 7, 28, 12, 0, tzinfo=UTC)
+SUBJECT = {
+    "model_id": "endpoint:box:qwen",
+    "endpoint_fingerprint": "http://box/v1|on_prem=true",
+}
 HOST = {
     "device": "cuda",
     "gpu_name": "RTX 4080",

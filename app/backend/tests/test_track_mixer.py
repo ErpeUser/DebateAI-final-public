@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-
 from app.services.track_mixer import FRAME_BYTES, TrackMixer
 
 
@@ -15,14 +14,18 @@ class TrackMixerTests(unittest.TestCase):
             with self.subTest(active=active):
                 clock = [0.0]
                 mixer = TrackMixer(now=lambda: clock[0])
-                self.assertIsNone(mixer.add(1 - active, frame(200)[:FRAME_BYTES // 2]))
+                self.assertIsNone(mixer.add(1 - active, frame(200)[: FRAME_BYTES // 2]))
                 clock[0] = 1.0
                 result = mixer.add(active, frame(100))
                 self.assertIsNotNone(result)
                 mixed, mic, system = result
-                np.testing.assert_array_equal(np.frombuffer(mixed, dtype=np.int16), [300] * 800 + [100] * 800)
+                np.testing.assert_array_equal(
+                    np.frombuffer(mixed, dtype=np.int16), [300] * 800 + [100] * 800
+                )
                 quiet = system if active == 0 else mic
-                np.testing.assert_array_equal(np.frombuffer(quiet, dtype=np.int16), [200] * 800 + [0] * 800)
+                np.testing.assert_array_equal(
+                    np.frombuffer(quiet, dtype=np.int16), [200] * 800 + [0] * 800
+                )
                 self.assertEqual(frame(100), mixer.add(active, frame(100))[0])
                 self.assertIsNone(mixer.flush())
 
@@ -82,7 +85,9 @@ class TrackMixerTests(unittest.TestCase):
         self.now = 10.0
         self.mixer.add(1, frame(100))  # system seen at t=10
         self.now = 10.05
-        out = self.mixer.add(0, frame(200))  # mic arrives 50ms later; system buffer empty but recent
+        out = self.mixer.add(
+            0, frame(200)
+        )  # mic arrives 50ms later; system buffer empty but recent
         self.assertIsNone(out)
         self.now = 10.4  # system now idle > 200ms
         mixed, _, _ = self.mixer.add(0, frame(300))

@@ -8,11 +8,16 @@ from app.services.agents.orchestrator import (
     _live_orchestrators,
     get_live_orchestrator,
 )
-from app.services.meeting_context import debate_mode_for_meeting_type, normalize_meeting_type
+from app.services.meeting_context import (
+    debate_mode_for_meeting_type,
+    normalize_meeting_type,
+)
 
 
 def make_orchestrator(meeting_type="general", meeting_context="initial context"):
-    with patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()):
+    with patch(
+        "app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()
+    ):
         return AgentOrchestrator(
             session_id=uuid4(),
             websocket=AsyncMock(),
@@ -54,11 +59,19 @@ def make_orchestrator(meeting_type="general", meeting_context="initial context")
 
 class UpdateMeetingContextTests(unittest.IsolatedAsyncioTestCase):
     async def test_debate_templates_select_the_existing_two_modes(self):
-        self.assertEqual("debate_persuasive", normalize_meeting_type("debate_persuasive"))
+        self.assertEqual(
+            "debate_persuasive", normalize_meeting_type("debate_persuasive")
+        )
         self.assertEqual("debate_forceful", normalize_meeting_type("debate_forceful"))
-        self.assertEqual("persuasive", debate_mode_for_meeting_type("debate_persuasive", "forceful"))
-        self.assertEqual("forceful", debate_mode_for_meeting_type("debate_forceful", "persuasive"))
-        self.assertEqual("forceful", debate_mode_for_meeting_type("general", "forceful"))
+        self.assertEqual(
+            "persuasive", debate_mode_for_meeting_type("debate_persuasive", "forceful")
+        )
+        self.assertEqual(
+            "forceful", debate_mode_for_meeting_type("debate_forceful", "persuasive")
+        )
+        self.assertEqual(
+            "forceful", debate_mode_for_meeting_type("general", "forceful")
+        )
 
     async def test_debate_template_is_applied_to_the_live_response_agent(self):
         persuasive = make_orchestrator(meeting_type="debate_persuasive")
@@ -218,7 +231,6 @@ class UpdateMeetingContextTests(unittest.IsolatedAsyncioTestCase):
         await orchestrator.close_all()
 
         self.assertIsNone(get_live_orchestrator(orchestrator.session_id))
-
 
     async def test_stale_strategic_cycle_is_discarded_before_persisting(self):
         orchestrator = object.__new__(AgentOrchestrator)

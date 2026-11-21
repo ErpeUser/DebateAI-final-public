@@ -14,15 +14,20 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
         marker = root / "verified.json"
         node.write_bytes(b"node")
         cli.write_text("// oracle", encoding="utf-8")
-        marker.write_text(json.dumps({
-            "requested_model": "gpt-6",
-            "actual_model": "gpt-6",
-            "model_label": "GPT-6",
-            "thinking": "xhigh",
-            "thinking_label": "Extra High",
-            "verification": "Oracle UI-Auswahl bestaetigt",
-            "verified_at": "2026-11-14T00:00:00Z",
-        }), encoding="utf-8")
+        marker.write_text(
+            json.dumps(
+                {
+                    "requested_model": "gpt-6",
+                    "actual_model": "gpt-6",
+                    "model_label": "GPT-6",
+                    "thinking": "xhigh",
+                    "thinking_label": "Extra High",
+                    "verification": "Oracle UI-Auswahl bestaetigt",
+                    "verified_at": "2026-11-14T00:00:00Z",
+                }
+            ),
+            encoding="utf-8",
+        )
         return {
             "DEBATEAI_CHATGPT_WEB_NODE": str(node),
             "DEBATEAI_CHATGPT_WEB_ORACLE": str(cli),
@@ -34,8 +39,9 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
     def test_command_is_consumer_browser_gpt6_and_strict_pro(self):
         from app.services import chatgpt_web
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            os.environ, self._environment(Path(tmp)), clear=False
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, self._environment(Path(tmp)), clear=False),
         ):
             command = chatgpt_web.oracle_command(
                 Path(tmp) / "answer.md", reasoning_effort="xhigh", research="search"
@@ -105,7 +111,7 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
                 self.wait_calls += 1
                 self.actions.append("wait")
                 if self.wait_calls == 1:
-                    raise asyncio.TimeoutError
+                    raise TimeoutError
                 self.returncode = -9
 
             def kill(self):
@@ -135,10 +141,12 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
             starts += 1
             return Process()
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            os.environ, self._environment(Path(tmp)), clear=False
-        ), mock.patch.object(
-            chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, self._environment(Path(tmp)), clear=False),
+            mock.patch.object(
+                chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+            ),
         ):
             with self.assertRaisesRegex(RuntimeError, "model selector"):
                 await chatgpt_web.generate("Erste Anfrage")
@@ -146,6 +154,7 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
                 await chatgpt_web.generate("Zweite Anfrage")
             self.assertFalse(chatgpt_web.configured())
             from app.routers import chatgpt_web as chatgpt_web_router
+
             status = chatgpt_web_router._status()
             self.assertFalse(status["ready"])
             self.assertIn("Erneut anmelden", status["message"])
@@ -159,15 +168,20 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
             root = Path(tmp)
             environment = self._environment(root)
             marker = Path(environment["DEBATEAI_CHATGPT_WEB_MARKER"])
-            marker.write_text(json.dumps({
-                "requested_model": "gpt-6",
-                "actual_model": "gpt-5",
-                "model_label": "Latest",
-                "thinking": "xhigh",
-                "thinking_label": "Extra High",
-                "verification": "Oracle UI-Auswahl bestaetigt",
-                "verified_at": "2026-11-14T00:00:00Z",
-            }), encoding="utf-8")
+            marker.write_text(
+                json.dumps(
+                    {
+                        "requested_model": "gpt-6",
+                        "actual_model": "gpt-5",
+                        "model_label": "Latest",
+                        "thinking": "xhigh",
+                        "thinking_label": "Extra High",
+                        "verification": "Oracle UI-Auswahl bestaetigt",
+                        "verified_at": "2026-11-14T00:00:00Z",
+                    }
+                ),
+                encoding="utf-8",
+            )
             with mock.patch.dict(os.environ, environment, clear=False):
                 self.assertFalse(chatgpt_web.configured())
                 self.assertFalse(chatgpt_web.model_confirmed())
@@ -196,10 +210,12 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
             command.extend(str(value) for value in args)
             return process
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            os.environ, self._environment(Path(tmp)), clear=False
-        ), mock.patch.object(
-            chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, self._environment(Path(tmp)), clear=False),
+            mock.patch.object(
+                chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+            ),
         ):
             answer = await chatgpt_web.generate(
                 "Pruefe dieses Argument.",
@@ -232,10 +248,12 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
             command.extend(str(value) for value in args)
             return process
 
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(
-            os.environ, self._environment(Path(tmp)), clear=False
-        ), mock.patch.object(
-            chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(os.environ, self._environment(Path(tmp)), clear=False),
+            mock.patch.object(
+                chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+            ),
         ):
             answer = await chatgpt_web.generate(
                 "Pruefe die Originalquelle.",
@@ -295,10 +313,11 @@ class ChatGPTWebProviderTests(unittest.IsolatedAsyncioTestCase):
             output = Path(command[command.index("--write-output") + 1])
             return Process(output)
 
-        with mock.patch.dict(
-            os.environ, self._environment(test_root), clear=False
-        ), mock.patch.object(
-            chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+        with (
+            mock.patch.dict(os.environ, self._environment(test_root), clear=False),
+            mock.patch.object(
+                chatgpt_web.asyncio, "create_subprocess_exec", side_effect=create
+            ),
         ):
             answers = await asyncio.gather(
                 chatgpt_web.generate("Erste Anfrage"),

@@ -5,9 +5,8 @@ Revises: 010
 Create Date: 2026-06-18
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "011"
 down_revision = "010"
@@ -18,7 +17,12 @@ depends_on = None
 def upgrade():
     op.add_column(
         "sessions",
-        sa.Column("meeting_type", sa.String(length=50), nullable=False, server_default="general"),
+        sa.Column(
+            "meeting_type",
+            sa.String(length=50),
+            nullable=False,
+            server_default="general",
+        ),
     )
     op.add_column(
         "sessions",

@@ -7,30 +7,29 @@ import os
 import re
 from hashlib import sha256
 
-from fastapi import APIRouter, Body, Depends, HTTPException
-from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import AgentConfig
 from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.ai_config import (
     active_prompt,
     ai_directory,
+    configuration_generation,
     list_prompt_versions,
+    load_ai_json,
     provider_configuration,
     reset_provider_configuration,
-    restore_prompt_version,
     restore_playbooks_version,
-    save_prompt,
+    restore_prompt_version,
     save_playbooks,
+    save_prompt,
     save_provider_configuration,
-    load_ai_json,
-    configuration_generation,
 )
-from app.services.seed_agents import DEFAULT_PROMPTS
 from app.services.provider_capabilities import provider_capability_payload
+from app.services.seed_agents import DEFAULT_PROMPTS
+from fastapi import APIRouter, Body, Depends, HTTPException
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/ai-config", tags=["ai-config"])
 
@@ -52,7 +51,10 @@ _PROMPT_LABELS = {
     "batch_transcription": ("Audio-Transkription", "Audio und ASR"),
     "gemini_live_gateway": ("Gemini-Live-Audio", "Audio und ASR"),
     "transcript_refiner_system": ("Transkript-Korrekturvertrag", "Audio und ASR"),
-    "speaker_context_enhancement": ("Sprecherkorrektur und Neuanalyse", "Argumentgedaechtnis"),
+    "speaker_context_enhancement": (
+        "Sprecherkorrektur und Neuanalyse",
+        "Argumentgedaechtnis",
+    ),
     "debate_review_system": ("Nachdebatten-Review: Rolle", "Nachdebatte"),
     "debate_review_task": ("Nachdebatten-Review: Auftrag", "Nachdebatte"),
     "analyze_transcript": ("Importiertes Transkript analysieren", "Argumentanalyse"),
@@ -82,7 +84,9 @@ class PromptUpdate(BaseModel):
 
 
 def _prompt_payload(name: str, content: str) -> dict:
-    title, category = _PROMPT_LABELS.get(name, (name.replace("_", " ").replace(".", " / ").title(), "Weitere"))
+    title, category = _PROMPT_LABELS.get(
+        name, (name.replace("_", " ").replace(".", " / ").title(), "Weitere")
+    )
     placeholders = sorted(set(re.findall(r"\{[a-zA-Z_][a-zA-Z0-9_]*\}", content)))
     path = ai_directory() / f"{name}.txt"
     return {
@@ -108,25 +112,29 @@ async def _ensure_agent_prompts(db: AsyncSession) -> None:
 
 def _static_prompt_defaults() -> dict[str, str]:
     # Imports stay local so the settings router does not create startup cycles.
-    from app.routers.chat import SYSTEM_PROMPT as POSTCALL_CHAT
     from app.routers.analyze import ANALYZE_TRANSCRIPT_PROMPT
-    from app.services.batch_transcriber import TRANSCRIBE_PROMPT
-    from app.services.gemini_live import GATEWAY_SYSTEM_PROMPT
-    from app.services.live_chat_context import LIVE_SYSTEM_PROMPT
-    from app.services.speaker_context_enhancer import ENHANCEMENT_PROMPT_TEMPLATE
-    from app.services.transcript_refiner import SYSTEM_PROMPT as TRANSCRIPT_REFINER
+    from app.routers.chat import SYSTEM_PROMPT as POSTCALL_CHAT
     from app.services.agents.objection_handler import (
         _ANALOGY_INSTRUCTION_DEFAULTS,
         _LIVE_POSITION_INSTRUCTIONS,
         _MODE_INSTRUCTIONS,
         _STYLE_INSTRUCTIONS,
     )
+    from app.services.batch_transcriber import TRANSCRIBE_PROMPT
+    from app.services.gemini_live import GATEWAY_SYSTEM_PROMPT
+    from app.services.live_chat_context import LIVE_SYSTEM_PROMPT
+    from app.services.speaker_context_enhancer import ENHANCEMENT_PROMPT_TEMPLATE
+    from app.services.transcript_refiner import SYSTEM_PROMPT as TRANSCRIPT_REFINER
 
     deep_path = ai_directory() / "debate_deep_v1.txt"
-    deep_default = deep_path.read_text(encoding="utf-8") if deep_path.is_file() else (
-        "Gegnerisches Argument: {claim}\nMeine Position: {own_position}\n"
-        "Relevanter Verlauf: {relevant_context}\nGelesene Belege: {evidence}\n"
-        "Pruefe Praemissen, Schluss, Gegenbelege und offene Fragen auf Deutsch."
+    deep_default = (
+        deep_path.read_text(encoding="utf-8")
+        if deep_path.is_file()
+        else (
+            "Gegnerisches Argument: {claim}\nMeine Position: {own_position}\n"
+            "Relevanter Verlauf: {relevant_context}\nGelesene Belege: {evidence}\n"
+            "Pruefe Praemissen, Schluss, Gegenbelege und offene Fragen auf Deutsch."
+        )
     )
     return {
         "postcall_chat_system": POSTCALL_CHAT,
@@ -180,7 +188,9 @@ async def read_ai_configuration(db: AsyncSession = Depends(get_db)):
     # them here migrates them into the same source-of-truth contract.
     for name in ("debate_live_v2", "debate_deep_v1"):
         legacy = ai_directory() / f"{name}.txt"
-        load_prompt_resource(name, legacy.read_text(encoding="utf-8") if legacy.is_file() else "")
+        load_prompt_resource(
+            name, legacy.read_text(encoding="utf-8") if legacy.is_file() else ""
+        )
     prompts = []
     for path in sorted(ai_directory().glob("*.txt")):
         content = active_prompt(path.stem, "")
@@ -221,7 +231,9 @@ async def reset_providers():
 
 
 @router.put("/prompts/{name}")
-async def update_prompt(name: str, update: PromptUpdate, db: AsyncSession = Depends(get_db)):
+async def update_prompt(
+    name: str, update: PromptUpdate, db: AsyncSession = Depends(get_db)
+):
     if name == "rhetoriciq.playbooks":
         try:
             content = json.dumps(
@@ -242,7 +254,9 @@ async def update_prompt(name: str, update: PromptUpdate, db: AsyncSession = Depe
         if agent is None:
             raise HTTPException(404, "Der zugeordnete Agent wurde nicht gefunden.")
     prompt_path = ai_directory() / f"{name}.txt"
-    previous_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    previous_prompt = (
+        prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    )
     try:
         saved = save_prompt(name, update.content)
     except ValueError as exc:
@@ -267,7 +281,9 @@ async def reset_prompt(name: str, db: AsyncSession = Depends(get_db)):
         path = ai_directory() / "defaults" / "playbooks.json"
         if not path.is_file():
             raise HTTPException(400, "Der RhetoricIQ-Auslieferungsstandard fehlt.")
-        return await update_prompt(name, PromptUpdate(content=path.read_text(encoding="utf-8")), db)
+        return await update_prompt(
+            name, PromptUpdate(content=path.read_text(encoding="utf-8")), db
+        )
     default = ""
     if name.startswith("agent."):
         default = DEFAULT_PROMPTS.get(name.removeprefix("agent."), "")
@@ -278,7 +294,9 @@ async def reset_prompt(name: str, db: AsyncSession = Depends(get_db)):
         if default_path.is_file():
             default = default_path.read_text(encoding="utf-8")
     if not default.strip():
-        raise HTTPException(400, "Fuer diesen Prompt ist kein Auslieferungsstandard hinterlegt.")
+        raise HTTPException(
+            400, "Fuer diesen Prompt ist kein Auslieferungsstandard hinterlegt."
+        )
     return await update_prompt(name, PromptUpdate(content=default), db)
 
 
@@ -304,6 +322,8 @@ async def restore_prompt(name: str, version: str, db: AsyncSession = Depends(get
 @router.post("/open-folder")
 async def open_ai_folder():
     if os.name != "nt" or not hasattr(os, "startfile"):
-        raise HTTPException(400, "Ordner oeffnen ist nur in der Windows-App verfuegbar.")
+        raise HTTPException(
+            400, "Ordner oeffnen ist nur in der Windows-App verfuegbar."
+        )
     os.startfile(str(ai_directory()))  # type: ignore[attr-defined]
     return {"opened": True, "directory": str(ai_directory())}

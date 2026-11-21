@@ -50,9 +50,18 @@ _OFFICE_RELS = {
     "http://purl.oclc.org/ooxml/officeDocument/relationships/officeDocument",
 }
 _MAIN_ROOTS = {
-    "docx": {"http://schemas.openxmlformats.org/wordprocessingml/2006/main|document", "http://purl.oclc.org/ooxml/wordprocessingml/main|document"},
-    "xlsx": {"http://schemas.openxmlformats.org/spreadsheetml/2006/main|workbook", "http://purl.oclc.org/ooxml/spreadsheetml/main|workbook"},
-    "pptx": {"http://schemas.openxmlformats.org/presentationml/2006/main|presentation", "http://purl.oclc.org/ooxml/presentationml/main|presentation"},
+    "docx": {
+        "http://schemas.openxmlformats.org/wordprocessingml/2006/main|document",
+        "http://purl.oclc.org/ooxml/wordprocessingml/main|document",
+    },
+    "xlsx": {
+        "http://schemas.openxmlformats.org/spreadsheetml/2006/main|workbook",
+        "http://purl.oclc.org/ooxml/spreadsheetml/main|workbook",
+    },
+    "pptx": {
+        "http://schemas.openxmlformats.org/presentationml/2006/main|presentation",
+        "http://purl.oclc.org/ooxml/presentationml/main|presentation",
+    },
 }
 _CHUNK = 64 * 1024
 
@@ -70,10 +79,16 @@ def _safe_path(name, limits, *, directory=False):
     # Refuse aliases rather than guessing how each downstream parser resolves
     # URI escaping, Windows paths, Unicode or case differences.
     parts = name.rstrip("/").split("/") if directory else name.split("/")
-    if (not name or name.startswith("/") or "\\" in name or ":" in name
-            or "%" in name or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)
-            or any(part in ("", ".", "..") or part.endswith((".", " ")) for part in parts)
-            or len(parts) > limits.path_depth):
+    if (
+        not name
+        or name.startswith("/")
+        or "\\" in name
+        or ":" in name
+        or "%" in name
+        or any(ord(ch) < 32 or ord(ch) == 127 for ch in name)
+        or any(part in ("", ".", "..") or part.endswith((".", " ")) for part in parts)
+        or len(parts) > limits.path_depth
+    ):
         _reject("unsafe member path")
     return unicodedata.normalize("NFC", name).casefold()
 
@@ -102,15 +117,26 @@ def _directory_preflight(content, limits, deadline):
     end = content.rfind(b"PK\x05\x06", max(0, len(content) - 65557))
     if end < 0 or end + 22 > len(content):
         _reject("invalid ZIP directory")
-    disk, directory_disk, disk_count, count, size, offset, comment = struct.unpack_from("<4H2IH", content, end + 4)
-    if (count == 0xffff or disk_count == 0xffff or size == 0xffffffff or offset == 0xffffffff
-            or content[max(0, end - 20):end].startswith(b"PK\x06\x07")):
+    disk, directory_disk, disk_count, count, size, offset, comment = struct.unpack_from(
+        "<4H2IH", content, end + 4
+    )
+    if (
+        count == 0xFFFF
+        or disk_count == 0xFFFF
+        or size == 0xFFFFFFFF
+        or offset == 0xFFFFFFFF
+        or content[max(0, end - 20) : end].startswith(b"PK\x06\x07")
+    ):
         _reject("ZIP64 packages are unsupported")
     if disk or directory_disk or disk_count != count:
         _reject("multi-disk packages are unsupported")
     if count > limits.members or size > limits.directory_bytes:
         _reject("ZIP directory limit exceeded")
-    if end + 22 + comment != len(content) or offset + size != end or not content.startswith(b"PK\x03\x04"):
+    if (
+        end + 22 + comment != len(content)
+        or offset + size != end
+        or not content.startswith(b"PK\x03\x04")
+    ):
         _reject("invalid ZIP directory layout")
 
     cursor, actual, expanded, compressed = offset, 0, 0, 0
@@ -120,18 +146,20 @@ def _directory_preflight(content, limits, deadline):
         actual += 1
         if actual > limits.members:
             _reject("member count limit exceeded")
-        if cursor + 46 > end or content[cursor:cursor + 4] != b"PK\x01\x02":
+        if cursor + 46 > end or content[cursor : cursor + 4] != b"PK\x01\x02":
             _reject("invalid central directory record")
         flags, method = struct.unpack_from("<HH", content, cursor + 8)
         packed, unpacked = struct.unpack_from("<II", content, cursor + 20)
-        name_len, extra_len, comment_len, member_disk = struct.unpack_from("<4H", content, cursor + 28)
+        name_len, extra_len, comment_len, member_disk = struct.unpack_from(
+            "<4H", content, cursor + 28
+        )
         attributes, local = struct.unpack_from("<II", content, cursor + 38)
         record_end = cursor + 46 + name_len + extra_len + comment_len
         if record_end > end:
             _reject("invalid directory record size")
         if member_disk:
             _reject("multi-disk packages are unsupported")
-        if packed == 0xffffffff or unpacked == 0xffffffff or local == 0xffffffff:
+        if packed == 0xFFFFFFFF or unpacked == 0xFFFFFFFF or local == 0xFFFFFFFF:
             _reject("ZIP64 packages are unsupported")
         if flags & (1 | 0x20 | 0x40 | 0x2000):
             _reject("encrypted or patched packages are unsupported")
@@ -139,7 +167,7 @@ def _directory_preflight(content, limits, deadline):
             _reject("unsupported ZIP compression")
         if stat.S_IFMT(attributes >> 16) not in (0, stat.S_IFREG, stat.S_IFDIR):
             _reject("special files and symlinks are unsupported")
-        raw_name = content[cursor + 46:cursor + 46 + name_len]
+        raw_name = content[cursor + 46 : cursor + 46 + name_len]
         name = raw_name.decode("utf-8" if flags & 0x800 else "cp437")
         key = _safe_path(name, limits, directory=name.endswith("/"))
         if key in names:
@@ -148,20 +176,27 @@ def _directory_preflight(content, limits, deadline):
         _check_extra(content, cursor + 46 + name_len, extra_len)
         expanded += unpacked
         compressed += packed
-        if (unpacked > limits.member_bytes or expanded > limits.expanded_bytes
-                or unpacked > max(1, packed) * limits.ratio):
+        if (
+            unpacked > limits.member_bytes
+            or expanded > limits.expanded_bytes
+            or unpacked > max(1, packed) * limits.ratio
+        ):
             _reject("expanded size or compression ratio limit exceeded")
-        if local + 30 > offset or content[local:local + 4] != b"PK\x03\x04":
+        if local + 30 > offset or content[local : local + 4] != b"PK\x03\x04":
             _reject("invalid local header")
         local_flags, local_method = struct.unpack_from("<HH", content, local + 6)
         local_name, local_extra = struct.unpack_from("<HH", content, local + 26)
         data_start = local + 30 + local_name + local_extra
-        if (data_start + packed > offset or local_flags != flags or local_method != method
-                or content[local + 30:local + 30 + local_name] != raw_name):
+        if (
+            data_start + packed > offset
+            or local_flags != flags
+            or local_method != method
+            or content[local + 30 : local + 30 + local_name] != raw_name
+        ):
             _reject("inconsistent local header")
         _check_extra(content, local + 30 + local_name, local_extra)
         local_packed, local_unpacked = struct.unpack_from("<II", content, local + 18)
-        if local_packed == 0xffffffff or local_unpacked == 0xffffffff:
+        if local_packed == 0xFFFFFFFF or local_unpacked == 0xFFFFFFFF:
             _reject("ZIP64 packages are unsupported")
         if not flags & 8 and (local_packed != packed or local_unpacked != unpacked):
             _reject("inconsistent ZIP member sizes")
@@ -214,7 +249,12 @@ class _XMLCheck:
 
 def _looks_xml(chunk):
     # Detection only; Expat receives the original bytes and validates encoding.
-    return chunk[:1024].replace(b"\x00", b"").lstrip(b"\xef\xbb\xbf\xff\xfe \t\r\n").startswith(b"<")
+    return (
+        chunk[:1024]
+        .replace(b"\x00", b"")
+        .lstrip(b"\xef\xbb\xbf\xff\xfe \t\r\n")
+        .startswith(b"<")
+    )
 
 
 def _member_chunks(content, info, limits, deadline):
@@ -224,28 +264,38 @@ def _member_chunks(content, info, limits, deadline):
     call has a bounded output allocation, and only a complete single stream
     whose actual expanded size and CRC match the directory is admitted.
     """
-    name_length, extra_length = struct.unpack_from("<HH", content, info.header_offset + 26)
+    name_length, extra_length = struct.unpack_from(
+        "<HH", content, info.header_offset + 26
+    )
     cursor = info.header_offset + 30 + name_length + extra_length
     end = cursor + info.compress_size
-    decoder = zlib.decompressobj(-zlib.MAX_WBITS) if info.compress_type == zipfile.ZIP_DEFLATED else None
+    decoder = (
+        zlib.decompressobj(-zlib.MAX_WBITS)
+        if info.compress_type == zipfile.ZIP_DEFLATED
+        else None
+    )
     pending = b""
     total, checksum = 0, 0
     while cursor < end or pending or (decoder is not None and not decoder.eof):
         _check_time(deadline)
         if not pending:
-            pending = content[cursor:min(end, cursor + _CHUNK)]
+            pending = content[cursor : min(end, cursor + _CHUNK)]
             cursor += len(pending)
         if decoder is None:
             chunk, pending = pending, b""
         else:
             input_length = len(pending)
-            maximum = min(_CHUNK, info.file_size - total + 1, limits.member_bytes - total + 1)
+            maximum = min(
+                _CHUNK, info.file_size - total + 1, limits.member_bytes - total + 1
+            )
             chunk = decoder.decompress(pending, maximum)
             pending = decoder.unconsumed_tail
             if decoder.unused_data or (decoder.eof and (pending or cursor != end)):
                 _reject("trailing data after DEFLATE stream")
             if not chunk and not decoder.eof:
-                if (not pending and cursor == end) or (pending and len(pending) >= input_length):
+                if (not pending and cursor == end) or (
+                    pending and len(pending) >= input_length
+                ):
                     _reject("incomplete DEFLATE stream")
         total += len(chunk)
         if total > info.file_size or total > limits.member_bytes:
@@ -261,7 +311,9 @@ def _member_chunks(content, info, limits, deadline):
         _reject("invalid member CRC")
 
 
-def _read_member(content, info, limits, deadline, element_budget, *, xml=False, collect=False):
+def _read_member(
+    content, info, limits, deadline, element_budget, *, xml=False, collect=False
+):
     checker = None
     total = 0
     tail = b""
@@ -297,7 +349,15 @@ def _validate_package(archive, content, limits, deadline):
     if "[Content_Types].xml" not in infos or "_rels/.rels" not in infos:
         _reject("required OOXML package parts are missing")
     budget = [0]
-    types = _read_member(content, infos["[Content_Types].xml"], limits, deadline, budget, xml=True, collect=True)
+    types = _read_member(
+        content,
+        infos["[Content_Types].xml"],
+        limits,
+        deadline,
+        budget,
+        xml=True,
+        collect=True,
+    )
     if types is None or types.root != _TYPE_NS + "|Types":
         _reject("invalid OOXML content types")
     defaults, overrides = {}, {}
@@ -317,7 +377,9 @@ def _validate_package(archive, content, limits, deadline):
             defaults[extension] = attrs.get("ContentType", "")
         else:
             _reject("invalid content type record")
-    rels = _read_member(content, infos["_rels/.rels"], limits, deadline, budget, xml=True, collect=True)
+    rels = _read_member(
+        content, infos["_rels/.rels"], limits, deadline, budget, xml=True, collect=True
+    )
     if rels is None or rels.root != _REL_NS + "|Relationships":
         _reject("invalid package relationships")
     main_parts = []
@@ -331,21 +393,31 @@ def _validate_package(archive, content, limits, deadline):
     if len(main_parts) != 1 or main_parts[0] not in infos:
         _reject("required Office document part is missing")
     main = main_parts[0]
-    kind = _MAIN_TYPES.get(overrides.get(main, defaults.get(main.rsplit(".", 1)[-1].lower(), "")))
+    kind = _MAIN_TYPES.get(
+        overrides.get(main, defaults.get(main.rsplit(".", 1)[-1].lower(), ""))
+    )
     if not kind:
         _reject("unsupported Office document content type")
     for name, info in infos.items():
         if name in ("[Content_Types].xml", "_rels/.rels"):
             continue
-        mime = overrides.get(name, defaults.get(name.rsplit(".", 1)[-1].lower(), "")).lower()
-        xml = name.lower().endswith((".xml", ".rels")) or mime.endswith(("/xml", "+xml")) or name == main
+        mime = overrides.get(
+            name, defaults.get(name.rsplit(".", 1)[-1].lower(), "")
+        ).lower()
+        xml = (
+            name.lower().endswith((".xml", ".rels"))
+            or mime.endswith(("/xml", "+xml"))
+            or name == main
+        )
         checker = _read_member(content, info, limits, deadline, budget, xml=xml)
         if name == main and (checker is None or checker.root not in _MAIN_ROOTS[kind]):
             _reject("invalid Office main XML part")
     return kind
 
 
-def preflight_office_archive(content: bytes, filename: str, *, limits: OfficeLimits = _DEFAULT_LIMITS) -> str | None:
+def preflight_office_archive(
+    content: bytes, filename: str, *, limits: OfficeLimits = _DEFAULT_LIMITS
+) -> str | None:
     """Validate Office or ZIP-looking bytes regardless of the supplied suffix.
 
     Return docx/xlsx/pptx, or None for non-Office non-ZIP input. Arbitrary ZIPs
@@ -368,5 +440,17 @@ def preflight_office_archive(content: bytes, filename: str, *, limits: OfficeLim
         return kind
     except OfficeArchiveError:
         raise
-    except (zipfile.BadZipFile, UnicodeError, struct.error, expat.ExpatError, EOFError, OSError, RuntimeError, NotImplementedError, zlib.error) as error:
-        raise OfficeArchiveError("Office file rejected: malformed or unsupported package") from error
+    except (
+        zipfile.BadZipFile,
+        UnicodeError,
+        struct.error,
+        expat.ExpatError,
+        EOFError,
+        OSError,
+        RuntimeError,
+        NotImplementedError,
+        zlib.error,
+    ) as error:
+        raise OfficeArchiveError(
+            "Office file rejected: malformed or unsupported package"
+        ) from error

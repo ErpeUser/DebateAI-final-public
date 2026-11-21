@@ -35,15 +35,16 @@ arbiter's prompt dwarfs a single lens (ALP-154, commit df9fc5c).
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
-
 
 # How a text agent draws on the machine. (The other demands - diarization,
 # batch ASR, the captioner - are always in-process: backend thread pool plus
 # container memory, the OOM axis.)
-CONSUMER_LOCAL_OFF_PROCESS = "local_off_process"  # same machine, separate process (loopback endpoint)
-CONSUMER_REMOTE = "remote"                # off-box (LAN or cloud): no local CPU or memory
+CONSUMER_LOCAL_OFF_PROCESS = (
+    "local_off_process"  # same machine, separate process (loopback endpoint)
+)
+CONSUMER_REMOTE = "remote"  # off-box (LAN or cloud): no local CPU or memory
 
 # Verdict statuses.
 STATUS_OK = "ok"
@@ -84,8 +85,12 @@ DEGRADATION_ORDER: tuple[DegradationLever, ...] = (
         True,
         True,
     ),
-    DegradationLever("batch_transcript", "Protect the batch transcript", False, False, protected=True),
-    DegradationLever("call_liveness", "Never sacrifice call liveness", False, False, protected=True),
+    DegradationLever(
+        "batch_transcript", "Protect the batch transcript", False, False, protected=True
+    ),
+    DegradationLever(
+        "call_liveness", "Never sacrifice call liveness", False, False, protected=True
+    ),
 )
 
 

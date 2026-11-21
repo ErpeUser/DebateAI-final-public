@@ -2,7 +2,8 @@ import re
 import unittest
 
 from app.config import MODEL_REGISTRY
-from app.routers.models import ModelPricing as ModelPricingSchema, get_model_pricing
+from app.routers.models import ModelPricing as ModelPricingSchema
+from app.routers.models import get_model_pricing
 from app.services.model_pricing import MODEL_PRICING, PRICING_AS_OF, pricing_for
 
 ISO_DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -22,13 +23,19 @@ class ModelPricingTableTests(unittest.TestCase):
         # pricing (a rate dict, or an explicit None for "unpriced") fails here.
         registry_ids = {model["id"] for model in MODEL_REGISTRY}
         missing = registry_ids - set(MODEL_PRICING)
-        self.assertEqual(missing, set(), f"registry models missing pricing rows: {sorted(missing)}")
+        self.assertEqual(
+            missing, set(), f"registry models missing pricing rows: {sorted(missing)}"
+        )
 
     def test_no_stale_pricing_rows(self):
         # Removing a model from the registry must also remove its pricing row.
         registry_ids = {model["id"] for model in MODEL_REGISTRY}
         stale = set(MODEL_PRICING) - registry_ids
-        self.assertEqual(stale, set(), f"pricing rows for models not in the registry: {sorted(stale)}")
+        self.assertEqual(
+            stale,
+            set(),
+            f"pricing rows for models not in the registry: {sorted(stale)}",
+        )
 
     def test_priced_rows_have_sane_rates(self):
         """Rates are non-negative floats where present.
@@ -81,7 +88,9 @@ class ModelPricingTableTests(unittest.TestCase):
         pricing = pricing_for("gemini-3.1-flash-live-preview")
         self.assertEqual(3.00, pricing["audio_input_per_million"])
         self.assertEqual(12.00, pricing["audio_output_per_million"])
-        self.assertGreater(pricing["audio_input_per_million"], pricing["input_per_million"])
+        self.assertGreater(
+            pricing["audio_input_per_million"], pricing["input_per_million"]
+        )
 
     def test_gemini_audio_rates_where_published(self):
         # Verified against the Gemini API pricing page on 2026-09-01. The 3.x
@@ -91,14 +100,22 @@ class ModelPricingTableTests(unittest.TestCase):
             ("gemini-2.5-flash-lite", 0.30),
             ("gemini-3.1-flash-lite", 0.50),
         ):
-            self.assertEqual(rate, pricing_for(model_id)["audio_input_per_million"], model_id)
-        self.assertIsNone(pricing_for("gemini-3.5-flash-lite")["audio_input_per_million"])
+            self.assertEqual(
+                rate, pricing_for(model_id)["audio_input_per_million"], model_id
+            )
+        self.assertIsNone(
+            pricing_for("gemini-3.5-flash-lite")["audio_input_per_million"]
+        )
 
     def test_cached_rates_are_below_input_rates(self):
         for model_id, pricing in MODEL_PRICING.items():
             if pricing is None or pricing["cached_input_per_million"] is None:
                 continue
-            self.assertLess(pricing["cached_input_per_million"], pricing["input_per_million"], model_id)
+            self.assertLess(
+                pricing["cached_input_per_million"],
+                pricing["input_per_million"],
+                model_id,
+            )
 
     def test_local_models_are_free(self):
         for model in MODEL_REGISTRY:

@@ -7,15 +7,14 @@ import logging
 import re
 
 import numpy as np
-from google import genai
-from google.genai import types
-
 from app.config import settings
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.audio_utils import make_wav_header
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
 from app.services.transcription_language import prompt_language_hint
-from app.services.agents.prompt_resources import load_prompt_resource
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -41,7 +40,8 @@ class TranscriptionError(RuntimeError):
 # Known hallucination patterns that speech models generate from silence/noise.
 # These are well-documented across Whisper, Gemini, and other STT models.
 _HALLUCINATION_PATTERNS: list[re.Pattern] = [
-    re.compile(p, re.IGNORECASE) for p in [
+    re.compile(p, re.IGNORECASE)
+    for p in [
         r"^hi,?\s+i'?m\s+\w+\s+and\s+i'?m\s+\w+\s+years?\s+old",
         r"^my\s+name\s+is\s+\w+\s+and\s+i'?m\s+\w+\s+years?\s+old",
         r"^hello,?\s+i'?m\s+\w+\s+and\s+this\s+is\s+my",
@@ -91,12 +91,50 @@ _HALLUCINATION_EXACT: set[str] = {
 # Minimum word count — single-word "transcriptions" from noise are almost always junk
 _MIN_WORD_COUNT = 2
 _MEANINGFUL_SHORT_UTTERANCES = {
-    "ja", "nein", "doch", "nicht", "fünf", "fuenf", "stimmt", "falsch", "genau",
-    "niemals", "immer", "warum", "wieso", "wann", "wo", "wer", "welche",
-    "null", "eins", "ein", "eine", "einen", "einer", "zwei", "drei", "vier",
-    "sechs", "sieben", "acht", "neun", "zehn", "elf", "zwölf", "zwoelf",
-    "dreizehn", "vierzehn", "fünfzehn", "sechzehn", "siebzehn", "achtzehn",
-    "neunzehn", "zwanzig", "hundert", "tausend",
+    "ja",
+    "nein",
+    "doch",
+    "nicht",
+    "fünf",
+    "fuenf",
+    "stimmt",
+    "falsch",
+    "genau",
+    "niemals",
+    "immer",
+    "warum",
+    "wieso",
+    "wann",
+    "wo",
+    "wer",
+    "welche",
+    "null",
+    "eins",
+    "ein",
+    "eine",
+    "einen",
+    "einer",
+    "zwei",
+    "drei",
+    "vier",
+    "sechs",
+    "sieben",
+    "acht",
+    "neun",
+    "zehn",
+    "elf",
+    "zwölf",
+    "zwoelf",
+    "dreizehn",
+    "vierzehn",
+    "fünfzehn",
+    "sechzehn",
+    "siebzehn",
+    "achtzehn",
+    "neunzehn",
+    "zwanzig",
+    "hundert",
+    "tausend",
 }
 
 # Chinese, Japanese, Thai, Lao, Khmer and Burmese are written without spaces
@@ -123,6 +161,7 @@ def _too_short(text: str) -> bool:
     if len(text.split()) >= _MIN_WORD_COUNT:
         return False
     return len(_UNSPACED_SCRIPT.findall(text)) < _MIN_UNSPACED_CHARS
+
 
 # Audio energy threshold — reject segments that are mostly silence
 _ENERGY_FLOOR = 0.005  # RMS energy below this is likely not real speech
@@ -153,15 +192,15 @@ def _is_hallucination(text: str) -> bool:
     for pattern in _HALLUCINATION_PATTERNS:
         if pattern.search(stripped):
             return True
-    if _BRACKET_JUNK.match(text) or _is_repetitive(text):
-        return True
-    return False
+    return bool(_BRACKET_JUNK.match(text) or _is_repetitive(text))
 
 
-def _audio_has_speech_energy(pcm_bytes: bytes, threshold: float = _ENERGY_FLOOR) -> bool:
+def _audio_has_speech_energy(
+    pcm_bytes: bytes, threshold: float = _ENERGY_FLOOR
+) -> bool:
     """Check if the audio segment has enough energy to contain real speech."""
     samples = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
-    rms = float(np.sqrt(np.mean(samples ** 2)))
+    rms = float(np.sqrt(np.mean(samples**2)))
     return rms >= threshold
 
 
@@ -193,10 +232,14 @@ class BatchTranscriber:
         language: str | None = None,
     ):
         self._sample_rate = sample_rate
-        self._model_id = settings.BATCH_TRANSCRIBER_MODEL if model_id is None else model_id
+        self._model_id = (
+            settings.BATCH_TRANSCRIBER_MODEL if model_id is None else model_id
+        )
         self._client = client
         self._session_id = session_id
-        self._prompt = load_prompt_resource("batch_transcription", TRANSCRIBE_PROMPT) + prompt_language_hint(language)
+        self._prompt = load_prompt_resource(
+            "batch_transcription", TRANSCRIBE_PROMPT
+        ) + prompt_language_hint(language)
 
     async def _get_client(self):
         # Lazy so the workspace-stored key (Admin -> Connections) is picked up.
@@ -212,7 +255,9 @@ class BatchTranscriber:
 
         # Pre-check: reject segments with too little audio energy
         if not _audio_has_speech_energy(pcm_bytes):
-            logger.info(f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)")
+            logger.info(
+                f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)"
+            )
             return None
 
         logger.info(f"Transcribing segment ({len(pcm_bytes)} bytes)")
@@ -227,10 +272,12 @@ class BatchTranscriber:
                 contents=[
                     types.Content(
                         parts=[
-                            types.Part(inline_data=types.Blob(
-                                data=wav_data,
-                                mime_type="audio/wav",
-                            )),
+                            types.Part(
+                                inline_data=types.Blob(
+                                    data=wav_data,
+                                    mime_type="audio/wav",
+                                )
+                            ),
                             types.Part(text=self._prompt),
                         ]
                     )

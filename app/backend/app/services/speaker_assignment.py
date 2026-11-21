@@ -64,7 +64,9 @@ def resolve_existing_auto_speaker(
 ) -> Speaker | None:
     if auto_id in auto_speaker_map:
         speaker_id = auto_speaker_map[auto_id]
-        return next((speaker for speaker in speakers if str(speaker.id) == speaker_id), None)
+        return next(
+            (speaker for speaker in speakers if str(speaker.id) == speaker_id), None
+        )
 
     candidates = assignable_speakers(speakers)
     idx = len(auto_speaker_map)

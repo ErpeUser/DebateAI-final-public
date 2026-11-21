@@ -24,7 +24,7 @@ import base64
 import logging
 
 import httpx
-
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.audio_utils import make_wav_header
 from app.services.batch_transcriber import (
     TRANSCRIBE_PROMPT,
@@ -32,10 +32,12 @@ from app.services.batch_transcriber import (
     _audio_has_speech_energy,
     filter_transcript_text,
 )
-from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
-from app.services.transcription_language import language_code_or_none, prompt_language_hint
+from app.services.transcription_language import (
+    language_code_or_none,
+    prompt_language_hint,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -44,10 +46,13 @@ OPENAI_CHAT_COMPLETIONS_URL = "https://api.openai.com/v1/chat/completions"
 
 # Registry ids served by the specialized /v1/audio/transcriptions endpoint.
 # Every other audio-capable OpenAI id goes through chat completions.
-OPENAI_TRANSCRIBE_MODEL_IDS = frozenset({
-    "gpt-4o-transcribe",
-    "gpt-4o-mini-transcribe",
-})
+OPENAI_TRANSCRIBE_MODEL_IDS = frozenset(
+    {
+        "gpt-4o-transcribe",
+        "gpt-4o-mini-transcribe",
+    }
+)
+
 
 class OpenAITranscriber:
     """Transcribes PCM16 16kHz mono segments via OpenAI speech-to-text."""
@@ -88,7 +93,9 @@ class OpenAITranscriber:
 
         # Pre-check: reject segments with too little audio energy
         if not _audio_has_speech_energy(pcm_bytes):
-            logger.info(f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)")
+            logger.info(
+                f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)"
+            )
             return None
 
         key = await resolve_provider_key("openai")
@@ -155,7 +162,9 @@ class OpenAIChatTranscriber:
         self._client = client  # injectable for tests, like BatchTranscriber
         # Same prompt as the Gemini BatchTranscriber, so both providers share
         # the verbatim-output convention feeding filter_transcript_text.
-        self._prompt = load_prompt_resource("batch_transcription", TRANSCRIBE_PROMPT) + prompt_language_hint(language)
+        self._prompt = load_prompt_resource(
+            "batch_transcription", TRANSCRIBE_PROMPT
+        ) + prompt_language_hint(language)
 
     async def _post(self, key: str, wav_data: bytes):
         body = {
@@ -192,7 +201,9 @@ class OpenAIChatTranscriber:
 
         # Pre-check: reject segments with too little audio energy
         if not _audio_has_speech_energy(pcm_bytes):
-            logger.info(f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)")
+            logger.info(
+                f"Skipping segment: below energy floor ({len(pcm_bytes)} bytes)"
+            )
             return None
 
         key = await resolve_provider_key("openai")
@@ -202,7 +213,9 @@ class OpenAIChatTranscriber:
                 "add one in Admin -> Connections or switch the batch model."
             )
 
-        logger.info(f"Transcribing segment via OpenAI chat audio ({len(pcm_bytes)} bytes)")
+        logger.info(
+            f"Transcribing segment via OpenAI chat audio ({len(pcm_bytes)} bytes)"
+        )
         wav_data = make_wav_header(pcm_bytes, self._sample_rate) + pcm_bytes
 
         try:
@@ -210,7 +223,9 @@ class OpenAIChatTranscriber:
             response.raise_for_status()
             payload = response.json()
         except Exception as e:
-            logger.error(f"OpenAI chat-audio transcription failed ({self._model_id}): {e}")
+            logger.error(
+                f"OpenAI chat-audio transcription failed ({self._model_id}): {e}"
+            )
             raise TranscriptionError(
                 f"OpenAI batch transcription failed ({self._model_id}): {e}"
             ) from e

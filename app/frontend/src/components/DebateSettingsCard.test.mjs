@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./DebateSettingsCard.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./DebateSettingsCard.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "debate-settings-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -48,7 +50,12 @@ const settings = {
 };
 
 test("renders the two rhetoric modes and three research frequencies", () => {
-  const html = render({ settings, privacyFirst: false, saving: false, onChange: () => {} });
+  const html = render({
+    settings,
+    privacyFirst: false,
+    saving: false,
+    onChange: () => {},
+  });
   assert.match(html, /Überzeugen/);
   assert.match(html, /Hart/);
   assert.match(html, /Wenig/);
@@ -69,7 +76,12 @@ test("renders the two rhetoric modes and three research frequencies", () => {
 });
 
 test("zeigt, dass der Datenschutzmodus öffentliche Recherche blockiert", () => {
-  const html = render({ settings, privacyFirst: true, saving: false, onChange: () => {} });
+  const html = render({
+    settings,
+    privacyFirst: true,
+    saving: false,
+    onChange: () => {},
+  });
   assert.match(html, /Datenschutzmodus/);
   assert.match(html, /Öffentliche Recherche ist blockiert/);
 });

@@ -10,15 +10,14 @@ provider's models until it is replaced or passes a test.
 import logging
 
 import httpx
-
 from app.services.app_settings import get_app_setting, set_app_setting
-from app.services.redaction import redact_text
 from app.services.llm_endpoint import (
     auth_headers,
     fallback_base_url,
     normalize_base_url,
     resolve_base_url,
 )
+from app.services.redaction import redact_text
 from app.services.secrets import (
     PROVIDERS,
     env_provider_key,
@@ -37,7 +36,9 @@ def _status_key(provider: str) -> str:
     return f"credentials.{provider}.verified_fingerprint"
 
 
-async def run_connection_test(provider: str, key: str, base_url: str = "") -> tuple[bool, str]:
+async def run_connection_test(
+    provider: str, key: str, base_url: str = ""
+) -> tuple[bool, str]:
     """Probe a provider. base_url defaults to the hosted OpenAI API, so the
     Google and OpenAI paths behave exactly as they did before it existed."""
     try:
@@ -50,22 +51,24 @@ async def run_connection_test(provider: str, key: str, base_url: str = "") -> tu
             url = normalize_base_url(base_url) or fallback_base_url()
             timeout = httpx.Timeout(15, connect=5)
             limits = httpx.Limits(max_connections=2, max_keepalive_connections=1)
-            async with httpx.AsyncClient(
-                timeout=timeout,
-                limits=limits,
-                follow_redirects=False,
-            ) as client:
-                async with client.stream(
+            async with (
+                httpx.AsyncClient(
+                    timeout=timeout,
+                    limits=limits,
+                    follow_redirects=False,
+                ) as client,
+                client.stream(
                     "GET", f"{url}/models", headers=auth_headers(key)
-                ) as resp:
-                    resp.raise_for_status()
-                    if int(resp.headers.get("content-length", "0") or 0) > 1_048_576:
+                ) as resp,
+            ):
+                resp.raise_for_status()
+                if int(resp.headers.get("content-length", "0") or 0) > 1_048_576:
+                    raise ValueError("Provider model catalog is too large")
+                received = 0
+                async for chunk in resp.aiter_bytes():
+                    received += len(chunk)
+                    if received > 1_048_576:
                         raise ValueError("Provider model catalog is too large")
-                    received = 0
-                    async for chunk in resp.aiter_bytes():
-                        received += len(chunk)
-                        if received > 1_048_576:
-                            raise ValueError("Provider model catalog is too large")
         return True, "Connection successful"
     except Exception as e:
         # The message is shown in Admin and stored on the endpoint row, so it
@@ -113,13 +116,14 @@ async def provider_key_availability(db) -> dict[str, bool]:
 async def verify_untested_provider_keys() -> None:
     """Test provider keys that have no recorded outcome for their current value."""
     from app.database import async_session
-
     from app.services.privacy import get_local_only
 
     try:
         async with async_session() as db:
             if await get_local_only(db):
-                logger.info("Privacy First mode is on; skipping provider key verification")
+                logger.info(
+                    "Privacy First mode is on; skipping provider key verification"
+                )
                 return
             for provider in PROVIDERS:
                 key = await get_provider_key(db, provider)
@@ -137,6 +141,8 @@ async def verify_untested_provider_keys() -> None:
                 if ok:
                     logger.info(f"Verified {provider} API key connection at startup")
                 else:
-                    logger.warning(f"{provider} API key failed its connection test: {message}")
+                    logger.warning(
+                        f"{provider} API key failed its connection test: {message}"
+                    )
     except Exception:
         logger.exception("Startup provider key verification failed")

@@ -29,18 +29,17 @@ name, and anything listed in the environment:
 
 from __future__ import annotations
 
-import ipaddress
 import hmac
+import ipaddress
 import logging
 import re
 from http.cookies import CookieError, SimpleCookie
 from urllib.parse import urlsplit
 
+from app.services.identity import env_value
 from starlette.datastructures import Headers
 from starlette.responses import PlainTextResponse
 from starlette.types import ASGIApp, Receive, Scope, Send
-
-from app.services.identity import env_value
 
 logger = logging.getLogger(__name__)
 
@@ -52,14 +51,21 @@ LOOPBACK_NAMES = frozenset({"localhost", "127.0.0.1", "::1", "backend"})
 
 # Origins CORS accepts without configuration. Everything a local frontend
 # could be served from: the app's own port, the Vite dev server, a preview.
-CORS_ORIGIN_REGEX = r"^https?://(localhost|127\.0\.0\.1|\[::1\]|[A-Za-z0-9.-]+\.localhost)(:\d+)?$"
+CORS_ORIGIN_REGEX = (
+    r"^https?://(localhost|127\.0\.0\.1|\[::1\]|[A-Za-z0-9.-]+\.localhost)(:\d+)?$"
+)
 WS_TOKEN_PROTOCOL_PREFIX = "debateai.instance."
 INSTANCE_COOKIE = "debateai_instance"
 
 _SAFE_METHODS = frozenset({"GET", "HEAD", "OPTIONS"})
-_DESKTOP_FRONTEND_FILES = frozenset({
-    "/", "/calibration.html", "/favicon.ico", "/manifest.webmanifest",
-})
+_DESKTOP_FRONTEND_FILES = frozenset(
+    {
+        "/",
+        "/calibration.html",
+        "/favicon.ico",
+        "/manifest.webmanifest",
+    }
+)
 _DESKTOP_FRONTEND_PREFIXES = ("/assets/", "/calibration/", "/icons/")
 
 
@@ -168,7 +174,7 @@ def _websocket_instance_protocol(headers: Headers) -> tuple[str, str] | None:
     if len(protocols) != 1:
         return None
     protocol = protocols[0]
-    return protocol, protocol[len(WS_TOKEN_PROTOCOL_PREFIX):]
+    return protocol, protocol[len(WS_TOKEN_PROTOCOL_PREFIX) :]
 
 
 def instance_token_matches(supplied: str | None, expected: str) -> bool:
@@ -254,13 +260,25 @@ class RequestGuardMiddleware:
         origin_checked = scope["type"] == "websocket" or method not in _SAFE_METHODS
         if origin_checked:
             origin = headers.get("origin")
-            if origin is None and method not in _SAFE_METHODS and scope["type"] != "websocket":
+            if (
+                origin is None
+                and method not in _SAFE_METHODS
+                and scope["type"] != "websocket"
+            ):
                 expected = env_value("DEBATEAI_INSTANCE_TOKEN")
                 supplied = _request_instance_token(headers)
                 if expected and not instance_token_matches(supplied, expected):
-                    await self._reject(scope, receive, send, 403, "Origin or instance authorization is required")
+                    await self._reject(
+                        scope,
+                        receive,
+                        send,
+                        403,
+                        "Origin or instance authorization is required",
+                    )
                     return
-            elif origin is not None and not origin_allowed(origin, self.allowed_hosts, self.allowed_origins):
+            elif origin is not None and not origin_allowed(
+                origin, self.allowed_hosts, self.allowed_origins
+            ):
                 logger.warning(
                     "Rejected cross-origin %s from %r; set %s to allow it",
                     "websocket" if scope["type"] == "websocket" else method,
@@ -288,7 +306,11 @@ class RequestGuardMiddleware:
         elif method not in {"OPTIONS"} and not health_path:
             expected = env_value("DEBATEAI_INSTANCE_TOKEN")
             supplied = _request_instance_token(headers)
-            if expected and not instance_token_matches(supplied, expected) and not bootstrap_path:
+            if (
+                expected
+                and not instance_token_matches(supplied, expected)
+                and not bootstrap_path
+            ):
                 await self._reject(
                     scope,
                     receive,
@@ -299,31 +321,39 @@ class RequestGuardMiddleware:
                 return
         if scope["type"] == "http" and bootstrap_path:
             expected = env_value("DEBATEAI_INSTANCE_TOKEN")
+
             async def send_bootstrap(message):
                 if message["type"] == "http.response.start" and expected:
                     headers_out = list(message.get("headers") or [])
-                    headers_out.append((b"x-debateai-instance", expected.encode("utf-8")))
+                    headers_out.append(
+                        (b"x-debateai-instance", expected.encode("utf-8"))
+                    )
                     headers_out.append(
                         (
                             b"set-cookie",
-                            f"{INSTANCE_COOKIE}={expected}; Path=/; HttpOnly; SameSite=Strict".encode("utf-8"),
+                            f"{INSTANCE_COOKIE}={expected}; Path=/; HttpOnly; SameSite=Strict".encode(),
                         )
                     )
                     message = {**message, "headers": headers_out}
                 await send(message)
+
             await self.app(scope, receive, send_bootstrap)
             return
         if scope["type"] == "websocket" and selected_ws_protocol:
+
             async def send_websocket(message):
                 if message["type"] == "websocket.accept":
                     message = {**message, "subprotocol": selected_ws_protocol}
                 await send(message)
+
             await self.app(scope, receive, send_websocket)
             return
         await self.app(scope, receive, send)
 
     @staticmethod
-    async def _reject(scope: Scope, receive: Receive, send: Send, status: int, message: str) -> None:
+    async def _reject(
+        scope: Scope, receive: Receive, send: Send, status: int, message: str
+    ) -> None:
         if scope["type"] == "websocket":
             await send({"type": "websocket.close", "code": 1008, "reason": message})
             return

@@ -50,7 +50,9 @@ class AudioConversionTests(unittest.TestCase):
                     return Mock(stdout=b"\x01\x00")
 
                 with (
-                    patch("app.services.audio_utils.resolve_ffmpeg", return_value="ffmpeg"),
+                    patch(
+                        "app.services.audio_utils.resolve_ffmpeg", return_value="ffmpeg"
+                    ),
                     patch("subprocess.run", side_effect=run),
                 ):
                     decoded = convert_to_pcm16(encoded, source_format)

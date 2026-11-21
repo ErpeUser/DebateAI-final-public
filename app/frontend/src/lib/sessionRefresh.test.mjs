@@ -30,5 +30,8 @@ test("a reconnect status reloads durable transcript drafts for the visible sessi
   assert.equal(shouldRecoverTranscriptsFromStatus("active", true), true);
   assert.equal(shouldRecoverTranscriptsFromStatus("completed", true), true);
   assert.equal(shouldRecoverTranscriptsFromStatus("active", false), false);
-  assert.equal(shouldRecoverTranscriptsFromStatus("audio_received", true), false);
+  assert.equal(
+    shouldRecoverTranscriptsFromStatus("audio_received", true),
+    false,
+  );
 });

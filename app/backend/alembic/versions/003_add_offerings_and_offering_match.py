@@ -6,9 +6,8 @@ Create Date: 2026-03-21
 """
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "003"
 down_revision = "002"
@@ -35,7 +34,9 @@ def upgrade():
         sa.Column("use_cases", sa.Text, server_default=""),
         sa.Column("delivery_model", sa.String(100), server_default=""),
         sa.Column("active", sa.Boolean, server_default="true"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
 

@@ -10,10 +10,9 @@ egress boundary.
 import unittest
 from unittest import mock
 
-from pydantic import BaseModel
-
 from app.services import llm
 from app.services.agents.prompts import DEBATE_RECOMMENDATION_PROMPT
+from pydantic import BaseModel
 
 
 class DebateLivePromptTests(unittest.TestCase):
@@ -78,7 +77,9 @@ class GoogleSystemInstructionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_the_instruction_half_arrives_as_system_instruction(self):
         _, seen = await self._call(system="You are an analyst. Return JSON.")
-        self.assertEqual("You are an analyst. Return JSON.", seen["config"].system_instruction)
+        self.assertEqual(
+            "You are an analyst. Return JSON.", seen["config"].system_instruction
+        )
         # And it is not also glued onto the user turn.
         self.assertNotIn("You are an analyst", seen["contents"])
         self.assertIn("Hello", seen["contents"])
@@ -89,7 +90,9 @@ class GoogleSystemInstructionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_the_shield_guards_the_instruction_half_too(self):
         with mock.patch.object(llm.pii_egress, "guard", mock.AsyncMock()) as guard:
-            await self._call(system="You are an analyst.", source="consolidated_analyst")
+            await self._call(
+                system="You are an analyst.", source="consolidated_analyst"
+            )
         self.assertEqual("You are an analyst.", guard.await_args.kwargs["system"])
 
 

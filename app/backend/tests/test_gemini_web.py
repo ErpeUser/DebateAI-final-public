@@ -3,7 +3,6 @@ from types import SimpleNamespace
 from unittest import mock
 
 from app.routers import gemini_web
-
 from app.routers.gemini_web import _normalize_cookie
 
 

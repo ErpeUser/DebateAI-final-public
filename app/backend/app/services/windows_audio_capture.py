@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import asyncio
 import array
+import asyncio
 import audioop
 import hashlib
 import json
@@ -17,9 +17,7 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
-
 from app.services.native_audio_bridge import enqueue_native_message, native_audio_queue
-
 
 logger = logging.getLogger(__name__)
 TARGET_RATE = 16_000
@@ -102,13 +100,15 @@ def _stable_endpoint_id(info: dict[str, Any], *, loopback: bool = False) -> str:
     ).strip()
     if native:
         return f"mmdevice:{native}"
-    seed = "|".join((
-        str(info.get("hostApi") or ""),
-        str(info.get("name") or "").strip().casefold(),
-        str(info.get("maxInputChannels") or 0),
-        str(info.get("maxOutputChannels") or 0),
-        "loopback" if loopback or info.get("isLoopbackDevice") else "input",
-    ))
+    seed = "|".join(
+        (
+            str(info.get("hostApi") or ""),
+            str(info.get("name") or "").strip().casefold(),
+            str(info.get("maxInputChannels") or 0),
+            str(info.get("maxOutputChannels") or 0),
+            "loopback" if loopback or info.get("isLoopbackDevice") else "input",
+        )
+    )
     return "wasapi:derived:" + hashlib.sha256(seed.encode("utf-8")).hexdigest()[:24]
 
 
@@ -176,7 +176,9 @@ def _device_from_info(
     info: dict[str, Any], *, loopback: bool = False, is_default: bool = False
 ) -> NativeAudioDevice:
     channels = int(info.get("maxInputChannels") or info.get("maxOutputChannels") or 1)
-    resolved_endpoint, resolved_stable = _resolve_mmdevice_identity(info, loopback=loopback)
+    resolved_endpoint, resolved_stable = _resolve_mmdevice_identity(
+        info, loopback=loopback
+    )
     identity_info = dict(info)
     if resolved_endpoint and not any(
         identity_info.get(key)
@@ -201,7 +203,9 @@ def _device_from_info(
     )
 
 
-def select_default_devices(audio: Any) -> tuple[NativeAudioDevice, NativeAudioDevice | None]:
+def select_default_devices(
+    audio: Any,
+) -> tuple[NativeAudioDevice, NativeAudioDevice | None]:
     get_default_wasapi = getattr(audio, "get_default_wasapi_device", None)
     microphone_info = dict(
         get_default_wasapi(d_in=True)
@@ -247,7 +251,9 @@ def select_devices(
     loopback = default_loopback
     if microphone_mode == "fixed":
         try:
-            microphone = _device_by_endpoint_id(audio, microphone_id or "", loopback=False)
+            microphone = _device_by_endpoint_id(
+                audio, microphone_id or "", loopback=False
+            )
         except OSError:
             # PyAudio can briefly omit the endpoint from its enumeration while
             # Windows is renewing the default device. Keep an explicitly
@@ -275,7 +281,9 @@ def select_devices(
     return microphone, loopback
 
 
-def _device_matches_id(device: NativeAudioDevice | None, endpoint_id: str | None) -> bool:
+def _device_matches_id(
+    device: NativeAudioDevice | None, endpoint_id: str | None
+) -> bool:
     if device is None or not endpoint_id:
         return False
     if not device.endpoint_id.startswith("mmdevice:"):
@@ -288,7 +296,9 @@ def _device_matches_id(device: NativeAudioDevice | None, endpoint_id: str | None
     return endpoint_id in (device.endpoint_id, device.stable_id, legacy_native_id)
 
 
-def _device_by_endpoint_id(audio: Any, endpoint_id: str, *, loopback: bool) -> NativeAudioDevice:
+def _device_by_endpoint_id(
+    audio: Any, endpoint_id: str, *, loopback: bool
+) -> NativeAudioDevice:
     if not endpoint_id:
         raise OSError("Fuer die feste Geraeteauswahl fehlt die stabile Endpoint-ID")
     matches: list[NativeAudioDevice] = []
@@ -367,17 +377,21 @@ class NativeWindowsAudioCapture:
                 counter = self._sample_counters.get(track, 0)
                 self._sample_counters[track] = counter + len(pcm) // 2
                 device = self._devices.get(track)
-                self._enqueue({
-                    "bytes": bytes((track,)) + pcm,
-                    "audio_meta": {
-                        "origin": "native-wasapi",
-                        "sample_rate": TARGET_RATE,
-                        "sample_counter": counter,
-                        "captured_at_ms": round(time.time() * 1000),
-                        "device_id": device.endpoint_id if device else f"native-{track}",
-                        "level": round(level, 4),
-                    },
-                })
+                self._enqueue(
+                    {
+                        "bytes": bytes((track,)) + pcm,
+                        "audio_meta": {
+                            "origin": "native-wasapi",
+                            "sample_rate": TARGET_RATE,
+                            "sample_counter": counter,
+                            "captured_at_ms": round(time.time() * 1000),
+                            "device_id": device.endpoint_id
+                            if device
+                            else f"native-{track}",
+                            "level": round(level, 4),
+                        },
+                    }
+                )
             return (None, continue_code)
 
         return receive
@@ -471,14 +485,20 @@ class NativeWindowsAudioCapture:
         self._loopback_mode = loopback_mode
         self._last_error = ""
         microphone, loopback = await asyncio.to_thread(self._start_sync)
-        self._enqueue({
-            "text": json.dumps({
-                "type": "track_state",
-                "track": 1,
-                "active": loopback is not None,
-            })
-        })
-        self._monitor_task = asyncio.create_task(self._monitor(), name="native-windows-audio")
+        self._enqueue(
+            {
+                "text": json.dumps(
+                    {
+                        "type": "track_state",
+                        "track": 1,
+                        "active": loopback is not None,
+                    }
+                )
+            }
+        )
+        self._monitor_task = asyncio.create_task(
+            self._monitor(), name="native-windows-audio"
+        )
         return self.status(microphone=microphone, loopback=loopback)
 
     async def _monitor(self) -> None:
@@ -486,7 +506,11 @@ class NativeWindowsAudioCapture:
             await asyncio.sleep(2)
             generation = self._generation
             restart, reason = await asyncio.to_thread(self._restart_needed_sync)
-            if not restart or generation != self._generation or self._session_id is None:
+            if (
+                not restart
+                or generation != self._generation
+                or self._session_id is None
+            ):
                 continue
             self._last_error = reason
             try:
@@ -497,13 +521,17 @@ class NativeWindowsAudioCapture:
                 if generation != self._generation or self._session_id is None:
                     await asyncio.to_thread(self._stop_sync)
                     return
-                self._enqueue({
-                    "text": json.dumps({
-                        "type": "track_state",
-                        "track": 1,
-                        "active": loopback is not None,
-                    })
-                })
+                self._enqueue(
+                    {
+                        "text": json.dumps(
+                            {
+                                "type": "track_state",
+                                "track": 1,
+                                "active": loopback is not None,
+                            }
+                        )
+                    }
+                )
             except Exception as exc:
                 self._last_error = str(exc)
                 logger.warning("Native audio restart failed: %s", exc)
@@ -522,7 +550,10 @@ class NativeWindowsAudioCapture:
                 if now - self._last_callback_at.get(track, 0.0) > 6.0
             ]
             if stalled:
-                return True, "Audiogeraet liefert keine Audiodaten; Verbindung wird erneuert"
+                return (
+                    True,
+                    "Audiogeraet liefert keine Audiodaten; Verbindung wird erneuert",
+                )
             try:
                 microphone, loopback = select_devices(
                     self._audio,
@@ -534,7 +565,10 @@ class NativeWindowsAudioCapture:
                     self._loopback_mode,
                 )
             except Exception:
-                return True, "Windows-Audiogeraet ist nicht mehr verfuegbar; Verbindung wird erneuert"
+                return (
+                    True,
+                    "Windows-Audiogeraet ist nicht mehr verfuegbar; Verbindung wird erneuert",
+                )
             expected = {0: microphone}
             if self._system_requested and loopback is not None:
                 expected[1] = loopback
@@ -559,7 +593,10 @@ class NativeWindowsAudioCapture:
                 for track, device in expected.items()
             }
             if current != selected:
-                return True, "Windows-Standardgeraet wurde gewechselt; Aufnahme wird umgestellt"
+                return (
+                    True,
+                    "Windows-Standardgeraet wurde gewechselt; Aufnahme wird umgestellt",
+                )
             return False, ""
 
     async def stop(self) -> dict:
@@ -575,9 +612,13 @@ class NativeWindowsAudioCapture:
             monitor.cancel()
             await asyncio.gather(monitor, return_exceptions=True)
         if self._queue is not None:
-            self._enqueue({
-                "text": json.dumps({"type": "track_state", "track": 1, "active": False})
-            })
+            self._enqueue(
+                {
+                    "text": json.dumps(
+                        {"type": "track_state", "track": 1, "active": False}
+                    )
+                }
+            )
         await asyncio.to_thread(self._stop_sync)
         self._queue = None
         self._loop = None
@@ -628,7 +669,9 @@ class NativeWindowsAudioCapture:
                     info["_is_wasapi"] = int(info.get("hostApi", -1)) == wasapi_host_api
                 loopback = bool(info.get("isLoopbackDevice"))
                 device = _device_from_info(info, loopback=loopback)
-                devices.append({**device.__dict__, "is_default": device.endpoint_id in default_ids})
+                devices.append(
+                    {**device.__dict__, "is_default": device.endpoint_id in default_ids}
+                )
             return devices
         finally:
             audio.terminate()
@@ -653,9 +696,16 @@ class NativeWindowsAudioCapture:
             )
             peak = 0
             for _ in range(8):
-                samples = array.array("h", stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False))
+                samples = array.array(
+                    "h", stream.read(FRAMES_PER_BUFFER, exception_on_overflow=False)
+                )
                 if samples:
-                    peak = max(peak, max(abs(value) for value in samples[::max(1, device.channels)]))
+                    peak = max(
+                        peak,
+                        max(
+                            abs(value) for value in samples[:: max(1, device.channels)]
+                        ),
+                    )
             return min(1.0, peak / 32768.0)
         finally:
             if stream is not None:

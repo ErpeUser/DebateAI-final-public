@@ -1,7 +1,3 @@
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.services.llm_endpoint import (
     OPENAI_COMPATIBLE_PROVIDER,
@@ -24,6 +20,9 @@ from app.services.secrets import (
     master_key_recovery_message,
     set_secret,
 )
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/credentials", tags=["credentials"])
 
@@ -59,16 +58,24 @@ async def read_text_endpoint(db: AsyncSession = Depends(get_db)):
 
 
 @router.put(_ENDPOINT_PATH)
-async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(get_db)):
+async def update_text_endpoint(
+    body: TextEndpointIn, db: AsyncSession = Depends(get_db)
+):
     current = await get_endpoint_config(db)
     target_effective_url = (
-        normalize_base_url(body.base_url) if body.base_url is not None and body.base_url.strip()
+        normalize_base_url(body.base_url)
+        if body.base_url is not None and body.base_url.strip()
         else current.get("fallback_base_url")
     )
-    if body.base_url is not None and target_effective_url != current.get("effective_base_url"):
+    if body.base_url is not None and target_effective_url != current.get(
+        "effective_base_url"
+    ):
         existing = await get_provider_key(db, OPENAI_COMPATIBLE_PROVIDER)
         if existing and body.api_key is None:
-            raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")
+            raise HTTPException(
+                status_code=409,
+                detail="Changing the endpoint requires re-entering the API key",
+            )
     if body.api_key is not None:
         await set_secret(
             db,
@@ -76,7 +83,9 @@ async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(
             body.api_key.strip(),
         )
     try:
-        config = await set_endpoint_config(db, base_url=body.base_url, model_id=body.model_id)
+        config = await set_endpoint_config(
+            db, base_url=body.base_url, model_id=body.model_id
+        )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     await db.commit()
@@ -84,7 +93,9 @@ async def update_text_endpoint(body: TextEndpointIn, db: AsyncSession = Depends(
 
 
 @router.put("/{provider}")
-async def save_credential(provider: str, body: CredentialIn, db: AsyncSession = Depends(get_db)):
+async def save_credential(
+    provider: str, body: CredentialIn, db: AsyncSession = Depends(get_db)
+):
     _check_provider(provider)
     key = body.api_key.strip()
     if not key:
@@ -94,12 +105,20 @@ async def save_credential(provider: str, body: CredentialIn, db: AsyncSession = 
     except MasterKeyUnavailable as exc:
         # Nothing the user types can be stored until the master key is
         # replaced; say so, with the file to remove, instead of a bare 500.
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     await db.commit()
-    ok, message = await run_connection_test(provider, key, await resolve_base_url(db, provider))
+    ok, message = await run_connection_test(
+        provider, key, await resolve_base_url(db, provider)
+    )
     await record_test_outcome(db, provider, key, ok)
     info = await get_provider_status(db, provider)
-    info["message"] = "Saved - connection verified" if ok else f"Saved, but the connection test failed: {message}"
+    info["message"] = (
+        "Saved - connection verified"
+        if ok
+        else f"Saved, but the connection test failed: {message}"
+    )
     return info
 
 
@@ -119,7 +138,9 @@ async def test_credential(provider: str, db: AsyncSession = Depends(get_db)):
     # missing key must not short-circuit its connection test.
     if not key and requires_api_key(provider):
         return {"ok": False, "message": "No API key configured"}
-    ok, message = await run_connection_test(provider, key, await resolve_base_url(db, provider))
+    ok, message = await run_connection_test(
+        provider, key, await resolve_base_url(db, provider)
+    )
     await record_test_outcome(db, provider, key, ok)
     await db.commit()
     return {"ok": ok, "message": message}

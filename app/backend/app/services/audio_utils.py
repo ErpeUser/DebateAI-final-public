@@ -4,7 +4,6 @@ import struct
 from math import ceil
 
 import numpy as np
-
 from app.services.identity import env_value
 
 
@@ -20,11 +19,11 @@ def make_wav_header(
     block_align = channels * bits_per_sample // 8
 
     header = struct.pack(
-        '<4sI4s4sIHHIIHH4sI',
-        b'RIFF',
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF",
         36 + data_size,
-        b'WAVE',
-        b'fmt ',
+        b"WAVE",
+        b"fmt ",
         16,
         1,
         channels,
@@ -32,7 +31,7 @@ def make_wav_header(
         byte_rate,
         block_align,
         bits_per_sample,
-        b'data',
+        b"data",
         data_size,
     )
     return header
@@ -70,10 +69,15 @@ def convert_to_pcm16(
     # Try soundfile first (handles WAV, FLAC, OGG)
     try:
         import soundfile as sf
+
         with sf.SoundFile(io.BytesIO(file_bytes)) as source:
             sr = source.samplerate
-            target_samples = int(max_seconds * 16000) + 1 if max_seconds is not None else None
-            source_frames = ceil(target_samples * sr / 16000) if target_samples is not None else -1
+            target_samples = (
+                int(max_seconds * 16000) + 1 if max_seconds is not None else None
+            )
+            source_frames = (
+                ceil(target_samples * sr / 16000) if target_samples is not None else -1
+            )
             data = source.read(frames=source_frames, dtype="int16", always_2d=True)
         # Mix to mono
         if data.shape[1] > 1:
@@ -100,7 +104,9 @@ def convert_to_pcm16(
         )
 
     output_limit = int(max_seconds * 16000) + 1 if max_seconds is not None else None
-    duration_args = ["-t", f"{output_limit / 16000:.8f}"] if output_limit is not None else []
+    duration_args = (
+        ["-t", f"{output_limit / 16000:.8f}"] if output_limit is not None else []
+    )
     input_path = None
     try:
         input_arg = "pipe:0"
@@ -118,9 +124,17 @@ def convert_to_pcm16(
 
         result = subprocess.run(
             [
-                ffmpeg, "-y", "-i", input_arg,
+                ffmpeg,
+                "-y",
+                "-i",
+                input_arg,
                 *duration_args,
-                "-ar", "16000", "-ac", "1", "-f", "s16le",
+                "-ar",
+                "16000",
+                "-ac",
+                "1",
+                "-f",
+                "s16le",
                 "pipe:1",
             ],
             capture_output=True,

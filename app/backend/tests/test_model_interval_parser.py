@@ -2,9 +2,9 @@
 
 import unittest
 
-from app.services.model_intervals import parse_model_intervals
-from app.services.local_fit import parse_model_intervals as fit_parser
 from app.services.agents.orchestrator import _parse_model_intervals as scheduler_parser
+from app.services.local_fit import parse_model_intervals as fit_parser
+from app.services.model_intervals import parse_model_intervals
 
 
 class ModelIntervalParserTests(unittest.TestCase):

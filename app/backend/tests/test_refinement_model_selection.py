@@ -158,7 +158,9 @@ class AnalyzeModelTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(return_value=resolved_model),
             ) as resolve,
             # No transcript refiner row: the pre-analysis refinement pass is skipped.
-            patch("app.routers.analyze.load_agent_configs", new=AsyncMock(return_value={})),
+            patch(
+                "app.routers.analyze.load_agent_configs", new=AsyncMock(return_value={})
+            ),
             patch(
                 "app.routers.analyze.generate_text",
                 new=AsyncMock(return_value="[]"),
@@ -186,7 +188,9 @@ class RefusalMessageTests(unittest.IsolatedAsyncioTestCase):
 
     def _refuse_everything(self):
         for name, value in (("is_local_only", True), ("allows_local_only", False)):
-            patcher = patch(f"app.services.llm.{name}", new=AsyncMock(return_value=value))
+            patcher = patch(
+                f"app.services.llm.{name}", new=AsyncMock(return_value=value)
+            )
             patcher.start()
             self.addCleanup(patcher.stop)
 

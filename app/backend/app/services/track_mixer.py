@@ -28,7 +28,10 @@ class TrackMixer:
         out = bytearray()
         mic_out = bytearray()
         system_out = bytearray()
-        while len(self._buffers[0]) >= FRAME_BYTES and len(self._buffers[1]) >= FRAME_BYTES:
+        while (
+            len(self._buffers[0]) >= FRAME_BYTES
+            and len(self._buffers[1]) >= FRAME_BYTES
+        ):
             mic_frame = bytes(self._buffers[0][:FRAME_BYTES])
             system_frame = bytes(self._buffers[1][:FRAME_BYTES])
             a = np.frombuffer(mic_frame, dtype=np.int16).astype(np.int32)
@@ -42,8 +45,12 @@ class TrackMixer:
         other = 1 - track
         if t - self._last_seen[other] > IDLE_FLUSH_SECONDS:
             while len(self._buffers[track]) >= FRAME_BYTES:
-                mic_frame = bytes(self._buffers[0][:FRAME_BYTES]).ljust(FRAME_BYTES, b"\0")
-                system_frame = bytes(self._buffers[1][:FRAME_BYTES]).ljust(FRAME_BYTES, b"\0")
+                mic_frame = bytes(self._buffers[0][:FRAME_BYTES]).ljust(
+                    FRAME_BYTES, b"\0"
+                )
+                system_frame = bytes(self._buffers[1][:FRAME_BYTES]).ljust(
+                    FRAME_BYTES, b"\0"
+                )
                 a = np.frombuffer(mic_frame, dtype=np.int16).astype(np.int32)
                 b = np.frombuffer(system_frame, dtype=np.int16).astype(np.int32)
                 out += np.clip(a + b, -32768, 32767).astype(np.int16).tobytes()
@@ -54,14 +61,15 @@ class TrackMixer:
 
         return (bytes(out), bytes(mic_out), bytes(system_out)) if out else None
 
-
     def flush(self) -> tuple[bytes, bytes, bytes] | None:
         """Flush partial track tails with zero-padding while preserving length."""
         n = max(len(self._buffers[0]), len(self._buffers[1]))
         if n <= 0:
             return None
         mic_frame = bytes(self._buffers[0]) + bytes(max(0, n - len(self._buffers[0])))
-        system_frame = bytes(self._buffers[1]) + bytes(max(0, n - len(self._buffers[1])))
+        system_frame = bytes(self._buffers[1]) + bytes(
+            max(0, n - len(self._buffers[1]))
+        )
         a = np.frombuffer(mic_frame, dtype=np.int16).astype(np.int32)
         b = np.frombuffer(system_frame, dtype=np.int16).astype(np.int32)
         mixed = np.clip(a + b, -32768, 32767).astype(np.int16).tobytes()

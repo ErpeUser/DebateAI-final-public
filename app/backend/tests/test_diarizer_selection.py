@@ -69,7 +69,9 @@ class DiarizerSelectionTests(unittest.TestCase):
             def flush_segments(self):
                 return ["first", "second"]
 
-        self.assertEqual(["first", "second"], flush_diarizer_segments(BatchFlushDiarizer()))
+        self.assertEqual(
+            ["first", "second"], flush_diarizer_segments(BatchFlushDiarizer())
+        )
 
     def test_flush_diarizer_segments_wraps_single_flush_result(self):
         class SingleFlushDiarizer:

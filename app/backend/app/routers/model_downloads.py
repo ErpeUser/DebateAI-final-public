@@ -9,10 +9,9 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, HTTPException
-
 from app.services import model_downloads
 from app.services.pii import ner
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/api/model-downloads", tags=["model-downloads"])
 

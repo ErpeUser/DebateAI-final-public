@@ -14,7 +14,10 @@ test("refused fresh call rolls back to pre-call setup", async () => {
 test("refused session with a surviving ended_at rolls back to completed", async () => {
   const { refusalRollbackState } = await load();
   assert.equal(
-    refusalRollbackState({ state: "active", ended_at: "2026-07-22T00:00:00Z" }, 0),
+    refusalRollbackState(
+      { state: "active", ended_at: "2026-07-22T00:00:00Z" },
+      0,
+    ),
     "completed",
   );
 });

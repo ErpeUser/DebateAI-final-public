@@ -15,7 +15,7 @@ from app.services.capacity_admission import (
     assess_call_capacity,
     detect_machine_budget,
 )
-from app.services.capacity_planner import MachineBudget, STATUS_OVER_BUDGET
+from app.services.capacity_planner import STATUS_OVER_BUDGET, MachineBudget
 from app.services.diarizer_selection import DIARIZER_LIGHTWEIGHT, DIARIZER_SORTFORMER
 
 
@@ -106,9 +106,13 @@ class DetectMachineBudgetTests(unittest.TestCase):
         self.assertEqual(1.0, budget.usable_cores)
 
     def test_memory_falls_back_to_the_default_when_no_cgroup_limit(self):
-        with mock.patch(
-            "app.services.capacity_admission._container_memory_limit_mb", return_value=None
-        ), mock.patch("app.services.capacity_admission.os.cpu_count", return_value=4):
+        with (
+            mock.patch(
+                "app.services.capacity_admission._container_memory_limit_mb",
+                return_value=None,
+            ),
+            mock.patch("app.services.capacity_admission.os.cpu_count", return_value=4),
+        ):
             budget = detect_machine_budget()
         self.assertEqual(DEFAULT_MEMORY_LIMIT_MB, budget.memory_limit_mb)
 
@@ -134,8 +138,7 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
             mock.patch(
                 "app.services.capacity_admission.get_diarizer_runtime_config",
                 new=mock.AsyncMock(
-                    return_value=diarizer
-                    or _diarizer(effective=DIARIZER_LIGHTWEIGHT)
+                    return_value=diarizer or _diarizer(effective=DIARIZER_LIGHTWEIGHT)
                 ),
             ),
             mock.patch(
@@ -184,9 +187,7 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
             rows=[],
         )
 
-        self.assertNotIn(
-            "batch_asr:local-parakeet-tdt-0.6b", assessment.modelled
-        )
+        self.assertNotIn("batch_asr:local-parakeet-tdt-0.6b", assessment.modelled)
         self.assertTrue(
             any("Measured model X is gone." in i for i in assessment.not_modelled)
         )
@@ -201,9 +202,7 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
             rows=[],
         )
 
-        self.assertNotIn(
-            "batch_asr:local-parakeet-tdt-0.6b", assessment.modelled
-        )
+        self.assertNotIn("batch_asr:local-parakeet-tdt-0.6b", assessment.modelled)
         self.assertTrue(
             any("Not measured currently." in i for i in assessment.not_modelled)
         )
@@ -265,9 +264,7 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
         assessment = await self._assess(
             fit_result=None,
             rows=[],
-            diarizer=_diarizer(
-                effective=DIARIZER_LIGHTWEIGHT, validity="incompatible"
-            ),
+            diarizer=_diarizer(effective=DIARIZER_LIGHTWEIGHT, validity="incompatible"),
         )
 
         self.assertTrue(
@@ -433,9 +430,7 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
             diarizer=_diarizer(contention_rtf=0.3, peak_memory_mb=300.0),
         )
 
-        memory_notes = [
-            note for note in assessment.not_modelled if "memory" in note
-        ]
+        memory_notes = [note for note in assessment.not_modelled if "memory" in note]
         self.assertEqual(2, len(memory_notes))
         self.assertTrue(any(note.startswith("batch_asr:") for note in memory_notes))
         self.assertTrue(
@@ -476,7 +471,8 @@ class AssessCallCapacityTests(unittest.IsolatedAsyncioTestCase):
         self.assertAlmostEqual(0.15, assessment.verdict.cpu_demand_cores)
         self.assertIn("text_agent:consolidated_analyst", assessment.modelled)
         role_fit = next(
-            fit for fit in assessment.verdict.role_fits
+            fit
+            for fit in assessment.verdict.role_fits
             if fit.role == "consolidated_analyst"
         )
         self.assertIsNone(role_fit.context_window)

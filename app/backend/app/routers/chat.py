@@ -4,19 +4,18 @@ import re
 import uuid
 from typing import Literal
 
+from app.database import get_db
+from app.models import Question, Session, Speaker, TranscriptEntry
+from app.services import briefing_synthesis
+from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.custom_endpoints import endpoint_model_entry
+from app.services.llm import generate_text, provider_for, registry_entry
+from app.services.pii import shield
+from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_to_http
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.database import get_db
-from app.models import Question, Session, Speaker, TranscriptEntry
-from app.services import briefing_synthesis
-from app.services.pii import shield
-from app.services.custom_endpoints import endpoint_model_entry
-from app.services.llm import generate_text, provider_for, registry_entry
-from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_to_http
-from app.services.agents.prompt_resources import load_prompt_resource
 
 logger = logging.getLogger(__name__)
 
@@ -51,16 +50,21 @@ BRIEFING_FIELDS = (
 
 _TOKEN_RE = re.compile(r"\[([A-Z][A-Z0-9]*)_(\d+)\]")
 
+
 def _namespace_tokens(value: str, namespace: str) -> str:
     if not isinstance(value, str):
         return value
-    return _TOKEN_RE.sub(lambda match: f"[{namespace}_{match.group(1)}_{match.group(2)}]", value)
+    return _TOKEN_RE.sub(
+        lambda match: f"[{namespace}_{match.group(1)}_{match.group(2)}]", value
+    )
+
 
 def _restore_namespace_tokens(value: str, namespace: str) -> str:
     if not isinstance(value, str):
         return value
     prefix = re.compile(rf"\[{re.escape(namespace)}_([A-Z][A-Z0-9]*)_(\d+)\]")
     return prefix.sub(lambda match: f"[{match.group(1)}_{match.group(2)}]", value)
+
 
 def _namespace_session_data(data: dict, namespace: str) -> dict:
     result = dict(data)
@@ -71,6 +75,7 @@ def _namespace_session_data(data: dict, namespace: str) -> dict:
         for speaker, text in result.get("lines", [])
     ]
     return result
+
 
 SYSTEM_PROMPT = (
     "You are a meeting analysis assistant. Use ONLY the supplied meeting "
@@ -96,11 +101,16 @@ class ChatMessage(BaseModel):
 class ChatIn(BaseModel):
     model_id: str = Field(min_length=1, max_length=160)
     session_ids: list[uuid.UUID] = Field(min_length=1, max_length=20)
-    messages: list[ChatMessage] = Field(min_length=1, max_length=MAX_CHAT_HISTORY_MESSAGES)
+    messages: list[ChatMessage] = Field(
+        min_length=1, max_length=MAX_CHAT_HISTORY_MESSAGES
+    )
 
 
 def _format_briefing(synthesis) -> str:
-    if synthesis is None or getattr(synthesis, "status", "") not in {"completed", "partial"}:
+    if synthesis is None or getattr(synthesis, "status", "") not in {
+        "completed",
+        "partial",
+    }:
         return ""
     content = {field: getattr(synthesis, field, []) or [] for field in BRIEFING_FIELDS}
     content["insight_clusters"] = [
@@ -126,7 +136,9 @@ def _format_insights(items, speaker_names: dict[str, str]) -> str:
             "text": item.question,
             "rationale": item.rationale,
             "source_context": item.source_context,
-            "speaker": speaker_names.get(str(item.speaker_id), "Unknown") if item.speaker_id else "",
+            "speaker": speaker_names.get(str(item.speaker_id), "Unknown")
+            if item.speaker_id
+            else "",
             "answered": item.answered,
             "answer_summary": item.answer_summary,
             "needs_followup": item.needs_followup,
@@ -138,7 +150,9 @@ def _format_insights(items, speaker_names: dict[str, str]) -> str:
     return json.dumps(content, ensure_ascii=False, separators=(",", ":"))
 
 
-def _layer_blocks(sessions_data: list[dict], key: str, remaining: int) -> tuple[str, int]:
+def _layer_blocks(
+    sessions_data: list[dict], key: str, remaining: int
+) -> tuple[str, int]:
     blocks: list[str] = []
     for data in reversed(sessions_data):
         if key == "transcript":
@@ -188,7 +202,7 @@ def _conversation_block(messages: list[dict], budget: int) -> str:
             marker = "[truncated]"
             keep = max(0, available - len(marker) - 1)
             role = f"{message['role'].capitalize()}: "
-            line = role + message["content"][:max(0, keep - len(role))] + marker
+            line = role + message["content"][: max(0, keep - len(role))] + marker
             selected.append(line[:available])
         break
     if truncated and selected:
@@ -245,9 +259,13 @@ def build_chat_prompt(
 @router.post("")
 async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
     # Self-hosted endpoint models are not in the static registry.
-    entry = registry_entry(body.model_id) or await endpoint_model_entry(db, body.model_id)
+    entry = registry_entry(body.model_id) or await endpoint_model_entry(
+        db, body.model_id
+    )
     if not entry or not entry.get("supports_text"):
-        raise HTTPException(400, f"Model {body.model_id} does not support text generation")
+        raise HTTPException(
+            400, f"Model {body.model_id} does not support text generation"
+        )
 
     sessions_data = []
     for session_id in body.session_ids:
@@ -272,8 +290,7 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         entries = list(entries_result.scalars().all())
         entries.reverse()
         lines = [
-            (speaker_names.get(str(e.speaker_id), "Unknown"), e.text)
-            for e in entries
+            (speaker_names.get(str(e.speaker_id), "Unknown"), e.text) for e in entries
         ]
 
         synthesis = await briefing_synthesis.get_session_synthesis(session_id)
@@ -288,15 +305,17 @@ async def chat(body: ChatIn, db: AsyncSession = Depends(get_db)):
         insights.reverse()
 
         started = session.started_at or session.created_at
-        sessions_data.append({
-            "session_id": session_id,
-            "name": session.name,
-            "started_at": started.date().isoformat() if started else "unknown date",
-            "sort_key": started.isoformat() if started else "",
-            "briefing": _format_briefing(synthesis),
-            "insights": _format_insights(insights, speaker_names),
-            "lines": lines,
-        })
+        sessions_data.append(
+            {
+                "session_id": session_id,
+                "name": session.name,
+                "started_at": started.date().isoformat() if started else "unknown date",
+                "sort_key": started.isoformat() if started else "",
+                "briefing": _format_briefing(synthesis),
+                "insights": _format_insights(insights, speaker_names),
+                "lines": lines,
+            }
+        )
 
     sessions_data.sort(key=lambda data: data["sort_key"])
     namespace_by_session = {

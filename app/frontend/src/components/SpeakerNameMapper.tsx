@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect } from "react";
-import type { AgentConfig, EnhanceInsightsResult, ModelInfo, Session, Speaker } from "../types";
+import type {
+  AgentConfig,
+  EnhanceInsightsResult,
+  ModelInfo,
+  Session,
+  Speaker,
+} from "../types";
 import * as api from "../services/api";
 import { useConfirm } from "./ConfirmProvider";
 
@@ -8,10 +14,10 @@ export function enhancementOutcome(result: EnhanceInsightsResult): {
   message: string;
 } {
   if (
-    result.status === "completed"
-    && result.briefing_updated
-    && result.briefing_status === "completed"
-    && !result.speaker_context_dirty
+    result.status === "completed" &&
+    result.briefing_updated &&
+    result.briefing_status === "completed" &&
+    !result.speaker_context_dirty
   ) {
     return {
       tone: "success",
@@ -20,12 +26,17 @@ export function enhancementOutcome(result: EnhanceInsightsResult): {
   }
   return {
     tone: "warning",
-    message: result.error || "Erneute Prüfung nicht abgeschlossen. „Erkenntnisse verbessern“ nochmals ausführen.",
+    message:
+      result.error ||
+      "Erneute Prüfung nicht abgeschlossen. „Erkenntnisse verbessern“ nochmals ausführen.",
   };
 }
 
 export function enhancementProgressLabel(
-  result: Pick<EnhanceInsightsResult, "status" | "completed_batches" | "total_batches">,
+  result: Pick<
+    EnhanceInsightsResult,
+    "status" | "completed_batches" | "total_batches"
+  >,
 ): string {
   return result.status === "running"
     ? `Prüfe ${result.completed_batches}/${result.total_batches} Blöcke …`
@@ -35,14 +46,17 @@ export function enhancementProgressLabel(
 export function shouldOfferRetry(
   result: Pick<EnhanceInsightsResult, "status"> | null,
 ): boolean {
-  return !!result && (result.status === "partial" || result.status === "failed");
+  return (
+    !!result && (result.status === "partial" || result.status === "failed")
+  );
 }
 
 export function modelBindingLabel(
   agents: Array<Pick<AgentConfig, "slug" | "model_id">>,
   models: Array<Pick<ModelInfo, "id" | "name">>,
 ): string {
-  const modelId = agents.find((agent) => agent.slug === "synthesizer")?.model_id || "";
+  const modelId =
+    agents.find((agent) => agent.slug === "synthesizer")?.model_id || "";
   if (!modelId) return "Nicht ausgewählt";
   const name = models.find((model) => model.id === modelId)?.name;
   return name ? `${name} (${modelId})` : modelId;
@@ -56,14 +70,28 @@ export function enhancementRunModels(
   usedFallback: boolean;
   recorded: boolean;
 } {
-  const batches = result?.batches.filter((batch) => batch.kind === "insights") ?? [];
-  const requested = [...new Set(batches.map((batch) => batch.requested_model_id).filter((id): id is string => !!id))];
-  const actual = [...new Set(batches.map((batch) => batch.model_id).filter((id): id is string => !!id))];
+  const batches =
+    result?.batches.filter((batch) => batch.kind === "insights") ?? [];
+  const requested = [
+    ...new Set(
+      batches
+        .map((batch) => batch.requested_model_id)
+        .filter((id): id is string => !!id),
+    ),
+  ];
+  const actual = [
+    ...new Set(
+      batches.map((batch) => batch.model_id).filter((id): id is string => !!id),
+    ),
+  ];
   return {
     requested,
     actual,
     usedFallback: batches.some(
-      (batch) => !!batch.requested_model_id && !!batch.model_id && batch.requested_model_id !== batch.model_id,
+      (batch) =>
+        !!batch.requested_model_id &&
+        !!batch.model_id &&
+        batch.requested_model_id !== batch.model_id,
     ),
     recorded: actual.length > 0,
   };
@@ -96,30 +124,48 @@ function EnhancementModelStatus({
   return (
     <>
       <p className="mt-2 font-body text-xs text-brand-gray">
-        Die Erkenntnisverbesserung verwendet den Synthesizer: <span className="font-semibold text-brand-dark-gray">{label}</span>{" "}
-        <button type="button" onClick={onOpenAdminAgents} className="font-semibold text-brand-teal underline underline-offset-2">
+        Die Erkenntnisverbesserung verwendet den Synthesizer:{" "}
+        <span className="font-semibold text-brand-dark-gray">{label}</span>{" "}
+        <button
+          type="button"
+          onClick={onOpenAdminAgents}
+          className="font-semibold text-brand-teal underline underline-offset-2"
+        >
           Verwaltung – Agenten öffnen
         </button>
       </p>
       <p className="mt-1 font-body text-xs text-brand-mid-gray">
-        Die Briefing-Neuerstellung verwendet die in der Verwaltung eingerichteten Modelle für Gesprächslinse, Erkenntnislinse und Schiedsrichter.
+        Die Briefing-Neuerstellung verwendet die in der Verwaltung
+        eingerichteten Modelle für Gesprächslinse, Erkenntnislinse und
+        Schiedsrichter.
       </p>
       {loaded && !modelId && (
-        <p className="mt-1 font-body text-xs font-medium text-brand-amber" role="alert">
-          {loadError || "Vor der Verbesserung unter Verwaltung – Agenten ein Synthesizer-Modell auswählen."}
+        <p
+          className="mt-1 font-body text-xs font-medium text-brand-amber"
+          role="alert"
+        >
+          {loadError ||
+            "Vor der Verbesserung unter Verwaltung – Agenten ein Synthesizer-Modell auswählen."}
         </p>
       )}
       {latest && run.recorded && (
         <p className="mt-1 font-body text-xs text-brand-mid-gray">
-          Der letzte Erkenntnislauf verwendete {run.actual.map(displayModel).join(", ")}
-          {run.usedFallback ? ` (Rückfall von ${run.requested.map(displayModel).join(", ")})` : ""}.
+          Der letzte Erkenntnislauf verwendete{" "}
+          {run.actual.map(displayModel).join(", ")}
+          {run.usedFallback
+            ? ` (Rückfall von ${run.requested.map(displayModel).join(", ")})`
+            : ""}
+          .
         </p>
       )}
-      {latest && !run.recorded && latest.batches.some((batch) => batch.kind === "insights") && (
-        <p className="mt-1 font-body text-xs text-brand-mid-gray">
-          Für den letzten Lauf wurde kein erfolgreiches Erkenntnismodell erfasst.
-        </p>
-      )}
+      {latest &&
+        !run.recorded &&
+        latest.batches.some((batch) => batch.kind === "insights") && (
+          <p className="mt-1 font-body text-xs text-brand-mid-gray">
+            Für den letzten Lauf wurde kein erfolgreiches Erkenntnismodell
+            erfasst.
+          </p>
+        )}
     </>
   );
 }
@@ -151,7 +197,9 @@ export default function SpeakerNameMapper({
   const [enhancementMessage, setEnhancementMessage] = useState("");
   const [enhancementWarning, setEnhancementWarning] = useState("");
   const [enhancementError, setEnhancementError] = useState("");
-  const [lastResult, setLastResult] = useState<EnhanceInsightsResult | null>(null);
+  const [lastResult, setLastResult] = useState<EnhanceInsightsResult | null>(
+    null,
+  );
   const [agentsLoaded, setAgentsLoaded] = useState(false);
   const [synthesizerModelId, setSynthesizerModelId] = useState("");
   const [models, setModels] = useState<ModelInfo[]>([]);
@@ -170,13 +218,17 @@ export default function SpeakerNameMapper({
       if (modelsResult.status === "fulfilled") setModels(modelsResult.value);
       if (agentsResult.status === "fulfilled") {
         setSynthesizerModelId(
-          agentsResult.value.find((agent) => agent.slug === "synthesizer")?.model_id || "",
+          agentsResult.value.find((agent) => agent.slug === "synthesizer")
+            ?.model_id || "",
         );
       } else {
-        setModelLoadError("Die Synthesizer-Modellzuordnung konnte nicht geladen werden.");
+        setModelLoadError(
+          "Die Synthesizer-Modellzuordnung konnte nicht geladen werden.",
+        );
       }
       setAgentsLoaded(true);
-      if (latestResult.status === "fulfilled") setLastResult(latestResult.value);
+      if (latestResult.status === "fulfilled")
+        setLastResult(latestResult.value);
     });
     return () => {
       cancelled = true;
@@ -237,18 +289,25 @@ export default function SpeakerNameMapper({
     } catch (error) {
       if (controller.signal.aborted) return;
       setEnhancementMessage("");
-      setEnhancementError(error instanceof Error ? error.message : "Verbesserung fehlgeschlagen. Erneut versuchen.");
+      setEnhancementError(
+        error instanceof Error
+          ? error.message
+          : "Verbesserung fehlgeschlagen. Erneut versuchen.",
+      );
     } finally {
       if (!controller.signal.aborted) setEnhancing(false);
-      if (enhancementAbortRef.current === controller) enhancementAbortRef.current = null;
+      if (enhancementAbortRef.current === controller)
+        enhancementAbortRef.current = null;
     }
   };
 
   const handleEnhance = async () => {
-    if (disabled || !session.speaker_context_dirty || !synthesizerModelId) return;
+    if (disabled || !session.speaker_context_dirty || !synthesizerModelId)
+      return;
     const ok = await confirm({
       title: "Erkenntnisse verbessern",
-      message: "Briefing und alle Erkenntnisse werden anhand der korrigierten Sprechernamen und internen beziehungsweise externen Rollen erneut geprüft.",
+      message:
+        "Briefing und alle Erkenntnisse werden anhand der korrigierten Sprechernamen und internen beziehungsweise externen Rollen erneut geprüft.",
       confirmLabel: "Fortfahren",
       tone: "default",
     });
@@ -257,15 +316,21 @@ export default function SpeakerNameMapper({
   };
 
   const handleRetry = async () => {
-    if (disabled || enhancing || !session.speaker_context_dirty || !synthesizerModelId) return;
+    if (
+      disabled ||
+      enhancing ||
+      !session.speaker_context_dirty ||
+      !synthesizerModelId
+    )
+      return;
     await runEnhancement();
   };
 
   const offerRetry =
-    shouldOfferRetry(lastResult)
-    && !enhancing
-    && !disabled
-    && session.speaker_context_dirty;
+    shouldOfferRetry(lastResult) &&
+    !enhancing &&
+    !disabled &&
+    session.speaker_context_dirty;
   const modelBlocked = !agentsLoaded || !synthesizerModelId;
 
   return (
@@ -276,11 +341,14 @@ export default function SpeakerNameMapper({
             Sprecherzuordnung
           </h3>
           <p className="font-body text-xs text-brand-mid-gray mt-0.5">
-            Automatisch erkannte Stimmen echten Namen zuordnen. Jede Zuordnung lässt sich einzeln ein- oder ausschalten.
+            Automatisch erkannte Stimmen echten Namen zuordnen. Jede Zuordnung
+            lässt sich einzeln ein- oder ausschalten.
           </p>
           <p className="mt-1 font-body text-xs text-brand-gray">
-            Zuerst Sprechernamen und Rollen korrigieren. „Erkenntnisse verbessern“ nutzt diese Zuordnungen,
-            um Briefing und Erkenntnisse aus der richtigen internen oder externen Perspektive neu einzuordnen.
+            Zuerst Sprechernamen und Rollen korrigieren. „Erkenntnisse
+            verbessern“ nutzt diese Zuordnungen, um Briefing und Erkenntnisse
+            aus der richtigen internen oder externen Perspektive neu
+            einzuordnen.
           </p>
           <EnhancementModelStatus
             loaded={agentsLoaded}
@@ -296,7 +364,8 @@ export default function SpeakerNameMapper({
             </p>
           ) : session.speaker_context_enhanced_at ? (
             <p className="mt-1 font-body text-xs text-brand-mid-gray">
-              Zuletzt verbessert: {new Date(session.speaker_context_enhanced_at).toLocaleString()}
+              Zuletzt verbessert:{" "}
+              {new Date(session.speaker_context_enhanced_at).toLocaleString()}
             </p>
           ) : null}
           {disabled && disabledReason && (
@@ -308,9 +377,17 @@ export default function SpeakerNameMapper({
         <button
           type="button"
           onClick={handleEnhance}
-          disabled={disabled || enhancing || !session.speaker_context_dirty || modelBlocked}
+          disabled={
+            disabled ||
+            enhancing ||
+            !session.speaker_context_dirty ||
+            modelBlocked
+          }
           className={`shrink-0 rounded-md px-3 py-2 font-body text-sm font-semibold transition-colors ${
-            session.speaker_context_dirty && !enhancing && !disabled && !modelBlocked
+            session.speaker_context_dirty &&
+            !enhancing &&
+            !disabled &&
+            !modelBlocked
               ? "bg-brand-teal text-white hover:bg-brand-teal-dark"
               : "cursor-not-allowed bg-brand-light-gray-2 text-brand-mid-gray"
           }`}
@@ -320,12 +397,18 @@ export default function SpeakerNameMapper({
       </div>
 
       {enhancementMessage && (
-        <p className="mb-3 rounded-md bg-brand-teal/10 px-3 py-2 font-body text-xs text-brand-teal" role="status">
+        <p
+          className="mb-3 rounded-md bg-brand-teal/10 px-3 py-2 font-body text-xs text-brand-teal"
+          role="status"
+        >
           {enhancementMessage}
         </p>
       )}
       {enhancementWarning && (
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-brand-amber/10 px-3 py-2" role="alert">
+        <div
+          className="mb-3 flex flex-wrap items-center justify-between gap-2 rounded-md bg-brand-amber/10 px-3 py-2"
+          role="alert"
+        >
           <p className="min-w-0 flex-1 font-body text-xs text-brand-amber">
             {enhancementWarning}
           </p>
@@ -341,7 +424,10 @@ export default function SpeakerNameMapper({
         </div>
       )}
       {enhancementError && (
-        <p className="mb-3 rounded-md bg-red-500/10 px-3 py-2 font-body text-xs text-red-600" role="alert">
+        <p
+          className="mb-3 rounded-md bg-red-500/10 px-3 py-2 font-body text-xs text-red-600"
+          role="alert"
+        >
           {enhancementError}
         </p>
       )}
@@ -383,7 +469,9 @@ function SpeakerRow({
   const [editing, setEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const { confirm } = useConfirm();
-  const mergeTargets = speakers.filter((candidate) => candidate.id !== speaker.id);
+  const mergeTargets = speakers.filter(
+    (candidate) => candidate.id !== speaker.id,
+  );
 
   useEffect(() => {
     setDisplayName(speaker.display_name || "");
@@ -403,7 +491,9 @@ function SpeakerRow({
     if (trimmed !== (speaker.display_name || "")) {
       await api.updateSpeaker(sessionId, speaker.id, {
         display_name: trimmed,
-        display_name_enabled: trimmed ? speaker.display_name_enabled || true : false,
+        display_name_enabled: trimmed
+          ? speaker.display_name_enabled || true
+          : false,
       });
       onRefresh();
     }
@@ -454,16 +544,23 @@ function SpeakerRow({
   const hasMapping = !!speaker.display_name;
 
   return (
-    <div className={`flex flex-wrap items-center gap-3 rounded-lg border border-brand-light-gray-1 px-3 py-3 transition-colors ${
-      disabled ? "bg-brand-light-gray-2/40 opacity-80" : "hover:bg-brand-light-gray-2/30"
-    }`}>
+    <div
+      className={`flex flex-wrap items-center gap-3 rounded-lg border border-brand-light-gray-1 px-3 py-3 transition-colors ${
+        disabled
+          ? "bg-brand-light-gray-2/40 opacity-80"
+          : "hover:bg-brand-light-gray-2/30"
+      }`}
+    >
       {/* Color dot + original name */}
       <div className="flex min-w-[14rem] flex-1 flex-wrap items-center gap-2">
         <span
           className="h-3 w-3 rounded-full shrink-0"
           style={{ backgroundColor: speaker.color }}
         />
-        <span className="min-w-[8rem] flex-1 break-words font-body text-sm font-medium text-brand-dark-gray" title={speaker.name}>
+        <span
+          className="min-w-[8rem] flex-1 break-words font-body text-sm font-medium text-brand-dark-gray"
+          title={speaker.name}
+        >
           {speaker.name}
         </span>
         {speaker.is_user && (
@@ -483,8 +580,19 @@ function SpeakerRow({
       </div>
 
       {/* Arrow */}
-      <svg className="hidden h-4 w-4 shrink-0 text-brand-mid-gray sm:block" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.5} aria-hidden="true">
-        <path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3" />
+      <svg
+        className="hidden h-4 w-4 shrink-0 text-brand-mid-gray sm:block"
+        fill="none"
+        stroke="currentColor"
+        viewBox="0 0 24 24"
+        strokeWidth={1.5}
+        aria-hidden="true"
+      >
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M13.5 4.5 21 12m0 0-7.5 7.5M21 12H3"
+        />
       </svg>
 
       {/* Display name (editable) */}
@@ -516,7 +624,9 @@ function SpeakerRow({
             disabled={disabled}
             aria-label={`Zugeordneten Namen für ${speaker.name} bearbeiten`}
             className={`block w-full break-words rounded px-2 py-1 text-left text-sm transition-colors ${
-              disabled ? "cursor-not-allowed" : "cursor-pointer hover:bg-brand-light-gray-2"
+              disabled
+                ? "cursor-not-allowed"
+                : "cursor-pointer hover:bg-brand-light-gray-2"
             } ${
               hasMapping
                 ? speaker.display_name_enabled
@@ -524,7 +634,11 @@ function SpeakerRow({
                   : "text-brand-mid-gray line-through"
                 : "italic text-brand-mid-gray"
             }`}
-            title={hasMapping ? speaker.display_name : "Klicken, um einen echten Namen zuzuordnen"}
+            title={
+              hasMapping
+                ? speaker.display_name
+                : "Klicken, um einen echten Namen zuzuordnen"
+            }
           >
             {hasMapping ? speaker.display_name : "Echten Namen zuordnen..."}
           </button>
@@ -540,7 +654,9 @@ function SpeakerRow({
 
       <select
         value={speaker.speaker_type}
-        onChange={(e) => handleSpeakerTypeChange(e.target.value as "team" | "external")}
+        onChange={(e) =>
+          handleSpeakerTypeChange(e.target.value as "team" | "external")
+        }
         disabled={disabled}
         aria-label={`Einordnung für ${speaker.name}`}
         className="shrink-0 rounded border border-brand-light-gray-1 bg-surface px-2 py-1 font-body text-xs text-brand-gray focus:border-brand-teal-light disabled:cursor-not-allowed disabled:bg-brand-light-gray-2"
@@ -590,7 +706,9 @@ function SpeakerRow({
         aria-label={`Zugeordneten Namen für ${speaker.name} ${speaker.display_name_enabled ? "deaktivieren" : "aktivieren"}`}
         aria-pressed={speaker.display_name_enabled}
         className={`h-5 w-9 rounded-full transition-colors shrink-0 ${
-          hasMapping && speaker.display_name_enabled ? "bg-brand-teal" : "bg-brand-light-gray-1"
+          hasMapping && speaker.display_name_enabled
+            ? "bg-brand-teal"
+            : "bg-brand-light-gray-1"
         } ${disabled || !hasMapping ? "opacity-30 cursor-not-allowed" : ""}`}
         title={
           !hasMapping
@@ -602,7 +720,9 @@ function SpeakerRow({
       >
         <span
           className={`block h-4 w-4 rounded-full bg-surface shadow transition-transform ${
-            hasMapping && speaker.display_name_enabled ? "translate-x-4" : "translate-x-0.5"
+            hasMapping && speaker.display_name_enabled
+              ? "translate-x-4"
+              : "translate-x-0.5"
           }`}
         />
       </button>
@@ -611,5 +731,7 @@ function SpeakerRow({
 }
 
 function displayLabel(speaker: Speaker): string {
-  return speaker.display_name && speaker.display_name_enabled ? speaker.display_name : speaker.name;
+  return speaker.display_name && speaker.display_name_enabled
+    ? speaker.display_name
+    : speaker.name;
 }

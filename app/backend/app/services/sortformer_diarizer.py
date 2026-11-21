@@ -9,11 +9,11 @@ lightweight diarizer.
 import logging
 import os
 import tempfile
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass
-from typing import Any, Callable, Iterable
+from typing import Any
 
 import numpy as np
-
 from app.config import settings
 from app.services.audio_utils import make_wav_header
 from app.services.diarization_diagnostics import (
@@ -22,7 +22,11 @@ from app.services.diarization_diagnostics import (
     _prepare_model,
     _run_diarization,
 )
-from app.services.speaker_diarizer import DiarizedSegment, SpeakerRegistry, extract_speaker_embedding
+from app.services.speaker_diarizer import (
+    DiarizedSegment,
+    SpeakerRegistry,
+    extract_speaker_embedding,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -43,21 +47,34 @@ class SortformerDiarizer:
         sample_rate: int = 16000,
         window_ms: int | None = None,
         registry: SpeakerRegistry | None = None,
-        embedding_extractor: Callable[[np.ndarray, int], np.ndarray] = extract_speaker_embedding,
+        embedding_extractor: Callable[
+            [np.ndarray, int], np.ndarray
+        ] = extract_speaker_embedding,
     ):
         if not 1 <= int(sample_rate) <= 192000:
             raise ValueError("sample_rate must be between 1 and 192000 Hz")
-        configured_window_ms = window_ms if window_ms is not None else settings.SORTFORMER_WINDOW_MS
+        configured_window_ms = (
+            window_ms if window_ms is not None else settings.SORTFORMER_WINDOW_MS
+        )
         if not 1 <= int(configured_window_ms) <= 60000:
             raise ValueError("window_ms must be between 1 and 60000 ms")
         self._model_id = model_id
         self._sample_rate = int(sample_rate)
         self._bytes_per_sample = 2
-        raw_window_bytes = int(int(configured_window_ms) * self._sample_rate / 1000) * self._bytes_per_sample
-        self._window_bytes = max(self._bytes_per_sample, raw_window_bytes - (raw_window_bytes % self._bytes_per_sample))
-        self._min_segment_bytes = int(settings.MIN_SEGMENT_MS * sample_rate / 1000) * self._bytes_per_sample
+        raw_window_bytes = (
+            int(int(configured_window_ms) * self._sample_rate / 1000)
+            * self._bytes_per_sample
+        )
+        self._window_bytes = max(
+            self._bytes_per_sample,
+            raw_window_bytes - (raw_window_bytes % self._bytes_per_sample),
+        )
+        self._min_segment_bytes = (
+            int(settings.MIN_SEGMENT_MS * sample_rate / 1000) * self._bytes_per_sample
+        )
         self._min_new_speaker_bytes = (
-            int(settings.MIN_NEW_SPEAKER_MS * sample_rate / 1000) * self._bytes_per_sample
+            int(settings.MIN_NEW_SPEAKER_MS * sample_rate / 1000)
+            * self._bytes_per_sample
         )
         self._pending_audio = bytearray()
         self._processed_samples = 0
@@ -71,8 +88,8 @@ class SortformerDiarizer:
         self._pending_audio.extend(pcm16_bytes)
         segments: list[DiarizedSegment] = []
         while len(self._pending_audio) >= self._window_bytes:
-            window = bytes(self._pending_audio[:self._window_bytes])
-            del self._pending_audio[:self._window_bytes]  # in place (ALP-290)
+            window = bytes(self._pending_audio[: self._window_bytes])
+            del self._pending_audio[: self._window_bytes]  # in place (ALP-290)
             segments.extend(self._process_pcm_window(window, self._processed_samples))
             self._processed_samples += len(window) // self._bytes_per_sample
         return segments
@@ -110,8 +127,13 @@ class SortformerDiarizer:
 
         segments: list[DiarizedSegment] = []
         for turn in turns:
-            start = max(0, int(turn.start_seconds * self._sample_rate) * self._bytes_per_sample)
-            end = max(start, int(turn.end_seconds * self._sample_rate) * self._bytes_per_sample)
+            start = max(
+                0, int(turn.start_seconds * self._sample_rate) * self._bytes_per_sample
+            )
+            end = max(
+                start,
+                int(turn.end_seconds * self._sample_rate) * self._bytes_per_sample,
+            )
             segment_pcm = pcm_bytes[start:end]
             if len(segment_pcm) < self._min_segment_bytes:
                 continue
@@ -153,14 +175,18 @@ class SortformerDiarizer:
 
     def _speaker_id_for_segment(self, label: str, pcm_bytes: bytes) -> str:
         try:
-            pcm_float = np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            pcm_float = (
+                np.frombuffer(pcm_bytes, dtype=np.int16).astype(np.float32) / 32768.0
+            )
             embedding = self._embedding_extractor(pcm_float, self._sample_rate)
             return self._registry.match_or_create(
                 embedding,
                 allow_create=len(pcm_bytes) >= self._min_new_speaker_bytes,
             )
         except Exception as exc:
-            logger.warning(f"Sortformer speaker embedding failed; falling back to local label: {exc}")
+            logger.warning(
+                f"Sortformer speaker embedding failed; falling back to local label: {exc}"
+            )
             if (
                 len(pcm_bytes) < self._min_new_speaker_bytes
                 and self._registry.fallback_profile_count == 0
@@ -170,7 +196,10 @@ class SortformerDiarizer:
 
 
 def extract_sortformer_turns(result: Any) -> list[SortformerTurn]:
-    turns = sorted(_iter_sortformer_turns(result), key=lambda turn: (turn.start_seconds, turn.end_seconds))
+    turns = sorted(
+        _iter_sortformer_turns(result),
+        key=lambda turn: (turn.start_seconds, turn.end_seconds),
+    )
     return [turn for turn in turns if turn.end_seconds > turn.start_seconds]
 
 
@@ -180,8 +209,8 @@ def _iter_sortformer_turns(result: Any) -> Iterable[SortformerTurn]:
 
     if hasattr(result, "itertracks"):
         for segment, _, label in result.itertracks(yield_label=True):
-            start = float(getattr(segment, "start"))
-            end = float(getattr(segment, "end"))
+            start = float(segment.start)
+            end = float(segment.end)
             yield SortformerTurn(start, end, str(label))
         return
 
@@ -207,7 +236,9 @@ def _iter_sortformer_turns(result: Any) -> Iterable[SortformerTurn]:
 
 def _turn_from_dict(value: dict[str, Any]) -> SortformerTurn | None:
     def first_value(*keys):
-        return next((value[key] for key in keys if value.get(key) not in (None, "")), None)
+        return next(
+            (value[key] for key in keys if value.get(key) not in (None, "")), None
+        )
 
     start = first_value("start", "start_time", "start_seconds")
     end = first_value("end", "end_time", "end_seconds")

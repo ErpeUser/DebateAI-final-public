@@ -1,5 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { AudioSendStats, DebateResearchCategory, StopDrainMode, WSMessage, WSSessionSnapshot } from "../types";
+import type {
+  AudioSendStats,
+  DebateResearchCategory,
+  StopDrainMode,
+  WSMessage,
+  WSSessionSnapshot,
+} from "../types";
 import type { AudioTrack } from "./useAudioCapture";
 import { getDesktopInstanceToken } from "../services/api";
 import {
@@ -69,7 +75,9 @@ export function useWebSocket() {
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef<number | null>(null);
   const connectRef = useRef<((sessionId: string) => void) | null>(null);
-  const stopCompletionRef = useRef<((outcome: StopOutcome) => void) | null>(null);
+  const stopCompletionRef = useRef<((outcome: StopOutcome) => void) | null>(
+    null,
+  );
   const stopTimeoutRef = useRef<number | null>(null);
   const audioStatsRef = useRef<AudioSendStats>({
     chunksSent: 0,
@@ -122,158 +130,170 @@ export function useWebSocket() {
   // (ALP-171: a fixed 180s timer abandoned a drain that took four twenty).
   const armStopDeadline = useCallback(() => {
     if (stopCompletionRef.current === null) return;
-    if (stopTimeoutRef.current !== null) window.clearTimeout(stopTimeoutRef.current);
+    if (stopTimeoutRef.current !== null)
+      window.clearTimeout(stopTimeoutRef.current);
     stopTimeoutRef.current = window.setTimeout(
       () => resolveStop("still_processing"),
       STOP_SILENCE_TIMEOUT_MS,
     );
   }, [resolveStop]);
 
-  const connect = useCallback((sessionId: string) => {
-    if (reconnectTimerRef.current !== null) {
-      window.clearTimeout(reconnectTimerRef.current);
-      reconnectTimerRef.current = null;
-    }
-    connectionTokenRef.current += 1;
-    const token = connectionTokenRef.current;
-    shouldReconnectRef.current = true;
+  const connect = useCallback(
+    (sessionId: string) => {
+      if (reconnectTimerRef.current !== null) {
+        window.clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+      connectionTokenRef.current += 1;
+      const token = connectionTokenRef.current;
+      shouldReconnectRef.current = true;
 
-    if (wsRef.current) {
-      wsRef.current.close();
-    }
-
-    setStatus("connecting");
-    if (sessionIdRef.current !== sessionId) {
-      sessionIdRef.current = sessionId;
-      captureIdRef.current = "";
-      lastSequenceRef.current = 0;
-      serverEpochRef.current = "";
-      setServerEpoch("");
-      reconnectAttemptRef.current = 0;
-      messagesRef.current = [];
-      setMessages([]);
-      resetAudioStats();
-    }
-    if (!captureIdRef.current) {
-      captureIdRef.current = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
-    }
-
-    const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-    const instanceToken = getDesktopInstanceToken();
-    const query = new URLSearchParams();
-    if (lastSequenceRef.current > 0) {
-      query.set("after_sequence", String(lastSequenceRef.current));
-    }
-    if (serverEpochRef.current) {
-      query.set("after_epoch", serverEpochRef.current);
-    }
-    query.set("capture_id", captureIdRef.current);
-    const suffix = query.size ? `?${query.toString()}` : "";
-    const wsUrl = `${protocol}//${window.location.host}/ws/${sessionId}${suffix}`;
-    // Keep the instance token out of URLs, browser history, and proxy logs.
-    const ws = instanceToken
-      ? new WebSocket(wsUrl, [`debateai.instance.${instanceToken}`])
-      : new WebSocket(wsUrl);
-    ws.binaryType = "arraybuffer";
-    wsRef.current = ws;
-
-    ws.onopen = () => {
-      if (connectionTokenRef.current !== token) return;
-      reconnectAttemptRef.current = 0;
-      setStatus("connected");
-    };
-
-    ws.onmessage = (event: MessageEvent) => {
-      if (connectionTokenRef.current !== token) return;
-
-      if (event.data instanceof ArrayBuffer) {
-        // Binary frame = audio out; ignored here, handled by caller if needed
-        return;
+      if (wsRef.current) {
+        wsRef.current.close();
       }
 
-      try {
-        const payload = JSON.parse(event.data as string) as WSMessage | WSSessionSnapshot;
-        if (payload.type === "session_snapshot") {
-          const incomingEpoch = payload.data.server_epoch || "";
-          if (shouldResetForServerEpoch(serverEpochRef.current, incomingEpoch)) {
-            lastSequenceRef.current = 0;
-            messagesRef.current = [];
-            setMessages([]);
-          }
-          serverEpochRef.current = incomingEpoch;
-          setServerEpoch(incomingEpoch);
+      setStatus("connecting");
+      if (sessionIdRef.current !== sessionId) {
+        sessionIdRef.current = sessionId;
+        captureIdRef.current = "";
+        lastSequenceRef.current = 0;
+        serverEpochRef.current = "";
+        setServerEpoch("");
+        reconnectAttemptRef.current = 0;
+        messagesRef.current = [];
+        setMessages([]);
+        resetAudioStats();
+      }
+      if (!captureIdRef.current) {
+        captureIdRef.current =
+          globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random()}`;
+      }
+
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const instanceToken = getDesktopInstanceToken();
+      const query = new URLSearchParams();
+      if (lastSequenceRef.current > 0) {
+        query.set("after_sequence", String(lastSequenceRef.current));
+      }
+      if (serverEpochRef.current) {
+        query.set("after_epoch", serverEpochRef.current);
+      }
+      query.set("capture_id", captureIdRef.current);
+      const suffix = query.size ? `?${query.toString()}` : "";
+      const wsUrl = `${protocol}//${window.location.host}/ws/${sessionId}${suffix}`;
+      // Keep the instance token out of URLs, browser history, and proxy logs.
+      const ws = instanceToken
+        ? new WebSocket(wsUrl, [`debateai.instance.${instanceToken}`])
+        : new WebSocket(wsUrl);
+      ws.binaryType = "arraybuffer";
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        if (connectionTokenRef.current !== token) return;
+        reconnectAttemptRef.current = 0;
+        setStatus("connected");
+      };
+
+      ws.onmessage = (event: MessageEvent) => {
+        if (connectionTokenRef.current !== token) return;
+
+        if (event.data instanceof ArrayBuffer) {
+          // Binary frame = audio out; ignored here, handled by caller if needed
+          return;
         }
-        const accepted = socketPayloadEvents(payload)
-          .filter((message) => (
-            typeof message.session_sequence !== "number"
-            || message.session_sequence > lastSequenceRef.current
-          )) as WSMessage[];
-        if (accepted.length) {
-          const staged = stageSocketPayload(
-            messagesRef.current,
-            payload,
-            lastSequenceRef.current,
-            1000,
+
+        try {
+          const payload = JSON.parse(event.data as string) as
+            WSMessage | WSSessionSnapshot;
+          if (payload.type === "session_snapshot") {
+            const incomingEpoch = payload.data.server_epoch || "";
+            if (
+              shouldResetForServerEpoch(serverEpochRef.current, incomingEpoch)
+            ) {
+              lastSequenceRef.current = 0;
+              messagesRef.current = [];
+              setMessages([]);
+            }
+            serverEpochRef.current = incomingEpoch;
+            setServerEpoch(incomingEpoch);
+          }
+          const accepted = socketPayloadEvents(payload).filter(
+            (message) =>
+              typeof message.session_sequence !== "number" ||
+              message.session_sequence > lastSequenceRef.current,
+          ) as WSMessage[];
+          if (accepted.length) {
+            const staged = stageSocketPayload(
+              messagesRef.current,
+              payload,
+              lastSequenceRef.current,
+              1000,
+            );
+            if (staged.needsResync) {
+              // The server journal compacts a full snapshot to current state.
+              // Reconnect from the last processed sequence instead of dropping
+              // an unrendered final event and falsely acknowledging the gap.
+              armStopDeadline();
+              connectRef.current?.(sessionId);
+              return;
+            }
+            messagesRef.current = staged.events as WSMessage[];
+            setMessages(messagesRef.current);
+          }
+          // Any traffic proves the backend is alive and working.
+          armStopDeadline();
+          const completed = accepted.find(
+            (message) =>
+              message.type === "status" && message.data.state === "completed",
           );
-          if (staged.needsResync) {
-            // The server journal compacts a full snapshot to current state.
-            // Reconnect from the last processed sequence instead of dropping
-            // an unrendered final event and falsely acknowledging the gap.
-            armStopDeadline();
-            connectRef.current?.(sessionId);
-            return;
+          if (completed) {
+            shouldReconnectRef.current = false;
+            resolveStop("completed");
           }
-          messagesRef.current = staged.events as WSMessage[];
-          setMessages(messagesRef.current);
+        } catch {
+          console.warn("Unparseable WS message", event.data);
         }
-        // Any traffic proves the backend is alive and working.
-        armStopDeadline();
-        const completed = accepted.find(
-          (message) => message.type === "status" && message.data.state === "completed",
-        );
-        if (completed) {
-          shouldReconnectRef.current = false;
-          resolveStop("completed");
+      };
+
+      ws.onerror = () => {
+        if (connectionTokenRef.current !== token) return;
+        setStatus("error");
+      };
+
+      ws.onclose = () => {
+        if (connectionTokenRef.current !== token) return;
+        resolveStop("disconnected");
+        wsRef.current = null;
+        if (shouldReconnectRef.current && sessionIdRef.current === sessionId) {
+          setStatus("connecting");
+          const delay = Math.min(5000, 500 * 2 ** reconnectAttemptRef.current);
+          reconnectAttemptRef.current += 1;
+          reconnectTimerRef.current = window.setTimeout(
+            () => connectRef.current?.(sessionId),
+            delay,
+          );
+        } else {
+          setStatus("disconnected");
         }
-      } catch {
-        console.warn("Unparseable WS message", event.data);
-      }
-    };
-
-    ws.onerror = () => {
-      if (connectionTokenRef.current !== token) return;
-      setStatus("error");
-    };
-
-    ws.onclose = () => {
-      if (connectionTokenRef.current !== token) return;
-      resolveStop("disconnected");
-      wsRef.current = null;
-      if (shouldReconnectRef.current && sessionIdRef.current === sessionId) {
-        setStatus("connecting");
-        const delay = Math.min(5000, 500 * (2 ** reconnectAttemptRef.current));
-        reconnectAttemptRef.current += 1;
-        reconnectTimerRef.current = window.setTimeout(
-          () => connectRef.current?.(sessionId),
-          delay,
-        );
-      } else {
-        setStatus("disconnected");
-      }
-    };
-  }, [armStopDeadline, resolveStop, resetAudioStats]);
+      };
+    },
+    [armStopDeadline, resolveStop, resetAudioStats],
+  );
 
   connectRef.current = connect;
 
   useEffect(() => {
     const synchronizeWhenVisible = () => {
       const sessionId = sessionIdRef.current;
-      if (!shouldReconnectVisibleSession(
-        document.visibilityState,
-        sessionId,
-        shouldReconnectRef.current,
-        wsRef.current?.readyState ?? null,
-      )) return;
+      if (
+        !shouldReconnectVisibleSession(
+          document.visibilityState,
+          sessionId,
+          shouldReconnectRef.current,
+          wsRef.current?.readyState ?? null,
+        )
+      )
+        return;
       connectRef.current?.(sessionId);
     };
 
@@ -309,12 +329,24 @@ export function useWebSocket() {
     publishAudioStats(true);
   }, [resolveStop, publishAudioStats]);
 
-  const sendAudio = useCallback((data: ArrayBuffer, track: 0 | 1 = 0) => {
-    const socket = wsRef.current;
-    if (socket?.readyState === WebSocket.OPEN) {
-      const bufferedAmount = socket.bufferedAmount || 0;
-      if (audioBackpressureRef.current) {
-        if (bufferedAmount > AUDIO_SEND_LOW_WATER_BYTES) {
+  const sendAudio = useCallback(
+    (data: ArrayBuffer, track: 0 | 1 = 0) => {
+      const socket = wsRef.current;
+      if (socket?.readyState === WebSocket.OPEN) {
+        const bufferedAmount = socket.bufferedAmount || 0;
+        if (audioBackpressureRef.current) {
+          if (bufferedAmount > AUDIO_SEND_LOW_WATER_BYTES) {
+            audioStatsRef.current = {
+              ...audioStatsRef.current,
+              chunksDropped: audioStatsRef.current.chunksDropped + 1,
+            };
+            publishAudioStats();
+            return;
+          }
+          audioBackpressureRef.current = false;
+        }
+        if (bufferedAmount >= AUDIO_SEND_HIGH_WATER_BYTES) {
+          audioBackpressureRef.current = true;
           audioStatsRef.current = {
             ...audioStatsRef.current,
             chunksDropped: audioStatsRef.current.chunksDropped + 1,
@@ -322,43 +354,34 @@ export function useWebSocket() {
           publishAudioStats();
           return;
         }
-        audioBackpressureRef.current = false;
-      }
-      if (bufferedAmount >= AUDIO_SEND_HIGH_WATER_BYTES) {
-        audioBackpressureRef.current = true;
+        // 1-byte track prefix: 0 = mic, 1 = system audio
+        const framed = new Uint8Array(1 + data.byteLength);
+        framed[0] = track;
+        framed.set(new Uint8Array(data), 1);
+        if (!safeSocketSend(socket, framed.buffer)) {
+          audioStatsRef.current = {
+            ...audioStatsRef.current,
+            chunksDropped: audioStatsRef.current.chunksDropped + 1,
+          };
+          publishAudioStats();
+          return;
+        }
+        audioStatsRef.current = {
+          ...audioStatsRef.current,
+          chunksSent: audioStatsRef.current.chunksSent + 1,
+          bytesSent: audioStatsRef.current.bytesSent + data.byteLength,
+          lastSentAt: new Date().toISOString(),
+        };
+      } else {
         audioStatsRef.current = {
           ...audioStatsRef.current,
           chunksDropped: audioStatsRef.current.chunksDropped + 1,
         };
-        publishAudioStats();
-        return;
       }
-      // 1-byte track prefix: 0 = mic, 1 = system audio
-      const framed = new Uint8Array(1 + data.byteLength);
-      framed[0] = track;
-      framed.set(new Uint8Array(data), 1);
-      if (!safeSocketSend(socket, framed.buffer)) {
-        audioStatsRef.current = {
-          ...audioStatsRef.current,
-          chunksDropped: audioStatsRef.current.chunksDropped + 1,
-        };
-        publishAudioStats();
-        return;
-      }
-      audioStatsRef.current = {
-        ...audioStatsRef.current,
-        chunksSent: audioStatsRef.current.chunksSent + 1,
-        bytesSent: audioStatsRef.current.bytesSent + data.byteLength,
-        lastSentAt: new Date().toISOString(),
-      };
-    } else {
-      audioStatsRef.current = {
-        ...audioStatsRef.current,
-        chunksDropped: audioStatsRef.current.chunksDropped + 1,
-      };
-    }
-    publishAudioStats();
-  }, [publishAudioStats]);
+      publishAudioStats();
+    },
+    [publishAudioStats],
+  );
 
   const sendDirective = useCallback((text: string) => {
     const socket = wsRef.current;
@@ -369,16 +392,22 @@ export function useWebSocket() {
   const sendDebateResearch = useCallback((category: DebateResearchCategory) => {
     const socket = wsRef.current;
     if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({ type: "debate_research", category }));
+    safeSocketSend(
+      socket,
+      JSON.stringify({ type: "debate_research", category }),
+    );
   }, []);
 
   const sendDebateResearchControl = useCallback((enabled: boolean) => {
     const socket = wsRef.current;
     if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({
-      type: "debate_research_control",
-      enabled,
-    }));
+    safeSocketSend(
+      socket,
+      JSON.stringify({
+        type: "debate_research_control",
+        enabled,
+      }),
+    );
   }, []);
 
   const sendDebateAnalysisCancel = useCallback(() => {
@@ -387,61 +416,104 @@ export function useWebSocket() {
     safeSocketSend(socket, JSON.stringify({ type: "debate_analysis_cancel" }));
   }, []);
 
-  const sendDebateUpdateAck = useCallback((claimId: string, recommendationRevision: number) => {
-    const socket = wsRef.current;
-    if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({
-      type: "debate_update_ack",
-      claim_id: claimId,
-      recommendation_revision: recommendationRevision,
-    }));
-  }, []);
+  const sendDebateUpdateAck = useCallback(
+    (claimId: string, recommendationRevision: number) => {
+      const socket = wsRef.current;
+      if (socket?.readyState !== WebSocket.OPEN) return;
+      safeSocketSend(
+        socket,
+        JSON.stringify({
+          type: "debate_update_ack",
+          claim_id: claimId,
+          recommendation_revision: recommendationRevision,
+        }),
+      );
+    },
+    [],
+  );
 
-  const sendDebateAnswerGood = useCallback((claimId: string, recommendationRevision: number) => {
-    const socket = wsRef.current;
-    if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({
-      type: "debate_answer_good",
-      claim_id: claimId,
-      recommendation_revision: recommendationRevision,
-    }));
-  }, []);
+  const sendDebateAnswerGood = useCallback(
+    (claimId: string, recommendationRevision: number) => {
+      const socket = wsRef.current;
+      if (socket?.readyState !== WebSocket.OPEN) return;
+      safeSocketSend(
+        socket,
+        JSON.stringify({
+          type: "debate_answer_good",
+          claim_id: claimId,
+          recommendation_revision: recommendationRevision,
+        }),
+      );
+    },
+    [],
+  );
 
-  const sendExperimentalOptionSelected = useCallback((claimId: string, recommendationRevision: number, optionId: string) => {
-    const socket = wsRef.current;
-    if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({
-      type: "debate_option_select",
-      claim_id: claimId,
-      recommendation_revision: recommendationRevision,
-      option_id: optionId,
-    }));
-  }, []);
+  const sendExperimentalOptionSelected = useCallback(
+    (claimId: string, recommendationRevision: number, optionId: string) => {
+      const socket = wsRef.current;
+      if (socket?.readyState !== WebSocket.OPEN) return;
+      safeSocketSend(
+        socket,
+        JSON.stringify({
+          type: "debate_option_select",
+          claim_id: claimId,
+          recommendation_revision: recommendationRevision,
+          option_id: optionId,
+        }),
+      );
+    },
+    [],
+  );
 
   const sendTrackState = useCallback((track: AudioTrack, active: boolean) => {
     const socket = wsRef.current;
     if (socket?.readyState !== WebSocket.OPEN) return;
-    safeSocketSend(socket, JSON.stringify({ type: "track_state", track, active }));
+    safeSocketSend(
+      socket,
+      JSON.stringify({ type: "track_state", track, active }),
+    );
   }, []);
 
-  const sendStop = useCallback((drain: StopDrainMode = "full") => {
-    const socket = wsRef.current;
-    if (socket?.readyState !== WebSocket.OPEN) {
-      return Promise.resolve<StopOutcome>("disconnected");
-    }
-
-    return new Promise<StopOutcome>((resolve) => {
-      resolveStop("disconnected");
-      stopCompletionRef.current = resolve;
-      armStopDeadline();
-      // A bare stop keeps the backend's full drain; only send the drain field
-      // when requesting the shorter pipeline (backward compatible).
-      const payload = drain === "full" ? { type: "stop" } : { type: "stop", drain };
-      if (!safeSocketSend(socket, JSON.stringify(payload))) {
-        resolveStop("disconnected");
+  const sendStop = useCallback(
+    (drain: StopDrainMode = "full") => {
+      const socket = wsRef.current;
+      if (socket?.readyState !== WebSocket.OPEN) {
+        return Promise.resolve<StopOutcome>("disconnected");
       }
-    });
-  }, [resolveStop, armStopDeadline]);
 
-  return { connect, disconnect, sendAudio, sendDirective, sendDebateResearch, sendDebateResearchControl, sendDebateAnalysisCancel, sendDebateUpdateAck, sendDebateAnswerGood, sendExperimentalOptionSelected, sendTrackState, sendStop, acknowledgeMessages, status, messages, audioStats, serverEpoch };
+      return new Promise<StopOutcome>((resolve) => {
+        resolveStop("disconnected");
+        stopCompletionRef.current = resolve;
+        armStopDeadline();
+        // A bare stop keeps the backend's full drain; only send the drain field
+        // when requesting the shorter pipeline (backward compatible).
+        const payload =
+          drain === "full" ? { type: "stop" } : { type: "stop", drain };
+        if (!safeSocketSend(socket, JSON.stringify(payload))) {
+          resolveStop("disconnected");
+        }
+      });
+    },
+    [resolveStop, armStopDeadline],
+  );
+
+  return {
+    connect,
+    disconnect,
+    sendAudio,
+    sendDirective,
+    sendDebateResearch,
+    sendDebateResearchControl,
+    sendDebateAnalysisCancel,
+    sendDebateUpdateAck,
+    sendDebateAnswerGood,
+    sendExperimentalOptionSelected,
+    sendTrackState,
+    sendStop,
+    acknowledgeMessages,
+    status,
+    messages,
+    audioStats,
+    serverEpoch,
+  };
 }

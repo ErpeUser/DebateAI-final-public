@@ -8,12 +8,17 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const src = readFileSync(new URL("./DirectiveBar.tsx", import.meta.url), "utf8");
+const src = readFileSync(
+  new URL("./DirectiveBar.tsx", import.meta.url),
+  "utf8",
+);
 
 // Real-render harness (matches ActiveCallView.test.mjs's sibling pattern):
 // the askDisabled fix (ALP-178) is a rendered disabled attribute and
 // placeholder text, which a source regex cannot see.
-const componentPath = fileURLToPath(new URL("./DirectiveBar.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./DirectiveBar.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "directive-bar-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -87,7 +92,10 @@ test("submitting without a model keeps the draft and shows setup guidance", () =
   assert.match(src, /DE\.live\.chooseModel/);
   const guard = src.indexOf("if (!modelId)");
   const clear = src.indexOf('setText("")', guard);
-  assert.ok(guard >= 0 && clear > guard, "the no-model return must precede draft clearing");
+  assert.ok(
+    guard >= 0 && clear > guard,
+    "the no-model return must precede draft clearing",
+  );
 });
 
 test("Debate AI chat commands use the same directive path without requiring a chat model", () => {

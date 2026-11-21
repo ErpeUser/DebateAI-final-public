@@ -2,10 +2,9 @@
 
 import logging
 
+from app.models import AgentConfig, KnowledgeSource
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import AgentConfig, KnowledgeSource
 
 logger = logging.getLogger(__name__)
 

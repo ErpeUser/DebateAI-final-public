@@ -6,7 +6,6 @@ import asyncio
 from collections.abc import Callable
 from typing import Any, TypeVar
 
-
 T = TypeVar("T")
 _supervised_workers: set[asyncio.Task] = set()
 

@@ -3,6 +3,7 @@
 The trust root is the checked-in public key file; no downloaded keys, remote
 scripts, unsigned fallback or write into an existing installation are allowed.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -11,30 +12,34 @@ import hmac
 import json
 import math
 import os
-from pathlib import Path
 import re
 import shutil
 import ssl
 import stat
 import sys
 import urllib.request
-from uuid import uuid4
 import zipfile
+from pathlib import Path
+from uuid import uuid4
 
 ROOT = Path(__file__).resolve().parents[2]
 APP = ROOT / "app"
 sys.path.insert(0, str(APP / "backend"))
 from app.services.debateai_update_channel import channel_configuration
 from app.services.update_service import (
-    _open_update_url, _update_origin, _zip_extraction_root,
-    MAX_DESCRIPTOR_BYTES, MAX_EXPANDED_BYTES,
+    MAX_DESCRIPTOR_BYTES,
+    MAX_EXPANDED_BYTES,
+    _open_update_url,
+    _update_origin,
+    _zip_extraction_root,
 )
 from app.services.update_signing import (
-    parse_release_signing_keys, verify_update_descriptor,
+    parse_release_signing_keys,
+    verify_update_descriptor,
 )
 
 PLATFORM = "windows-x64"
-MAX_ARCHIVE_BYTES = 5 * 1024 ** 3
+MAX_ARCHIVE_BYTES = 5 * 1024**3
 MAX_ENTRIES = 100_000
 REQUIRED = {
     "DebateAI/DebateAI.exe",
@@ -63,7 +68,8 @@ def _unique(pairs):
 def _network_open(request, timeout, origin):
     # Reuses the updater's HTTPS and same-origin redirect policy.
     return _open_update_url(
-        request, timeout=timeout,
+        request,
+        timeout=timeout,
         context=ssl.create_default_context(),
         source_origin=origin,
     )
@@ -71,7 +77,8 @@ def _network_open(request, timeout, origin):
 
 def _read_response(url: str, origin, opener, limit: int) -> bytes:
     request = urllib.request.Request(
-        url, headers={"Accept": "application/json", "User-Agent": "DebateAI-Bootstrap/1"}
+        url,
+        headers={"Accept": "application/json", "User-Agent": "DebateAI-Bootstrap/1"},
     )
     with opener(request, 30, origin) as response:
         if getattr(response, "status", 200) != 200:
@@ -84,11 +91,15 @@ def _read_response(url: str, origin, opener, limit: int) -> bytes:
     return result
 
 
-def _download_zip(url: str, origin, opener, target: Path, expected_size: int,
-                  expected_digest: str) -> None:
+def _download_zip(
+    url: str, origin, opener, target: Path, expected_size: int, expected_digest: str
+) -> None:
     request = urllib.request.Request(
-        url, headers={"Accept": "application/octet-stream",
-                      "User-Agent": "DebateAI-Bootstrap/1"}
+        url,
+        headers={
+            "Accept": "application/octet-stream",
+            "User-Agent": "DebateAI-Bootstrap/1",
+        },
     )
     hasher = hashlib.sha256()
     total = 0
@@ -115,8 +126,10 @@ def _download_zip(url: str, origin, opener, target: Path, expected_size: int,
 def _checked_entry(info: zipfile.ZipInfo) -> tuple[str, bool]:
     name = info.filename
     if (
-        not name or "\\" in name or "\x00" in name
-        or name.startswith("/") or name.startswith("~")
+        not name
+        or "\\" in name
+        or "\x00" in name
+        or name.startswith(("/", "~"))
         or re.search(r"[\x00-\x1f\x7f]", name)
     ):
         raise ValueError("unsafe archive filename")
@@ -124,11 +137,16 @@ def _checked_entry(info: zipfile.ZipInfo) -> tuple[str, bool]:
     stripped = name.rstrip("/") if is_dir else name
     parts = stripped.split("/")
     if (
-        not parts or parts[0] != "DebateAI"
-        or any(not part or part in {".", ".."}
-               or part.endswith((" ", "."))
-               or ":" in part or part.split(".")[0].casefold() in RESERVED
-               for part in parts)
+        not parts
+        or parts[0] != "DebateAI"
+        or any(
+            not part
+            or part in {".", ".."}
+            or part.endswith((" ", "."))
+            or ":" in part
+            or part.split(".")[0].casefold() in RESERVED
+            for part in parts
+        )
     ):
         raise ValueError("unsafe archive entry")
     if info.flag_bits & 1:
@@ -163,11 +181,17 @@ def _stage_zip(archive_path: Path, stage_root: Path) -> Path:
             raise ValueError("insufficient space for expanded signed release")
         for name, is_dir in ((i.filename.rstrip("/"), i.is_dir()) for i in infos):
             parts = name.casefold().split("/")
-            if any(seen.get("/".join(parts[:index])) is False
-                   for index in range(1, len(parts))):
+            if any(
+                seen.get("/".join(parts[:index])) is False
+                for index in range(1, len(parts))
+            ):
                 raise ValueError("file/directory archive collision")
         if not REQUIRED.issubset(
-            {name for name, is_dir in ((_checked_entry(i)) for i in infos) if not is_dir}
+            {
+                name
+                for name, is_dir in ((_checked_entry(i)) for i in infos)
+                if not is_dir
+            }
         ):
             raise ValueError("incomplete release bundle")
         native_root = Path(_zip_extraction_root(stage_root))
@@ -187,28 +211,40 @@ def _stage_zip(archive_path: Path, stage_root: Path) -> Path:
         return output
 
 
-def recover(descriptor_url: str, asset_url: str, keys_path: Path,
-            output_dir: Path, *, open_url=None) -> Path:
+def recover(
+    descriptor_url: str,
+    asset_url: str,
+    keys_path: Path,
+    output_dir: Path,
+    *,
+    open_url=None,
+) -> Path:
     """Fetch a signed descriptor and matching ZIP, verify and extract to a new stage.
 
     Returns stage/DebateAI. Does not replace an existing installation.
     The caller must run the native smoke and rollback-safe install step.
     """
     keys_path = Path(keys_path)
-    config = channel_configuration({
-        "DEBATEAI_UPDATE_DESCRIPTOR_URL": descriptor_url,
-        "DEBATEAI_UPDATE_ASSET_URL": asset_url,
-        "DEBATEAI_UPDATE_KEYS": str(keys_path),
-    })
+    config = channel_configuration(
+        {
+            "DEBATEAI_UPDATE_DESCRIPTOR_URL": descriptor_url,
+            "DEBATEAI_UPDATE_ASSET_URL": asset_url,
+            "DEBATEAI_UPDATE_KEYS": str(keys_path),
+        }
+    )
     if config is None:
         raise ValueError("explicit HTTPS update source required")
     desc_url = descriptor_url.format(platform_id=PLATFORM)
     origin = _update_origin(desc_url)
-    if _update_origin(asset_url.format(version="v0.0.0", platform_id=PLATFORM)) != origin:
+    if (
+        _update_origin(asset_url.format(version="v0.0.0", platform_id=PLATFORM))
+        != origin
+    ):
         raise ValueError("release URLs must have the same origin")
     try:
-        key_doc = json.loads(keys_path.read_text(encoding="utf-8"),
-                             object_pairs_hook=_unique)
+        key_doc = json.loads(
+            keys_path.read_text(encoding="utf-8"), object_pairs_hook=_unique
+        )
         _, public_keys = parse_release_signing_keys(key_doc)
     except (OSError, UnicodeError, json.JSONDecodeError, ValueError) as error:
         raise ValueError("local release public keys are invalid") from error
@@ -235,8 +271,9 @@ def recover(descriptor_url: str, asset_url: str, keys_path: Path,
     stage.mkdir()
     try:
         archive = stage / "release.zip"
-        _download_zip(download_url, origin, opener, archive,
-                      asset["size"], asset["sha256"])
+        _download_zip(
+            download_url, origin, opener, archive, asset["size"], asset["sha256"]
+        )
         # The signed descriptor is revalidated after the transfer.
         verify_update_descriptor(signed, PLATFORM, "0.0.0", public_keys)
         bundle = _stage_zip(archive, stage / "unpacked")
@@ -249,18 +286,23 @@ def recover(descriptor_url: str, asset_url: str, keys_path: Path,
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--descriptor-url",
-                        default=os.environ.get("DEBATEAI_UPDATE_DESCRIPTOR_URL", ""))
-    parser.add_argument("--asset-url",
-                        default=os.environ.get("DEBATEAI_UPDATE_ASSET_URL", ""))
-    parser.add_argument("--keys", type=Path,
-                        default=APP / "desktop/release_signing_keys.json")
-    parser.add_argument("--output-dir", type=Path,
-                        default=ROOT / "DebateAI_Generated/build/recovery")
+    parser.add_argument(
+        "--descriptor-url", default=os.environ.get("DEBATEAI_UPDATE_DESCRIPTOR_URL", "")
+    )
+    parser.add_argument(
+        "--asset-url", default=os.environ.get("DEBATEAI_UPDATE_ASSET_URL", "")
+    )
+    parser.add_argument(
+        "--keys", type=Path, default=APP / "desktop/release_signing_keys.json"
+    )
+    parser.add_argument(
+        "--output-dir", type=Path, default=ROOT / "DebateAI_Generated/build/recovery"
+    )
     args = parser.parse_args()
     try:
-        output = recover(args.descriptor_url, args.asset_url,
-                         args.keys, args.output_dir)
+        output = recover(
+            args.descriptor_url, args.asset_url, args.keys, args.output_dir
+        )
     except Exception as error:
         print("Signed release recovery unavailable: " + str(error), file=sys.stderr)
         return 2

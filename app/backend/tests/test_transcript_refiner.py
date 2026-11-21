@@ -11,33 +11,53 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.services import transcript_refiner as refiner  # noqa: E402
+from app.services import transcript_refiner as refiner
 
 
 class AcceptanceTests(unittest.TestCase):
     def test_same_tokens_and_sane_length_are_accepted(self):
-        self.assertTrue(refiner.accept_refinement(
-            "so [PERSON_1] said the email [EMAIL_1] is wrong",
-            "So [PERSON_1] said: the email [EMAIL_1] is wrong.",
-        ))
+        self.assertTrue(
+            refiner.accept_refinement(
+                "so [PERSON_1] said the email [EMAIL_1] is wrong",
+                "So [PERSON_1] said: the email [EMAIL_1] is wrong.",
+            )
+        )
 
     def test_same_word_set_cannot_reorder_roles_or_negation(self):
-        self.assertFalse(refiner.accept_refinement(
-            "[PERSON_1] widerspricht [PERSON_2] nicht",
-            "[PERSON_2] widerspricht [PERSON_1] nicht.",
-        ))
-        self.assertFalse(refiner.accept_refinement(
-            "Nicht alle stimmen dem Vorschlag zu",
-            "Alle stimmen dem Vorschlag nicht zu.",
-        ))
+        self.assertFalse(
+            refiner.accept_refinement(
+                "[PERSON_1] widerspricht [PERSON_2] nicht",
+                "[PERSON_2] widerspricht [PERSON_1] nicht.",
+            )
+        )
+        self.assertFalse(
+            refiner.accept_refinement(
+                "Nicht alle stimmen dem Vorschlag zu",
+                "Alle stimmen dem Vorschlag nicht zu.",
+            )
+        )
 
     def test_a_dropped_added_or_renumbered_token_is_refused(self):
         original = "[PERSON_1] told [PERSON_2] to call [PHONE_1]"
-        self.assertFalse(refiner.accept_refinement(original, "[PERSON_1] told them to call [PHONE_1]."))
-        self.assertFalse(refiner.accept_refinement(original, "[PERSON_1] told [PERSON_2] and [PERSON_3] to call [PHONE_1]."))
-        self.assertFalse(refiner.accept_refinement(original, "[PERSON_2] told [PERSON_1] to call [PHONE_2]."))
+        self.assertFalse(
+            refiner.accept_refinement(
+                original, "[PERSON_1] told them to call [PHONE_1]."
+            )
+        )
+        self.assertFalse(
+            refiner.accept_refinement(
+                original, "[PERSON_1] told [PERSON_2] and [PERSON_3] to call [PHONE_1]."
+            )
+        )
+        self.assertFalse(
+            refiner.accept_refinement(
+                original, "[PERSON_2] told [PERSON_1] to call [PHONE_2]."
+            )
+        )
         # Two mentions must stay two mentions.
-        self.assertFalse(refiner.accept_refinement("[ORG_1] and [ORG_1] again", "[ORG_1] again."))
+        self.assertFalse(
+            refiner.accept_refinement("[ORG_1] and [ORG_1] again", "[ORG_1] again.")
+        )
 
     def test_empty_unchanged_or_runaway_rewrites_are_refused(self):
         self.assertFalse(refiner.accept_refinement("hello there", ""))
@@ -46,10 +66,14 @@ class AcceptanceTests(unittest.TestCase):
         self.assertFalse(refiner.accept_refinement("hello there my friend", "hi"))
 
     def test_bare_token_forms_count_the_same_as_bracketed(self):
-        self.assertEqual(refiner.token_multiset("[PERSON_1] and PERSON_1"), {"PERSON_1": 2})
+        self.assertEqual(
+            refiner.token_multiset("[PERSON_1] and PERSON_1"), {"PERSON_1": 2}
+        )
 
     def test_markers_and_already_refined_rows_are_skipped(self):
-        marker = SimpleNamespace(text="--- Session Resumed (Call 2) ---", refined_at=None)
+        marker = SimpleNamespace(
+            text="--- Session Resumed (Call 2) ---", refined_at=None
+        )
         done = SimpleNamespace(text="fine", refined_at="2026-09-02")
         fresh = SimpleNamespace(text="fine", refined_at=None)
         self.assertFalse(refiner.is_refinable(marker))
@@ -57,7 +81,9 @@ class AcceptanceTests(unittest.TestCase):
         self.assertTrue(refiner.is_refinable(fresh))
 
     def test_prompt_shows_context_separately_from_targets(self):
-        prompt = refiner.build_prompt([("a1", "Me", "hi [PERSON_1]")], [("Them", "earlier line")])
+        prompt = refiner.build_prompt(
+            [("a1", "Me", "hi [PERSON_1]")], [("Them", "earlier line")]
+        )
         self.assertIn("for context only", prompt)
         self.assertIn("Them: earlier line", prompt)
         self.assertIn("[a1] Me: hi [PERSON_1]", prompt)
@@ -65,8 +91,14 @@ class AcceptanceTests(unittest.TestCase):
 
 def _entry(text, sequence, speaker_id=None):
     return SimpleNamespace(
-        id=uuid.uuid4(), session_id=uuid.uuid4(), text=text, raw_text=None, refined_at=None,
-        sequence=sequence, speaker_id=speaker_id, manual_corrected_at=None,
+        id=uuid.uuid4(),
+        session_id=uuid.uuid4(),
+        text=text,
+        raw_text=None,
+        refined_at=None,
+        sequence=sequence,
+        speaker_id=speaker_id,
+        manual_corrected_at=None,
     )
 
 
@@ -86,12 +118,20 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         bad_result = MagicMock()
         bad_result.scalar_one_or_none.return_value = bad
         db.execute = AsyncMock(side_effect=[speakers_result, good_result, bad_result])
-        reply = refiner.RefinementReply(entries=[
-            refiner.RefinedEntry(id=str(good.id), text="Um, so [PERSON_1] will send it."),
-            refiner.RefinedEntry(id=str(bad.id), text="They agreed."),  # token dropped
-            refiner.RefinedEntry(id="unknown", text="[PERSON_9]"),
-        ])
-        with patch("app.services.llm.generate_json", AsyncMock(return_value=reply)) as call:
+        reply = refiner.RefinementReply(
+            entries=[
+                refiner.RefinedEntry(
+                    id=str(good.id), text="Um, so [PERSON_1] will send it."
+                ),
+                refiner.RefinedEntry(
+                    id=str(bad.id), text="They agreed."
+                ),  # token dropped
+                refiner.RefinedEntry(id="unknown", text="[PERSON_9]"),
+            ]
+        )
+        with patch(
+            "app.services.llm.generate_json", AsyncMock(return_value=reply)
+        ) as call:
             changed = await refiner.refine_batch(db, sid, "gemini-x", [good, bad], [])
         self.assertEqual([e.id for e in changed], [good.id])
         self.assertEqual(good.text, "Um, so [PERSON_1] will send it.")
@@ -108,7 +148,9 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(good.text, revision_rows[1].text)
         self.assertIn("[PERSON_1]", call.call_args.args[1])
 
-    async def test_refine_session_batches_pending_rows_and_survives_a_failed_batch(self):
+    async def test_refine_session_batches_pending_rows_and_survives_a_failed_batch(
+        self,
+    ):
         sid = uuid.uuid4()
         rows = [_entry(f"line {i} [PERSON_1]", i) for i in range(1, 6)]
         rows[0].refined_at = "done"
@@ -124,7 +166,11 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
             if batch[0].sequence == 2:
                 raise RuntimeError("provider down")
             for e in batch:
-                e.raw_text, e.text, e.refined_at = e.text, e.text.capitalize() + ".", "now"
+                e.raw_text, e.text, e.refined_at = (
+                    e.text,
+                    e.text.capitalize() + ".",
+                    "now",
+                )
             return list(batch)
 
         with patch.object(refiner, "refine_batch", fake_batch):
@@ -156,51 +202,63 @@ class LiveIdleTests(unittest.TestCase):
     def test_live_refiner_waits_until_debate_and_speech_are_idle(self):
         running = SimpleNamespace(done=lambda: False)
         finished = SimpleNamespace(done=lambda: True)
-        self.assertFalse(refiner.live_refiner_is_idle(
-            stopped=False,
-            debate_pending=True,
-            objection_task=finished,
-            last_transcript_at=10.0,
-            now=20.0,
-        ))
-        self.assertFalse(refiner.live_refiner_is_idle(
-            stopped=False,
-            debate_pending=False,
-            objection_task=running,
-            last_transcript_at=10.0,
-            now=20.0,
-        ))
-        self.assertFalse(refiner.live_refiner_is_idle(
-            stopped=False,
-            debate_pending=False,
-            objection_task=finished,
-            active_claim_is_interim=True,
-            last_transcript_at=10.0,
-            now=20.0,
-        ))
-        self.assertFalse(refiner.live_refiner_is_idle(
-            stopped=False,
-            debate_pending=False,
-            objection_task=finished,
-            last_transcript_at=19.0,
-            now=20.0,
-        ))
-        self.assertTrue(refiner.live_refiner_is_idle(
-            stopped=False,
-            debate_pending=False,
-            objection_task=finished,
-            last_transcript_at=10.0,
-            now=20.0,
-        ))
+        self.assertFalse(
+            refiner.live_refiner_is_idle(
+                stopped=False,
+                debate_pending=True,
+                objection_task=finished,
+                last_transcript_at=10.0,
+                now=20.0,
+            )
+        )
+        self.assertFalse(
+            refiner.live_refiner_is_idle(
+                stopped=False,
+                debate_pending=False,
+                objection_task=running,
+                last_transcript_at=10.0,
+                now=20.0,
+            )
+        )
+        self.assertFalse(
+            refiner.live_refiner_is_idle(
+                stopped=False,
+                debate_pending=False,
+                objection_task=finished,
+                active_claim_is_interim=True,
+                last_transcript_at=10.0,
+                now=20.0,
+            )
+        )
+        self.assertFalse(
+            refiner.live_refiner_is_idle(
+                stopped=False,
+                debate_pending=False,
+                objection_task=finished,
+                last_transcript_at=19.0,
+                now=20.0,
+            )
+        )
+        self.assertTrue(
+            refiner.live_refiner_is_idle(
+                stopped=False,
+                debate_pending=False,
+                objection_task=finished,
+                last_transcript_at=10.0,
+                now=20.0,
+            )
+        )
 
     def test_live_refiner_never_runs_after_stop(self):
-        self.assertFalse(refiner.live_refiner_is_idle(
-            stopped=True,
-            debate_pending=False,
-            objection_task=None,
-            last_transcript_at=None,
-            now=20.0,
-        ))
+        self.assertFalse(
+            refiner.live_refiner_is_idle(
+                stopped=True,
+                debate_pending=False,
+                objection_task=None,
+                last_transcript_at=None,
+                now=20.0,
+            )
+        )
 
 
 if __name__ == "__main__":

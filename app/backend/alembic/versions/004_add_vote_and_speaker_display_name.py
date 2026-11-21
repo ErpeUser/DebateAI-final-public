@@ -6,7 +6,6 @@ Create Date: 2026-03-21
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "004"
@@ -26,7 +25,9 @@ def upgrade():
     )
     op.add_column(
         "speakers",
-        sa.Column("display_name_enabled", sa.Boolean, server_default="false", nullable=False),
+        sa.Column(
+            "display_name_enabled", sa.Boolean, server_default="false", nullable=False
+        ),
     )
 
 

@@ -5,10 +5,17 @@ import type {
   DesktopUpdateController,
   KnowledgeSource,
   ModelInfo,
-  PiiShieldStatus, PrivacyConfig,
+  PiiShieldStatus,
+  PrivacyConfig,
 } from "../types";
 import * as api from "../services/api";
-import { groupModels, optionLabel, optionState, recommendationFor, runsLocally } from "../lib/modelOptions";
+import {
+  groupModels,
+  optionLabel,
+  optionState,
+  recommendationFor,
+  runsLocally,
+} from "../lib/modelOptions";
 import { useConfirm } from "./ConfirmProvider";
 import DiarizationCapabilityCard from "./DiarizationCapabilityCard";
 import BatchTranscriptionCard from "./BatchTranscriptionCard";
@@ -35,7 +42,8 @@ const TYPE_BADGES: Record<string, { label: string; color: string }> = {
   db: { label: DE.agentTypes.db, color: "#10b981" },
 };
 
-const LEGACY_AUDIO_PROMPT = "You are a silent audio relay. Your only purpose is to listen to a live conversation and enable transcription. Do not speak, do not analyze, do not comment, and do not generate any output. Just listen.";
+const LEGACY_AUDIO_PROMPT =
+  "You are a silent audio relay. Your only purpose is to listen to a live conversation and enable transcription. Do not speak, do not analyze, do not comment, and do not generate any output. Just listen.";
 
 // Backend default cadence per agent. Text agents run on a fixed cycle; the
 // Principal Agent and Opportunity Specialist are event-driven, so their value
@@ -60,7 +68,14 @@ const AGENT_SECTIONS: { slugs: string[]; title: string; blurb: string }[] = [
     blurb: DE.admin.sections.listening.blurb,
   },
   {
-    slugs: ["consolidated_analyst", "objection_handler", "synthesizer", "opportunity_specialist", "strategic_signals", "transcript_refiner"],
+    slugs: [
+      "consolidated_analyst",
+      "objection_handler",
+      "synthesizer",
+      "opportunity_specialist",
+      "strategic_signals",
+      "transcript_refiner",
+    ],
     title: DE.admin.sections.live.title,
     blurb: DE.admin.sections.live.blurb,
   },
@@ -71,14 +86,19 @@ const AGENT_SECTIONS: { slugs: string[]; title: string; blurb: string }[] = [
   },
 ];
 
-export type AdminTab = "agents" | "transcription" | "privacy" | "keys" | "labor" | "about";
+export type AdminTab =
+  "agents" | "transcription" | "privacy" | "keys" | "labor" | "about";
 
 const TABS: { id: AdminTab; label: string; hint: string }[] = [
   { id: "agents", ...DE.admin.tabs.agents },
   { id: "transcription", ...DE.admin.tabs.transcription },
   { id: "privacy", ...DE.admin.tabs.privacy },
   { id: "keys", ...DE.admin.tabs.keys },
-  { id: "labor", label: "Labor", hint: "A/B-Vergleich, Promptqualität und Videolink-Analyse" },
+  {
+    id: "labor",
+    label: "Labor",
+    hint: "A/B-Vergleich, Promptqualität und Videolink-Analyse",
+  },
   { id: "about", ...DE.admin.tabs.about },
 ];
 
@@ -101,7 +121,15 @@ interface AdminPanelProps {
 // Compact filter-chip toggle used for multi-select groups (knowledge sources,
 // analyst lenses). Selected chips fill teal with a check; unselected chips stay
 // muted outlines so large collections read as a quiet tag cloud.
-function TogglePill({ label, selected, onToggle }: { label: string; selected: boolean; onToggle: () => void }) {
+function TogglePill({
+  label,
+  selected,
+  onToggle,
+}: {
+  label: string;
+  selected: boolean;
+  onToggle: () => void;
+}) {
   return (
     <button
       type="button"
@@ -114,8 +142,19 @@ function TogglePill({ label, selected, onToggle }: { label: string; selected: bo
       }`}
     >
       {selected && (
-        <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
-          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+        <svg
+          className="h-3 w-3"
+          fill="none"
+          viewBox="0 0 24 24"
+          stroke="currentColor"
+          strokeWidth={3}
+          aria-hidden="true"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M5 13l4 4L19 7"
+          />
         </svg>
       )}
       {label}
@@ -132,7 +171,9 @@ const BUILTIN_LENS_TYPES: { value: string; label: string }[] = [
   { value: "opportunity", label: "Chance (Abgleich mit Angeboten)" },
   { value: "action_item", label: "Aufgabe" },
 ];
-const BUILTIN_LENS_TYPE_VALUES = new Set(BUILTIN_LENS_TYPES.map((o) => o.value));
+const BUILTIN_LENS_TYPE_VALUES = new Set(
+  BUILTIN_LENS_TYPES.map((o) => o.value),
+);
 const CUSTOM_TYPE_SENTINEL = "__custom__";
 
 // Mirror of the backend's item_type slug rules (lowercase letters, digits,
@@ -149,13 +190,19 @@ function slugifyTypeName(raw: string): string {
 }
 
 function humanizeTypeSlug(slug: string): string {
-  return slug.split("_").filter(Boolean).map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  return slug
+    .split("_")
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(" ");
 }
 
 function parseLenses(raw: string): AnalystLens[] {
   try {
     const data = JSON.parse(raw);
-    return Array.isArray(data) ? data.filter((l): l is AnalystLens => !!l && typeof l === "object") : [];
+    return Array.isArray(data)
+      ? data.filter((l): l is AnalystLens => !!l && typeof l === "object")
+      : [];
   } catch {
     return [];
   }
@@ -171,16 +218,26 @@ function LensEditor({
   onDraftChange,
 }: {
   agent: AgentConfig;
-  onUpdate: (slug: string, field: string, value: string | boolean | number | null) => void;
-  onDraftChange: (slug: string, field: "prompt" | "interval_seconds" | "lenses", value: string | number) => void;
+  onUpdate: (
+    slug: string,
+    field: string,
+    value: string | boolean | number | null,
+  ) => void;
+  onDraftChange: (
+    slug: string,
+    field: "prompt" | "interval_seconds" | "lenses",
+    value: string | number,
+  ) => void;
 }) {
   const [expandedKey, setExpandedKey] = useState<string | null>(null);
   const { confirm } = useConfirm();
   const lenses = parseLenses(agent.lenses);
   const missingPlaceholder = !agent.prompt.includes("{lens_sections}");
 
-  const save = (next: AnalystLens[]) => onUpdate(agent.slug, "lenses", JSON.stringify(next));
-  const draft = (next: AnalystLens[]) => onDraftChange(agent.slug, "lenses", JSON.stringify(next));
+  const save = (next: AnalystLens[]) =>
+    onUpdate(agent.slug, "lenses", JSON.stringify(next));
+  const draft = (next: AnalystLens[]) =>
+    onDraftChange(agent.slug, "lenses", JSON.stringify(next));
   const patched = (key: string, patch: Partial<AnalystLens>) =>
     lenses.map((l) => (l.key === key ? { ...l, ...patch } : l));
 
@@ -188,7 +245,16 @@ function LensEditor({
     let n = lenses.length + 1;
     while (lenses.some((l) => l.key === `lens-${n}`)) n += 1;
     const key = `lens-${n}`;
-    save([...lenses, { key, label: "Neue Perspektive", item_type: "observation", enabled: true, prompt: "" }]);
+    save([
+      ...lenses,
+      {
+        key,
+        label: "Neue Perspektive",
+        item_type: "observation",
+        enabled: true,
+        prompt: "",
+      },
+    ]);
     setExpandedKey(key);
   };
 
@@ -207,7 +273,9 @@ function LensEditor({
   return (
     <div className="border-t border-brand-light-gray-1/70 px-5 py-4">
       <div className="mb-2 flex items-center justify-between">
-        <label className="block font-body text-xs font-medium text-brand-gray">Analyse-Perspektiven</label>
+        <label className="block font-body text-xs font-medium text-brand-gray">
+          Analyse-Perspektiven
+        </label>
         <button
           type="button"
           onClick={addLens}
@@ -222,21 +290,34 @@ function LensEditor({
           const expanded = expandedKey === lens.key;
           const isBuiltinType = BUILTIN_LENS_TYPE_VALUES.has(lens.item_type);
           const typeBadge = isBuiltinType
-            ? BUILTIN_LENS_TYPES.find((o) => o.value === lens.item_type)!.label.replace(/ \(.*\)$/, "")
+            ? BUILTIN_LENS_TYPES.find(
+                (o) => o.value === lens.item_type,
+              )!.label.replace(/ \(.*\)$/, "")
             : humanizeTypeSlug(lens.item_type);
           const emptyPrompt = !lens.prompt.trim();
           return (
-            <div key={lens.key} className={`rounded-lg border ${expanded ? "border-brand-teal/40" : "border-brand-light-gray-1"} bg-surface`}>
+            <div
+              key={lens.key}
+              className={`rounded-lg border ${expanded ? "border-brand-teal/40" : "border-brand-light-gray-1"} bg-surface`}
+            >
               <div className="flex items-center gap-2.5 px-3 py-2">
                 <button
                   type="button"
                   role="switch"
                   aria-checked={lens.enabled}
-                  title={lens.enabled ? "Perspektive ist aktiv" : "Perspektive ist deaktiviert"}
-                  onClick={() => save(patched(lens.key, { enabled: !lens.enabled }))}
+                  title={
+                    lens.enabled
+                      ? "Perspektive ist aktiv"
+                      : "Perspektive ist deaktiviert"
+                  }
+                  onClick={() =>
+                    save(patched(lens.key, { enabled: !lens.enabled }))
+                  }
                   className={`h-4 w-7 shrink-0 rounded-full transition-colors ${lens.enabled ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
                 >
-                  <span className={`block h-3 w-3 rounded-full bg-surface shadow transition-transform ${lens.enabled ? "translate-x-3.5" : "translate-x-0.5"}`} />
+                  <span
+                    className={`block h-3 w-3 rounded-full bg-surface shadow transition-transform ${lens.enabled ? "translate-x-3.5" : "translate-x-0.5"}`}
+                  />
                 </button>
                 <button
                   type="button"
@@ -244,19 +325,34 @@ function LensEditor({
                   aria-expanded={expanded}
                   className="flex min-w-0 flex-1 items-center gap-2 text-left"
                 >
-                  <span className={`truncate font-body text-xs font-medium ${lens.enabled ? "text-brand-dark-gray" : "text-brand-mid-gray"}`}>
+                  <span
+                    className={`truncate font-body text-xs font-medium ${lens.enabled ? "text-brand-dark-gray" : "text-brand-mid-gray"}`}
+                  >
                     {lens.label}
                   </span>
                   <span className="shrink-0 rounded-full bg-brand-light-gray-2 px-2 py-0.5 font-body text-[10px] text-brand-gray">
                     {typeBadge}
                   </span>
                   {emptyPrompt && (
-                    <span className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 font-body text-[10px] text-amber-800" title="Perspektiven ohne Anweisung werden übersprungen">
+                    <span
+                      className="shrink-0 rounded-full bg-amber-100 px-2 py-0.5 font-body text-[10px] text-amber-800"
+                      title="Perspektiven ohne Anweisung werden übersprungen"
+                    >
                       Keine Anweisung
                     </span>
                   )}
-                  <svg className={`ml-auto h-3 w-3 shrink-0 text-brand-mid-gray transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  <svg
+                    className={`ml-auto h-3 w-3 shrink-0 text-brand-mid-gray transition-transform ${expanded ? "rotate-90" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
                 </button>
                 <button
@@ -265,8 +361,18 @@ function LensEditor({
                   title="Perspektive löschen"
                   className="shrink-0 rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-600"
                 >
-                  <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0"
+                    />
                   </svg>
                 </button>
               </div>
@@ -275,38 +381,73 @@ function LensEditor({
                 <div className="space-y-3 border-t border-brand-light-gray-1/70 px-3 py-3">
                   <div className="grid gap-3 md:grid-cols-2">
                     <div>
-                      <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">Name der Perspektive</label>
+                      <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">
+                        Name der Perspektive
+                      </label>
                       <input
                         type="text"
                         value={lens.label}
-                        onChange={(e) => draft(patched(lens.key, { label: e.target.value }))}
-                        onBlur={(e) => save(patched(lens.key, { label: e.target.value.trim() || "Unbenannte Perspektive" }))}
+                        onChange={(e) =>
+                          draft(patched(lens.key, { label: e.target.value }))
+                        }
+                        onBlur={(e) =>
+                          save(
+                            patched(lens.key, {
+                              label:
+                                e.target.value.trim() ||
+                                "Unbenannte Perspektive",
+                            }),
+                          )
+                        }
                         className="w-full rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 font-body text-xs text-brand-dark-gray focus:border-brand-teal"
                       />
                     </div>
                     <div>
-                      <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">Ergebnisse anzeigen als</label>
+                      <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">
+                        Ergebnisse anzeigen als
+                      </label>
                       <select
-                        value={isBuiltinType ? lens.item_type : CUSTOM_TYPE_SENTINEL}
+                        value={
+                          isBuiltinType ? lens.item_type : CUSTOM_TYPE_SENTINEL
+                        }
                         onChange={(e) => {
                           const v = e.target.value;
-                          save(patched(lens.key, {
-                            item_type: v === CUSTOM_TYPE_SENTINEL ? slugifyTypeName(lens.label) : v,
-                          }));
+                          save(
+                            patched(lens.key, {
+                              item_type:
+                                v === CUSTOM_TYPE_SENTINEL
+                                  ? slugifyTypeName(lens.label)
+                                  : v,
+                            }),
+                          );
                         }}
                         className="w-full rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 font-body text-xs text-brand-dark-gray focus:border-brand-teal"
                       >
                         {BUILTIN_LENS_TYPES.map((o) => (
-                          <option key={o.value} value={o.value}>{o.label}</option>
+                          <option key={o.value} value={o.value}>
+                            {o.label}
+                          </option>
                         ))}
-                        <option value={CUSTOM_TYPE_SENTINEL}>Eigener Typ...</option>
+                        <option value={CUSTOM_TYPE_SENTINEL}>
+                          Eigener Typ...
+                        </option>
                       </select>
                       {!isBuiltinType && (
                         <input
                           type="text"
                           value={lens.item_type}
-                          onChange={(e) => draft(patched(lens.key, { item_type: e.target.value }))}
-                          onBlur={(e) => save(patched(lens.key, { item_type: slugifyTypeName(e.target.value) }))}
+                          onChange={(e) =>
+                            draft(
+                              patched(lens.key, { item_type: e.target.value }),
+                            )
+                          }
+                          onBlur={(e) =>
+                            save(
+                              patched(lens.key, {
+                                item_type: slugifyTypeName(e.target.value),
+                              }),
+                            )
+                          }
                           placeholder="custom_type_name"
                           className="mt-1.5 w-full rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 font-mono text-xs text-brand-dark-gray focus:border-brand-teal"
                         />
@@ -319,11 +460,17 @@ function LensEditor({
                     </div>
                   </div>
                   <div>
-                    <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">Anweisung dieser Perspektive</label>
+                    <label className="mb-1 block font-body text-[10px] font-medium text-brand-gray">
+                      Anweisung dieser Perspektive
+                    </label>
                     <textarea
                       value={lens.prompt}
-                      onChange={(e) => draft(patched(lens.key, { prompt: e.target.value }))}
-                      onBlur={(e) => save(patched(lens.key, { prompt: e.target.value }))}
+                      onChange={(e) =>
+                        draft(patched(lens.key, { prompt: e.target.value }))
+                      }
+                      onBlur={(e) =>
+                        save(patched(lens.key, { prompt: e.target.value }))
+                      }
                       rows={8}
                       placeholder="Beschreibe, wonach diese Perspektive suchen und wie sie bewerten soll..."
                       className="w-full resize-y rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-2 font-mono text-xs leading-relaxed text-brand-dark-gray focus:border-brand-teal"
@@ -336,17 +483,20 @@ function LensEditor({
         })}
         {lenses.length === 0 && (
           <p className="rounded-lg border border-dashed border-brand-light-gray-1 px-3 py-4 text-center font-body text-xs text-brand-mid-gray">
-            Keine Perspektiven eingerichtet - die Analyse erzeugt so keine Erkenntnisse.
+            Keine Perspektiven eingerichtet - die Analyse erzeugt so keine
+            Erkenntnisse.
           </p>
         )}
       </div>
 
       <p className="mt-2 font-body text-[10px] text-brand-mid-gray">
-        Jede aktive Perspektive ergänzt die Systemanweisung und kennzeichnet ihre Ergebnisse mit dem ausgewählten Typ.
+        Jede aktive Perspektive ergänzt die Systemanweisung und kennzeichnet
+        ihre Ergebnisse mit dem ausgewählten Typ.
       </p>
       {missingPlaceholder && (
         <p className="mt-1 font-body text-[10px] text-amber-700">
-          In der Systemanweisung fehlt der Platzhalter {"{lens_sections}"}. Setze sie auf den Standard zurück oder füge den Platzhalter ein.
+          In der Systemanweisung fehlt der Platzhalter {"{lens_sections}"}.
+          Setze sie auf den Standard zurück oder füge den Platzhalter ein.
         </p>
       )}
     </div>
@@ -371,15 +521,29 @@ function AgentCard({
   localOnly: boolean;
   // Names the switch behind localOnly in the option suffix.
   lockLabel?: string;
-  onUpdate: (slug: string, field: string, value: string | boolean | number | null) => void;
+  onUpdate: (
+    slug: string,
+    field: string,
+    value: string | boolean | number | null,
+  ) => void;
   onResetPrompt: (slug: string) => void;
-  onDraftChange: (slug: string, field: "prompt" | "interval_seconds" | "lenses", value: string | number) => void;
+  onDraftChange: (
+    slug: string,
+    field: "prompt" | "interval_seconds" | "lenses",
+    value: string | number,
+  ) => void;
 }) {
   const [promptOpen, setPromptOpen] = useState(false);
   const badge = TYPE_BADGES[agent.agent_type] || TYPE_BADGES.text;
-  const intervalDefault = agent.agent_type === "text" ? INTERVAL_DEFAULTS[agent.slug] ?? 15 : INTERVAL_DEFAULTS[agent.slug];
-  const intervalDriven = agent.agent_type === "text" || agent.slug === "strategic_signals";
-  const modelOptions = models.filter((m) => (agent.agent_type === "audio" ? m.supports_live_audio : m.supports_text));
+  const intervalDefault =
+    agent.agent_type === "text"
+      ? (INTERVAL_DEFAULTS[agent.slug] ?? 15)
+      : INTERVAL_DEFAULTS[agent.slug];
+  const intervalDriven =
+    agent.agent_type === "text" || agent.slug === "strategic_signals";
+  const modelOptions = models.filter((m) =>
+    agent.agent_type === "audio" ? m.supports_live_audio : m.supports_text,
+  );
   const hasLockedModels = modelOptions.some((m) => m.key_available === false);
   // Privacy First judges the model this agent is actually assigned, not whether
   // a local one merely exists in the list: with a self-hosted model selected the
@@ -401,22 +565,32 @@ function AgentCard({
   })();
   const selectedModel = modelOptions.find((m) => m.id === agent.model_id);
   const blockedByPrivacy = Boolean(
-    localOnly && agent.model_id && !(selectedModel && runsLocally(selectedModel))
+    localOnly &&
+    agent.model_id &&
+    !(selectedModel && runsLocally(selectedModel)),
   );
   const hasLocalAlternative = modelOptions.some(runsLocally);
   const translated = germanAgent(agent.slug);
-  const displayedPrompt = agent.slug === "audio_gateway" && agent.prompt === LEGACY_AUDIO_PROMPT
-    ? DE.audioGatewayPrompt
-    : agent.prompt;
+  const displayedPrompt =
+    agent.slug === "audio_gateway" && agent.prompt === LEGACY_AUDIO_PROMPT
+      ? DE.audioGatewayPrompt
+      : agent.prompt;
 
   return (
-    <div className={`rounded-xl bg-surface shadow-sm ring-1 ring-brand-light-gray-1/60 transition-opacity ${isSaving ? "opacity-70" : ""} ${agent.enabled && !blockedByPrivacy ? "" : "opacity-80"}`}>
+    <div
+      className={`rounded-xl bg-surface shadow-sm ring-1 ring-brand-light-gray-1/60 transition-opacity ${isSaving ? "opacity-70" : ""} ${agent.enabled && !blockedByPrivacy ? "" : "opacity-80"}`}
+    >
       {/* Header row */}
       <div className="flex items-start justify-between gap-4 px-5 pt-5">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-display text-base font-bold text-brand-dark-gray">{translated?.name ?? agent.name}</h3>
-            <span className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-white" style={{ backgroundColor: badge.color }}>
+            <h3 className="font-display text-base font-bold text-brand-dark-gray">
+              {translated?.name ?? agent.name}
+            </h3>
+            <span
+              className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
+              style={{ backgroundColor: badge.color }}
+            >
               {badge.label}
             </span>
             {!agent.enabled && (
@@ -435,32 +609,39 @@ function AgentCard({
               </span>
             )}
           </div>
-          <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">{translated?.description ?? agent.description}</p>
+          <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
+            {translated?.description ?? agent.description}
+          </p>
           {agent.agent_type === "audio" && (
             <p className="mt-2 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/60 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-brand-gray">
-              Hier werden nur Live-Audio-Modelle angezeigt. Eigene OpenAI-kompatible Chatmodelle
-              sind reine Textmodelle und versorgen die Analyse-Assistenten. Für eine vollständig
-              lokale Transkription wähle unter Transkription &amp; Audio ein lokales ONNX-Modell.
+              Hier werden nur Live-Audio-Modelle angezeigt. Eigene
+              OpenAI-kompatible Chatmodelle sind reine Textmodelle und versorgen
+              die Analyse-Assistenten. Für eine vollständig lokale Transkription
+              wähle unter Transkription &amp; Audio ein lokales ONNX-Modell.
             </p>
           )}
           {agent.slug === "opportunity_specialist" && (
             <p className="mt-2 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/60 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-brand-gray">
-              Läuft nach der Gesamtanalyse und sucht nicht selbst nach Chancen. Erkennt eine Perspektive eine Chance, wird sie mit den Wissensquellen abgeglichen und die bestehende Karte ergänzt.
+              Läuft nach der Gesamtanalyse und sucht nicht selbst nach Chancen.
+              Erkennt eine Perspektive eine Chance, wird sie mit den
+              Wissensquellen abgeglichen und die bestehende Karte ergänzt.
             </p>
           )}
           {blockedByPrivacy && (
             <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-2.5 py-1.5 font-body text-[11px] leading-relaxed text-amber-900">
               {hasLocalAlternative ? (
                 <>
-                  Datenschutz zuerst ist aktiv. Das ausgewaehlte Modell würde Daten ausserhalb
-                  deines Netzes senden und wird deshalb nicht gestartet. Wähle ein eigenes Modell
-                  auf diesem Rechner oder im lokalen Netz.
+                  Datenschutz zuerst ist aktiv. Das ausgewaehlte Modell würde
+                  Daten ausserhalb deines Netzes senden und wird deshalb nicht
+                  gestartet. Wähle ein eigenes Modell auf diesem Rechner oder im
+                  lokalen Netz.
                 </>
               ) : (
                 <>
-                  Datenschutz zuerst ist aktiv, aber für diesen Assistenten ist kein lokales Modell
-                  verfügbar. Füge unter Verbindungen einen OpenAI-kompatiblen Server hinzu oder
-                  deaktiviere den Schutz. Die Einstellungen bleiben erhalten.
+                  Datenschutz zuerst ist aktiv, aber für diesen Assistenten ist
+                  kein lokales Modell verfügbar. Füge unter Verbindungen einen
+                  OpenAI-kompatiblen Server hinzu oder deaktiviere den Schutz.
+                  Die Einstellungen bleiben erhalten.
                 </>
               )}
             </p>
@@ -473,14 +654,18 @@ function AgentCard({
           aria-checked={agent.enabled}
           title={agent.enabled ? "Aktiviert" : "Deaktiviert"}
         >
-          <span className={`block h-5 w-5 rounded-full bg-surface shadow transition-transform ${agent.enabled ? "translate-x-5" : "translate-x-0.5"}`} />
+          <span
+            className={`block h-5 w-5 rounded-full bg-surface shadow transition-transform ${agent.enabled ? "translate-x-5" : "translate-x-0.5"}`}
+          />
         </button>
       </div>
 
       {/* Settings grid: model + cadence side by side */}
       <div className="grid gap-4 px-5 py-4 md:grid-cols-2">
         <div>
-          <label className="mb-1 block font-body text-xs font-medium text-brand-gray">Modell</label>
+          <label className="mb-1 block font-body text-xs font-medium text-brand-gray">
+            Modell
+          </label>
           <select
             value={agent.model_id}
             onChange={(e) => onUpdate(agent.slug, "model_id", e.target.value)}
@@ -490,10 +675,16 @@ function AgentCard({
             {groupModels(modelOptions).map((group) => (
               <optgroup key={group.provider} label={group.provider}>
                 {group.models.map((m) => {
-                  const { locked, suffix } = optionState(m, agent.model_id, localOnly, lockLabel);
+                  const { locked, suffix } = optionState(
+                    m,
+                    agent.model_id,
+                    localOnly,
+                    lockLabel,
+                  );
                   return (
                     <option key={m.id} value={m.id} disabled={locked}>
-                      {optionLabel(m, agent.slug)}{suffix}
+                      {optionLabel(m, agent.slug)}
+                      {suffix}
                     </option>
                   );
                 })}
@@ -502,7 +693,8 @@ function AgentCard({
           </select>
           {hasLockedModels && (
             <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
-              Ausgegraute Modelle benötigen einen API-Schlüssel ihres Anbieters (siehe Verbindungen).
+              Ausgegraute Modelle benötigen einen API-Schlüssel ihres Anbieters
+              (siehe Verbindungen).
             </p>
           )}
         </div>
@@ -520,15 +712,24 @@ function AgentCard({
                 value={agent.interval_seconds ?? intervalDefault}
                 onChange={(e) => {
                   const val = parseInt(e.target.value, 10);
-                  if (!isNaN(val)) onDraftChange(agent.slug, "interval_seconds", val);
+                  if (!isNaN(val))
+                    onDraftChange(agent.slug, "interval_seconds", val);
                 }}
                 onBlur={(e) => {
-                  const val = Math.max(5, Math.min(300, parseInt(e.target.value, 10) || intervalDefault));
+                  const val = Math.max(
+                    5,
+                    Math.min(
+                      300,
+                      parseInt(e.target.value, 10) || intervalDefault,
+                    ),
+                  );
                   onUpdate(agent.slug, "interval_seconds", val);
                 }}
                 className="w-20 rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 text-center font-mono text-sm text-brand-dark-gray focus:border-brand-teal"
               />
-              <span className="font-body text-xs text-brand-mid-gray">Sekunden</span>
+              <span className="font-body text-xs text-brand-mid-gray">
+                Sekunden
+              </span>
             </div>
             <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
               {intervalDriven
@@ -537,10 +738,11 @@ function AgentCard({
             </p>
             {modelInterval !== null && (
               <p className="mt-1.5 rounded border border-brand-teal/30 bg-brand-teal/5 px-2 py-1.5 font-body text-[10px] leading-relaxed text-brand-dark-gray">
-                <span className="font-medium">Aktuell {modelInterval} s</span> mit dem
-                ausgewählten Modell. Der lokale Leistungstest hat diesen Wert für{" "}
-                {selectedModel?.name ?? agent.model_id} gesetzt. Starte den Test unter
-                Transkription &amp; Audio erneut, um ihn zu ändern.
+                <span className="font-medium">Aktuell {modelInterval} s</span>{" "}
+                mit dem ausgewählten Modell. Der lokale Leistungstest hat diesen
+                Wert für {selectedModel?.name ?? agent.model_id} gesetzt. Starte
+                den Test unter Transkription &amp; Audio erneut, um ihn zu
+                ändern.
               </p>
             )}
           </div>
@@ -551,7 +753,9 @@ function AgentCard({
       {agent.agent_type === "db" && (
         <div className="border-t border-brand-light-gray-1/70 px-5 py-4">
           <div className="mb-1.5 flex items-baseline justify-between">
-            <label className="block font-body text-xs font-medium text-brand-gray">Wissensquellen</label>
+            <label className="block font-body text-xs font-medium text-brand-gray">
+              Wissensquellen
+            </label>
             {agent.knowledge_source_ids.split(",").some((s) => s.trim()) && (
               <button
                 type="button"
@@ -566,30 +770,48 @@ function AgentCard({
             {knowledgeSources
               .filter((k) => k.active)
               .map((k) => {
-                const selected = agent.knowledge_source_ids.split(",").map((s) => s.trim()).includes(k.id);
+                const selected = agent.knowledge_source_ids
+                  .split(",")
+                  .map((s) => s.trim())
+                  .includes(k.id);
                 return (
                   <TogglePill
                     key={k.id}
                     label={k.name}
                     selected={selected}
                     onToggle={() => {
-                      const current = new Set(agent.knowledge_source_ids.split(",").map((s) => s.trim()).filter(Boolean));
-                      if (selected) current.delete(k.id); else current.add(k.id);
-                      onUpdate(agent.slug, "knowledge_source_ids", [...current].join(","));
+                      const current = new Set(
+                        agent.knowledge_source_ids
+                          .split(",")
+                          .map((s) => s.trim())
+                          .filter(Boolean),
+                      );
+                      if (selected) current.delete(k.id);
+                      else current.add(k.id);
+                      onUpdate(
+                        agent.slug,
+                        "knowledge_source_ids",
+                        [...current].join(","),
+                      );
                     }}
                   />
                 );
               })}
           </div>
           <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
-            Wissensquellen für den Chancen-Abgleich. Ohne Auswahl wird der integrierte Angebotskatalog verwendet.
+            Wissensquellen für den Chancen-Abgleich. Ohne Auswahl wird der
+            integrierte Angebotskatalog verwendet.
           </p>
         </div>
       )}
 
       {/* Configurable analysis lenses (for consolidated analyst) */}
       {agent.slug === "consolidated_analyst" && (
-        <LensEditor agent={agent} onUpdate={onUpdate} onDraftChange={onDraftChange} />
+        <LensEditor
+          agent={agent}
+          onUpdate={onUpdate}
+          onDraftChange={onDraftChange}
+        />
       )}
 
       {/* Prompt editor — collapsed by default to keep the page scannable */}
@@ -601,12 +823,24 @@ function AgentCard({
           className="flex w-full items-center justify-between px-5 py-3 text-left transition-colors hover:bg-brand-light-gray-2/60"
         >
           <span className="flex items-center gap-2 font-body text-xs font-medium text-brand-gray">
-            <svg className={`h-3 w-3 text-brand-mid-gray transition-transform ${promptOpen ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            <svg
+              className={`h-3 w-3 text-brand-mid-gray transition-transform ${promptOpen ? "rotate-90" : ""}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5l7 7-7 7"
+              />
             </svg>
             Systemanweisung
           </span>
-          <span className="font-body text-[10px] text-brand-mid-gray">{promptOpen ? "Ausblenden" : "Anzeigen / bearbeiten"}</span>
+          <span className="font-body text-[10px] text-brand-mid-gray">
+            {promptOpen ? "Ausblenden" : "Anzeigen / bearbeiten"}
+          </span>
         </button>
         {promptOpen && (
           <div className="px-5 pb-5">
@@ -620,7 +854,9 @@ function AgentCard({
             </div>
             <textarea
               value={displayedPrompt}
-              onChange={(e) => onDraftChange(agent.slug, "prompt", e.target.value)}
+              onChange={(e) =>
+                onDraftChange(agent.slug, "prompt", e.target.value)
+              }
               onBlur={(e) => onUpdate(agent.slug, "prompt", e.target.value)}
               rows={12}
               className="w-full resize-y rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-2 font-mono text-xs leading-relaxed text-brand-dark-gray focus:border-brand-teal"
@@ -632,10 +868,21 @@ function AgentCard({
   );
 }
 
-export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChange, highlightSince, onboarding, onOnboardingContinue, onOpenQualityLab }: AdminPanelProps) {
+export default function AdminPanel({
+  onBack,
+  desktopUpdate,
+  activeTab,
+  onTabChange,
+  highlightSince,
+  onboarding,
+  onOnboardingContinue,
+  onOpenQualityLab,
+}: AdminPanelProps) {
   const [agents, setAgents] = useState<AgentConfig[]>([]);
   const [models, setModels] = useState<ModelInfo[]>([]);
-  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>([]);
+  const [knowledgeSources, setKnowledgeSources] = useState<KnowledgeSource[]>(
+    [],
+  );
   const [privacy, setPrivacy] = useState<PrivacyConfig | null>(null);
   // The PII Shield locks audio models alone (a cloud gateway or transcriber
   // would hear the names it withholds); text models stay free.
@@ -665,13 +912,18 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
       setPiiShield(shield);
       setVersion(meta?.version ?? null);
     } catch (err) {
-      console.error("Assistenten-Konfiguration konnte nicht geladen werden", err);
+      console.error(
+        "Assistenten-Konfiguration konnte nicht geladen werden",
+        err,
+      );
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   // Key changes flip model availability; refresh models without re-entering the loading state
   const refreshModels = useCallback(async () => {
@@ -692,7 +944,11 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
     }
   }, []);
 
-  const handleUpdate = async (slug: string, field: string, value: string | boolean | number | null) => {
+  const handleUpdate = async (
+    slug: string,
+    field: string,
+    value: string | boolean | number | null,
+  ) => {
     setSaving(slug);
     try {
       let updated = await api.updateAgent(slug, { [field]: value });
@@ -702,13 +958,15 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
           ? recommendationFor(selected, slug)
           : undefined;
         if (
-          recommendation?.source === "local_fit"
-          && recommendation.interval_seconds
+          recommendation?.source === "local_fit" &&
+          recommendation.interval_seconds
         ) {
           await api.applyLocalFitIntervals(value, [
             { slug, interval_seconds: recommendation.interval_seconds },
           ]);
-          updated = (await api.listAgents()).find((agent) => agent.slug === slug) ?? updated;
+          updated =
+            (await api.listAgents()).find((agent) => agent.slug === slug) ??
+            updated;
         }
       }
       setAgents((prev) => prev.map((a) => (a.slug === slug ? updated : a)));
@@ -731,8 +989,14 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
     }
   };
 
-  const handleDraftChange = (slug: string, field: "prompt" | "interval_seconds" | "lenses", value: string | number) => {
-    setAgents((prev) => prev.map((a) => (a.slug === slug ? { ...a, [field]: value } : a)));
+  const handleDraftChange = (
+    slug: string,
+    field: "prompt" | "interval_seconds" | "lenses",
+    value: string | number,
+  ) => {
+    setAgents((prev) =>
+      prev.map((a) => (a.slug === slug ? { ...a, [field]: value } : a)),
+    );
   };
 
   const enabledCount = agents.filter((a) => a.enabled).length;
@@ -743,26 +1007,50 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
     <div className="flex h-full min-w-0 flex-col overflow-x-hidden bg-brand-light-gray-2">
       <header className="border-b border-brand-light-gray-1 bg-surface px-4 pt-3 sm:px-6">
         <div className="flex items-center gap-3">
-          <button onClick={onBack} className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray" title="Zurück">
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+          <button
+            onClick={onBack}
+            className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
+            title="Zurück"
+          >
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+              />
             </svg>
           </button>
           <div>
             <div className="flex items-baseline gap-2">
-              <h1 className="font-display text-lg font-bold text-brand-dark-gray">{DE.admin.title}</h1>
+              <h1 className="font-display text-lg font-bold text-brand-dark-gray">
+                {DE.admin.title}
+              </h1>
               {version && (
-                <span className="rounded-full bg-brand-light-gray-2 px-2 py-0.5 font-mono text-[11px] font-medium text-brand-gray" title="Programmversion">
+                <span
+                  className="rounded-full bg-brand-light-gray-2 px-2 py-0.5 font-mono text-[11px] font-medium text-brand-gray"
+                  title="Programmversion"
+                >
                   v{version}
                 </span>
               )}
             </div>
-            <p className="font-body text-xs text-brand-mid-gray">{activeTabInfo.hint}</p>
+            <p className="font-body text-xs text-brand-mid-gray">
+              {activeTabInfo.hint}
+            </p>
           </div>
         </div>
 
         {/* Tab bar */}
-        <nav className="mt-3 flex flex-wrap gap-1" aria-label="Bereiche der Einstellungen">
+        <nav
+          className="mt-3 flex flex-wrap gap-1"
+          aria-label="Bereiche der Einstellungen"
+        >
           {TABS.map((tab) => {
             const active = tab.id === activeTab;
             return (
@@ -779,10 +1067,15 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
               >
                 {tab.label}
                 {tab.id === "about" && highlightSince && (
-                  <span className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand-teal align-middle" title="Neue Versionshinweise" />
+                  <span
+                    className="ml-1.5 inline-block h-1.5 w-1.5 rounded-full bg-brand-teal align-middle"
+                    title="Neue Versionshinweise"
+                  />
                 )}
                 {tab.id === "agents" && !loading && (
-                  <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${active ? "bg-brand-teal/10 text-brand-teal" : "bg-brand-light-gray-2 text-brand-mid-gray"}`}>
+                  <span
+                    className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${active ? "bg-brand-teal/10 text-brand-teal" : "bg-brand-light-gray-2 text-brand-mid-gray"}`}
+                  >
                     {enabledCount}/{agents.length}
                   </span>
                 )}
@@ -795,7 +1088,9 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <span className="font-body text-sm text-brand-mid-gray">{DE.admin.loading}</span>
+            <span className="font-body text-sm text-brand-mid-gray">
+              {DE.admin.loading}
+            </span>
           </div>
         ) : (
           <div className="mx-auto max-w-4xl">
@@ -815,7 +1110,9 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
               <DebateSettingsCard privacyFirst={privacy?.local_only ?? false} />
               <AIConfigurationCard models={models} />
               {(() => {
-                const assigned = new Set(AGENT_SECTIONS.flatMap((s) => s.slugs));
+                const assigned = new Set(
+                  AGENT_SECTIONS.flatMap((s) => s.slugs),
+                );
                 const leftover = agents.filter((a) => !assigned.has(a.slug));
                 const sections = [
                   ...AGENT_SECTIONS.map((s) => ({
@@ -825,7 +1122,11 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
                       .filter((a): a is AgentConfig => !!a),
                   })),
                   // Safety net so agents added later never silently disappear
-                  { title: DE.admin.sections.other.title, blurb: DE.admin.sections.other.blurb, agents: leftover },
+                  {
+                    title: DE.admin.sections.other.title,
+                    blurb: DE.admin.sections.other.blurb,
+                    agents: leftover,
+                  },
                 ];
                 return sections.filter((s) => s.agents.length > 0);
               })().map((section) => {
@@ -833,8 +1134,12 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
                 return (
                   <section key={section.title}>
                     <div className="mb-3">
-                      <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">{section.title}</h2>
-                      <p className="mt-0.5 font-body text-xs text-brand-mid-gray">{section.blurb}</p>
+                      <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">
+                        {section.title}
+                      </h2>
+                      <p className="mt-0.5 font-body text-xs text-brand-mid-gray">
+                        {section.blurb}
+                      </p>
                     </div>
                     <div className="space-y-4">
                       {sectionAgents.map((agent) => (
@@ -844,8 +1149,15 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
                           models={models}
                           knowledgeSources={knowledgeSources}
                           isSaving={saving === agent.slug}
-                          localOnly={(privacy?.local_only ?? false) || (agent.agent_type === "audio" && audioLocked)}
-                          lockLabel={privacy?.local_only ? "Datenschutz zuerst" : "PII-Schutz"}
+                          localOnly={
+                            (privacy?.local_only ?? false) ||
+                            (agent.agent_type === "audio" && audioLocked)
+                          }
+                          lockLabel={
+                            privacy?.local_only
+                              ? "Datenschutz zuerst"
+                              : "PII-Schutz"
+                          }
                           onUpdate={handleUpdate}
                           onResetPrompt={handleResetPrompt}
                           onDraftChange={handleDraftChange}
@@ -857,13 +1169,19 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
               })}
             </div>
 
-            <div className={activeTab === "transcription" ? "space-y-4" : "hidden"}>
+            <div
+              className={activeTab === "transcription" ? "space-y-4" : "hidden"}
+            >
               <BatchTranscriptionCard
                 models={models}
                 localOnly={(privacy?.local_only ?? false) || audioLocked}
-                lockLabel={privacy?.local_only ? "Datenschutz zuerst" : "PII-Schutz"}
+                lockLabel={
+                  privacy?.local_only ? "Datenschutz zuerst" : "PII-Schutz"
+                }
                 onLiveModelChanged={refreshAgents}
-                gatewayModelId={agents.find((a) => a.slug === "audio_gateway")?.model_id}
+                gatewayModelId={
+                  agents.find((a) => a.slug === "audio_gateway")?.model_id
+                }
               />
               <LocalModelFitCard onIntervalsApplied={refreshAgents} />
               <DiarizationCapabilityCard />
@@ -914,7 +1232,10 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
               <EndpointsCard
                 onChanged={() => {
                   refreshModels();
-                  void api.getPrivacyConfig().then(setPrivacy).catch(() => {});
+                  void api
+                    .getPrivacyConfig()
+                    .then(setPrivacy)
+                    .catch(() => {});
                 }}
               />
             </div>
@@ -925,7 +1246,11 @@ export default function AdminPanel({ onBack, desktopUpdate, activeTab, onTabChan
             </div>
 
             <div className={activeTab === "about" ? "" : "hidden"}>
-              <AboutCard version={version} desktopUpdate={desktopUpdate} highlightSince={highlightSince} />
+              <AboutCard
+                version={version}
+                desktopUpdate={desktopUpdate}
+                highlightSince={highlightSince}
+              />
             </div>
           </div>
         )}

@@ -9,7 +9,8 @@ import type { ModelDownload } from "../types";
  * did not work (ALP-373). Nothing downloads invisibly now.
  */
 
-const smallButton = "min-h-8 shrink-0 rounded-lg border border-brand-light-gray-1 px-2.5 py-1 font-body text-xs font-semibold text-brand-dark-gray transition-colors motion-reduce:transition-none hover:border-brand-teal hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+const smallButton =
+  "min-h-8 shrink-0 rounded-lg border border-brand-light-gray-1 px-2.5 py-1 font-body text-xs font-semibold text-brand-dark-gray transition-colors motion-reduce:transition-none hover:border-brand-teal hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 function bytes(value = 0): string {
   if (value < 1024) return `${value} B`;
@@ -28,16 +29,21 @@ function bytes(value = 0): string {
 function downloadProgressText(download: ModelDownload): string {
   if (download.state === "queued") return "Wartet auf Start";
   if (download.state === "installed") return "Installiert";
-  if (download.state === "error") return download.error || "Herunterladen fehlgeschlagen";
+  if (download.state === "error")
+    return download.error || "Herunterladen fehlgeschlagen";
   if (download.total > 0) {
     return `${bytes(download.downloaded)} von ${bytes(download.total)}`;
   }
   // No total: onnx-asr does not report one, so say what has arrived.
-  return download.downloaded > 0 ? `${bytes(download.downloaded)} bisher` : "Wird gestartet";
+  return download.downloaded > 0
+    ? `${bytes(download.downloaded)} bisher`
+    : "Wird gestartet";
 }
 
 function downloadHeadline(download: ModelDownload): string {
-  const what = download.purpose ? `${download.label} (${download.purpose})` : download.label;
+  const what = download.purpose
+    ? `${download.label} (${download.purpose})`
+    : download.label;
   switch (download.state) {
     case "queued":
       return `In Warteschlange: ${what}`;
@@ -65,27 +71,42 @@ export function ModelDownloadRow({
   busy?: boolean;
 }) {
   const failed = download.state === "error";
-  const running = download.state === "queued" || download.state === "downloading";
+  const running =
+    download.state === "queued" || download.state === "downloading";
   return (
     <div className="mt-2 rounded-lg border border-brand-light-gray-1 bg-brand-light-gray-2/40 px-3 py-2">
       <div className="flex items-center justify-between gap-3">
-        <p className={`font-body text-xs font-semibold ${failed ? "text-red-700" : "text-brand-dark-gray"}`}>
+        <p
+          className={`font-body text-xs font-semibold ${failed ? "text-red-700" : "text-brand-dark-gray"}`}
+        >
           {downloadHeadline(download)}
         </p>
         <div className="flex shrink-0 items-center gap-2">
           {failed && onRetry && (
-            <button type="button" className={smallButton} disabled={busy} onClick={() => onRetry(download.key)}>
+            <button
+              type="button"
+              className={smallButton}
+              disabled={busy}
+              onClick={() => onRetry(download.key)}
+            >
               Erneut versuchen
             </button>
           )}
           {!running && onDismiss && (
-            <button type="button" className={smallButton} disabled={busy} onClick={() => onDismiss(download.key)}>
+            <button
+              type="button"
+              className={smallButton}
+              disabled={busy}
+              onClick={() => onDismiss(download.key)}
+            >
               Ausblenden
             </button>
           )}
         </div>
       </div>
-      <p className={`mt-1 font-mono text-[11px] ${failed ? "text-red-700" : "text-brand-mid-gray"}`}>
+      <p
+        className={`mt-1 font-mono text-[11px] ${failed ? "text-red-700" : "text-brand-mid-gray"}`}
+      >
         {downloadProgressText(download)}
       </p>
       {download.state === "downloading" && (
@@ -126,10 +147,16 @@ export function ModelDownloadsBanner({
     <div className="rounded-xl bg-surface px-4 py-3 shadow-lg ring-1 ring-brand-light-gray-1">
       <div className="flex items-center justify-between gap-3">
         <p className="font-body text-sm font-semibold text-brand-dark-gray">
-          {active.length > 0 ? "Modelle werden heruntergeladen" : "Ein Modell konnte nicht geladen werden"}
+          {active.length > 0
+            ? "Modelle werden heruntergeladen"
+            : "Ein Modell konnte nicht geladen werden"}
         </p>
         {onOpenSettings && (
-          <button type="button" className={smallButton} onClick={onOpenSettings}>
+          <button
+            type="button"
+            className={smallButton}
+            onClick={onOpenSettings}
+          >
             Einstellungen
           </button>
         )}

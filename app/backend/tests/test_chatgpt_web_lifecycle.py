@@ -1,12 +1,12 @@
 """DA-02/03/06 lifecycle regressions; all browser and login children are fake."""
 
 import asyncio
-from contextlib import ExitStack
-from pathlib import Path
 import subprocess
 import tempfile
 import threading
 import unittest
+from contextlib import ExitStack
+from pathlib import Path
 from unittest import mock
 
 
@@ -55,19 +55,47 @@ class ServiceLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.root = Path(self.stack.enter_context(tempfile.TemporaryDirectory()))
         self.lock = ObservedLock()
         self.tasks = []
-        self.stack.enter_context(mock.patch.object(chatgpt_web, "_ORACLE_LOCK", self.lock))
-        self.stack.enter_context(mock.patch.object(chatgpt_web, "_LOGIN_RESERVED", False))
-        self.stack.enter_context(mock.patch.object(chatgpt_web, "runtime_available", return_value=True))
-        self.configured = self.stack.enter_context(mock.patch.object(chatgpt_web, "configured", return_value=True))
-        self.stack.enter_context(mock.patch.object(chatgpt_web, "_path", return_value=self.root))
-        self.stack.enter_context(mock.patch.object(chatgpt_web, "_write_research_status"))
-        self.refusal = self.stack.enter_context(mock.patch.object(chatgpt_web, "_record_refusal"))
-        self.stack.enter_context(mock.patch.object(chatgpt_web.external_audit, "start_external_request", return_value="fake-audit"))
-        self.stack.enter_context(mock.patch.object(chatgpt_web.external_audit, "finish_external_request"))
-        self.spawn = self.stack.enter_context(mock.patch.object(
-            chatgpt_web.asyncio, "create_subprocess_exec", new_callable=mock.AsyncMock,
-            side_effect=AssertionError("A browser child must not be started in this case"),
-        ))
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "_ORACLE_LOCK", self.lock)
+        )
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "_LOGIN_RESERVED", False)
+        )
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "runtime_available", return_value=True)
+        )
+        self.configured = self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "configured", return_value=True)
+        )
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "_path", return_value=self.root)
+        )
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "_write_research_status")
+        )
+        self.refusal = self.stack.enter_context(
+            mock.patch.object(chatgpt_web, "_record_refusal")
+        )
+        self.stack.enter_context(
+            mock.patch.object(
+                chatgpt_web.external_audit,
+                "start_external_request",
+                return_value="fake-audit",
+            )
+        )
+        self.stack.enter_context(
+            mock.patch.object(chatgpt_web.external_audit, "finish_external_request")
+        )
+        self.spawn = self.stack.enter_context(
+            mock.patch.object(
+                chatgpt_web.asyncio,
+                "create_subprocess_exec",
+                new_callable=mock.AsyncMock,
+                side_effect=AssertionError(
+                    "A browser child must not be started in this case"
+                ),
+            )
+        )
 
     async def asyncTearDown(self):
         for task in self.tasks:
@@ -86,7 +114,11 @@ class ServiceLifecycleTests(unittest.IsolatedAsyncioTestCase):
 
     async def settled(self, task, timeout=1.4):
         done, _ = await asyncio.wait({task}, timeout=timeout)
-        self.assertIn(task, done, "adapter did not settle within its total budget plus scheduling margin")
+        self.assertIn(
+            task,
+            done,
+            "adapter did not settle within its total budget plus scheduling margin",
+        )
         return await task
 
     async def test_queued_request_rechecks_verification_before_spawn(self):
@@ -111,7 +143,9 @@ class ServiceLifecycleTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.wait_for(self.lock.acquiring.wait(), 1)
             with self.assertRaises(TimeoutError):
                 await self.settled(pending)
-            self.assertTrue(self.lock.locked(), "waiter released another request's lock")
+            self.assertTrue(
+                self.lock.locked(), "waiter released another request's lock"
+            )
             self.spawn.assert_not_awaited()
         finally:
             self.lock.release()
@@ -240,18 +274,33 @@ class LoginLifecycleTests(unittest.IsolatedAsyncioTestCase):
         self.stack.enter_context(mock.patch.object(web, "_ORACLE_LOCK", asyncio.Lock()))
         self.stack.enter_context(mock.patch.object(web, "_LOGIN_RESERVED", False))
         self.stack.enter_context(mock.patch.object(login, "_login_process", None))
-        self.stack.enter_context(mock.patch.object(login, "_login_lock", threading.Lock()))
-        self.stack.enter_context(mock.patch.object(login, "_configuration", return_value=(["fake-login"], self.result)))
-        self.stack.enter_context(mock.patch.object(
-            login, "_status", side_effect=lambda *, state="idle", message="": {"login_state": state, "message": message}
-        ))
+        self.stack.enter_context(
+            mock.patch.object(login, "_login_lock", threading.Lock())
+        )
+        self.stack.enter_context(
+            mock.patch.object(
+                login, "_configuration", return_value=(["fake-login"], self.result)
+            )
+        )
+        self.stack.enter_context(
+            mock.patch.object(
+                login,
+                "_status",
+                side_effect=lambda *, state="idle", message="": {
+                    "login_state": state,
+                    "message": message,
+                },
+            )
+        )
 
         def spawn(*args, **kwargs):
             child = FakeLoginChild()
             self.children.append(child)
             return child
 
-        self.spawn = self.stack.enter_context(mock.patch.object(login.subprocess, "Popen", side_effect=spawn))
+        self.spawn = self.stack.enter_context(
+            mock.patch.object(login.subprocess, "Popen", side_effect=spawn)
+        )
 
     async def asyncTearDown(self):
         for child in self.children:
@@ -267,12 +316,16 @@ class LoginLifecycleTests(unittest.IsolatedAsyncioTestCase):
         from fastapi import HTTPException
 
         caught = None
-        with mock.patch.object(Path, method, side_effect=PermissionError("synthetic denied path")):
+        with mock.patch.object(
+            Path, method, side_effect=PermissionError("synthetic denied path")
+        ):
             try:
                 await self.login.start_login()
             except Exception as exc:
                 caught = exc
-        self.assertFalse(self.web.browser_busy(), "failed preparation leaked the login reservation")
+        self.assertFalse(
+            self.web.browser_busy(), "failed preparation leaked the login reservation"
+        )
         self.spawn.assert_not_called()
         self.assertIsInstance(caught, HTTPException)
         self.assertEqual(503, caught.status_code)
@@ -299,7 +352,9 @@ class LoginLifecycleTests(unittest.IsolatedAsyncioTestCase):
         deadline = asyncio.get_running_loop().time() + 1.0
         while self.web.browser_busy() and asyncio.get_running_loop().time() < deadline:
             await asyncio.sleep(0.01)
-        self.assertFalse(self.web.browser_busy(), "completed login still depends on UI polling")
+        self.assertFalse(
+            self.web.browser_busy(), "completed login still depends on UI polling"
+        )
 
     async def test_immediate_retry_reconciles_dead_previous_child(self):
         await self.login.start_login()
@@ -327,7 +382,10 @@ class LoginLifecycleTests(unittest.IsolatedAsyncioTestCase):
         previous.wait_allowed.set()
         await asyncio.sleep(0.35)
         self.assertIsNone(self.children[1].poll())
-        self.assertTrue(self.web.browser_busy(), "old login observer released the replacement's reservation")
+        self.assertTrue(
+            self.web.browser_busy(),
+            "old login observer released the replacement's reservation",
+        )
 
 
 if __name__ == "__main__":

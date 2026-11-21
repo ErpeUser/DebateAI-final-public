@@ -46,19 +46,97 @@ MAX_PENDING_SECONDS = 30
 ROLLING_CONTEXT_SECONDS = 6
 _WARMUP_TIMEOUT_SECONDS = 20
 
-_ENGLISH_FUNCTION_WORDS = frozenset({
-    "a", "an", "and", "are", "as", "at", "be", "but", "by", "for", "from",
-    "has", "have", "he", "her", "his", "i", "if", "in", "is", "it", "its",
-    "like", "not", "of", "on", "or", "our", "she", "that", "the", "their",
-    "then", "they", "this", "to", "was", "we", "were", "what", "which", "who",
-    "will", "with", "you", "your",
-})
-_GERMAN_FUNCTION_WORDS = frozenset({
-    "aber", "als", "auch", "das", "dass", "dein", "denn", "der", "die", "ein",
-    "eine", "er", "es", "fuer", "hat", "ich", "ihr", "im", "in", "ist", "mit",
-    "nicht", "oder", "sein", "sie", "sind", "so", "und", "von", "war", "was",
-    "wenn", "wer", "wie", "wir", "wird", "zu",
-})
+_ENGLISH_FUNCTION_WORDS = frozenset(
+    {
+        "a",
+        "an",
+        "and",
+        "are",
+        "as",
+        "at",
+        "be",
+        "but",
+        "by",
+        "for",
+        "from",
+        "has",
+        "have",
+        "he",
+        "her",
+        "his",
+        "i",
+        "if",
+        "in",
+        "is",
+        "it",
+        "its",
+        "like",
+        "not",
+        "of",
+        "on",
+        "or",
+        "our",
+        "she",
+        "that",
+        "the",
+        "their",
+        "then",
+        "they",
+        "this",
+        "to",
+        "was",
+        "we",
+        "were",
+        "what",
+        "which",
+        "who",
+        "will",
+        "with",
+        "you",
+        "your",
+    }
+)
+_GERMAN_FUNCTION_WORDS = frozenset(
+    {
+        "aber",
+        "als",
+        "auch",
+        "das",
+        "dass",
+        "dein",
+        "denn",
+        "der",
+        "die",
+        "ein",
+        "eine",
+        "er",
+        "es",
+        "fuer",
+        "hat",
+        "ich",
+        "ihr",
+        "im",
+        "in",
+        "ist",
+        "mit",
+        "nicht",
+        "oder",
+        "sein",
+        "sie",
+        "sind",
+        "so",
+        "und",
+        "von",
+        "war",
+        "was",
+        "wenn",
+        "wer",
+        "wie",
+        "wir",
+        "wird",
+        "zu",
+    }
+)
 
 
 def _looks_english_for_fixed_german(value: str) -> bool:
@@ -128,12 +206,12 @@ class LocalLiveCaptioner:
                 self._transcriber.transcribe_segment(synthetic_speech_clip(2)),
                 timeout=_WARMUP_TIMEOUT_SECONDS,
             )
-        except asyncio.TimeoutError as exc:
+        except TimeoutError as exc:
             self._closed = True
             self._transcriber = None
             logger.warning("Local live captioner warmup timed out; lane quarantined")
             raise RuntimeError("local live captioner warmup timed out") from exc
-        except Exception as exc:  # noqa: BLE001 - non-timeout warmup remains best effort
+        except Exception as exc:
             logger.info("Local live captioner warmup skipped: %s", exc)
         self.session = True
         logger.info("Local live captioner ready (%s)", self._asr_model_id)
@@ -173,7 +251,7 @@ class LocalLiveCaptioner:
             end_sample = self._audio_samples_seen
             try:
                 text = await self._transcriber.transcribe_segment(chunk)
-            except Exception as exc:  # noqa: BLE001 - one bad chunk should not end captions
+            except Exception as exc:
                 logger.warning("Local live caption chunk failed: %s", exc)
                 continue
             hypothesis = text.strip() if text else ""
@@ -192,7 +270,9 @@ class LocalLiveCaptioner:
                         flags=re.IGNORECASE,
                     )
                 if _looks_english_for_fixed_german(hypothesis):
-                    logger.info("Suppressed an English-looking fixed-German live hypothesis")
+                    logger.info(
+                        "Suppressed an English-looking fixed-German live hypothesis"
+                    )
                     continue
             if hypothesis and hypothesis != self._last_hypothesis:
                 self._last_hypothesis = hypothesis
@@ -204,9 +284,7 @@ class LocalLiveCaptioner:
                     "track_id": "mixed",
                     "segment_id": self._segment_id,
                     "segment_revision": self._segment_revision,
-                    "audio_start_sample": max(
-                        0, end_sample - len(chunk) // 2
-                    ),
+                    "audio_start_sample": max(0, end_sample - len(chunk) // 2),
                     "audio_end_sample": end_sample,
                 }
 

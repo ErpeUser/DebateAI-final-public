@@ -1,5 +1,5 @@
-import unittest
 import sys
+import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
@@ -9,16 +9,18 @@ from app.routers.offerings import _normalize_offering_import_row
 
 class OfferingsImportMappingTests(unittest.TestCase):
     def test_maps_current_columns(self):
-        row = _normalize_offering_import_row({
-            "vendor": "Acme Networks",
-            "product_name": "Acme Cloud Firewall",
-            "category": "Security",
-            "subcategory": "Network Security",
-            "description": "Cloud-managed firewall.",
-            "use_cases": "Perimeter security",
-            "note": "Sold with deployment services.",
-            "tags": "Networking, Managed Service",
-        })
+        row = _normalize_offering_import_row(
+            {
+                "vendor": "Acme Networks",
+                "product_name": "Acme Cloud Firewall",
+                "category": "Security",
+                "subcategory": "Network Security",
+                "description": "Cloud-managed firewall.",
+                "use_cases": "Perimeter security",
+                "note": "Sold with deployment services.",
+                "tags": "Networking, Managed Service",
+            }
+        )
 
         self.assertEqual("Acme Networks", row["vendor"])
         self.assertEqual("Network Security", row["subcategory"])
@@ -26,27 +28,31 @@ class OfferingsImportMappingTests(unittest.TestCase):
         self.assertEqual("Networking, Managed Service", row["tags"])
 
     def test_legacy_columns_map_to_new_fields(self):
-        row = _normalize_offering_import_row({
-            "vendor": "Acme Networks",
-            "product_name": "Acme Cloud Firewall",
-            "category": "Security",
-            "discipline": "Network Security",
-            "delivery_model": "Managed Service",
-            "practice": "Security",
-        })
+        row = _normalize_offering_import_row(
+            {
+                "vendor": "Acme Networks",
+                "product_name": "Acme Cloud Firewall",
+                "category": "Security",
+                "discipline": "Network Security",
+                "delivery_model": "Managed Service",
+                "practice": "Security",
+            }
+        )
 
         self.assertEqual("Network Security", row["subcategory"])
         self.assertEqual("Managed Service", row["note"])
         self.assertEqual("Security", row["tags"])
 
     def test_explicit_subcategory_wins_over_legacy_discipline(self):
-        row = _normalize_offering_import_row({
-            "vendor": "Acme Networks",
-            "product_name": "Acme Cloud Firewall",
-            "category": "Security",
-            "subcategory": "Cloud Security",
-            "discipline": "Network Security",
-        })
+        row = _normalize_offering_import_row(
+            {
+                "vendor": "Acme Networks",
+                "product_name": "Acme Cloud Firewall",
+                "category": "Security",
+                "subcategory": "Cloud Security",
+                "discipline": "Network Security",
+            }
+        )
 
         self.assertEqual("Cloud Security", row["subcategory"])
 

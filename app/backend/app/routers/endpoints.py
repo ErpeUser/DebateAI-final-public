@@ -5,10 +5,6 @@ GET /api/models, so this router is what turns "I run a model on my own box"
 into a named choice in the agent, chat, and analysis pickers.
 """
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.services.custom_endpoints import (
     EndpointError,
@@ -23,9 +19,19 @@ from app.services.custom_endpoints import (
     to_dict,
     update_endpoint,
 )
-from app.services.seed_agents import DESKTOP_DEBATE_ENDPOINT_ID, DESKTOP_DEBATE_WIRE_MODEL
 from app.services.redaction import redact_text
-from app.services.secrets import MasterKeyUnavailable, decrypt_value, master_key_recovery_message
+from app.services.secrets import (
+    MasterKeyUnavailable,
+    decrypt_value,
+    master_key_recovery_message,
+)
+from app.services.seed_agents import (
+    DESKTOP_DEBATE_ENDPOINT_ID,
+    DESKTOP_DEBATE_WIRE_MODEL,
+)
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def _merge_desktop_qwen_models(current: list | None, served: list[str]) -> list[dict]:
@@ -41,6 +47,7 @@ def _merge_desktop_qwen_models(current: list | None, served: list[str]) -> list[
         models.append({"id": wire, "label": wire})
         seen.add(wire)
     return models
+
 
 router = APIRouter(prefix="/api/endpoints", tags=["endpoints"])
 
@@ -107,17 +114,24 @@ async def add(body: EndpointIn, db: AsyncSession = Depends(get_db)):
     except EndpointError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except MasterKeyUnavailable as exc:
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     await db.commit()
     await db.refresh(endpoint)
     return to_dict(endpoint)
 
 
 @router.put("/{endpoint_id}")
-async def edit(endpoint_id: str, body: EndpointPatch, db: AsyncSession = Depends(get_db)):
+async def edit(
+    endpoint_id: str, body: EndpointPatch, db: AsyncSession = Depends(get_db)
+):
     endpoint = await _require(db, endpoint_id)
     if body.base_url and body.base_url != endpoint.base_url and body.api_key is None:
-        raise HTTPException(status_code=409, detail="Changing the endpoint requires re-entering the API key")
+        raise HTTPException(
+            status_code=409,
+            detail="Changing the endpoint requires re-entering the API key",
+        )
     try:
         await update_endpoint(
             db,
@@ -132,7 +146,9 @@ async def edit(endpoint_id: str, body: EndpointPatch, db: AsyncSession = Depends
     except EndpointError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     except MasterKeyUnavailable as exc:
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     await db.commit()
     await db.refresh(endpoint)
     return to_dict(endpoint)
@@ -151,7 +167,9 @@ async def remove(endpoint_id: str, db: AsyncSession = Depends(get_db)):
 async def test(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     """Probe a saved endpoint and record the outcome for its status badge."""
     endpoint = await _require(db, endpoint_id)
-    ok, message, served = await probe(endpoint.base_url, decrypt_value(endpoint.api_key))
+    ok, message, served = await probe(
+        endpoint.base_url, decrypt_value(endpoint.api_key)
+    )
     # probe() already scrubs its messages; scrubbing again here means a
     # future message source cannot reintroduce the key into this response.
     message = redact_text(message)
@@ -160,7 +178,12 @@ async def test(endpoint_id: str, db: AsyncSession = Depends(get_db)):
     await record_probe(db, endpoint, ok, message)
     await db.commit()
     await db.refresh(endpoint)
-    return {"ok": ok, "message": message, "served_models": served, "endpoint": to_dict(endpoint)}
+    return {
+        "ok": ok,
+        "message": message,
+        "served_models": served,
+        "endpoint": to_dict(endpoint),
+    }
 
 
 @router.post("/probe")

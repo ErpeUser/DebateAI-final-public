@@ -20,7 +20,6 @@ from typing import Any
 
 from app.services.identity import env_value
 
-
 _PROMPT_NAME = re.compile(r"^[a-z0-9][a-z0-9_.-]{0,119}$")
 _EFFORTS = {"low", "medium", "high", "xhigh"}
 _CONFIG_LOCK = threading.RLock()
@@ -28,35 +27,81 @@ _MAX_PROMPT_CHARACTERS = 200_000
 _REQUIRED_PLACEHOLDERS = {
     "debate_deep_v1": {"claim", "own_position", "relevant_context", "evidence"},
     "speaker_context_enhancement": {
-        "meeting_context_text", "speakers_text", "insights_json", "transcript_text",
+        "meeting_context_text",
+        "speakers_text",
+        "insights_json",
+        "transcript_text",
     },
 }
 # The application renders prompts with named values only.  Keeping this
 # allowlist at the validation boundary prevents an editable prompt from
 # introducing an unexpected field lookup (or a typo that silently renders as
 # an empty/incorrect value) when it is later formatted by an agent.
-_OBJECTION_FIELDS = {"meeting_context_text", "transcript_window", "directives_text", "speakers_text", "recent_objections"}
-_BRIEF_FIELDS = {"meeting_context_text", "mode", "speakers_text", "directives_text", "document_summaries", "insights_text", "transcript_text"}
+_OBJECTION_FIELDS = {
+    "meeting_context_text",
+    "transcript_window",
+    "directives_text",
+    "speakers_text",
+    "recent_objections",
+}
+_BRIEF_FIELDS = {
+    "meeting_context_text",
+    "mode",
+    "speakers_text",
+    "directives_text",
+    "document_summaries",
+    "insights_text",
+    "transcript_text",
+}
 _PYTHON_PROMPT_FIELDS = {
     "agent.consolidated_analyst": {
-        "meeting_context_text", "transcript_window", "directives_text", "document_summaries",
-        "speakers_text", "active_questions", "lens_sections", "item_type_values",
+        "meeting_context_text",
+        "transcript_window",
+        "directives_text",
+        "document_summaries",
+        "speakers_text",
+        "active_questions",
+        "lens_sections",
+        "item_type_values",
     },
     "agent.objection_handler": _OBJECTION_FIELDS,
     "debate_live_v2": _OBJECTION_FIELDS,
     "experimental_debate_live_v1": _OBJECTION_FIELDS,
     "agent.synthesizer": {"meeting_context_text", "insights_json", "transcript_text"},
-    "agent.opportunity_specialist": {"meeting_context_text", "knowledge_context", "opportunities_json"},
+    "agent.opportunity_specialist": {
+        "meeting_context_text",
+        "knowledge_context",
+        "opportunities_json",
+    },
     "agent.strategic_signals": _BRIEF_FIELDS,
     "agent.brief_meeting_lens": _BRIEF_FIELDS,
     "agent.brief_discovery_lens": _BRIEF_FIELDS,
-    "agent.brief_arbiter": {"meeting_context_text", "mode", "meeting_lens_json", "discovery_lens_json"},
-    "speaker_context_enhancement": {"meeting_context_text", "speakers_text", "insights_json", "transcript_text"},
-    "analyze_transcript": {"meeting_context_text", "directives_text", "transcript_text"},
+    "agent.brief_arbiter": {
+        "meeting_context_text",
+        "mode",
+        "meeting_lens_json",
+        "discovery_lens_json",
+    },
+    "speaker_context_enhancement": {
+        "meeting_context_text",
+        "speakers_text",
+        "insights_json",
+        "transcript_text",
+    },
+    "analyze_transcript": {
+        "meeting_context_text",
+        "directives_text",
+        "transcript_text",
+    },
 }
 _LITERAL_PROMPTS = {
-    "debate_deep_v1", "background.oracle", "background.gemini", "background.gpt6",
-    "experimental_research_v1", "experimental_adversarial_v1", "experimental_strategist_v1",
+    "debate_deep_v1",
+    "background.oracle",
+    "background.gemini",
+    "background.gpt6",
+    "experimental_research_v1",
+    "experimental_adversarial_v1",
+    "experimental_strategist_v1",
 }
 _DEEP_FIELDS = {"claim", "own_position", "relevant_context", "evidence"}
 _TRUTHY = {"1", "true", "yes", "on"}
@@ -148,9 +193,7 @@ def ai_directory() -> Path:
     if explicit is not None:
         return explicit
     if getattr(sys, "_MEIPASS", None):
-        data_dir = Path(
-            os.environ.get("DATA_DIR", Path.home() / ".debate-ai" / "data")
-        )
+        data_dir = Path(os.environ.get("DATA_DIR", Path.home() / ".debate-ai" / "data"))
         # Portable mode is explicit.  The executable directory is resolved
         # from sys.executable, never from the current working directory or the
         # temporary PyInstaller resource root.
@@ -253,18 +296,26 @@ def _validate_provider_configuration(data: Any) -> dict[str, Any]:
             if not model_id:
                 raise ValueError(f"Anbieterroute '{route_id}' braucht ein Modell.")
             if not isinstance(route.get("enabled", True), bool):
-                raise ValueError(f"Anbieterroute '{route_id}' hat keinen gueltigen Aktivstatus.")
+                raise ValueError(
+                    f"Anbieterroute '{route_id}' hat keinen gueltigen Aktivstatus."
+                )
             effort = route.get("reasoning_effort")
             if effort is not None and effort not in _EFFORTS:
-                raise ValueError(f"Anbieterroute '{route_id}' hat eine ungueltige Denkstufe.")
+                raise ValueError(
+                    f"Anbieterroute '{route_id}' hat eine ungueltige Denkstufe."
+                )
             for field in ("timeout_seconds", "cooldown_seconds"):
                 if field in route:
                     try:
                         value = int(route[field])
                     except (TypeError, ValueError) as exc:
-                        raise ValueError(f"'{field}' von '{route_id}' muss eine Zahl sein.") from exc
+                        raise ValueError(
+                            f"'{field}' von '{route_id}' muss eine Zahl sein."
+                        ) from exc
                     if value < 1 or value > 86400:
-                        raise ValueError(f"'{field}' von '{route_id}' liegt ausserhalb 1-86400.")
+                        raise ValueError(
+                            f"'{field}' von '{route_id}' liegt ausserhalb 1-86400."
+                        )
             seen.add(route_id)
     return data
 
@@ -302,7 +353,9 @@ def _read_provider_configuration() -> dict[str, Any]:
                             else "high"
                         ),
                         "timeout_seconds": 180,
-                        "cooldown_seconds": int(validated.get("unavailable_cooldown_seconds", 900)),
+                        "cooldown_seconds": int(
+                            validated.get("unavailable_cooldown_seconds", 900)
+                        ),
                     }
                     for index, model_id in enumerate(order)
                     if str(model_id).strip()
@@ -336,7 +389,9 @@ def save_provider_configuration(data: Any) -> dict[str, Any]:
     return provider_configuration()
 
 
-def ensure_gemini_cli_route(wire_model: str = "gemini-3.1-pro-preview") -> dict[str, Any]:
+def ensure_gemini_cli_route(
+    wire_model: str = "gemini-3.1-pro-preview",
+) -> dict[str, Any]:
     """Add the explicit Gemini CLI Pro/High route without replacing user config.
 
     Packaged installs copy ``providers.json`` only once.  A user who upgrades
@@ -356,7 +411,9 @@ def ensure_gemini_cli_route(wire_model: str = "gemini-3.1-pro-preview") -> dict[
         if wire_model == "gemini-3.1-pro-preview"
         else f"Gemini CLI OAuth ({wire_model}, High)"
     )
-    next_routes = [dict(route) if isinstance(route, dict) else route for route in routes]
+    next_routes = [
+        dict(route) if isinstance(route, dict) else route for route in routes
+    ]
     for route in next_routes:
         if not isinstance(route, dict):
             continue
@@ -401,7 +458,9 @@ def ensure_gemini_web_route(wire_model: str) -> dict[str, Any]:
     model = str(wire_model or "").strip()
     if not isinstance(routes, list) or not model:
         return data
-    next_routes = [dict(route) if isinstance(route, dict) else route for route in routes]
+    next_routes = [
+        dict(route) if isinstance(route, dict) else route for route in routes
+    ]
     model_id = f"endpoint:gemini-web:{model}"
     label = f"Gemini-Webproxy ({model}, High)"
     for route in next_routes:
@@ -426,7 +485,9 @@ def reset_provider_configuration() -> dict[str, Any]:
     try:
         defaults = json.loads(default_path.read_text(encoding="utf-8"))
     except (OSError, ValueError, TypeError) as exc:
-        raise ValueError("Der Auslieferungsstandard fuer KI-Anbieter fehlt oder ist ungueltig.") from exc
+        raise ValueError(
+            "Der Auslieferungsstandard fuer KI-Anbieter fehlt oder ist ungueltig."
+        ) from exc
     return save_provider_configuration(defaults)
 
 
@@ -447,13 +508,22 @@ def _validate_prompt_content(name: str, content: str) -> str:
         try:
             fields = list(Formatter().parse(value))
         except ValueError as exc:
-            raise ValueError("Der Prompt enthaelt ungueltige Template-Klammern.") from exc
+            raise ValueError(
+                "Der Prompt enthaelt ungueltige Template-Klammern."
+            ) from exc
         placeholders = set()
         for _literal, field_name, format_spec, conversion in fields:
             if field_name is None:
                 continue
-            if not field_name or not field_name.isidentifier() or format_spec or conversion:
-                raise ValueError("Promptplatzhalter muessen einfache benannte Felder sein.")
+            if (
+                not field_name
+                or not field_name.isidentifier()
+                or format_spec
+                or conversion
+            ):
+                raise ValueError(
+                    "Promptplatzhalter muessen einfache benannte Felder sein."
+                )
             placeholders.add(field_name)
     elif name in _LITERAL_PROMPTS:
         # These consumers use exact str.replace(), not Python formatting;
@@ -534,7 +604,9 @@ def restore_prompt_version(name: str, version: str) -> dict[str, Any]:
     try:
         content = source.read_text(encoding="utf-8")
     except OSError as exc:
-        raise ValueError("Die angeforderte Promptversion wurde nicht gefunden.") from exc
+        raise ValueError(
+            "Die angeforderte Promptversion wurde nicht gefunden."
+        ) from exc
     return save_prompt(name, content)
 
 
@@ -565,7 +637,13 @@ def save_playbooks(data: Any) -> list[dict[str, Any]]:
 def restore_playbooks_version(version: str) -> list[dict[str, Any]]:
     if not re.fullmatch(r"[0-9TZ.]+-[a-f0-9]{12}", version):
         raise ValueError("Ungueltige Strategieversion.")
-    source = ai_directory() / "history" / "prompts" / "rhetoriciq.playbooks" / f"{version}.json"
+    source = (
+        ai_directory()
+        / "history"
+        / "prompts"
+        / "rhetoriciq.playbooks"
+        / f"{version}.json"
+    )
     try:
         data = json.loads(source.read_text(encoding="utf-8"))
     except (OSError, ValueError) as exc:
@@ -623,7 +701,9 @@ def provider_route(model_id: str) -> dict[str, Any]:
     return {"id": "unknown", "provider": "unknown", "model_id": model_id}
 
 
-def _route_number(model_id: str, field: str, default: int, minimum: int, maximum: int) -> int:
+def _route_number(
+    model_id: str, field: str, default: int, minimum: int, maximum: int
+) -> int:
     data = load_ai_json("providers.json", {})
     routes = data.get("routes") if isinstance(data, dict) else None
     if isinstance(routes, list):
@@ -652,7 +732,9 @@ def model_cooldown_seconds(model_id: str) -> int:
 
 def unavailable_cooldown_seconds() -> int:
     data = load_ai_json("providers.json", {})
-    value = data.get("unavailable_cooldown_seconds", 900) if isinstance(data, dict) else 900
+    value = (
+        data.get("unavailable_cooldown_seconds", 900) if isinstance(data, dict) else 900
+    )
     try:
         return max(60, min(86400, int(value)))
     except (TypeError, ValueError):
@@ -671,7 +753,9 @@ def max_parallel_analyses() -> int:
 def analysis_deadline_seconds() -> int:
     """Long budget for deep analysis, retries, and provider fallbacks."""
     data = load_ai_json("providers.json", {})
-    value = data.get("analysis_deadline_seconds", 180) if isinstance(data, dict) else 180
+    value = (
+        data.get("analysis_deadline_seconds", 180) if isinstance(data, dict) else 180
+    )
     try:
         return max(5, min(900, int(value)))
     except (TypeError, ValueError):
@@ -681,7 +765,9 @@ def analysis_deadline_seconds() -> int:
 def live_research_deadline_seconds() -> int:
     """Short budget for automatic live research before deep analysis."""
     data = load_ai_json("providers.json", {})
-    value = data.get("live_research_deadline_seconds", 12) if isinstance(data, dict) else 12
+    value = (
+        data.get("live_research_deadline_seconds", 12) if isinstance(data, dict) else 12
+    )
     try:
         return max(8, min(15, int(value)))
     except (TypeError, ValueError):
@@ -762,7 +848,9 @@ def adaptive_reasoning_settings() -> dict[str, Any]:
         value = str(raw.get(name, default)).casefold()
         return value if value in {"high", "xhigh"} else default
 
-    def bounded_float(name: str, default: float, minimum: float, maximum: float) -> float:
+    def bounded_float(
+        name: str, default: float, minimum: float, maximum: float
+    ) -> float:
         try:
             return max(minimum, min(maximum, float(raw.get(name, default))))
         except (TypeError, ValueError):
@@ -803,16 +891,20 @@ def research_settings() -> dict[str, Any]:
             for item in providers
             if isinstance(item, dict) and item.get("enabled", True) is not True
         }
+
     def bounded(name: str, default: int, minimum: int, maximum: int) -> int:
         try:
             return max(minimum, min(maximum, int(raw.get(name, default))))
         except (TypeError, ValueError):
             return default
+
     # Legacy search endpoints are retired globally. Research must use the
     # configured AI web/API providers so the visible answer can integrate the
     # findings without exposing provider-by-provider output.
     legacy_disabled = {"duckduckgo", "wikipedia"}
-    enabled = [provider for provider in enabled if provider not in legacy_disabled | disabled]
+    enabled = [
+        provider for provider in enabled if provider not in legacy_disabled | disabled
+    ]
     configured_fallback = raw.get("fallback_providers")
     fallback = (
         [
@@ -826,10 +918,13 @@ def research_settings() -> dict[str, Any]:
     fallback = [provider for provider in fallback if provider.strip() not in disabled]
     return {
         "enabled": raw.get("enabled", True) is not False,
-        "providers": enabled if isinstance(providers, list) else ["chatgpt_web", "gemini_web"],
+        "providers": enabled
+        if isinstance(providers, list)
+        else ["chatgpt_web", "gemini_web"],
         "steps": bounded("steps", 2, 1, 5),
         "timeout_seconds": bounded("timeout_seconds", 20, 3, 120),
-        "original_sources_required": raw.get("original_sources_required", True) is not False,
+        "original_sources_required": raw.get("original_sources_required", True)
+        is not False,
         "legacy_providers_disabled": sorted(legacy_disabled),
         "primary_provider": str(raw.get("primary_provider") or "chatgpt_web"),
         "fallback_providers": fallback,
@@ -847,7 +942,11 @@ def playbook_controls() -> list[tuple[tuple[str, ...], str]]:
     for item in data:
         if not isinstance(item, dict):
             continue
-        terms = tuple(str(term).casefold().strip() for term in item.get("terms", []) if str(term).strip())
+        terms = tuple(
+            str(term).casefold().strip()
+            for term in item.get("terms", [])
+            if str(term).strip()
+        )
         directive = str(item.get("directive") or "").strip()
         if terms and directive:
             result.append((terms, directive))

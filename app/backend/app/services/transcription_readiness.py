@@ -14,11 +14,10 @@ import logging
 import threading
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import MODEL_REGISTRY
 from app.services.provider_health import get_provider_status
 from app.services.transcription_runtime import get_transcription_runtime_config
+from sqlalchemy.ext.asyncio import AsyncSession
 
 _PROVIDER_LABELS = {"google": "Google", "openai": "OpenAI"}
 
@@ -66,14 +65,22 @@ def _probe_local_asr() -> tuple[bool, str]:
     try:
         from importlib.resources import files
 
-        import onnx_asr.preprocessors  # noqa: F401 - import is the point
+        import onnx_asr.preprocessors
 
         data = files(onnx_asr.preprocessors).joinpath("data")
-        missing = [name for name in _ASR_DATA_FILES if not data.joinpath(name).is_file()]
+        missing = [
+            name for name in _ASR_DATA_FILES if not data.joinpath(name).is_file()
+        ]
         if missing:
-            return False, f"the onnx-asr runtime is missing its data files ({', '.join(missing)})"
-    except Exception as exc:  # noqa: BLE001 - any failure here means it cannot transcribe
-        return False, f"the onnx-asr runtime failed to load ({type(exc).__name__}: {exc})"
+            return (
+                False,
+                f"the onnx-asr runtime is missing its data files ({', '.join(missing)})",
+            )
+    except Exception as exc:
+        return (
+            False,
+            f"the onnx-asr runtime failed to load ({type(exc).__name__}: {exc})",
+        )
     return True, ""
 
 

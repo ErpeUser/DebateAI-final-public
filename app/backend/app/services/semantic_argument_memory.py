@@ -16,17 +16,43 @@ from typing import Any, Literal
 
 import numpy as np
 
-
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 _NEGATIONS = {"nicht", "kein", "keine", "nie", "niemals", "ohne"}
 _TIME_WORDS = {
-    "heute", "gestern", "morgen", "derzeit", "aktuell", "frueher",
-    "früher", "kuenftig", "künftig", "jaehrlich", "jährlich",
+    "heute",
+    "gestern",
+    "morgen",
+    "derzeit",
+    "aktuell",
+    "frueher",
+    "früher",
+    "kuenftig",
+    "künftig",
+    "jaehrlich",
+    "jährlich",
 }
 _UNITS = {
-    "%", "prozent", "euro", "eur", "dollar", "usd", "kg", "g", "km",
-    "m", "mio", "million", "millionen", "mrd", "milliarde", "milliarden",
-    "stunden", "tage", "wochen", "monate", "jahre",
+    "%",
+    "prozent",
+    "euro",
+    "eur",
+    "dollar",
+    "usd",
+    "kg",
+    "g",
+    "km",
+    "m",
+    "mio",
+    "million",
+    "millionen",
+    "mrd",
+    "milliarde",
+    "milliarden",
+    "stunden",
+    "tage",
+    "wochen",
+    "monate",
+    "jahre",
 }
 _CONDITION_MARKERS = {"wenn", "falls", "sofern", "unter", "vorausgesetzt"}
 
@@ -64,7 +90,8 @@ def _conflict_features(text: str) -> _ConflictFeatures:
     folded = text.casefold()
     tokens = re.findall(r"[\wäöüß%]+", folded)
     terms = {
-        token for token in tokens
+        token
+        for token in tokens
         if len(token) >= 3
         and token not in _NEGATIONS
         and token not in _TIME_WORDS
@@ -82,7 +109,9 @@ def _conflict_features(text: str) -> _ConflictFeatures:
     time_scopes.update(token for token in tokens if token in _TIME_WORDS)
     conditions = {
         " ".join(match.group(0).split())[:160]
-        for match in re.finditer(r"\b(?:wenn|falls|sofern|vorausgesetzt)\b[^,.;!?]{0,140}", folded)
+        for match in re.finditer(
+            r"\b(?:wenn|falls|sofern|vorausgesetzt)\b[^,.;!?]{0,140}", folded
+        )
     }
     return _ConflictFeatures(
         terms=terms,
@@ -102,9 +131,17 @@ def _possible_conflict_reasons(
     # Different periods or explicit conditions describe different scopes and
     # must not be promoted to a contradiction candidate merely because their
     # embeddings are close.
-    if query.time_scopes and candidate.time_scopes and query.time_scopes.isdisjoint(candidate.time_scopes):
+    if (
+        query.time_scopes
+        and candidate.time_scopes
+        and query.time_scopes.isdisjoint(candidate.time_scopes)
+    ):
         return ()
-    if query.conditions and candidate.conditions and query.conditions.isdisjoint(candidate.conditions):
+    if (
+        query.conditions
+        and candidate.conditions
+        and query.conditions.isdisjoint(candidate.conditions)
+    ):
         return ()
     shared_terms = query.terms & candidate.terms
     if cosine < 0.55 or len(shared_terms) < 2:
@@ -299,7 +336,11 @@ class SemanticArgumentMemory:
                 union = query_terms | row_terms
                 lexical = len(query_terms & row_terms) / len(union) if union else 0.0
                 score = cosine * 0.78 + lexical * 0.22
-                if speaker_id and row.get("speaker_id") and row.get("speaker_id") != speaker_id:
+                if (
+                    speaker_id
+                    and row.get("speaker_id")
+                    and row.get("speaker_id") != speaker_id
+                ):
                     score -= 0.04
                 related.append(SemanticArgumentMatch(row=dict(row), score=score))
                 reasons = _possible_conflict_reasons(
@@ -308,12 +349,14 @@ class SemanticArgumentMemory:
                     cosine=cosine,
                 )
                 if reasons:
-                    conflicts.append(SemanticArgumentMatch(
-                        row=dict(row),
-                        score=score,
-                        match_type="possible_conflict",
-                        conflict_reasons=reasons,
-                    ))
+                    conflicts.append(
+                        SemanticArgumentMatch(
+                            row=dict(row),
+                            score=score,
+                            match_type="possible_conflict",
+                            conflict_reasons=reasons,
+                        )
+                    )
         related_matches = [
             match
             for match in sorted(related, key=lambda item: item.score, reverse=True)

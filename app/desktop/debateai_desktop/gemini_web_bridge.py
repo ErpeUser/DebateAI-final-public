@@ -19,9 +19,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
+from debateai_identity import set_env
+
 from debateai_desktop.paths import free_port, resource
 from debateai_desktop.windows_console import hidden_startupinfo
-from debateai_identity import set_env
 
 
 class GeminiWebBridge:
@@ -30,7 +31,9 @@ class GeminiWebBridge:
         self.cookie_file = self.root / "cookie.txt"
         self.cookie_cache = self.root / ".cookies"
         self.key_file = self.root / "client-key"
-        executable_name = "gemini-web-to-api.exe" if sys.platform == "win32" else "gemini-web-to-api"
+        executable_name = (
+            "gemini-web-to-api.exe" if sys.platform == "win32" else "gemini-web-to-api"
+        )
         self.executable = resource("gemini_web_to_api") / executable_name
         self.log = logger
         self.port = free_port()
@@ -66,9 +69,7 @@ class GeminiWebBridge:
 
     def _request_json(self, path: str, *, authenticated: bool) -> dict | None:
         headers = (
-            {"Authorization": f"Bearer {self.client_key}"}
-            if authenticated
-            else {}
+            {"Authorization": f"Bearer {self.client_key}"} if authenticated else {}
         )
         request = urllib.request.Request(
             f"http://127.0.0.1:{self.port}{path}", headers=headers
@@ -175,7 +176,10 @@ class GeminiWebBridge:
                     if self.stop_event.is_set():
                         self._stop_process()
                         return False
-                    set_env("DEBATEAI_GEMINI_WEB_MODELS", json.dumps(models, separators=(",", ":")))
+                    set_env(
+                        "DEBATEAI_GEMINI_WEB_MODELS",
+                        json.dumps(models, separators=(",", ":")),
+                    )
                     set_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "1")
                     self.log.info(
                         "Gemini web provider started with %s account models",
@@ -199,12 +203,11 @@ class GeminiWebBridge:
                 process_unavailable = (
                     self.process is None or self.process.poll() is not None
                 )
-                if signature is None and process_unavailable:
-                    if self._restart_cookie:
-                        if self._start_process(self._restart_cookie):
-                            continue
-                        self.stop_event.wait(1.0)
+                if signature is None and process_unavailable and self._restart_cookie:
+                    if self._start_process(self._restart_cookie):
                         continue
+                    self.stop_event.wait(1.0)
+                    continue
                 set_env("DEBATEAI_GEMINI_WEB_SESSION_ACTIVE", "0")
                 set_env("DEBATEAI_GEMINI_WEB_MODELS", "[]")
                 # One unchanged rejected credential must not relaunch the

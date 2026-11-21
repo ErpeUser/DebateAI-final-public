@@ -1,9 +1,6 @@
 import asyncio
-import sys
-import types
 
 import pytest
-
 from app.services import video_eval_jobs as jobs
 from app.services.video_eval_jobs import (
     DefaultGeminiTranscriber,
@@ -51,9 +48,14 @@ def test_manual_subtitles_win_over_automatic_without_video_download(monkeypatch)
     monkeypatch.setattr(jobs, "validate_public_url", allow)
 
     probe = _probe(
-        SubtitleTrack("https://cdn.example.test/auto.vtt", "de", "automatic", "vtt", "automatic"),
-        SubtitleTrack("https://cdn.example.test/manual.srt", "de", "manual", "srt", "manual"),
+        SubtitleTrack(
+            "https://cdn.example.test/auto.vtt", "de", "automatic", "vtt", "automatic"
+        ),
+        SubtitleTrack(
+            "https://cdn.example.test/manual.srt", "de", "manual", "srt", "manual"
+        ),
     )
+
     async def run():
         return await retrieve_subtitles(probe, fetcher=fetch)
 
@@ -90,14 +92,25 @@ def test_missing_subtitles_enters_consent_then_key_error(tmp_path, monkeypatch):
     assert failed["error_code"] == "gemini_key_missing"
 
 
-def test_consent_denial_preserves_checkpoint_and_artifact_access_is_scoped(tmp_path, monkeypatch):
-    probe = _probe(SubtitleTrack("https://cdn.example.test/manual.vtt", "de", "manual", "vtt", "manual"))
+def test_consent_denial_preserves_checkpoint_and_artifact_access_is_scoped(
+    tmp_path, monkeypatch
+):
+    probe = _probe(
+        SubtitleTrack(
+            "https://cdn.example.test/manual.vtt", "de", "manual", "vtt", "manual"
+        )
+    )
 
     async def fake_probe(*_args, **_kwargs):
         return probe
 
     async def fake_retrieve(*_args, **_kwargs):
-        return [TranscriptSegment(0, 1, "Quelle: Studie 2024", "S1")], {"available": True, "source": "manual", "content_hash": "hash", "format": "vtt"}
+        return [TranscriptSegment(0, 1, "Quelle: Studie 2024", "S1")], {
+            "available": True,
+            "source": "manual",
+            "content_hash": "hash",
+            "format": "vtt",
+        }
 
     monkeypatch.setattr(jobs, "probe_video_source", fake_probe)
     monkeypatch.setattr(jobs, "retrieve_subtitles", fake_retrieve)

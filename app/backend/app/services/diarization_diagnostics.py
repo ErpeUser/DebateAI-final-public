@@ -8,18 +8,16 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable
-
+from typing import Any
 
 SORTFORMER_MODEL_ID = "nvidia/diar_streaming_sortformer_4spk-v2"
 SORTFORMER_LIVE_TRACKS = 2
 SORTFORMER_CONTENTION_RESERVE = 1.5
 SORTFORMER_BENCHMARK_WINDOWS = 3
-SORTFORMER_RTF_THRESHOLD = 1 / (
-    SORTFORMER_LIVE_TRACKS * SORTFORMER_CONTENTION_RESERVE
-)
+SORTFORMER_RTF_THRESHOLD = 1 / (SORTFORMER_LIVE_TRACKS * SORTFORMER_CONTENTION_RESERVE)
 SORTFORMER_THIN_MARGIN = 0.25
 
 
@@ -295,7 +293,7 @@ def _peak_memory_delta_mb(samples: list[int | None]) -> float | None:
     if baseline is None or not observed:
         return None
     peak = max(observed)
-    return round((peak - baseline) / (1024 ** 2), 1) if peak > baseline else None
+    return round((peak - baseline) / (1024**2), 1) if peak > baseline else None
 
 
 def _sample_resident_memory(
@@ -377,7 +375,7 @@ def _safe_cuda_name(torch: Any) -> str | None:
 def _safe_cuda_memory(torch: Any) -> float | None:
     try:
         props = torch.cuda.get_device_properties(0)
-        return round(float(props.total_memory) / (1024 ** 3), 2)
+        return round(float(props.total_memory) / (1024**3), 2)
     except Exception:
         return None
 

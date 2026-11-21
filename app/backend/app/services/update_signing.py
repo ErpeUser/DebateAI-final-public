@@ -12,7 +12,6 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import (
     Ed25519PublicKey,
 )
 
-
 TRUSTED_ASSETS = {
     "windows-x64": (
         "Windows x64",
@@ -30,9 +29,7 @@ TRUSTED_ASSETS = {
         "application/gzip",
     ),
 }
-VERSION_RE = re.compile(
-    r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
-)
+VERSION_RE = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 HASH_RE = re.compile(r"^[0-9a-f]{64}$")
 KEY_ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}$")
@@ -116,9 +113,8 @@ def _validate_unsigned_descriptor(value: object) -> dict:
     _validate_timestamp(descriptor["published_at"])
     _validate_notes(descriptor["release_notes"])
     _validate_asset(descriptor["asset"], descriptor["version"], private=False)
-    if (
-        not isinstance(descriptor["key_id"], str)
-        or not KEY_ID_RE.fullmatch(descriptor["key_id"])
+    if not isinstance(descriptor["key_id"], str) or not KEY_ID_RE.fullmatch(
+        descriptor["key_id"]
     ):
         raise ValueError("invalid key id")
     if type(descriptor["schema"]) is not int or descriptor["schema"] != 1:
@@ -188,8 +184,7 @@ def _public_from_manifest(manifest: dict, *, include_signature: bool) -> dict:
         "published_at": manifest["published_at"],
         "release_notes": manifest["release_notes"],
         "asset": {
-            key: asset[key]
-            for key in ("id", "platform", "filename", "size", "sha256")
+            key: asset[key] for key in ("id", "platform", "filename", "size", "sha256")
         },
         "key_id": manifest["update"]["key_id"],
         "schema": manifest["update"]["schema"],

@@ -40,8 +40,18 @@ C = "33333333-3333-3333-3333-333333333333"
 def _roster():
     return [
         {"id": A, "name": "Account Manager", "role": "AE", "speaker_type": "team"},
-        {"id": B, "name": "Remote Participant 5", "role": "CISO", "speaker_type": "external"},
-        {"id": C, "name": "Remote Participant 6", "role": "", "speaker_type": "external"},
+        {
+            "id": B,
+            "name": "Remote Participant 5",
+            "role": "CISO",
+            "speaker_type": "external",
+        },
+        {
+            "id": C,
+            "name": "Remote Participant 6",
+            "role": "",
+            "speaker_type": "external",
+        },
     ]
 
 
@@ -53,7 +63,9 @@ class AliasMapTests(unittest.TestCase):
         # The resume property, and the reason nothing has to be stored: a new
         # orchestrator loads the roster in the same created_at order and
         # derives the same tags, so a buffered line and a legend still agree.
-        self.assertEqual(build_speaker_aliases(_roster()), build_speaker_aliases(_roster()))
+        self.assertEqual(
+            build_speaker_aliases(_roster()), build_speaker_aliases(_roster())
+        )
 
     def test_appending_a_speaker_mid_call_never_moves_an_existing_alias(self):
         # audio_handler only ever appends to the live roster, which is what
@@ -69,7 +81,9 @@ class AliasMapTests(unittest.TestCase):
         renamed[1]["display_name"] = "Dana Client"
         renamed[1]["display_name_enabled"] = True
         self.assertEqual(build_speaker_aliases(roster), build_speaker_aliases(renamed))
-        self.assertIn("Dana Client", format_speakers_list(renamed, build_speaker_aliases(renamed)))
+        self.assertIn(
+            "Dana Client", format_speakers_list(renamed, build_speaker_aliases(renamed))
+        )
 
     def test_a_repeated_id_does_not_consume_a_second_tag(self):
         # A stale in-memory roster can hold the same id twice after a merge.
@@ -77,7 +91,10 @@ class AliasMapTests(unittest.TestCase):
         self.assertEqual({A: "S1", B: "S2", C: "S3"}, build_speaker_aliases(doubled))
 
     def test_a_speaker_with_no_id_is_skipped_rather_than_numbered(self):
-        self.assertEqual({A: "S1"}, build_speaker_aliases([{"id": A, "name": "X"}, {"name": "No id"}]))
+        self.assertEqual(
+            {A: "S1"},
+            build_speaker_aliases([{"id": A, "name": "X"}, {"name": "No id"}]),
+        )
 
 
 class TranscriptRenderingTests(unittest.IsolatedAsyncioTestCase):
@@ -134,7 +151,9 @@ class RoundTripTests(unittest.TestCase):
 
     def test_an_alias_resolves_case_insensitively(self):
         self.assertEqual(B, resolve_speaker_reference("s2", self.aliases, self.valid))
-        self.assertEqual(B, resolve_speaker_reference("  S2 ", self.aliases, self.valid))
+        self.assertEqual(
+            B, resolve_speaker_reference("  S2 ", self.aliases, self.valid)
+        )
 
     def test_a_raw_uuid_is_still_accepted(self):
         # Backward compatibility with a prompt the user customized before
@@ -145,12 +164,16 @@ class RoundTripTests(unittest.TestCase):
         # The same failure mode an unknown UUID always had: the insight is
         # saved with no speaker rather than the wrong one.
         self.assertIsNone(resolve_speaker_reference("S9", self.aliases, self.valid))
-        self.assertIsNone(resolve_speaker_reference("Speaker 1", self.aliases, self.valid))
+        self.assertIsNone(
+            resolve_speaker_reference("Speaker 1", self.aliases, self.valid)
+        )
         self.assertIsNone(resolve_speaker_reference("", self.aliases, self.valid))
         self.assertIsNone(resolve_speaker_reference(None, self.aliases, self.valid))
 
     def test_a_uuid_outside_the_roster_returns_none(self):
-        self.assertIsNone(resolve_speaker_reference(str(uuid.uuid4()), self.aliases, self.valid))
+        self.assertIsNone(
+            resolve_speaker_reference(str(uuid.uuid4()), self.aliases, self.valid)
+        )
 
     def test_a_merged_away_id_resolves_to_the_surviving_speaker(self):
         # A merge re-points rows at the survivor but a stale in-memory roster
@@ -184,8 +207,14 @@ class ProseContaminationTests(unittest.TestCase):
         )
 
     def test_renames_apply_once_to_original_labels(self):
-        self.assertEqual("Bob Carol", replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Carol"}))
-        self.assertEqual("Bob Alice", replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Alice"}))
+        self.assertEqual(
+            "Bob Carol",
+            replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Carol"}),
+        )
+        self.assertEqual(
+            "Bob Alice",
+            replace_speaker_labels("Alice Bob", {"Alice": "Bob", "Bob": "Alice"}),
+        )
 
     def test_display_names_are_literal_even_with_backslashes(self):
         self.assertEqual(r"Team\1", replace_speaker_labels("s1", {"S1": r"Team\1"}))
@@ -197,7 +226,9 @@ class ProseContaminationTests(unittest.TestCase):
             "The AS1000 appliance",
             replace_speaker_labels("The AS1000 appliance", {"S1": "Account Manager"}),
         )
-        self.assertEqual("S10 is not Dana", replace_speaker_labels("S10 is not S1", {"S1": "Dana"}))
+        self.assertEqual(
+            "S10 is not Dana", replace_speaker_labels("S10 is not S1", {"S1": "Dana"})
+        )
 
 
 class PayloadSizeTests(unittest.TestCase):
@@ -218,10 +249,13 @@ class PayloadSizeTests(unittest.TestCase):
         aliases = build_speaker_aliases(_roster())
         names = {s["id"]: s["name"] for s in _roster()}
         old = "\n".join(
-            format_transcript_segment(text, names[sid], speaker_id=sid) for sid, text in self.LINES
+            format_transcript_segment(text, names[sid], speaker_id=sid)
+            for sid, text in self.LINES
         )
         new = "\n".join(
-            format_transcript_segment(text, names[sid], speaker_id=sid, alias=aliases[sid])
+            format_transcript_segment(
+                text, names[sid], speaker_id=sid, alias=aliases[sid]
+            )
             for sid, text in self.LINES
         )
         saving = 1 - len(new) / len(old)

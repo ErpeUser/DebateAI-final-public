@@ -4,9 +4,8 @@ import asyncio
 import copy
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from time import monotonic
-
 
 from app.services.llm import LLMReplyTruncated
 from app.services.provider_capabilities import classify_provider_failure
@@ -15,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 def _now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _iso(value: datetime | None = None) -> str:

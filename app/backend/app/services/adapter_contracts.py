@@ -10,12 +10,16 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 from typing import Any, Literal
 
-
 AdapterKind = Literal["source", "provider", "export"]
 AdapterLifecycle = Literal["request", "session", "process"]
 AdapterPermission = Literal[
-    "database_read", "database_write", "filesystem_read", "filesystem_write",
-    "network", "account_session", "subprocess",
+    "database_read",
+    "database_write",
+    "filesystem_read",
+    "filesystem_write",
+    "network",
+    "account_session",
+    "subprocess",
 ]
 
 
@@ -42,14 +46,22 @@ def validate_adapter_contract(
     expected_kind: AdapterKind,
 ) -> AdapterContract:
     if contract.kind != expected_kind:
-        raise ValueError(f"Adapter {contract.adapter_id} has kind {contract.kind}, expected {expected_kind}")
+        raise ValueError(
+            f"Adapter {contract.adapter_id} has kind {contract.kind}, expected {expected_kind}"
+        )
     major, separator, minor = contract.contract_version.partition(".")
     if not separator or not major.isdigit() or not minor.isdigit():
-        raise ValueError(f"Adapter {contract.adapter_id} has an invalid contract version")
+        raise ValueError(
+            f"Adapter {contract.adapter_id} has an invalid contract version"
+        )
     if int(major) != 1:
-        raise ValueError(f"Adapter {contract.adapter_id} uses unsupported contract major {major}")
+        raise ValueError(
+            f"Adapter {contract.adapter_id} uses unsupported contract major {major}"
+        )
     if not contract.capabilities:
         raise ValueError(f"Adapter {contract.adapter_id} declares no capabilities")
     if contract.timeout_seconds <= 0:
-        raise ValueError(f"Adapter {contract.adapter_id} must declare a positive timeout")
+        raise ValueError(
+            f"Adapter {contract.adapter_id} must declare a positive timeout"
+        )
     return contract

@@ -5,15 +5,12 @@ from __future__ import annotations
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Session
-from pydantic import BaseModel, Field
-
 from app.services.windows_audio_capture import native_windows_audio
-
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/native-audio", tags=["native-audio"])
 
@@ -51,14 +48,18 @@ async def native_audio_devices():
 
 
 @router.post("/start")
-async def start_native_audio(request: NativeAudioStart, db: AsyncSession = Depends(get_db)):
+async def start_native_audio(
+    request: NativeAudioStart, db: AsyncSession = Depends(get_db)
+):
     session = await db.get(Session, request.session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="Session not found")
     if str(session.state) not in {"pre_call", "active"}:
         raise HTTPException(status_code=409, detail="Session is not recordable")
     if not native_windows_audio.available:
-        raise HTTPException(status_code=503, detail="Native Windows-Audioaufnahme ist nicht verfuegbar")
+        raise HTTPException(
+            status_code=503, detail="Native Windows-Audioaufnahme ist nicht verfuegbar"
+        )
     try:
         return await native_windows_audio.start(
             request.session_id,
@@ -73,11 +74,15 @@ async def start_native_audio(request: NativeAudioStart, db: AsyncSession = Depen
     except RuntimeError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except OSError as exc:
-        raise HTTPException(status_code=503, detail=f"Audiogeraet konnte nicht geoeffnet werden: {exc}") from exc
+        raise HTTPException(
+            status_code=503, detail=f"Audiogeraet konnte nicht geoeffnet werden: {exc}"
+        ) from exc
 
 
 @router.post("/stop")
-async def stop_native_audio(request: NativeAudioStop | None = None, db: AsyncSession = Depends(get_db)):
+async def stop_native_audio(
+    request: NativeAudioStop | None = None, db: AsyncSession = Depends(get_db)
+):
     if request and request.session_id:
         session = await db.get(Session, request.session_id)
         if session is None:
@@ -89,7 +94,9 @@ async def stop_native_audio(request: NativeAudioStop | None = None, db: AsyncSes
 
 
 @router.post("/probe")
-async def probe_native_audio(request: NativeAudioProbe, db: AsyncSession = Depends(get_db)):
+async def probe_native_audio(
+    request: NativeAudioProbe, db: AsyncSession = Depends(get_db)
+):
     try:
         level = await native_windows_audio.probe_microphone(request.microphone_index)
         return {"level": level}

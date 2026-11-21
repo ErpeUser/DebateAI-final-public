@@ -14,7 +14,6 @@ Create Date: 2026-09-02
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "027_transcript_refinement"
@@ -35,9 +34,14 @@ def upgrade():
     if existing is None:
         return
     if "raw_text" not in existing:
-        op.add_column("transcript_entries", sa.Column("raw_text", sa.Text(), nullable=True))
+        op.add_column(
+            "transcript_entries", sa.Column("raw_text", sa.Text(), nullable=True)
+        )
     if "refined_at" not in existing:
-        op.add_column("transcript_entries", sa.Column("refined_at", sa.DateTime(timezone=True), nullable=True))
+        op.add_column(
+            "transcript_entries",
+            sa.Column("refined_at", sa.DateTime(timezone=True), nullable=True),
+        )
 
 
 def downgrade():

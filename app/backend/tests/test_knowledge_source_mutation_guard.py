@@ -1,12 +1,11 @@
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
-
-from fastapi import HTTPException
 
 from app.models import KnowledgeSource
 from app.routers.knowledge import update_source
+from fastapi import HTTPException
 
 
 class FakeDB:
@@ -41,9 +40,14 @@ class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_update_allows_user_managed_source(self):
         source = KnowledgeSource(
-            id=uuid.uuid4(), source_type="files", name="Before",
-            description="", config="{}", active=True,
-            created_at=datetime.now(timezone.utc), updated_at=None,
+            id=uuid.uuid4(),
+            source_type="files",
+            name="Before",
+            description="",
+            config="{}",
+            active=True,
+            created_at=datetime.now(UTC),
+            updated_at=None,
         )
         db = FakeDB(source)
         body = SimpleNamespace(model_dump=lambda exclude_unset: {"name": "After"})

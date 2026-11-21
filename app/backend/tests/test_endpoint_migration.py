@@ -44,9 +44,13 @@ class LegacyEndpointMigrationTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.object(llm_endpoint, "set_app_setting", fake_set),
             mock.patch.object(llm_endpoint, "create_endpoint", fake_create),
             mock.patch.object(
-                llm_endpoint, "list_endpoints", mock.AsyncMock(side_effect=lambda db: self.existing)
+                llm_endpoint,
+                "list_endpoints",
+                mock.AsyncMock(side_effect=lambda db: self.existing),
             ),
-            mock.patch.object(llm_endpoint, "get_secret", mock.AsyncMock(return_value="")),
+            mock.patch.object(
+                llm_endpoint, "get_secret", mock.AsyncMock(return_value="")
+            ),
         ]
         for patch in self.patches:
             patch.start()
@@ -92,7 +96,9 @@ class LegacyEndpointMigrationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_an_existing_key_carries_over_to_the_endpoint(self):
         self._configure()
-        with mock.patch.object(llm_endpoint, "get_secret", mock.AsyncMock(return_value="sk-proxy")):
+        with mock.patch.object(
+            llm_endpoint, "get_secret", mock.AsyncMock(return_value="sk-proxy")
+        ):
             await llm_endpoint.migrate_legacy_endpoint(_FakeDB())
         self.assertEqual("sk-proxy", self.created[0]["api_key"])
 

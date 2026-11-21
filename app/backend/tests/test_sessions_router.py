@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 from uuid import uuid4
@@ -35,7 +35,7 @@ class UpdateSessionStateTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_end_call_stamps_ended_at(self):
         session = _session("active")
-        session.started_at = datetime.now(timezone.utc)
+        session.started_at = datetime.now(UTC)
         db = AsyncMock()
         db.get.return_value = session
 
@@ -46,7 +46,7 @@ class UpdateSessionStateTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_resume_completed_session_clears_ended_at(self):
         session = _session("completed")
-        session.ended_at = datetime.now(timezone.utc)
+        session.ended_at = datetime.now(UTC)
         db = AsyncMock()
         db.get.return_value = session
 
@@ -65,19 +65,25 @@ class DeleteSessionTests(unittest.IsolatedAsyncioTestCase):
         # Result exposes synchronous scalars().all(). Model that boundary
         # directly so the test does not accidentally invent an async result.
         document_result = MagicMock()
-        document_result.scalars.return_value.all.return_value = ["files/one", "files/two"]
+        document_result.scalars.return_value.all.return_value = [
+            "files/one",
+            "files/two",
+        ]
         db.execute.side_effect = [document_result, MagicMock()]
 
         with (
-            patch("app.routers.sessions.delete_uploaded_file", new_callable=AsyncMock) as delete_file,
+            patch(
+                "app.routers.sessions.delete_uploaded_file", new_callable=AsyncMock
+            ) as delete_file,
             patch("app.routers.sessions.shield.forget_session"),
             patch("app.routers.sessions.run_in_threadpool", new_callable=AsyncMock),
         ):
             await delete_session(session.id, db=db)
 
         self.assertEqual(1, db.commit.await_count)
-        self.assertEqual([call("files/one"), call("files/two")], delete_file.await_args_list)
-
+        self.assertEqual(
+            [call("files/one"), call("files/two")], delete_file.await_args_list
+        )
 
 
 if __name__ == "__main__":

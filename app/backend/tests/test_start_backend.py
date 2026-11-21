@@ -6,7 +6,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 _fake_installer = types.ModuleType("install_sortformer")
 _fake_installer.ensure_sortformer_installed = mock.Mock()
 _spec = importlib.util.spec_from_file_location(
@@ -51,10 +50,12 @@ class BackendStartupTests(unittest.TestCase):
     def test_multiworker_start_is_rejected_until_shared_state_exists(self):
         with (
             mock.patch.object(_start_backend, "ensure_sortformer_installed"),
-            mock.patch.dict(_start_backend.os.environ, {"BACKEND_WORKERS": "2"}, clear=True),
+            mock.patch.dict(
+                _start_backend.os.environ, {"BACKEND_WORKERS": "2"}, clear=True
+            ),
+            self.assertRaisesRegex(RuntimeError, "BACKEND_WORKERS"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "BACKEND_WORKERS"):
-                _start_backend.main()
+            _start_backend.main()
 
     def test_non_loopback_start_requires_instance_token(self):
         with (
@@ -64,9 +65,9 @@ class BackendStartupTests(unittest.TestCase):
                 {"BACKEND_HOST": "0.0.0.0"},
                 clear=True,
             ),
+            self.assertRaisesRegex(RuntimeError, "DEBATEAI_INSTANCE_TOKEN"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "DEBATEAI_INSTANCE_TOKEN"):
-                _start_backend.main()
+            _start_backend.main()
 
     def test_execs_uvicorn_without_reload(self):
         with (
@@ -98,9 +99,7 @@ class BackendStartupTests(unittest.TestCase):
 
     def test_native_gpu_start_uses_same_websocket_limits(self):
         script = (
-            Path(__file__).resolve().parents[1]
-            / "scripts"
-            / "setup_windows_gpu.ps1"
+            Path(__file__).resolve().parents[1] / "scripts" / "setup_windows_gpu.ps1"
         ).read_text(encoding="utf-8")
 
         self.assertIn("--ws-ping-timeout 90", script)
@@ -108,9 +107,9 @@ class BackendStartupTests(unittest.TestCase):
         self.assertIn("--ws-max-size 65536", script)
 
     def test_compose_sets_non_loopback_listener_only_with_instance_token(self):
-        compose = (Path(__file__).resolve().parents[2] / "docker-compose.yml").read_text(
-            encoding="utf-8"
-        )
+        compose = (
+            Path(__file__).resolve().parents[2] / "docker-compose.yml"
+        ).read_text(encoding="utf-8")
         self.assertIn("BACKEND_HOST: ${BACKEND_HOST:-0.0.0.0}", compose)
         self.assertIn("DEBATEAI_INSTANCE_TOKEN: ${DEBATEAI_INSTANCE_TOKEN:?", compose)
 

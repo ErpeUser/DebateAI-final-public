@@ -95,7 +95,13 @@ function EditableCell({
 }
 
 // New source form
-function AddSourceForm({ onAdd, onCancel }: { onAdd: (name: string, sourceType: string) => void; onCancel: () => void }) {
+function AddSourceForm({
+  onAdd,
+  onCancel,
+}: {
+  onAdd: (name: string, sourceType: string) => void;
+  onCancel: () => void;
+}) {
   const [name, setName] = useState("");
   const [sourceType, setSourceType] = useState("collection");
 
@@ -166,7 +172,9 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     try {
       const list = await api.listKnowledgeSources();
       setSources(list);
-      setSelectedId((prev) => prev && list.some((s) => s.id === prev) ? prev : (list[0]?.id ?? null));
+      setSelectedId((prev) =>
+        prev && list.some((s) => s.id === prev) ? prev : (list[0]?.id ?? null),
+      );
     } catch (err) {
       console.error("Failed to load knowledge sources", err);
     } finally {
@@ -174,7 +182,9 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     }
   }, []);
 
-  useEffect(() => { loadSources(); }, [loadSources]);
+  useEffect(() => {
+    loadSources();
+  }, [loadSources]);
 
   const loadRecords = useCallback(async (sourceId: string) => {
     setLoadingRecords(true);
@@ -196,12 +206,17 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
   const refreshCounts = useCallback(async () => {
     try {
       setSources(await api.listKnowledgeSources());
-    } catch { /* non-fatal */ }
+    } catch {
+      /* non-fatal */
+    }
   }, []);
 
   const handleCreateSource = async (name: string, sourceType: string) => {
     try {
-      const created = await api.createKnowledgeSource({ name, source_type: sourceType });
+      const created = await api.createKnowledgeSource({
+        name,
+        source_type: sourceType,
+      });
       setSources((prev) => [...prev, created]);
       setSelectedId(created.id);
       setCreating(false);
@@ -213,7 +228,8 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
   const handleDeleteSource = async (id: string) => {
     const ok = await confirm({
       title: "Wissensquelle löschen",
-      message: "Diese Wissensquelle samt allen Einträgen löschen? Dies kann nicht rückgängig gemacht werden.",
+      message:
+        "Diese Wissensquelle samt allen Einträgen löschen? Dies kann nicht rückgängig gemacht werden.",
       confirmLabel: "Löschen",
       tone: "danger",
     });
@@ -228,7 +244,11 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     }
   };
 
-  const handleUpdateSource = async (id: string, field: string, value: string | boolean) => {
+  const handleUpdateSource = async (
+    id: string,
+    field: string,
+    value: string | boolean,
+  ) => {
     try {
       const updated = await api.updateKnowledgeSource(id, { [field]: value });
       setSources((prev) => prev.map((s) => (s.id === id ? updated : s)));
@@ -237,7 +257,11 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     }
   };
 
-  const handleUpdateRecord = async (id: string, field: string, value: string | boolean) => {
+  const handleUpdateRecord = async (
+    id: string,
+    field: string,
+    value: string | boolean,
+  ) => {
     try {
       const updated = await api.updateKnowledgeRecord(id, { [field]: value });
       setRecords((prev) => prev.map((r) => (r.id === id ? updated : r)));
@@ -249,7 +273,8 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
   const handleDeleteRecord = async (id: string) => {
     const ok = await confirm({
       title: "Wissenseintrag löschen",
-      message: "Diesen Wissenseintrag löschen? Dies kann nicht rückgängig gemacht werden.",
+      message:
+        "Diesen Wissenseintrag löschen? Dies kann nicht rückgängig gemacht werden.",
       confirmLabel: "Löschen",
       tone: "danger",
     });
@@ -267,7 +292,10 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
   const handleAddRecord = async () => {
     if (!selectedId || !newTitle.trim() || !newBody.trim()) return;
     try {
-      const created = await api.createKnowledgeRecord(selectedId, { title: newTitle.trim(), body: newBody.trim() });
+      const created = await api.createKnowledgeRecord(selectedId, {
+        title: newTitle.trim(),
+        body: newBody.trim(),
+      });
       setRecords((prev) => [...prev, created]);
       setNewTitle("");
       setNewBody("");
@@ -285,11 +313,15 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     setBanner(null);
     try {
       const result = await api.importKnowledgeRecords(selectedId, file);
-      setBanner(`${result.created} Einträge importiert (${result.skipped} übersprungen)`);
+      setBanner(
+        `${result.created} Einträge importiert (${result.skipped} übersprungen)`,
+      );
       await loadRecords(selectedId);
       refreshCounts();
     } catch {
-      setBanner("Import fehlgeschlagen. Erwartet wird CSV/Excel mit den Spalten title und body.");
+      setBanner(
+        "Import fehlgeschlagen. Erwartet wird CSV/Excel mit den Spalten title und body.",
+      );
     } finally {
       setBusy(false);
       if (importRef.current) importRef.current.value = "";
@@ -303,11 +335,15 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
     setBanner(null);
     try {
       const result = await api.uploadKnowledgeFile(selectedId, file);
-      setBanner(`„${result.title}“ hinzugefügt (${result.chars.toLocaleString()} Zeichen)`);
+      setBanner(
+        `„${result.title}“ hinzugefügt (${result.chars.toLocaleString()} Zeichen)`,
+      );
       await loadRecords(selectedId);
       refreshCounts();
     } catch {
-      setBanner("Upload fehlgeschlagen. Unterstützte Formate: .txt, .md, .docx, .pdf, .pptx, .xlsx, .csv, .html");
+      setBanner(
+        "Upload fehlgeschlagen. Unterstützte Formate: .txt, .md, .docx, .pdf, .pptx, .xlsx, .csv, .html",
+      );
     } finally {
       setBusy(false);
       if (uploadRef.current) uploadRef.current.value = "";
@@ -326,14 +362,27 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
             className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray"
             title="Zurück zu den Gesprächen"
           >
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18" />
+            <svg
+              className="h-5 w-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M10.5 19.5 3 12m0 0 7.5-7.5M3 12h18"
+              />
             </svg>
           </button>
           <div>
-            <h1 className="font-display text-lg font-bold text-brand-dark-gray">Wissensquellen</h1>
+            <h1 className="font-display text-lg font-bold text-brand-dark-gray">
+              Wissensquellen
+            </h1>
             <p className="font-body text-xs text-brand-mid-gray">
-              Wissensbestände verwalten, mit denen Agenten erkannte Chancen abgleichen
+              Wissensbestände verwalten, mit denen Agenten erkannte Chancen
+              abgleichen
             </p>
           </div>
         </div>
@@ -343,9 +392,22 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
       {banner && (
         <div className="flex items-center justify-between border-b border-brand-teal-light/20 bg-brand-teal-light/5 px-6 py-2">
           <span className="font-body text-sm text-brand-teal">{banner}</span>
-          <button onClick={() => setBanner(null)} className="text-brand-mid-gray hover:text-brand-dark-gray">
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+          <button
+            onClick={() => setBanner(null)}
+            className="text-brand-mid-gray hover:text-brand-dark-gray"
+          >
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -355,61 +417,111 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
         {/* Source list */}
         <aside className="flex w-72 flex-col border-r border-brand-light-gray-1 bg-surface p-3">
           <div className="mb-2 flex items-center justify-between px-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-mid-gray">Quellen</span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-brand-mid-gray">
+              Quellen
+            </span>
             <button
               onClick={() => setCreating(true)}
               className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal"
               title="Neue Wissensquelle"
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 4.5v15m7.5-7.5h-15"
+                />
               </svg>
             </button>
           </div>
 
-          {creating && <div className="mb-2"><AddSourceForm onAdd={handleCreateSource} onCancel={() => setCreating(false)} /></div>}
+          {creating && (
+            <div className="mb-2">
+              <AddSourceForm
+                onAdd={handleCreateSource}
+                onCancel={() => setCreating(false)}
+              />
+            </div>
+          )}
 
           <div className="flex-1 space-y-1 overflow-y-auto">
             {loading ? (
-              <p className="px-2 py-4 text-center font-body text-xs text-brand-mid-gray">Wird geladen ...</p>
+              <p className="px-2 py-4 text-center font-body text-xs text-brand-mid-gray">
+                Wird geladen ...
+              </p>
             ) : sources.length === 0 ? (
-              <p className="px-2 py-4 text-center font-body text-xs text-brand-mid-gray">Noch keine Wissensquellen</p>
+              <p className="px-2 py-4 text-center font-body text-xs text-brand-mid-gray">
+                Noch keine Wissensquellen
+              </p>
             ) : (
               sources.map((s) => {
-                const badge = TYPE_BADGES[s.source_type] || TYPE_BADGES.collection;
+                const badge =
+                  TYPE_BADGES[s.source_type] || TYPE_BADGES.collection;
                 const isSelected = s.id === selectedId;
                 return (
                   <div
                     key={s.id}
                     onClick={() => setSelectedId(s.id)}
                     className={`group cursor-pointer rounded-lg px-3 py-2 transition-colors ${
-                      isSelected ? "bg-brand-teal/10 ring-1 ring-brand-teal/20" : "hover:bg-brand-light-gray-2"
+                      isSelected
+                        ? "bg-brand-teal/10 ring-1 ring-brand-teal/20"
+                        : "hover:bg-brand-light-gray-2"
                     }`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className={`truncate text-sm font-medium ${isSelected ? "text-brand-teal" : "text-brand-dark-gray"}`}>
+                      <span
+                        className={`truncate text-sm font-medium ${isSelected ? "text-brand-teal" : "text-brand-dark-gray"}`}
+                      >
                         {s.name}
                       </span>
                       {s.source_type !== "offerings" && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteSource(s.id); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteSource(s.id);
+                          }}
                           className="rounded p-0.5 text-brand-light-gray-1 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                           title="Quelle löschen"
                         >
-                          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+                          <svg
+                            className="h-3 w-3"
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M6 18 18 6M6 6l12 12"
+                            />
                           </svg>
                         </button>
                       )}
                     </div>
                     <div className="mt-1 flex items-center gap-1.5">
-                      <span className="inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white" style={{ backgroundColor: badge.color }}>
+                      <span
+                        className="inline-flex rounded-full px-1.5 py-0.5 text-[9px] font-medium text-white"
+                        style={{ backgroundColor: badge.color }}
+                      >
                         {badge.label}
                       </span>
                       <span className="text-[10px] text-brand-mid-gray">
-                        {s.source_type === "offerings" ? "Angebotskatalog" : `${s.record_count} Einträge`}
+                        {s.source_type === "offerings"
+                          ? "Angebotskatalog"
+                          : `${s.record_count} Einträge`}
                       </span>
-                      {!s.active && <span className="text-[10px] italic text-brand-mid-gray">inaktiv</span>}
+                      {!s.active && (
+                        <span className="text-[10px] italic text-brand-mid-gray">
+                          inaktiv
+                        </span>
+                      )}
                     </div>
                   </div>
                 );
@@ -422,13 +534,18 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
         <div className="flex-1 overflow-auto p-4">
           {!selected ? (
             <div className="flex items-center justify-center py-20">
-              <span className="font-body text-sm text-brand-mid-gray">Wissensquelle auswählen oder erstellen</span>
+              <span className="font-body text-sm text-brand-mid-gray">
+                Wissensquelle auswählen oder erstellen
+              </span>
             </div>
           ) : isBuiltIn ? (
             <div className="mx-auto max-w-lg rounded-xl bg-surface p-6 text-center shadow-sm">
-              <h3 className="font-display text-base font-bold text-brand-dark-gray">{selected.name}</h3>
+              <h3 className="font-display text-base font-bold text-brand-dark-gray">
+                {selected.name}
+              </h3>
               <p className="mt-2 font-body text-sm text-brand-gray">
-                Diese integrierte Quelle basiert auf dem Angebotskatalog. Inhalte werden im Werkzeug „Angebotskatalog“ verwaltet.
+                Diese integrierte Quelle basiert auf dem Angebotskatalog.
+                Inhalte werden im Werkzeug „Angebotskatalog“ verwaltet.
               </p>
             </div>
           ) : (
@@ -436,11 +553,18 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
               {/* Source toolbar */}
               <div className="flex items-center justify-between rounded-xl bg-surface px-4 py-3 shadow-sm">
                 <div className="min-w-0">
-                  <EditableCell value={selected.name} onSave={(v) => v && handleUpdateSource(selected.id, "name", v)} />
+                  <EditableCell
+                    value={selected.name}
+                    onSave={(v) =>
+                      v && handleUpdateSource(selected.id, "name", v)
+                    }
+                  />
                   <div className="mt-0.5">
                     <EditableCell
                       value={selected.description}
-                      onSave={(v) => handleUpdateSource(selected.id, "description", v)}
+                      onSave={(v) =>
+                        handleUpdateSource(selected.id, "description", v)
+                      }
                       placeholder="Beschreibung hinzufügen ..."
                     />
                   </div>
@@ -448,19 +572,33 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                 <div className="flex shrink-0 items-center gap-2">
                   {selected.source_type === "collection" && (
                     <>
-                      <input ref={importRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleImport} className="hidden" />
+                      <input
+                        ref={importRef}
+                        type="file"
+                        accept=".csv,.xlsx,.xls"
+                        onChange={handleImport}
+                        className="hidden"
+                      />
                       <button
                         onClick={() => importRef.current?.click()}
                         disabled={busy}
                         className="rounded-lg border border-brand-light-gray-1 px-3 py-1.5 text-sm font-medium text-brand-gray transition-colors hover:bg-brand-light-gray-2 disabled:opacity-50"
                       >
-                        {busy ? "Wird verarbeitet ..." : "CSV/Excel importieren"}
+                        {busy
+                          ? "Wird verarbeitet ..."
+                          : "CSV/Excel importieren"}
                       </button>
                     </>
                   )}
                   {selected.source_type === "files" && (
                     <>
-                      <input ref={uploadRef} type="file" accept=".txt,.md,.markdown,.docx,.pdf,.pptx,.xlsx,.xls,.csv,.html,.htm" onChange={handleUpload} className="hidden" />
+                      <input
+                        ref={uploadRef}
+                        type="file"
+                        accept=".txt,.md,.markdown,.docx,.pdf,.pptx,.xlsx,.xls,.csv,.html,.htm"
+                        onChange={handleUpload}
+                        className="hidden"
+                      />
                       <button
                         onClick={() => uploadRef.current?.click()}
                         disabled={busy}
@@ -471,11 +609,23 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                     </>
                   )}
                   <button
-                    onClick={() => handleUpdateSource(selected.id, "active", !selected.active)}
+                    onClick={() =>
+                      handleUpdateSource(
+                        selected.id,
+                        "active",
+                        !selected.active,
+                      )
+                    }
                     className={`h-5 w-9 rounded-full transition-colors ${selected.active ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
-                    title={selected.active ? "Aktiv – zum Deaktivieren klicken" : "Inaktiv – zum Aktivieren klicken"}
+                    title={
+                      selected.active
+                        ? "Aktiv – zum Deaktivieren klicken"
+                        : "Inaktiv – zum Aktivieren klicken"
+                    }
                   >
-                    <span className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${selected.active ? "translate-x-4" : "translate-x-0.5"}`} />
+                    <span
+                      className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${selected.active ? "translate-x-4" : "translate-x-0.5"}`}
+                    />
                   </button>
                 </div>
               </div>
@@ -506,7 +656,11 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                       Hinzufügen
                     </button>
                     <button
-                      onClick={() => { setAddingRecord(false); setNewTitle(""); setNewBody(""); }}
+                      onClick={() => {
+                        setAddingRecord(false);
+                        setNewTitle("");
+                        setNewBody("");
+                      }}
                       className="rounded-lg border border-brand-light-gray-1 px-4 py-1.5 text-sm text-brand-gray transition-colors hover:bg-brand-light-gray-2"
                     >
                       Abbrechen
@@ -518,8 +672,18 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                   onClick={() => setAddingRecord(true)}
                   className="flex items-center gap-1.5 rounded-lg border border-dashed border-brand-light-gray-1 px-3 py-2 text-sm text-brand-mid-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
                 >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                  <svg
+                    className="h-4 w-4"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M12 4.5v15m7.5-7.5h-15"
+                    />
                   </svg>
                   Eintrag hinzufügen
                 </button>
@@ -528,7 +692,9 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
               {/* Records table */}
               {loadingRecords ? (
                 <div className="py-10 text-center">
-                  <span className="font-body text-sm text-brand-mid-gray">Einträge werden geladen ...</span>
+                  <span className="font-body text-sm text-brand-mid-gray">
+                    Einträge werden geladen ...
+                  </span>
                 </div>
               ) : records.length === 0 ? (
                 <div className="py-10 text-center">
@@ -543,28 +709,58 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                   <table className="w-full min-w-[560px] text-left text-xs">
                     <thead>
                       <tr className="border-b border-brand-light-gray-1 bg-brand-light-gray-2/50">
-                        <th className="px-3 py-2 font-display font-semibold text-brand-gray w-64">Titel</th>
-                        <th className="px-3 py-2 font-display font-semibold text-brand-gray">Inhalt</th>
-                        <th className="px-3 py-2 font-display font-semibold text-brand-gray w-16">Aktiv</th>
+                        <th className="px-3 py-2 font-display font-semibold text-brand-gray w-64">
+                          Titel
+                        </th>
+                        <th className="px-3 py-2 font-display font-semibold text-brand-gray">
+                          Inhalt
+                        </th>
+                        <th className="px-3 py-2 font-display font-semibold text-brand-gray w-16">
+                          Aktiv
+                        </th>
                         <th className="px-3 py-2 w-10"></th>
                       </tr>
                     </thead>
                     <tbody>
                       {records.map((r) => (
-                        <tr key={r.id} className="border-b border-brand-light-gray-1 last:border-0 hover:bg-brand-light-gray-2/30 transition-colors">
+                        <tr
+                          key={r.id}
+                          className="border-b border-brand-light-gray-1 last:border-0 hover:bg-brand-light-gray-2/30 transition-colors"
+                        >
                           <td className="px-3 py-2 align-top font-medium text-brand-dark-gray">
-                            <EditableCell value={r.title} onSave={(v) => handleUpdateRecord(r.id, "title", v)} placeholder="Titel hinzufügen ..." />
+                            <EditableCell
+                              value={r.title}
+                              onSave={(v) =>
+                                handleUpdateRecord(r.id, "title", v)
+                              }
+                              placeholder="Titel hinzufügen ..."
+                            />
                           </td>
                           <td className="px-3 py-2 align-top">
-                            <EditableCell value={r.body} onSave={(v) => handleUpdateRecord(r.id, "body", v)} multiline placeholder="Inhalt hinzufügen ..." />
+                            <EditableCell
+                              value={r.body}
+                              onSave={(v) =>
+                                handleUpdateRecord(r.id, "body", v)
+                              }
+                              multiline
+                              placeholder="Inhalt hinzufügen ..."
+                            />
                           </td>
                           <td className="px-3 py-2 align-top text-center">
                             <button
-                              onClick={() => handleUpdateRecord(r.id, "active", !r.active)}
+                              onClick={() =>
+                                handleUpdateRecord(r.id, "active", !r.active)
+                              }
                               className={`h-5 w-9 rounded-full transition-colors ${r.active ? "bg-brand-teal" : "bg-brand-light-gray-1"}`}
-                              title={r.active ? "Aktiv – zum Deaktivieren klicken" : "Inaktiv – zum Aktivieren klicken"}
+                              title={
+                                r.active
+                                  ? "Aktiv – zum Deaktivieren klicken"
+                                  : "Inaktiv – zum Aktivieren klicken"
+                              }
                             >
-                              <span className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${r.active ? "translate-x-4" : "translate-x-0.5"}`} />
+                              <span
+                                className={`block h-4 w-4 rounded-full bg-slate-50 shadow transition-transform ${r.active ? "translate-x-4" : "translate-x-0.5"}`}
+                              />
                             </button>
                           </td>
                           <td className="px-3 py-2 align-top">
@@ -573,8 +769,18 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
                               className="rounded p-1 text-brand-mid-gray transition-colors hover:bg-red-50 hover:text-red-500"
                               title="Eintrag löschen"
                             >
-                              <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                              <svg
+                                className="h-3.5 w-3.5"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                                strokeWidth={2}
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0"
+                                />
                               </svg>
                             </button>
                           </td>
@@ -592,7 +798,12 @@ export default function KnowledgeManager({ onBack }: KnowledgeManagerProps) {
       {/* Format hint */}
       <div className="border-t border-brand-light-gray-1 bg-surface px-6 py-2">
         <p className="font-body text-[10px] text-brand-mid-gray">
-          Sammlungsimporte erwarten CSV-/Excel-Dateien mit den Spalten „title“ und „body“; weitere Spalten bleiben als Metadaten erhalten. Dateiquellen akzeptieren .txt, .md, .docx, .pdf, .pptx, .xlsx, .csv und .html. Beim Upload werden sie in Markdown umgewandelt; gespeichert wird nur das Markdown. Weise Quellen unter Einstellungen → Assistenten zu.
+          Sammlungsimporte erwarten CSV-/Excel-Dateien mit den Spalten „title“
+          und „body“; weitere Spalten bleiben als Metadaten erhalten.
+          Dateiquellen akzeptieren .txt, .md, .docx, .pdf, .pptx, .xlsx, .csv
+          und .html. Beim Upload werden sie in Markdown umgewandelt; gespeichert
+          wird nur das Markdown. Weise Quellen unter Einstellungen → Assistenten
+          zu.
         </p>
       </div>
     </div>

@@ -5,8 +5,8 @@ import unittest
 from collections import deque
 
 from app.ws.audio_runtime import (
-    MAX_DIARIZATION_BACKLOG_BYTES,
     _PCM_BYTES_PER_SECOND,
+    MAX_DIARIZATION_BACKLOG_BYTES,
     _QueuedAudioFrame,
     _shed_diarization_backlog,
 )
@@ -37,7 +37,9 @@ class DiarizationBacklogTests(unittest.TestCase):
 
     def test_under_the_cap_is_not_an_overflow(self):
         buffered = _fill(self.queue, self.pending, [_frame(1.0) for _ in range(5)])
-        result, overflowed = _shed_diarization_backlog(self.queue, self.pending, buffered)
+        result, overflowed = _shed_diarization_backlog(
+            self.queue, self.pending, buffered
+        )
         self.assertEqual(buffered, result)
         self.assertFalse(overflowed)
         self.assertEqual(5, self.queue.qsize())

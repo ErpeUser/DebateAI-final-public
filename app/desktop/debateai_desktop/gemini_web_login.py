@@ -7,10 +7,9 @@ import os
 import sys
 import threading
 import time
+from collections.abc import Callable, Iterable
 from http.cookies import SimpleCookie
 from pathlib import Path
-from typing import Callable, Iterable
-
 
 REQUIRED_GEMINI_COOKIES = ("__Secure-1PSID", "__Secure-1PSIDTS")
 GEMINI_LOGIN_URL = "https://gemini.google.com/app"
@@ -137,7 +136,9 @@ def run_gemini_web_login(result_path: Path) -> int:
     if not completed.is_set():
         write_login_result(
             result_path,
-            {"error": "Die Gemini-Anmeldung wurde abgebrochen oder blieb unvollstaendig."},
+            {
+                "error": "Die Gemini-Anmeldung wurde abgebrochen oder blieb unvollstaendig."
+            },
         )
         return 1
     return 0

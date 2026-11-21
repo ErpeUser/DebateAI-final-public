@@ -45,13 +45,20 @@ class SubscriptionBridgeTests(unittest.TestCase):
             (root / "cli-proxy-api.exe").write_bytes(b"test executable")
             with (
                 patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen,
-                patch.dict("debateai_desktop.subscription_bridge.os.environ", {}, clear=True) as environment,
+                patch.dict(
+                    "debateai_desktop.subscription_bridge.os.environ", {}, clear=True
+                ) as environment,
             ):
                 bridge = SubscriptionBridge(Path(tmp), Mock())
                 self.assertTrue(bridge.prepare())
                 popen.assert_not_called()
-                self.assertEqual(environment["DEBATEAI_SUBSCRIPTION_BRIDGE_URL"], "http://127.0.0.1:8317/v1")
-                self.assertEqual(environment["SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK"], "true")
+                self.assertEqual(
+                    environment["DEBATEAI_SUBSCRIPTION_BRIDGE_URL"],
+                    "http://127.0.0.1:8317/v1",
+                )
+                self.assertEqual(
+                    environment["SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK"], "true"
+                )
                 self.assertEqual(environment["DEBATEAI_SUBSCRIPTION_MODELS"], "[]")
 
     def test_missing_bridge_is_a_quiet_noop(self):
@@ -59,9 +66,11 @@ class SubscriptionBridgeTests(unittest.TestCase):
             bridge = SubscriptionBridge(Path(tmp), Mock())
             bridge.bundled_root = Path(tmp) / "missing-bundle"
             bridge.bundled_executable = bridge.bundled_root / "cli-proxy-api.exe"
-            with patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen:
-                with patch.object(bridge, "_probe", return_value=None):
-                    self.assertFalse(bridge.start())
+            with (
+                patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen,
+                patch.object(bridge, "_probe", return_value=None),
+            ):
+                self.assertFalse(bridge.start())
             popen.assert_not_called()
 
     def test_start_creates_loopback_config_and_hidden_child_process(self):
@@ -78,7 +87,9 @@ class SubscriptionBridgeTests(unittest.TestCase):
                     "debateai_desktop.subscription_bridge.subprocess.Popen",
                     return_value=process,
                 ) as popen,
-                patch.object(SubscriptionBridge, "_probe", side_effect=[None, ["gpt-test"]]),
+                patch.object(
+                    SubscriptionBridge, "_probe", side_effect=[None, ["gpt-test"]]
+                ),
             ):
                 bridge = SubscriptionBridge(Path(tmp), Mock())
                 self.assertTrue(bridge.start())
@@ -141,14 +152,18 @@ class SubscriptionBridgeTests(unittest.TestCase):
             (root / "cli-proxy-api.exe").write_bytes(b"test executable")
             process = Mock()
             process.poll.return_value = None
-            with patch(
-                "debateai_desktop.subscription_bridge.subprocess.Popen",
-                return_value=process,
-            ), patch.object(
-                SubscriptionBridge,
-                "_probe",
-                side_effect=[None] + ([[]] * 15),
-            ), patch("debateai_desktop.subscription_bridge.time.sleep"):
+            with (
+                patch(
+                    "debateai_desktop.subscription_bridge.subprocess.Popen",
+                    return_value=process,
+                ),
+                patch.object(
+                    SubscriptionBridge,
+                    "_probe",
+                    side_effect=[None] + ([[]] * 15),
+                ),
+                patch("debateai_desktop.subscription_bridge.time.sleep"),
+            ):
                 bridge = SubscriptionBridge(Path(tmp), Mock())
                 bridge.start()
                 bridge.stop()
@@ -162,16 +177,32 @@ class SubscriptionBridgeTests(unittest.TestCase):
             root.mkdir()
             (root / "cli-proxy-api.exe").write_bytes(b"test executable")
             with (
-                patch("debateai_desktop.subscription_bridge.subprocess.Popen", return_value=Mock()),
-                patch.object(SubscriptionBridge, "_probe", side_effect=[None, ["gpt-6-sol"]]),
-                patch.dict("debateai_desktop.subscription_bridge.os.environ", {}, clear=True) as environment,
+                patch(
+                    "debateai_desktop.subscription_bridge.subprocess.Popen",
+                    return_value=Mock(),
+                ),
+                patch.object(
+                    SubscriptionBridge, "_probe", side_effect=[None, ["gpt-6-sol"]]
+                ),
+                patch.dict(
+                    "debateai_desktop.subscription_bridge.os.environ", {}, clear=True
+                ) as environment,
             ):
                 bridge = SubscriptionBridge(Path(tmp), Mock())
                 bridge.start()
-                self.assertEqual(environment["DEBATEAI_SUBSCRIPTION_BRIDGE_URL"], "http://127.0.0.1:8317/v1")
-                self.assertEqual(environment["DEBATEAI_SUBSCRIPTION_BRIDGE_KEY"], bridge.client_key)
-                self.assertEqual(environment.get("SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK"), "true")
-                self.assertEqual(environment["DEBATEAI_SUBSCRIPTION_MODELS"], '["gpt-6-sol"]')
+                self.assertEqual(
+                    environment["DEBATEAI_SUBSCRIPTION_BRIDGE_URL"],
+                    "http://127.0.0.1:8317/v1",
+                )
+                self.assertEqual(
+                    environment["DEBATEAI_SUBSCRIPTION_BRIDGE_KEY"], bridge.client_key
+                )
+                self.assertEqual(
+                    environment.get("SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK"), "true"
+                )
+                self.assertEqual(
+                    environment["DEBATEAI_SUBSCRIPTION_MODELS"], '["gpt-6-sol"]'
+                )
                 self.assertNotIn("DEBATEAI_SUBSCRIPTION_BRIDGE_OAUTH", environment)
 
     def test_start_adopts_an_existing_healthy_bridge_without_spawning(self):
@@ -194,10 +225,14 @@ class SubscriptionBridgeTests(unittest.TestCase):
             root.mkdir()
             (root / "cli-proxy-api.exe").write_bytes(b"test executable")
             bridge = SubscriptionBridge(Path(tmp), Mock())
+
             def cancel_probe():
                 bridge.stop_event.set()
-                return None
-            with patch.object(bridge, "_probe", side_effect=cancel_probe), patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen:
+
+            with (
+                patch.object(bridge, "_probe", side_effect=cancel_probe),
+                patch("debateai_desktop.subscription_bridge.subprocess.Popen") as popen,
+            ):
                 self.assertFalse(bridge.start())
             popen.assert_not_called()
 

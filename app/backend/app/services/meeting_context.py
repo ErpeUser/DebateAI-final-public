@@ -89,15 +89,23 @@ def debate_mode_for_meeting_type(meeting_type: object, default_mode: str) -> str
     return default_mode
 
 
-def build_meeting_context_text(session_or_type: Any = None, meeting_context: str | None = None) -> str:
+def build_meeting_context_text(
+    session_or_type: Any = None, meeting_context: str | None = None
+) -> str:
     if isinstance(session_or_type, str):
         meeting_type = normalize_meeting_type(session_or_type)
         context = meeting_context or ""
     else:
-        meeting_type = normalize_meeting_type(getattr(session_or_type, "meeting_type", DEFAULT_MEETING_TYPE))
+        meeting_type = normalize_meeting_type(
+            getattr(session_or_type, "meeting_type", DEFAULT_MEETING_TYPE)
+        )
         context = meeting_context
         if context is None:
-            context = getattr(session_or_type, "meeting_context", "") or getattr(session_or_type, "notes", "") or ""
+            context = (
+                getattr(session_or_type, "meeting_context", "")
+                or getattr(session_or_type, "notes", "")
+                or ""
+            )
 
     guidance = MEETING_TYPE_GUIDANCE[meeting_type]
     guidance_text = "\n".join(f"- {line}" for line in guidance)
@@ -122,8 +130,7 @@ def ensure_meeting_context_placeholder(prompt_template: str) -> str:
     return (
         "## Meeting Context\n{meeting_context_text}\n\n"
         "This Meeting Context overrides any generic client, sales, seller, or deal-team wording that may appear in the reusable prompt below. "
-        "Adapt analysis to the actual conversation type.\n\n"
-        + prompt_template
+        "Adapt analysis to the actual conversation type.\n\n" + prompt_template
     )
 
 

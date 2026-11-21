@@ -6,8 +6,8 @@ import os
 import posixpath
 import re
 import shutil
-import stat
 import ssl
+import stat
 import subprocess
 import sys
 import tarfile
@@ -16,18 +16,16 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path, PurePosixPath
 
 import certifi
-
 from app.release_notes import APP_VERSION
 from app.services.secrets import data_dir
 from app.services.update_signing import (
     parse_release_signing_keys,
     verify_update_descriptor,
 )
-
 
 CHUNK_SIZE = 1024 * 1024
 MAX_DESCRIPTOR_BYTES = 64 * 1024
@@ -48,6 +46,8 @@ LAUNCHERS = {
 
 def _env(name: str, default: str = "") -> str:
     return os.environ.get(name) or default
+
+
 STATE_FIELDS = {
     "enabled",
     "state",
@@ -97,11 +97,11 @@ def _version(value: str) -> tuple[int, int, int]:
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 def _timestamp(value: str) -> datetime:
-    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    return datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=UTC)
 
 
 def _platform_id() -> str | None:
@@ -116,7 +116,11 @@ def _platform_id() -> str | None:
 
 
 def _update_origin(value: str) -> tuple[str, str, int | None]:
-    if not isinstance(value, str) or re.search(r"[\s\x00-\x1f\x7f\\]", value) or "#" in value:
+    if (
+        not isinstance(value, str)
+        or re.search(r"[\s\x00-\x1f\x7f\\]", value)
+        or "#" in value
+    ):
         raise ValueError("ambiguous update source")
     parsed = urllib.parse.urlsplit(value)
     host = (parsed.hostname or "").lower()
@@ -147,7 +151,9 @@ class _SameOriginUpdateRedirect(urllib.request.HTTPRedirectHandler):
                 raise ValueError("origin changed")
         except ValueError as exc:
             raise InvalidUpdate("update redirect source changed") from exc
-        return super().redirect_request(request, response, code, message, headers, new_url)
+        return super().redirect_request(
+            request, response, code, message, headers, new_url
+        )
 
 
 def _open_update_url(request, *, timeout, context, source_origin):
@@ -176,11 +182,7 @@ class UpdateService:
         apply_disabled: bool | None = None,
         helper_path: Path | str | None = None,
     ):
-        self.enabled = (
-            _env("DEBATEAI_DESKTOP") == "1"
-            if enabled is None
-            else enabled
-        )
+        self.enabled = _env("DEBATEAI_DESKTOP") == "1" if enabled is None else enabled
         self._lock = threading.Lock()
         self._check_done = threading.Event()
         self._check_done.set()
@@ -213,9 +215,12 @@ class UpdateService:
         self._source_origin = _update_origin(
             self.descriptor_url.format(platform_id=self.platform_id)
         )
-        if _update_origin(
-            self.asset_url.format(version="v0.0.0", platform_id=self.platform_id)
-        ) != self._source_origin:
+        if (
+            _update_origin(
+                self.asset_url.format(version="v0.0.0", platform_id=self.platform_id)
+            )
+            != self._source_origin
+        ):
             raise ValueError("update sources must share one origin")
         self.timeout = timeout
         self.apply_disabled = (
@@ -317,12 +322,15 @@ class UpdateService:
             self.descriptor_url.format(platform_id=self.platform_id),
             headers={
                 "Accept": "application/json",
-            "User-Agent": f"DebateAI/{self.current_version}",
+                "User-Agent": f"DebateAI/{self.current_version}",
             },
         )
         context = ssl.create_default_context(cafile=certifi.where())
         with _open_update_url(
-            request, timeout=self.timeout, context=context, source_origin=self._source_origin
+            request,
+            timeout=self.timeout,
+            context=context,
+            source_origin=self._source_origin,
         ) as response:
             final_url = getattr(response, "geturl", lambda: request.full_url)()
             if _update_origin(final_url) != self._source_origin:
@@ -366,7 +374,9 @@ class UpdateService:
         current_time = self._state["highest_seen_published_at"]
         if not current_high or _version(descriptor["version"]) > _version(current_high):
             self._state["highest_seen_version"] = descriptor["version"]
-        if not current_time or _timestamp(descriptor["published_at"]) > _timestamp(current_time):
+        if not current_time or _timestamp(descriptor["published_at"]) > _timestamp(
+            current_time
+        ):
             self._state["highest_seen_published_at"] = descriptor["published_at"]
         if _version(descriptor["version"]) <= _version(self.current_version):
             next_state = "idle"
@@ -393,9 +403,7 @@ class UpdateService:
             self._state["size"],
         ) = available
         self._state["state"] = next_state
-        self._state["downloaded"] = (
-            self._state["size"] if next_state == "ready" else 0
-        )
+        self._state["downloaded"] = self._state["size"] if next_state == "ready" else 0
         self._state["checked_at"] = _utc_now().strftime("%Y-%m-%dT%H:%M:%SZ")
         self._state["error"] = ""
         self._state["blocked_reason"] = ""
@@ -644,9 +652,7 @@ class UpdateService:
         partial = self.partial_path
         try:
             descriptor = self._available_descriptor()
-            start, digest = self._resume_digest(
-                partial, descriptor["asset"]["size"]
-            )
+            start, digest = self._resume_digest(partial, descriptor["asset"]["size"])
             if start == descriptor["asset"]["size"]:
                 self._verify_download(partial, descriptor, digest, start)
                 return
@@ -664,7 +670,9 @@ class UpdateService:
             with self._lock:
                 self._state["state"] = "needs_authorization"
                 self._state["error"] = ""
-                self._state["downloaded"] = partial.stat().st_size if partial.exists() else 0
+                self._state["downloaded"] = (
+                    partial.stat().st_size if partial.exists() else 0
+                )
                 self._save_locked()
         except InvalidUpdate as error:
             if not isinstance(error, AssetNotFound):
@@ -694,16 +702,22 @@ class UpdateService:
         path = PurePosixPath(name.rstrip("/"))
         if (
             not path.parts
-            or path.parts[0] not in {
+            or path.parts[0]
+            not in {
                 ROOT_NAMES[self.platform_id],
             }
             or any(part in {"", ".", ".."} for part in path.parts)
-            or (self.platform_id == "windows-x64" and any(":" in part for part in path.parts))
+            or (
+                self.platform_id == "windows-x64"
+                and any(":" in part for part in path.parts)
+            )
         ):
             raise InvalidUpdate("unsafe archive path")
         return path
 
-    def _safe_link(self, member: PurePosixPath, target: str, *, hard: bool = False) -> None:
+    def _safe_link(
+        self, member: PurePosixPath, target: str, *, hard: bool = False
+    ) -> None:
         if not target or "\\" in target or "\x00" in target:
             raise InvalidUpdate("unsafe archive link")
         link = PurePosixPath(target)
@@ -770,9 +784,7 @@ class UpdateService:
         else:
             expanded = self._zip_size(archive_path)
         installed = self._tree_size(self.install_root)
-        required = math.ceil(
-            (descriptor["asset"]["size"] + expanded + installed) * 1.1
-        )
+        required = math.ceil((descriptor["asset"]["size"] + expanded + installed) * 1.1)
         if shutil.disk_usage(self.install_root.parent)[2] < required:
             raise InvalidUpdate("insufficient update space")
 
@@ -784,7 +796,13 @@ class UpdateService:
                     archive.extractall(self.stage_dir, filter="data")
             elif self.platform_id == "macos-arm64":
                 subprocess.run(
-                    ["/usr/bin/ditto", "-x", "-k", str(archive_path), str(self.stage_dir)],
+                    [
+                        "/usr/bin/ditto",
+                        "-x",
+                        "-k",
+                        str(archive_path),
+                        str(self.stage_dir),
+                    ],
                     check=True,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.DEVNULL,
@@ -797,20 +815,32 @@ class UpdateService:
                     for member in archive.infolist():
                         target = (extraction_root / member.filename).resolve()
                         if os.path.commonpath((str(root), str(target))) != str(root):
-                            raise InvalidUpdate("archive contains a path outside its root")
+                            raise InvalidUpdate(
+                                "archive contains a path outside its root"
+                            )
                         mode = (member.external_attr >> 16) & 0o170000
                         if mode == stat.S_IFLNK:
                             raise InvalidUpdate("archive contains a symbolic link")
                         archive.extract(member, extraction_root)
             children = list(self.stage_dir.iterdir())
-            if len(children) != 1 or children[0].name not in {
-                ROOT_NAMES[self.platform_id],
-            } or not self.active_staged_root.is_dir():
+            if (
+                len(children) != 1
+                or children[0].name
+                not in {
+                    ROOT_NAMES[self.platform_id],
+                }
+                or not self.active_staged_root.is_dir()
+            ):
                 raise InvalidUpdate("archive root mismatch")
         except InvalidUpdate:
             self._remove_stage()
             raise
-        except (zipfile.BadZipFile, tarfile.TarError, subprocess.CalledProcessError, UnicodeError) as error:
+        except (
+            zipfile.BadZipFile,
+            tarfile.TarError,
+            subprocess.CalledProcessError,
+            UnicodeError,
+        ) as error:
             self._remove_stage()
             raise InvalidUpdate("archive extraction failed") from error
         except Exception:
@@ -832,9 +862,13 @@ class UpdateService:
         parent = self.install_root.parent.resolve(strict=True)
         install = self.install_root.resolve(strict=True)
         staged = self.active_staged_root.resolve(strict=True)
-        if install.parent != parent or staged.parent != self.stage_dir.resolve(strict=True):
+        if install.parent != parent or staged.parent != self.stage_dir.resolve(
+            strict=True
+        ):
             raise RuntimeError("The staged update path is invalid.")
-        if os.stat(parent).st_dev != os.stat(staged).st_dev or not os.access(parent, os.W_OK):
+        if os.stat(parent).st_dev != os.stat(staged).st_dev or not os.access(
+            parent, os.W_OK
+        ):
             raise RuntimeError("The install location cannot be updated safely.")
         return parent, install, staged
 
@@ -843,7 +877,12 @@ class UpdateService:
         version = self._state["available_version"]
         backup = parent / f"{self.install_root.name}.backup-{version}"
         failed = parent / f"{self.install_root.name}.failed-{version}"
-        if backup.exists() or failed.exists() or backup.is_symlink() or failed.is_symlink():
+        if (
+            backup.exists()
+            or failed.exists()
+            or backup.is_symlink()
+            or failed.is_symlink()
+        ):
             raise RuntimeError("A previous update needs recovery.")
         launcher = LAUNCHERS[self.platform_id]
         if not (install / Path(launcher)).is_file():

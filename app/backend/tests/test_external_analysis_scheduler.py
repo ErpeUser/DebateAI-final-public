@@ -23,7 +23,9 @@ def context(session_id: str, generation_id: str) -> AnalysisJobContext:
 
 
 class ExternalAnalysisSchedulerTests(unittest.IsolatedAsyncioTestCase):
-    async def test_new_automatic_job_replaces_only_the_waiting_job_for_its_session(self):
+    async def test_new_automatic_job_replaces_only_the_waiting_job_for_its_session(
+        self,
+    ):
         scheduler = ExternalAnalysisScheduler(max_parallel=1)
         blocker_started = asyncio.Event()
         release_blocker = asyncio.Event()

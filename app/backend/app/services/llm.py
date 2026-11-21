@@ -13,18 +13,16 @@ an agent target a local Ollama, LM Studio, vLLM, or LiteLLM server.
 import asyncio
 import json
 import logging
-import os  # noqa: F401 - tests patch module.os for environment isolation
+import os  # noqa: F401 - tests patch the module-level environment dependency
 import re
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 
 import httpx
-from google import genai
-from google.genai import types
-from pydantic import BaseModel
-
 from app.config import MODEL_REGISTRY, settings
+from app.services import chatgpt_web, external_audit
 from app.services.custom_endpoints import build_model_id, is_endpoint_model
+from app.services.identity import env_value
 from app.services.inference_scheduler import InferencePriority, run_local_inference
 from app.services.llm_endpoint import (
     OPENAI_COMPATIBLE_PROVIDER,
@@ -38,9 +36,9 @@ from app.services.pii import egress as pii_egress
 from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
-from app.services import chatgpt_web
-from app.services import external_audit
-from app.services.identity import env_value
+from google import genai
+from google.genai import types
+from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
 
@@ -92,7 +90,9 @@ def _request_timeout(model_id: str) -> float:
     )
 
 
-def _apply_output_budget(payload: dict, model_id: str, budget: int | None = None) -> dict:
+def _apply_output_budget(
+    payload: dict, model_id: str, budget: int | None = None
+) -> dict:
     """Give every provider an explicit completion budget.
 
     This used to exempt hosted providers, on the reasoning that their defaults
@@ -158,6 +158,7 @@ def _audit_route(provider: str, model_id: str) -> str:
             return f"endpoint:{parts[1]}"
     try:
         from app.services.ai_config import provider_route
+
         route_id = str(provider_route(model_id).get("id") or "").strip()
     except Exception:
         route_id = ""
@@ -166,7 +167,9 @@ def _audit_route(provider: str, model_id: str) -> str:
 
 class LLMKeyMissing(ValueError):
     def __init__(self, provider: str):
-        super().__init__(f"No API key configured for {provider}; add one in Admin -> Connections")
+        super().__init__(
+            f"No API key configured for {provider}; add one in Admin -> Connections"
+        )
         self.provider = provider
 
 
@@ -226,11 +229,25 @@ async def _prepare_call(model_id: str, feature: str, source: str = "") -> _CallT
     if not model_id.strip():
         raise LLMModelNotSelected(source)
     provider = provider_for(model_id)
-    if provider != "local" and await is_local_only() and not await allows_local_only(model_id):
+    if (
+        provider != "local"
+        and await is_local_only()
+        and not await allows_local_only(model_id)
+    ):
         raise LocalOnlyModeError(feature, model_id, source)
-    endpoint = await resolve_endpoint(provider, model_id) if is_openai_shaped(provider) else None
-    key = "" if provider == chatgpt_web.PROVIDER else (
-        endpoint.api_key if endpoint and endpoint.api_key is not None else await _resolve_key(provider)
+    endpoint = (
+        await resolve_endpoint(provider, model_id)
+        if is_openai_shaped(provider)
+        else None
+    )
+    key = (
+        ""
+        if provider == chatgpt_web.PROVIDER
+        else (
+            endpoint.api_key
+            if endpoint and endpoint.api_key is not None
+            else await _resolve_key(provider)
+        )
     )
     # The desktop subscription bridge is an already authenticated OpenAI-shaped
     # endpoint. A deliberately absent API key must not make a selected ChatGPT
@@ -244,7 +261,9 @@ async def _prepare_call(model_id: str, feature: str, source: str = "") -> _CallT
         try:
             _bridge_id, endpoint, key = await _subscription_budget_target(model_id)
         except Exception:
-            logger.debug("Configured subscription bridge was unavailable", exc_info=True)
+            logger.debug(
+                "Configured subscription bridge was unavailable", exc_info=True
+            )
     uses_vertex_adc = provider == "google" and settings.GOOGLE_GENAI_USE_VERTEXAI
     # The personal ChatGPT-Web route is authenticated by Oracle's dedicated
     # browser profile, not by an API credential.  Treating the provider like a
@@ -330,27 +349,38 @@ async def _call_google(
         response = await client.aio.models.generate_content(
             model=model_id,
             contents=prompt,
-            config=types.GenerateContentConfig(**config_kwargs) if config_kwargs else None,
+            config=types.GenerateContentConfig(**config_kwargs)
+            if config_kwargs
+            else None,
         )
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="cancelled",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="cancelled",
             provider_route=_audit_route("google", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
         )
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="failed",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="failed",
             provider_route=_audit_route("google", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
             error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=external_audit.current_approval(), status="completed",
+        request_id,
+        approval=external_audit.current_approval(),
+        status="completed",
         provider_route=_audit_route("google", model_id),
-        data_category=_audit_category(source), model_id=model_id,
+        data_category=_audit_category(source),
+        model_id=model_id,
     )
     return response.text or "", getattr(response, "usage_metadata", None)
 
@@ -391,24 +421,34 @@ async def _call_openai(
             data = resp.json()
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="cancelled",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="cancelled",
             provider_route=_audit_route("openai-compatible", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
             target_host=endpoint.base_url,
         )
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="failed",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="failed",
             provider_route=_audit_route("openai-compatible", model_id),
-            data_category=_audit_category(source), model_id=model_id,
-            target_host=endpoint.base_url, error_class=type(exc).__name__,
+            data_category=_audit_category(source),
+            model_id=model_id,
+            target_host=endpoint.base_url,
+            error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=external_audit.current_approval(), status="completed",
+        request_id,
+        approval=external_audit.current_approval(),
+        status="completed",
         provider_route=_audit_route("openai-compatible", model_id),
-        data_category=_audit_category(source), model_id=model_id,
+        data_category=_audit_category(source),
+        model_id=model_id,
         target_host=endpoint.base_url,
     )
     return data["choices"][0]["message"]["content"] or "", data.get("usage")
@@ -452,7 +492,9 @@ async def generate_text(
             provider_route=route,
             approval=False,
             data_category=category,
-            status="blocked" if exc.__class__.__name__ == "PiiEgressBlocked" else "refused",
+            status="blocked"
+            if exc.__class__.__name__ == "PiiEgressBlocked"
+            else "refused",
             model_id=model_id,
             error_class=type(exc).__name__,
         )
@@ -512,8 +554,7 @@ def parse_json_response(raw: str, response_schema: type[BaseModel]):
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-    if raw.endswith("```"):
-        raw = raw[:-3]
+    raw = raw.removesuffix("```")
     raw = raw.strip()
     if not raw:
         return response_schema()
@@ -524,7 +565,7 @@ def parse_json_response(raw: str, response_schema: type[BaseModel]):
         end = raw.rfind("}")
         if start == -1 or end == -1:
             raise
-        data = json.loads(raw[start:end + 1])
+        data = json.loads(raw[start : end + 1])
     return response_schema.model_validate(data)
 
 
@@ -600,9 +641,7 @@ def _google_generation_limits(
     if source == "debate_copilot":
         ceiling = limits.get("max_output_tokens")
         if ceiling:
-            limits["max_output_tokens"] = min(
-                ceiling, settings.DEBATE_LIVE_MAX_TOKENS
-            )
+            limits["max_output_tokens"] = min(ceiling, settings.DEBATE_LIVE_MAX_TOKENS)
         elif settings.DEBATE_LIVE_MAX_TOKENS > 0:
             limits["max_output_tokens"] = settings.DEBATE_LIVE_MAX_TOKENS
     return limits
@@ -668,23 +707,32 @@ async def _google_json(
             )
         except asyncio.CancelledError:
             external_audit.finish_external_request(
-                request_id, approval=external_audit.current_approval(), status="cancelled",
+                request_id,
+                approval=external_audit.current_approval(),
+                status="cancelled",
                 provider_route=_audit_route("google", model_id),
-                data_category=_audit_category(source), model_id=model_id,
+                data_category=_audit_category(source),
+                model_id=model_id,
             )
             raise
         except Exception as exc:
             external_audit.finish_external_request(
-                request_id, approval=external_audit.current_approval(), status="failed",
+                request_id,
+                approval=external_audit.current_approval(),
+                status="failed",
                 provider_route=_audit_route("google", model_id),
-                data_category=_audit_category(source), model_id=model_id,
+                data_category=_audit_category(source),
+                model_id=model_id,
                 error_class=type(exc).__name__,
             )
             raise
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="completed",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="completed",
             provider_route=_audit_route("google", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
         )
         await record_token_usage(
             session_id, source, model_id, getattr(response, "usage_metadata", None)
@@ -902,7 +950,9 @@ def _rejects_generation_limits(exc: httpx.HTTPStatusError) -> bool:
         # models), and a request refused purely over a field name should
         # degrade to one without the optional fields rather than fail a cycle.
         return True
-    return any(term in text for term in ("temperature", "reasoning_effort", "reasoning"))
+    return any(
+        term in text for term in ("temperature", "reasoning_effort", "reasoning")
+    )
 
 
 def _rejects_output_budget(exc: httpx.HTTPStatusError) -> bool:
@@ -955,10 +1005,18 @@ async def _openai_json(
 
     async def post(messages: list[dict], mode: str) -> str:
         payload: dict = {"model": endpoint.model, "messages": messages}
-        accepts_optional = _json_generation_limits_by_base_url.get(endpoint.base_url, True)
+        accepts_optional = _json_generation_limits_by_base_url.get(
+            endpoint.base_url, True
+        )
         if accepts_optional:
-            payload.update(_openai_generation_limits(model_id, effective_reasoning_effort))
-        if accepts_optional and source == "debate_copilot" and _is_self_hosted(model_id):
+            payload.update(
+                _openai_generation_limits(model_id, effective_reasoning_effort)
+            )
+        if (
+            accepts_optional
+            and source == "debate_copilot"
+            and _is_self_hosted(model_id)
+        ):
             payload["temperature"] = 0.2
         response_format = _response_format(mode, response_schema)
         if response_format is not None:
@@ -998,7 +1056,9 @@ async def _openai_json(
                 target_host=endpoint.base_url,
             )
             try:
-                async with httpx.AsyncClient(timeout=_request_timeout(model_id)) as client:
+                async with httpx.AsyncClient(
+                    timeout=_request_timeout(model_id)
+                ) as client:
                     resp = await client.post(
                         f"{endpoint.base_url}/chat/completions",
                         headers=auth_headers(key),
@@ -1008,24 +1068,34 @@ async def _openai_json(
                     data = resp.json()
             except asyncio.CancelledError:
                 external_audit.finish_external_request(
-                    request_id, approval=external_audit.current_approval(), status="cancelled",
+                    request_id,
+                    approval=external_audit.current_approval(),
+                    status="cancelled",
                     provider_route=_audit_route("openai-compatible", model_id),
-                    data_category=_audit_category(source), model_id=model_id,
+                    data_category=_audit_category(source),
+                    model_id=model_id,
                     target_host=endpoint.base_url,
                 )
                 raise
             except Exception as exc:
                 external_audit.finish_external_request(
-                    request_id, approval=external_audit.current_approval(), status="failed",
+                    request_id,
+                    approval=external_audit.current_approval(),
+                    status="failed",
                     provider_route=_audit_route("openai-compatible", model_id),
-                    data_category=_audit_category(source), model_id=model_id,
-                    target_host=endpoint.base_url, error_class=type(exc).__name__,
+                    data_category=_audit_category(source),
+                    model_id=model_id,
+                    target_host=endpoint.base_url,
+                    error_class=type(exc).__name__,
                 )
                 raise
             external_audit.finish_external_request(
-                request_id, approval=external_audit.current_approval(), status="completed",
+                request_id,
+                approval=external_audit.current_approval(),
+                status="completed",
                 provider_route=_audit_route("openai-compatible", model_id),
-                data_category=_audit_category(source), model_id=model_id,
+                data_category=_audit_category(source),
+                model_id=model_id,
                 target_host=endpoint.base_url,
             )
             await record_token_usage(session_id, source, model_id, data.get("usage"))
@@ -1072,30 +1142,42 @@ async def _openai_json(
                         finish_reason = choice.get("finish_reason") or finish_reason
                         content += (choice.get("delta") or {}).get("content") or ""
                         if not partial_sent:
-                            partial = _completed_json_string_field(content, "answer_now")
+                            partial = _completed_json_string_field(
+                                content, "answer_now"
+                            )
                             if partial:
                                 partial_sent = True
                                 await on_partial_json(partial)
         except asyncio.CancelledError:
             external_audit.finish_external_request(
-                request_id, approval=external_audit.current_approval(), status="cancelled",
+                request_id,
+                approval=external_audit.current_approval(),
+                status="cancelled",
                 provider_route=_audit_route("openai-compatible", model_id),
-                data_category=_audit_category(source), model_id=model_id,
+                data_category=_audit_category(source),
+                model_id=model_id,
                 target_host=endpoint.base_url,
             )
             raise
         except Exception as exc:
             external_audit.finish_external_request(
-                request_id, approval=external_audit.current_approval(), status="failed",
+                request_id,
+                approval=external_audit.current_approval(),
+                status="failed",
                 provider_route=_audit_route("openai-compatible", model_id),
-                data_category=_audit_category(source), model_id=model_id,
-                target_host=endpoint.base_url, error_class=type(exc).__name__,
+                data_category=_audit_category(source),
+                model_id=model_id,
+                target_host=endpoint.base_url,
+                error_class=type(exc).__name__,
             )
             raise
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="completed",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="completed",
             provider_route=_audit_route("openai-compatible", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
             target_host=endpoint.base_url,
         )
         await record_token_usage(session_id, source, model_id, usage)
@@ -1146,7 +1228,7 @@ async def _openai_json(
 
     async def call(messages: list[dict]) -> str:
         start = _json_mode_by_base_url.get(endpoint.base_url, _JSON_MODES[0])
-        candidates = _JSON_MODES[_JSON_MODES.index(start):]
+        candidates = _JSON_MODES[_JSON_MODES.index(start) :]
         for mode in candidates:
             try:
                 text = await _post_within_budget(messages, mode)
@@ -1154,12 +1236,16 @@ async def _openai_json(
                 if not _rejects_response_format(exc) or mode == candidates[-1]:
                     raise
                 logger.info(
-                    "%s rejected response_format '%s'; falling back", endpoint.base_url, mode
+                    "%s rejected response_format '%s'; falling back",
+                    endpoint.base_url,
+                    mode,
                 )
                 continue
             if _json_mode_by_base_url.get(endpoint.base_url) != mode:
                 _json_mode_by_base_url[endpoint.base_url] = mode
-                logger.info("Using response_format '%s' for %s", mode, endpoint.base_url)
+                logger.info(
+                    "Using response_format '%s' for %s", mode, endpoint.base_url
+                )
             return text
         raise RuntimeError("unreachable: response_format negotiation exhausted")
 
@@ -1188,11 +1274,14 @@ async def _openai_json(
             response_schema.__name__,
             exc,
         )
-    text = await scheduled_call(preface + [
-        {"role": "user", "content": contract},
-        {"role": "assistant", "content": text},
-        {"role": "user", "content": _STRICT_JSON_REPROMPT},
-    ])
+    text = await scheduled_call(
+        preface
+        + [
+            {"role": "user", "content": contract},
+            {"role": "assistant", "content": text},
+            {"role": "user", "content": _STRICT_JSON_REPROMPT},
+        ]
+    )
     return parse_json_response(text, response_schema)
 
 
@@ -1216,8 +1305,7 @@ async def _ollama_native_debate_json(
     accepts the Pydantic JSON schema directly.
     """
     base_url = endpoint.base_url.rstrip("/")
-    if base_url.endswith("/v1"):
-        base_url = base_url[:-3]
+    base_url = base_url.removesuffix("/v1")
     payload: dict = {
         "model": endpoint.model,
         "messages": [
@@ -1260,7 +1348,9 @@ async def _ollama_native_debate_json(
                 done_reason = data.get("done_reason") or ""
                 usage = data
             else:
-                async with client.stream("POST", f"{base_url}/api/chat", json=payload) as response:
+                async with client.stream(
+                    "POST", f"{base_url}/api/chat", json=payload
+                ) as response:
                     _raise_for_status(response)
                     async for line in response.aiter_lines():
                         if not line.strip():
@@ -1268,7 +1358,9 @@ async def _ollama_native_debate_json(
                         chunk = json.loads(line)
                         content += (chunk.get("message") or {}).get("content") or ""
                         if not partial_sent:
-                            partial = _completed_json_string_field(content, "answer_now")
+                            partial = _completed_json_string_field(
+                                content, "answer_now"
+                            )
                             if partial:
                                 partial_sent = True
                                 await on_partial_json(partial)
@@ -1277,31 +1369,47 @@ async def _ollama_native_debate_json(
                             usage = chunk
     except asyncio.CancelledError:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="cancelled",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="cancelled",
             provider_route=_audit_route("ollama", model_id),
-            data_category=_audit_category(source), model_id=model_id,
+            data_category=_audit_category(source),
+            model_id=model_id,
             target_host=base_url,
         )
         raise
     except Exception as exc:
         external_audit.finish_external_request(
-            request_id, approval=external_audit.current_approval(), status="failed",
+            request_id,
+            approval=external_audit.current_approval(),
+            status="failed",
             provider_route=_audit_route("ollama", model_id),
-            data_category=_audit_category(source), model_id=model_id,
-            target_host=base_url, error_class=type(exc).__name__,
+            data_category=_audit_category(source),
+            model_id=model_id,
+            target_host=base_url,
+            error_class=type(exc).__name__,
         )
         raise
     external_audit.finish_external_request(
-        request_id, approval=external_audit.current_approval(), status="completed",
+        request_id,
+        approval=external_audit.current_approval(),
+        status="completed",
         provider_route=_audit_route("ollama", model_id),
-        data_category=_audit_category(source), model_id=model_id,
+        data_category=_audit_category(source),
+        model_id=model_id,
         target_host=base_url,
     )
-    await record_token_usage(session_id, source, model_id, {
-        "prompt_tokens": usage.get("prompt_eval_count", 0),
-        "completion_tokens": usage.get("eval_count", 0),
-        "total_tokens": usage.get("prompt_eval_count", 0) + usage.get("eval_count", 0),
-    })
+    await record_token_usage(
+        session_id,
+        source,
+        model_id,
+        {
+            "prompt_tokens": usage.get("prompt_eval_count", 0),
+            "completion_tokens": usage.get("eval_count", 0),
+            "total_tokens": usage.get("prompt_eval_count", 0)
+            + usage.get("eval_count", 0),
+        },
+    )
     if done_reason == "length":
         raise LLMReplyTruncated(model_id, source)
     return parse_json_response(content, response_schema)
@@ -1342,8 +1450,12 @@ async def _generate_json_once(
         target = await _prepare_call(model_id, "structured generation", source)
     except Exception as exc:
         external_audit.record_external_request(
-            provider_route=route, approval=False, data_category=category,
-            status="refused", model_id=model_id, error_class=type(exc).__name__,
+            provider_route=route,
+            approval=False,
+            data_category=category,
+            status="refused",
+            model_id=model_id,
+            error_class=type(exc).__name__,
         )
         raise
     # The shield guards both halves. An instruction block is prompt text that
@@ -1351,13 +1463,22 @@ async def _generate_json_once(
     # anything past the egress boundary.
     try:
         prompt, system = await pii_egress.protect_and_guard(
-            prompt, system=system, model_id=model_id, session_id=session_id, source=source
+            prompt,
+            system=system,
+            model_id=model_id,
+            session_id=session_id,
+            source=source,
         )
     except Exception as exc:
         external_audit.record_external_request(
-            provider_route=route, approval=False, data_category=category,
-            status="blocked" if exc.__class__.__name__ == "PiiEgressBlocked" else "refused",
-            model_id=model_id, error_class=type(exc).__name__,
+            provider_route=route,
+            approval=False,
+            data_category=category,
+            status="blocked"
+            if exc.__class__.__name__ == "PiiEgressBlocked"
+            else "refused",
+            model_id=model_id,
+            error_class=type(exc).__name__,
         )
         raise
     hint = schema_hint or _default_schema_hint(response_schema)
@@ -1371,9 +1492,8 @@ async def _generate_json_once(
         )
         return parse_json_response(raw, response_schema)
     if target.endpoint is not None:
-        if (
-            source == "debate_copilot"
-            and model_id.startswith("endpoint:german-debate-ollama:")
+        if source == "debate_copilot" and model_id.startswith(
+            "endpoint:german-debate-ollama:"
         ):
             return await _ollama_native_debate_json(
                 model_id,
@@ -1414,8 +1534,7 @@ async def _generate_json_once(
         )
     except Exception as exc:
         if not (
-            settings.SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK
-            and _is_spend_cap_error(exc)
+            settings.SUBSCRIPTION_BRIDGE_BUDGET_FALLBACK and _is_spend_cap_error(exc)
         ):
             raise
         try:
@@ -1465,7 +1584,8 @@ async def generate_json(
     """
     candidates = [model_id]
     if model_id == chatgpt_web.MODEL_ID and source in _WEB_FIRST_FALLBACK_SOURCES:
-        from app.services.ai_config import deep_analysis_models, reasoning_effort as route_effort
+        from app.services.ai_config import deep_analysis_models
+        from app.services.ai_config import reasoning_effort as route_effort
 
         candidates.extend(deep_analysis_models([]))
     candidates = list(dict.fromkeys(candidate for candidate in candidates if candidate))

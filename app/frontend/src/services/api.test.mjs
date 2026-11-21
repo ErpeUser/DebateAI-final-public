@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
@@ -86,19 +86,35 @@ test("long-running client starts forward abort signals to their POST requests", 
       ok: true,
       status: 200,
       json: async () => ({
-        job_id: "job-1", kind: "audio_import", status: "queued", model_id: null,
-        segments_done: 0, total_segments: 1, entries: 0, progress: 0, filename: "x.wav", error: "",
+        job_id: "job-1",
+        kind: "audio_import",
+        status: "queued",
+        model_id: null,
+        segments_done: 0,
+        total_segments: 1,
+        entries: 0,
+        progress: 0,
+        filename: "x.wav",
+        error: "",
       }),
     };
   };
   try {
-    await importAudio("session-1", new File(["audio"], "x.wav"), controller.signal);
+    await importAudio(
+      "session-1",
+      new File(["audio"], "x.wav"),
+      controller.signal,
+    );
     await retranscribeSession("session-1", "model-1", controller.signal);
     await enhanceInsights("session-1", controller.signal);
   } finally {
     globalThis.fetch = originalFetch;
   }
-  assert.deepEqual(signals, [controller.signal, controller.signal, controller.signal]);
+  assert.deepEqual(signals, [
+    controller.signal,
+    controller.signal,
+    controller.signal,
+  ]);
 });
 
 test("transcription jobs poll by kind until the terminal result", async () => {
@@ -231,7 +247,11 @@ test("transcription status requests carry the caller abort signal", async () => 
   };
 
   try {
-    await getTranscriptionJob("session-1", "retranscription", controller.signal);
+    await getTranscriptionJob(
+      "session-1",
+      "retranscription",
+      controller.signal,
+    );
   } finally {
     globalThis.fetch = originalFetch;
   }
@@ -277,6 +297,10 @@ test("debate settings use GET and a narrow PATCH payload", async () => {
 
   assert.deepEqual(calls, [
     ["/api/debate-settings", "GET", null],
-    ["/api/debate-settings", "PATCH", JSON.stringify({ research_frequency: "often" })],
+    [
+      "/api/debate-settings",
+      "PATCH",
+      JSON.stringify({ research_frequency: "often" }),
+    ],
   ]);
 });

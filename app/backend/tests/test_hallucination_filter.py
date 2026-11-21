@@ -11,7 +11,11 @@ class RepetitionTests(unittest.TestCase):
     def test_a_phrase_said_over_and_over_is_dropped(self):
         self.assertIsNone(filter_transcript_text("Oh, my God. " * 8))
         self.assertIsNone(filter_transcript_text("In " * 40))
-        self.assertIsNone(filter_transcript_text("This is a... A... A... A... A... A... A... A... A... A..."))
+        self.assertIsNone(
+            filter_transcript_text(
+                "This is a... A... A... A... A... A... A... A... A... A..."
+            )
+        )
 
     def test_bracketed_non_words_are_dropped(self):
         self.assertIsNone(filter_transcript_text("[S] [S] [S] [S] [S] [S]"))
@@ -26,16 +30,30 @@ class RepetitionTests(unittest.TestCase):
         self.assertEqual(filter_transcript_text(tokens), tokens)
 
     def test_logs_record_length_not_words(self):
-        with self.assertLogs("app.services.batch_transcriber", level="INFO") as captured:
+        with self.assertLogs(
+            "app.services.batch_transcriber", level="INFO"
+        ) as captured:
             filter_transcript_text("Oh, my God. " * 8)
             filter_transcript_text("hi")
         joined = "\n".join(captured.output)
         self.assertNotIn("God", joined)
         self.assertIn("chars", joined)
+
     def test_meaningful_short_interjections_and_number_corrections_survive(self):
-        for text in ("Nein", "Doch", "Warum", "Nicht", "42", "2,2", "8%", "acht", "fünf"):
+        for text in (
+            "Nein",
+            "Doch",
+            "Warum",
+            "Nicht",
+            "42",
+            "2,2",
+            "8%",
+            "acht",
+            "fünf",
+        ):
             with self.subTest(text=text):
                 self.assertEqual(filter_transcript_text(text), text)
+
 
 if __name__ == "__main__":
     unittest.main()

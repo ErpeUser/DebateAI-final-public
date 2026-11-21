@@ -7,7 +7,10 @@ interface PrivacyModeCardProps {
   onChanged: (config: PrivacyConfig) => void;
 }
 
-export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardProps) {
+export default function PrivacyModeCard({
+  config,
+  onChanged,
+}: PrivacyModeCardProps) {
   const [confirming, setConfirming] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +25,11 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
       setError(null);
     } catch (err) {
       console.error("Failed to update privacy mode", err);
-      setError(err instanceof Error ? err.message : "Datenschutzmodus konnte nicht aktualisiert werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Datenschutzmodus konnte nicht aktualisiert werden.",
+      );
     } finally {
       setSaving(false);
     }
@@ -38,68 +45,103 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
   };
 
   return (
-    <div className={`rounded-xl bg-surface p-5 shadow-sm transition-opacity ${saving ? "opacity-70" : ""} ${enabled ? "ring-1 ring-brand-teal" : ""}`}>
+    <div
+      className={`rounded-xl bg-surface p-5 shadow-sm transition-opacity ${saving ? "opacity-70" : ""} ${enabled ? "ring-1 ring-brand-teal" : ""}`}
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-base font-bold text-brand-dark-gray">Datenschutzmodus</h3>
-            <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
-              enabled
-                ? "border-teal-600 bg-teal-700 text-white dark:border-teal-500 dark:bg-teal-900 dark:text-teal-100"
-                : "border-slate-500 bg-slate-700 text-slate-50"
-            }`}>
+            <h3 className="font-display text-base font-bold text-brand-dark-gray">
+              Datenschutzmodus
+            </h3>
+            <span
+              className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-semibold ${
+                enabled
+                  ? "border-teal-600 bg-teal-700 text-white dark:border-teal-500 dark:bg-teal-900 dark:text-teal-100"
+                  : "border-slate-500 bg-slate-700 text-slate-50"
+              }`}
+            >
               {enabled ? "Nur lokale Verarbeitung" : "Cloud-KI erlaubt"}
             </span>
           </div>
           <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-            Hält Gesprächsaudio und Transkript vollständig auf diesem Gerät. Die Transkription wechselt
-            zu lokalen ONNX-Modellen; Funktionen mit externen API-Aufrufen bleiben deaktiviert, bis
-            der Datenschutzmodus wieder ausgeschaltet wird.
+            Hält Gesprächsaudio und Transkript vollständig auf diesem Gerät. Die
+            Transkription wechselt zu lokalen ONNX-Modellen; Funktionen mit
+            externen API-Aufrufen bleiben deaktiviert, bis der Datenschutzmodus
+            wieder ausgeschaltet wird.
           </p>
         </div>
         <button
           onClick={handleToggle}
           disabled={!config || saving}
           className={`h-6 w-11 shrink-0 rounded-full transition-colors disabled:cursor-not-allowed ${enabled ? "bg-brand-teal" : confirming ? "bg-amber-400" : "bg-brand-light-gray-1"}`}
-          title={enabled ? "Datenschutzmodus ausschalten" : "Datenschutzmodus einschalten"}
+          title={
+            enabled
+              ? "Datenschutzmodus ausschalten"
+              : "Datenschutzmodus einschalten"
+          }
         >
-          <span className={`block h-5 w-5 rounded-full bg-surface shadow transition-transform ${enabled ? "translate-x-5" : confirming ? "translate-x-2.5" : "translate-x-0.5"}`} />
+          <span
+            className={`block h-5 w-5 rounded-full bg-surface shadow transition-transform ${enabled ? "translate-x-5" : confirming ? "translate-x-2.5" : "translate-x-0.5"}`}
+          />
         </button>
       </div>
 
       {enabled && config && (
         <p className="mt-3 rounded border border-brand-teal/30 bg-brand-teal/5 px-3 py-2 font-body text-xs text-brand-dark-gray">
-          Aktiv: Die Transkription läuft mit <span className="font-mono">{config.batch_model_id}</span>.
-          Cloud-KI-Agenten, Live-Untertitel, Analysen, Chat und Dokumentzusammenfassungen sind aus.
-          Beim Ausschalten werden die vorherigen Cloud-Modellwahlen wiederhergestellt.
+          Aktiv: Die Transkription läuft mit{" "}
+          <span className="font-mono">{config.batch_model_id}</span>.
+          Cloud-KI-Agenten, Live-Untertitel, Analysen, Chat und
+          Dokumentzusammenfassungen sind aus. Beim Ausschalten werden die
+          vorherigen Cloud-Modellwahlen wiederhergestellt.
         </p>
       )}
 
       {confirming && !enabled && config && (
         <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-900/50 dark:bg-amber-950/40">
           <p className="mb-3 font-body text-xs font-medium text-amber-900 dark:text-amber-200">
-            Prüfe vor dem Einschalten, was sich ändert. Diese Funktionen werden deaktiviert,
-            weil keine lokale Alternative vorhanden ist:
+            Prüfe vor dem Einschalten, was sich ändert. Diese Funktionen werden
+            deaktiviert, weil keine lokale Alternative vorhanden ist:
           </p>
           <ul className="mb-4 space-y-2">
             {config.impact.disabled.map((item) => (
               <li key={item.feature} className="flex gap-2">
-                <span className="mt-0.5 shrink-0 text-red-500 dark:text-red-400" aria-hidden>✕</span>
+                <span
+                  className="mt-0.5 shrink-0 text-red-500 dark:text-red-400"
+                  aria-hidden
+                >
+                  ✕
+                </span>
                 <div>
-                  <p className="font-body text-xs font-semibold text-brand-dark-gray">{item.feature}</p>
-                  <p className="font-body text-[11px] leading-relaxed text-brand-gray">{item.detail}</p>
+                  <p className="font-body text-xs font-semibold text-brand-dark-gray">
+                    {item.feature}
+                  </p>
+                  <p className="font-body text-[11px] leading-relaxed text-brand-gray">
+                    {item.detail}
+                  </p>
                 </div>
               </li>
             ))}
           </ul>
-          <p className="mb-3 font-body text-xs font-medium text-amber-900 dark:text-amber-200">Diese Funktionen laufen vollständig lokal weiter:</p>
+          <p className="mb-3 font-body text-xs font-medium text-amber-900 dark:text-amber-200">
+            Diese Funktionen laufen vollständig lokal weiter:
+          </p>
           <ul className="mb-4 space-y-2">
             {config.impact.available.map((item) => (
               <li key={item.feature} className="flex gap-2">
-                <span className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden>✓</span>
+                <span
+                  className="mt-0.5 shrink-0 text-emerald-600 dark:text-emerald-400"
+                  aria-hidden
+                >
+                  ✓
+                </span>
                 <div>
-                  <p className="font-body text-xs font-semibold text-brand-dark-gray">{item.feature}</p>
-                  <p className="font-body text-[11px] leading-relaxed text-brand-gray">{item.detail}</p>
+                  <p className="font-body text-xs font-semibold text-brand-dark-gray">
+                    {item.feature}
+                  </p>
+                  <p className="font-body text-[11px] leading-relaxed text-brand-gray">
+                    {item.detail}
+                  </p>
                 </div>
               </li>
             ))}
@@ -124,7 +166,9 @@ export default function PrivacyModeCard({ config, onChanged }: PrivacyModeCardPr
       )}
 
       {error && (
-        <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">{error}</p>
+        <p className="mt-3 rounded border border-red-200 bg-red-50 px-3 py-2 font-body text-xs text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-400">
+          {error}
+        </p>
       )}
     </div>
   );

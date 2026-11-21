@@ -77,17 +77,27 @@ MODEL_PRICING: dict[str, dict | None] = {
     "gemini-3.5-flash-lite": _price(0.30, 2.50, cached_input_per_million=0.03),
     # Not listed on the pricing page as of 2026-09-01; rates unchanged.
     "gemini-3-flash-preview": _price(0.50, 3.00),
-    "gemini-3.1-pro-preview": _price(2.00, 12.00, cached_input_per_million=0.20),  # <=200k-token tier
-    "gemini-3.1-flash-lite": _price(0.25, 1.50, cached_input_per_million=0.025, audio_input_per_million=0.50),
+    "gemini-3.1-pro-preview": _price(
+        2.00, 12.00, cached_input_per_million=0.20
+    ),  # <=200k-token tier
+    "gemini-3.1-flash-lite": _price(
+        0.25, 1.50, cached_input_per_million=0.025, audio_input_per_million=0.50
+    ),
     # Live model: text rates; audio input bills at 3.00/1M and audio output
     # at 12.00/1M. The gateway's input is nearly all audio and it answers in
     # audio, so before these slices were priced its estimate was 4x low.
     "gemini-3.1-flash-live-preview": _price(
         0.75, 4.50, audio_input_per_million=3.00, audio_output_per_million=12.00
     ),
-    "gemini-2.5-flash": _price(0.30, 2.50, cached_input_per_million=0.03, audio_input_per_million=1.00),
-    "gemini-2.5-flash-lite": _price(0.10, 0.40, cached_input_per_million=0.01, audio_input_per_million=0.30),
-    "gemini-2.5-pro": _price(1.25, 10.00, cached_input_per_million=0.125),  # <=200k-token tier
+    "gemini-2.5-flash": _price(
+        0.30, 2.50, cached_input_per_million=0.03, audio_input_per_million=1.00
+    ),
+    "gemini-2.5-flash-lite": _price(
+        0.10, 0.40, cached_input_per_million=0.01, audio_input_per_million=0.30
+    ),
+    "gemini-2.5-pro": _price(
+        1.25, 10.00, cached_input_per_million=0.125
+    ),  # <=200k-token tier
     # --- OpenAI (standard tier) ---
     "gpt-5.6-sol": _price(5.00, 30.00, cached_input_per_million=0.50),
     "gpt-5.6-terra": _price(2.50, 15.00, cached_input_per_million=0.25),

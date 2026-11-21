@@ -1,18 +1,19 @@
 import logging
 import shutil
 import uuid
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from fastapi.concurrency import run_in_threadpool
-from fastapi.responses import FileResponse
-from sqlalchemy import delete, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.database import get_db
-from app.services.pii import shield
-from app.services.secrets import data_dir
-from app.models import AgentConfig, CallSegment, DebateClaimRecord, Document, Session, SessionAgentOverride, Speaker, TokenUsage
+from app.models import (
+    AgentConfig,
+    CallSegment,
+    DebateClaimRecord,
+    Document,
+    Session,
+    SessionAgentOverride,
+    Speaker,
+    TokenUsage,
+)
 from app.schemas import (
     CallSegmentOut,
     EnhanceInsightsOut,
@@ -23,12 +24,15 @@ from app.schemas import (
     SessionUpdate,
     TokenUsageSummaryOut,
 )
+from app.services import transcription_jobs
 from app.services.agents.orchestrator import get_live_orchestrator, live_debate_snapshot
 from app.services.audio_echo import build_echo_cancelled_mix
 from app.services.briefing_synthesis import agent_model_id
 from app.services.gemini_files import delete_uploaded_file
 from app.services.llm import LLMModelNotSelected
 from app.services.meeting_context import normalize_meeting_type
+from app.services.pii import shield
+from app.services.secrets import data_dir
 from app.services.speaker_revalidation import (
     get_latest_revalidation_run,
     get_revalidation_run,
@@ -37,8 +41,12 @@ from app.services.speaker_revalidation import (
     summarize_run,
 )
 from app.services.token_usage import summarize_usage
-from app.services import transcription_jobs
 from app.services.ws_event_stream import forget_session as forget_event_journal
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
+from fastapi.concurrency import run_in_threadpool
+from fastapi.responses import FileResponse
+from sqlalchemy import delete, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -57,16 +65,20 @@ async def create_session(body: SessionCreate, db: AsyncSession = Depends(get_db)
     )
     db.add(session)
     if meeting_type.startswith("debate_"):
-        db.add(Speaker(
-            id=uuid.uuid4(),
-            session_id=session.id,
-            name="Ich",
-            role="Eigene Position",
-            color="#e4e4e7",
-            is_user=True,
-            speaker_type="team",
-        ))
-    await shield.protect_fields(db, session.id, session, ("name", "notes", "meeting_context"))
+        db.add(
+            Speaker(
+                id=uuid.uuid4(),
+                session_id=session.id,
+                name="Ich",
+                role="Eigene Position",
+                color="#e4e4e7",
+                is_user=True,
+                speaker_type="team",
+            )
+        )
+    await shield.protect_fields(
+        db, session.id, session, ("name", "notes", "meeting_context")
+    )
     await db.commit()
     await db.refresh(session)
     return session
@@ -77,7 +89,9 @@ async def list_sessions(
     limit: int = Query(200, ge=1, le=1000),
     db: AsyncSession = Depends(get_db),
 ):
-    result = await db.execute(select(Session).order_by(Session.created_at.desc(), Session.id).limit(limit))
+    result = await db.execute(
+        select(Session).order_by(Session.created_at.desc(), Session.id).limit(limit)
+    )
     return result.scalars().all()
 
 
@@ -95,7 +109,9 @@ async def get_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_db))
 
 
 @router.patch("/{session_id}", response_model=SessionOut)
-async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSession = Depends(get_db)):
+async def update_session(
+    session_id: uuid.UUID, body: SessionUpdate, db: AsyncSession = Depends(get_db)
+):
     session = await db.get(Session, session_id)
     if not session:
         raise HTTPException(404, "Session not found")
@@ -113,12 +129,12 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
                 f"Invalid session state transition: {session.state} -> {body.state}",
             )
         if body.state == "active" and session.state == "pre_call":
-            session.started_at = datetime.now(timezone.utc)
+            session.started_at = datetime.now(UTC)
         elif body.state == "active" and session.state == "completed":
             # Resume a completed session
             session.ended_at = None
         elif body.state == "completed" and session.state == "active":
-            session.ended_at = datetime.now(timezone.utc)
+            session.ended_at = datetime.now(UTC)
         session.state = body.state
     if body.notes is not None:
         session.notes = await shield.protect_text(db, session_id, body.notes)
@@ -126,7 +142,9 @@ async def update_session(session_id: uuid.UUID, body: SessionUpdate, db: AsyncSe
         session.meeting_type = normalize_meeting_type(body.meeting_type)
     protected_context = None
     if body.meeting_context is not None:
-        protected_context = await shield.protect_text(db, session_id, body.meeting_context)
+        protected_context = await shield.protect_text(
+            db, session_id, body.meeting_context
+        )
         session.meeting_context = protected_context
     if "group_id" in body.model_fields_set:
         session.group_id = body.group_id
@@ -163,7 +181,9 @@ async def list_segments(
 async def get_token_usage(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
     if not await db.get(Session, session_id):
         raise HTTPException(404, "Session not found")
-    result = await db.execute(select(TokenUsage).where(TokenUsage.session_id == session_id))
+    result = await db.execute(
+        select(TokenUsage).where(TokenUsage.session_id == session_id)
+    )
     return summarize_usage(result.scalars().all())
 
 
@@ -216,11 +236,8 @@ async def get_segment_audio(
         if mic_path.exists() and system_path.exists():
             try:
                 # Rebuild if the cache predates either source track.
-                stale = (
-                    not cleaned.exists()
-                    or cleaned.stat().st_mtime < max(
-                        mic_path.stat().st_mtime, system_path.stat().st_mtime
-                    )
+                stale = not cleaned.exists() or cleaned.stat().st_mtime < max(
+                    mic_path.stat().st_mtime, system_path.stat().st_mtime
                 )
                 if stale:
                     await run_in_threadpool(
@@ -246,11 +263,19 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     if not session:
         raise HTTPException(404, "Session not found")
     remote_files = list(
-        (await db.execute(
-            select(Document.gemini_file_uri).where(Document.session_id == session_id)
-        )).scalars().all()
+        (
+            await db.execute(
+                select(Document.gemini_file_uri).where(
+                    Document.session_id == session_id
+                )
+            )
+        )
+        .scalars()
+        .all()
     )
-    await db.execute(delete(DebateClaimRecord).where(DebateClaimRecord.session_id == session_id))
+    await db.execute(
+        delete(DebateClaimRecord).where(DebateClaimRecord.session_id == session_id)
+    )
     await db.delete(session)
     await db.commit()
     shield.forget_session(session_id)
@@ -261,7 +286,9 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     try:
         session_audio.relative_to(audio_root)
     except ValueError:
-        logger.error("Refusing to delete audio outside the session root: %s", session_audio)
+        logger.error(
+            "Refusing to delete audio outside the session root: %s", session_audio
+        )
     else:
         await run_in_threadpool(shutil.rmtree, session_audio, True)
     for remote_uri in remote_files:
@@ -279,7 +306,9 @@ async def enhance_insights_after_speaker_changes(
     if not session:
         raise HTTPException(404, "Session not found")
     if session.state != "completed":
-        raise HTTPException(400, "Insight enhancement is available after the session is completed")
+        raise HTTPException(
+            400, "Insight enhancement is available after the session is completed"
+        )
     if not session.speaker_context_dirty:
         return {
             "status": "unchanged",
@@ -330,8 +359,11 @@ async def get_enhance_insights_status(
 
 # --- Per-session agent overrides ---
 
+
 @router.get("/{session_id}/agents", response_model=list[SessionAgentOut])
-async def list_session_agents(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def list_session_agents(
+    session_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+):
     """Get effective agent list for this session (global defaults merged with overrides)."""
     agents_result = await db.execute(
         select(AgentConfig).order_by(AgentConfig.display_order)
@@ -339,7 +371,9 @@ async def list_session_agents(session_id: uuid.UUID, db: AsyncSession = Depends(
     agents = agents_result.scalars().all()
 
     overrides_result = await db.execute(
-        select(SessionAgentOverride).where(SessionAgentOverride.session_id == session_id)
+        select(SessionAgentOverride).where(
+            SessionAgentOverride.session_id == session_id
+        )
     )
     overrides = {o.agent_slug: o.enabled for o in overrides_result.scalars().all()}
 
@@ -347,14 +381,16 @@ async def list_session_agents(session_id: uuid.UUID, db: AsyncSession = Depends(
     for a in agents:
         is_override = a.slug in overrides
         enabled = overrides[a.slug] if is_override else a.enabled
-        result.append(SessionAgentOut(
-            slug=a.slug,
-            name=a.name,
-            description=a.description,
-            agent_type=a.agent_type,
-            enabled=enabled,
-            is_override=is_override,
-        ))
+        result.append(
+            SessionAgentOut(
+                slug=a.slug,
+                name=a.name,
+                description=a.description,
+                agent_type=a.agent_type,
+                enabled=enabled,
+                is_override=is_override,
+            )
+        )
     return result
 
 
@@ -379,18 +415,22 @@ async def set_session_agents(
 
     # Delete existing overrides
     existing = await db.execute(
-        select(SessionAgentOverride).where(SessionAgentOverride.session_id == session_id)
+        select(SessionAgentOverride).where(
+            SessionAgentOverride.session_id == session_id
+        )
     )
     for o in existing.scalars().all():
         await db.delete(o)
 
     # Insert new overrides
     for ov in overrides:
-        db.add(SessionAgentOverride(
-            session_id=session_id,
-            agent_slug=ov.agent_slug,
-            enabled=ov.enabled,
-        ))
+        db.add(
+            SessionAgentOverride(
+                session_id=session_id,
+                agent_slug=ov.agent_slug,
+                enabled=ov.enabled,
+            )
+        )
 
     await db.commit()
 

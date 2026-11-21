@@ -1,33 +1,40 @@
 import json
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import selectinload
-
-from app.services.llm import generate_text
 from app.database import async_session
 from app.models import Question, Session, Speaker, TranscriptEntry
 from app.services.agents import prompt_layout
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.speaker_context import (
-    speaker_to_dict as _speaker_dict,
     build_speaker_aliases,
     format_speakers_list,
     format_transcript_segment,
     speaker_display_name,
 )
+from app.services.agents.speaker_context import (
+    speaker_to_dict as _speaker_dict,
+)
 from app.services.briefing_synthesis import agent_model_id
 from app.services.insight_refiner import _apply_operations_in_db
+from app.services.llm import generate_text
 from app.services.meeting_context import build_meeting_context_text
 from app.services.speaker_name_rewriter import (
     build_speaker_label_replacements,
     rewrite_question_speaker_labels,
 )
-from app.services.agents.prompt_resources import load_prompt_resource
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
-CONTEXT_CHANGE_FIELDS = {"name", "display_name", "display_name_enabled", "speaker_type", "is_user"}
+CONTEXT_CHANGE_FIELDS = {
+    "name",
+    "display_name",
+    "display_name_enabled",
+    "speaker_type",
+    "is_user",
+}
 
 # Mirrors ASK_ITEM_TYPE in app.routers.ask (ALP-178). Redeclared here rather
 # than imported to avoid a services -> routers dependency for one string.
@@ -87,14 +94,18 @@ def _value(source: Any, field: str) -> Any:
     return getattr(source, field, None)
 
 
-def speaker_update_changes_enhancement_context(speaker: Any, updates: dict[str, Any]) -> bool:
+def speaker_update_changes_enhancement_context(
+    speaker: Any, updates: dict[str, Any]
+) -> bool:
     for field in CONTEXT_CHANGE_FIELDS:
         if field in updates and updates[field] != _value(speaker, field):
             return True
     return False
 
 
-async def mark_speaker_context_dirty_if_completed(db: AsyncSession, session_id: uuid.UUID) -> bool:
+async def mark_speaker_context_dirty_if_completed(
+    db: AsyncSession, session_id: uuid.UUID
+) -> bool:
     session = await db.get(Session, session_id)
     if not session or session.state != "completed":
         return False
@@ -121,19 +132,24 @@ def build_enhancement_prompt(
     aliases = build_speaker_aliases(speakers)
     speakers_text = format_speakers_list(speakers, aliases)
     insights_json = json.dumps(insights, indent=2)
-    transcript_text = "\n".join(
-        format_transcript_segment(
-            line.get("text", ""),
-            line.get("speaker_name"),
-            speaker_id=line.get("speaker_id"),
-            speaker_type=line.get("speaker_type"),
-            alias=aliases.get(str(line.get("speaker_id") or "")),
+    transcript_text = (
+        "\n".join(
+            format_transcript_segment(
+                line.get("text", ""),
+                line.get("speaker_name"),
+                speaker_id=line.get("speaker_id"),
+                speaker_type=line.get("speaker_type"),
+                alias=aliases.get(str(line.get("speaker_id") or "")),
+            )
+            for line in transcript_lines
         )
-        for line in transcript_lines
-    ) or "(No transcript)"
+        or "(No transcript)"
+    )
 
     return prompt_layout.format_layers(
-        load_prompt_resource("speaker_context_enhancement", ENHANCEMENT_PROMPT_TEMPLATE),
+        load_prompt_resource(
+            "speaker_context_enhancement", ENHANCEMENT_PROMPT_TEMPLATE
+        ),
         meeting_context_text=meeting_context_text or build_meeting_context_text(),
         speakers_text=speakers_text,
         insights_json=insights_json,
@@ -162,9 +178,13 @@ async def run_speaker_context_batch(
             raise ValueError("Session not found")
 
         speakers_result = await db.execute(
-            select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+            select(Speaker)
+            .where(Speaker.session_id == session_id)
+            .order_by(Speaker.created_at)
         )
-        speakers = [_speaker_dict(speaker) for speaker in speakers_result.scalars().all()]
+        speakers = [
+            _speaker_dict(speaker) for speaker in speakers_result.scalars().all()
+        ]
         questions_result = await db.execute(
             select(Question)
             .where(
@@ -242,17 +262,22 @@ async def run_speaker_context_batch(
         if rewrite_question_speaker_labels(
             question,
             replacements,
-            now=datetime.now(timezone.utc),
+            now=datetime.now(UTC),
             enhanced=True,
         ):
             changed_ids.add(question_id)
         question.speaker_mapping_revision_id = mapping_revision_id
 
-    enhanced_ids = changed_ids | created_ids | {
-        str(operation.get("id") or operation.get("keep_id"))
-        for operation in applied
-        if operation.get("applied") and (operation.get("id") or operation.get("keep_id"))
-    }
+    enhanced_ids = (
+        changed_ids
+        | created_ids
+        | {
+            str(operation.get("id") or operation.get("keep_id"))
+            for operation in applied
+            if operation.get("applied")
+            and (operation.get("id") or operation.get("keep_id"))
+        }
+    )
     return {
         "processed_entries": len(questions),
         "applied_operations": len(applied) + len(changed_ids),
@@ -300,8 +325,7 @@ def _parse_ops(raw: str) -> list[dict]:
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-    if raw.endswith("```"):
-        raw = raw[:-3]
+    raw = raw.removesuffix("```")
     raw = raw.strip()
     if not raw or raw == "[]":
         return []
@@ -313,7 +337,7 @@ def _parse_ops(raw: str) -> list[dict]:
         if start == -1 or end == -1:
             return []
         try:
-            parsed = json.loads(raw[start:end + 1])
+            parsed = json.loads(raw[start : end + 1])
         except json.JSONDecodeError:
             return []
     return parsed if isinstance(parsed, list) else []

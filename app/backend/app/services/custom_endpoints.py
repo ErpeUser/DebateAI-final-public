@@ -18,17 +18,16 @@ import json
 import logging
 import re
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from urllib.parse import urlparse
 
 import httpx
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import CustomEndpoint
 from app.services.privacy_state import get_local_only
 from app.services.redaction import redact_text
 from app.services.secrets import decrypt_value, encrypt_value
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -98,7 +97,9 @@ def validate_base_url(raw: str) -> str:
         raise EndpointError("Base URL must start with http:// or https://")
     parsed = urlparse(url)
     if not parsed.netloc or parsed.username or parsed.password:
-        raise EndpointError("Base URL must include a host and must not contain URL credentials")
+        raise EndpointError(
+            "Base URL must include a host and must not contain URL credentials"
+        )
     if parsed.query or parsed.fragment:
         raise EndpointError("Base URL must not contain query parameters or fragments")
     return url
@@ -173,7 +174,9 @@ def normalize_models(raw: list | None) -> list[dict]:
         if not wire or wire in seen:
             continue
         seen.add(wire)
-        normalized.append({"id": wire, "label": str(item.get("label") or "").strip() or wire})
+        normalized.append(
+            {"id": wire, "label": str(item.get("label") or "").strip() or wire}
+        )
     return normalized
 
 
@@ -207,7 +210,9 @@ def to_dict(endpoint: CustomEndpoint) -> dict:
         "on_prem": is_on_prem(endpoint.base_url),
         "last_status": endpoint.last_status,
         "last_error": endpoint.last_error,
-        "last_checked_at": endpoint.last_checked_at.isoformat() if endpoint.last_checked_at else None,
+        "last_checked_at": endpoint.last_checked_at.isoformat()
+        if endpoint.last_checked_at
+        else None,
     }
 
 
@@ -225,7 +230,7 @@ async def list_endpoints(db: AsyncSession) -> list[CustomEndpoint]:
 
 def _remember_slug(slug: str) -> None:
     """Remembering a model slug must never alter the secret redaction set."""
-    return None
+    return
 
 
 async def get_endpoint(db: AsyncSession, endpoint_id: str) -> CustomEndpoint | None:
@@ -271,11 +276,13 @@ async def create_endpoint(
         models=entries,
         enabled=enabled,
         display_order=len(existing),
-        updated_at=datetime.now(timezone.utc),
+        updated_at=datetime.now(UTC),
     )
     db.add(endpoint)
     await db.flush()
-    logger.info("Added custom endpoint %s (%s) with %d model(s)", slug, url, len(entries))
+    logger.info(
+        "Added custom endpoint %s (%s) with %d model(s)", slug, url, len(entries)
+    )
     return endpoint
 
 
@@ -330,24 +337,26 @@ async def update_endpoint(
         endpoint.models = entries
     if enabled is not None:
         endpoint.enabled = enabled
-    endpoint.updated_at = datetime.now(timezone.utc)
+    endpoint.updated_at = datetime.now(UTC)
     await db.flush()
     return endpoint
 
 
 async def delete_endpoint(db: AsyncSession, endpoint: CustomEndpoint) -> None:
-    endpoint.deleted_at = datetime.now(timezone.utc)
+    endpoint.deleted_at = datetime.now(UTC)
     endpoint.api_key = ""
     await db.flush()
     logger.info("Retired custom endpoint %s", endpoint.id)
 
 
-async def record_probe(db: AsyncSession, endpoint: CustomEndpoint, ok: bool, message: str) -> None:
+async def record_probe(
+    db: AsyncSession, endpoint: CustomEndpoint, ok: bool, message: str
+) -> None:
     endpoint.last_status = "ok" if ok else "error"
     # last_error is returned by GET /api/endpoints, so it is scrubbed on the
     # way in rather than trusting every message source.
     endpoint.last_error = "" if ok else redact_text(message)[:500]
-    endpoint.last_checked_at = datetime.now(timezone.utc)
+    endpoint.last_checked_at = datetime.now(UTC)
     await db.flush()
 
 
@@ -360,7 +369,9 @@ def auth_headers(api_key: str) -> dict:
     return {"Authorization": f"Bearer {api_key}"} if api_key else {}
 
 
-async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tuple[bool, str, list[str]]:
+async def probe(
+    base_url: str, api_key: str = "", timeout: float = 10.0
+) -> tuple[bool, str, list[str]]:
     """GET {base_url}/models. Returns (reachable, message, served model names)."""
     try:
         url = validate_base_url(base_url)
@@ -374,7 +385,9 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
             limits=limits,
             follow_redirects=False,
         ) as client:
-            stream = client.stream("GET", f"{url}/models", headers=auth_headers(api_key))
+            stream = client.stream(
+                "GET", f"{url}/models", headers=auth_headers(api_key)
+            )
             # A few lightweight test doubles expose stream() as an async
             # factory, while httpx returns an async context manager directly.
             if hasattr(stream, "__await__"):
@@ -393,8 +406,12 @@ async def probe(base_url: str, api_key: str = "", timeout: float = 10.0) -> tupl
     except httpx.HTTPStatusError as exc:
         return False, f"Server returned HTTP {exc.response.status_code}", []
     except httpx.ConnectError:
-        return False, f"Could not connect to {redact_text(url)}. Is the server running and reachable?", []
-    except Exception as exc:  # noqa: BLE001 - surfaced to the operator, minus any credential
+        return (
+            False,
+            f"Could not connect to {redact_text(url)}. Is the server running and reachable?",
+            [],
+        )
+    except Exception as exc:
         return False, redact_text(str(exc))[:300], []
     raw_models = payload.get("data") if isinstance(payload, dict) else []
     if not isinstance(raw_models, list) or len(raw_models) > 64:
@@ -422,7 +439,8 @@ def _registry_entry(
         "name": label or wire,
         "provider": endpoint_name,
         "description": (
-            f"{wire} served by {endpoint_name} at {base_url}" + (" (on-prem)" if on_prem else "")
+            f"{wire} served by {endpoint_name} at {base_url}"
+            + (" (on-prem)" if on_prem else "")
         ),
         "tier": "stable",
         "requires_key": None,
@@ -445,7 +463,11 @@ async def endpoint_models(db: AsyncSession) -> list[dict]:
         for model in normalize_models(endpoint.models):
             entries.append(
                 _registry_entry(
-                    endpoint.id, endpoint.name, endpoint.base_url, model["id"], model.get("label")
+                    endpoint.id,
+                    endpoint.name,
+                    endpoint.base_url,
+                    model["id"],
+                    model.get("label"),
                 )
             )
     return entries
@@ -468,10 +490,14 @@ async def endpoint_model_entry(db: AsyncSession, model_id: str) -> dict | None:
     endpoint = await db.get(CustomEndpoint, endpoint_id)
     if endpoint is None or endpoint.deleted_at is not None or not endpoint.enabled:
         return None
-    model = next((m for m in normalize_models(endpoint.models) if m["id"] == wire), None)
+    model = next(
+        (m for m in normalize_models(endpoint.models) if m["id"] == wire), None
+    )
     if model is None:
         return None
-    return _registry_entry(endpoint.id, endpoint.name, endpoint.base_url, wire, model["label"])
+    return _registry_entry(
+        endpoint.id, endpoint.name, endpoint.base_url, wire, model["label"]
+    )
 
 
 async def resolve_target(db: AsyncSession, model_id: str) -> EndpointTarget | None:

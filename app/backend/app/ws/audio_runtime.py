@@ -7,18 +7,17 @@ from dataclasses import dataclass
 from time import monotonic
 from typing import Any
 
-from fastapi import WebSocket
-
 from app.services.agents.orchestrator import AgentOrchestrator
 from app.services.diarizer_factory import create_diarizer
 from app.services.diarizer_runtime import get_diarizer_runtime_config
 from app.services.local_transcriber import create_transcriber
+from app.services.native_inference import run_native_until_complete
 from app.services.privacy import get_local_only, is_local_model
 from app.services.speaker_assignment import LOCAL_VOICE_PROFILE_ID
 from app.services.speaker_diarizer import SpeakerRegistry
 from app.services.transcription_readiness import get_transcription_readiness
 from app.services.transcription_runtime import get_transcription_runtime_config
-from app.services.native_inference import run_native_until_complete
+from fastapi import WebSocket
 
 logger = logging.getLogger("app.ws.audio_handler")
 
@@ -232,7 +231,9 @@ def _queued_speaker_auto_id(
 # 30 s of dual-track PCM is ~2 MB: enough to absorb a model warm-up or a GC
 # pause, far below what exhausts the process.
 MAX_DIARIZATION_BACKLOG_SECONDS = 30.0
-MAX_DIARIZATION_BACKLOG_BYTES = int(MAX_DIARIZATION_BACKLOG_SECONDS * 2 * _PCM_BYTES_PER_SECOND)
+MAX_DIARIZATION_BACKLOG_BYTES = int(
+    MAX_DIARIZATION_BACKLOG_SECONDS * 2 * _PCM_BYTES_PER_SECOND
+)
 # 100 ms PCM frames are the normal browser/native unit.  This count is a
 # second admission guard in addition to the byte budget, so a producer cannot
 # create an unbounded number of tiny queue entries.
@@ -298,7 +299,9 @@ async def _run_diarization_worker(
                 continue
             if on_audio_chunk is not None:
                 await on_audio_chunk(item)
-            segments = await run_native_until_complete(diarizer.feed_audio, item.pcm_bytes)
+            segments = await run_native_until_complete(
+                diarizer.feed_audio, item.pcm_bytes
+            )
             for segment in segments:
                 await on_segment(item, segment)
             item_age = max(0.0, monotonic() - item.enqueued_at)

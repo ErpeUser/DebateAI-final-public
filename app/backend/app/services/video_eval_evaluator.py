@@ -10,16 +10,39 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from difflib import SequenceMatcher
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 
 _WORD_RE = re.compile(r"[\wäöüß]+", re.IGNORECASE)
 _STOPWORDS = {
-    "der", "die", "das", "ein", "eine", "einer", "einem", "einen",
-    "und", "oder", "ist", "sind", "war", "wird", "zu", "von", "für",
-    "mit", "auf", "im", "in", "an", "als", "auch", "nicht",
+    "der",
+    "die",
+    "das",
+    "ein",
+    "eine",
+    "einer",
+    "einem",
+    "einen",
+    "und",
+    "oder",
+    "ist",
+    "sind",
+    "war",
+    "wird",
+    "zu",
+    "von",
+    "für",
+    "mit",
+    "auf",
+    "im",
+    "in",
+    "an",
+    "als",
+    "auch",
+    "nicht",
 }
 
 
@@ -47,7 +70,11 @@ def _normalized_claim(value: str) -> str:
 
 
 def _claim_family(value: str) -> str:
-    tokens = [token for token in _WORD_RE.findall(str(value or "").casefold()) if token not in _STOPWORDS]
+    tokens = [
+        token
+        for token in _WORD_RE.findall(str(value or "").casefold())
+        if token not in _STOPWORDS
+    ]
     # Keep order because the same words in a negated sentence are not the same
     # claim. The digest makes the family identifier stable and compact.
     normalized = " ".join(tokens)[:800]
@@ -77,15 +104,19 @@ def load_video_artifacts(paths: Iterable[str | Path]) -> list[EvalCaseRecord]:
             if not case_id or not claim:
                 continue
             candidates = tuple(
-                str(value) for value in (row.get("source_candidates") or []) if str(value)
+                str(value)
+                for value in (row.get("source_candidates") or [])
+                if str(value)
             )
-            records.append(EvalCaseRecord(
-                case_id=case_id,
-                video_id=video_id,
-                claim=claim,
-                claim_family=_claim_family(claim),
-                source_candidates=candidates,
-            ))
+            records.append(
+                EvalCaseRecord(
+                    case_id=case_id,
+                    video_id=video_id,
+                    claim=claim,
+                    claim_family=_claim_family(claim),
+                    source_candidates=candidates,
+                )
+            )
     return records
 
 
@@ -136,14 +167,16 @@ def build_split_manifest(
     """Assign connected video/claim groups to train, development, and test."""
     rows = list(records)
     if not rows:
-        return EvaluationManifest(seed=seed, splits={"train": [], "development": [], "test": []})
+        return EvaluationManifest(
+            seed=seed, splits={"train": [], "development": [], "test": []}
+        )
     if len(ratios) != 3 or any(value <= 0 for value in ratios):
         raise ValueError("ratios must contain three positive values")
     groups = _connected_groups(rows)
     ordered = sorted(
         groups,
         key=lambda group: hashlib.sha256(
-            f"{seed}:{group[0].video_id}:{group[0].claim_family}".encode("utf-8")
+            f"{seed}:{group[0].video_id}:{group[0].claim_family}".encode()
         ).hexdigest(),
     )
     total = sum(len(group) for group in ordered)
@@ -161,13 +194,15 @@ def build_split_manifest(
             ),
         )
         for record in group:
-            splits[names[index]].append({
-                "case_id": record.case_id,
-                "video_id": record.video_id,
-                "claim": record.claim,
-                "claim_family": record.claim_family,
-                "source_candidates": list(record.source_candidates),
-            })
+            splits[names[index]].append(
+                {
+                    "case_id": record.case_id,
+                    "video_id": record.video_id,
+                    "claim": record.claim,
+                    "claim_family": record.claim_family,
+                    "source_candidates": list(record.source_candidates),
+                }
+            )
         counts[index] += len(group)
 
     manifest = EvaluationManifest(seed=seed, splits=splits)
@@ -183,9 +218,15 @@ def validate_no_leakage(manifest: EvaluationManifest) -> dict[str, Any]:
     for split, rows in manifest.splits.items():
         for row in rows:
             video_splits.setdefault(str(row.get("video_id") or ""), set()).add(split)
-            family_splits.setdefault(str(row.get("claim_family") or ""), set()).add(split)
-    video_leaks = {key: sorted(value) for key, value in video_splits.items() if len(value) > 1}
-    family_leaks = {key: sorted(value) for key, value in family_splits.items() if len(value) > 1}
+            family_splits.setdefault(str(row.get("claim_family") or ""), set()).add(
+                split
+            )
+    video_leaks = {
+        key: sorted(value) for key, value in video_splits.items() if len(value) > 1
+    }
+    family_leaks = {
+        key: sorted(value) for key, value in family_splits.items() if len(value) > 1
+    }
     return {
         "passed": not video_leaks and not family_leaks,
         "video_leaks": video_leaks,
@@ -205,31 +246,33 @@ def build_blind_pairs(
         case_id = str(row.get("case_id") or "")
         video_id = str(row.get("video_id") or "")
         pair_id = hashlib.sha256(
-            f"{manifest.seed}:{video_id}:{case_id}:{baseline_label}:{candidate_label}".encode("utf-8")
+            f"{manifest.seed}:{video_id}:{case_id}:{baseline_label}:{candidate_label}".encode()
         ).hexdigest()[:24]
-        pairs.append({
-            "pair_id": pair_id,
-            "case_id": case_id,
-            "video_id": video_id,
-            "claim_family": row.get("claim_family", ""),
-            "left_label": "A",
-            "right_label": "B",
-            "baseline_label": baseline_label,
-            "candidate_label": candidate_label,
-            "blind": True,
-            "revealed": False,
-            "decision": "",
-            "criteria": {
-                "directness": None,
-                "example_or_analogy": None,
-                "counter_question": None,
-                "rebuttal_quality": None,
-                "claim_accuracy": None,
-                "source_binding": None,
-                "speakability": None,
-                "latency_ms": None,
-            },
-        })
+        pairs.append(
+            {
+                "pair_id": pair_id,
+                "case_id": case_id,
+                "video_id": video_id,
+                "claim_family": row.get("claim_family", ""),
+                "left_label": "A",
+                "right_label": "B",
+                "baseline_label": baseline_label,
+                "candidate_label": candidate_label,
+                "blind": True,
+                "revealed": False,
+                "decision": "",
+                "criteria": {
+                    "directness": None,
+                    "example_or_analogy": None,
+                    "counter_question": None,
+                    "rebuttal_quality": None,
+                    "claim_accuracy": None,
+                    "source_binding": None,
+                    "speakability": None,
+                    "latency_ms": None,
+                },
+            }
+        )
     return pairs
 
 

@@ -1,9 +1,8 @@
 import importlib.util
 import tempfile
 import unittest
-from unittest.mock import patch
 from pathlib import Path
-
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -55,7 +54,9 @@ class IdentityTests(unittest.TestCase):
             destination = base / "DebateAI"
             destination.mkdir()
             (destination / "current").write_text("current")
-            self.assertEqual(module.resolve_data_root(base=base, environment={}), destination)
+            self.assertEqual(
+                module.resolve_data_root(base=base, environment={}), destination
+            )
             self.assertEqual((destination / "current").read_text(), "current")
             self.assertFalse((destination / "old").exists())
 
@@ -68,7 +69,9 @@ class IdentityTests(unittest.TestCase):
             (legacy / "master.key").write_bytes(b"opaque-fixture")
             destination = base / "DebateAI"
             destination.mkdir()
-            self.assertEqual(module.resolve_data_root(base=base, environment={}), destination)
+            self.assertEqual(
+                module.resolve_data_root(base=base, environment={}), destination
+            )
             self.assertFalse((destination / "master.key").exists())
             self.assertEqual((legacy / "master.key").read_bytes(), b"opaque-fixture")
 
@@ -108,8 +111,13 @@ class IdentityTests(unittest.TestCase):
             legacy = base / "Backchannel"
             legacy.mkdir()
             (legacy / "state").write_text("saved")
-            with patch("shutil.copytree", side_effect=AssertionError("implicit migration")):
-                self.assertEqual(module.resolve_data_root(base=base, environment={}), base / "DebateAI")
+            with patch(
+                "shutil.copytree", side_effect=AssertionError("implicit migration")
+            ):
+                self.assertEqual(
+                    module.resolve_data_root(base=base, environment={}),
+                    base / "DebateAI",
+                )
             self.assertFalse((base / "DebateAI").exists())
             self.assertEqual((legacy / "state").read_text(), "saved")
 
@@ -118,8 +126,13 @@ class IdentityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             base = Path(tmp)
             (base / "Backchannel").mkdir()
-            with patch.object(Path, "iterdir", side_effect=PermissionError("synthetic read-only")):
-                self.assertEqual(module.resolve_data_root(base=base, environment={}), base / "DebateAI")
+            with patch.object(
+                Path, "iterdir", side_effect=PermissionError("synthetic read-only")
+            ):
+                self.assertEqual(
+                    module.resolve_data_root(base=base, environment={}),
+                    base / "DebateAI",
+                )
 
 
 if __name__ == "__main__":

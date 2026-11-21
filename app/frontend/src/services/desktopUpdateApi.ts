@@ -8,18 +8,18 @@ export const getDesktopUpdate = () => request<DesktopUpdateStatus>("/updates");
 
 export async function getDesktopInstanceToken(): Promise<string> {
   const response = await fetch(`${BASE}/health`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
+  if (!response.ok)
+    throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   const body: unknown = await response.json();
   if (
-    typeof body !== "object"
-    || body === null
-    || Object.keys(body).length !== 1
-    || (body as { status?: unknown }).status !== "ok"
+    typeof body !== "object" ||
+    body === null ||
+    Object.keys(body).length !== 1 ||
+    (body as { status?: unknown }).status !== "ok"
   ) {
     throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
-  const token = response.headers.get(INSTANCE_HEADER)
-    ?? "";
+  const token = response.headers.get(INSTANCE_HEADER) ?? "";
   if (!/^[A-Za-z0-9_-]{43}$/.test(token)) {
     throw new Error("Die Desktop-Berechtigung ist nicht verfügbar.");
   }
@@ -31,14 +31,15 @@ const mutation = (
   method: "POST" | "DELETE",
   token: string,
   body?: unknown,
-) => request<DesktopUpdateStatus>(path, {
-  method,
-  headers: {
-    "Content-Type": "application/json",
-    [INSTANCE_HEADER]: token,
-  },
-  body: body === undefined ? undefined : JSON.stringify(body),
-});
+) =>
+  request<DesktopUpdateStatus>(path, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      [INSTANCE_HEADER]: token,
+    },
+    body: body === undefined ? undefined : JSON.stringify(body),
+  });
 
 export const checkDesktopUpdate = (token: string) =>
   mutation("/updates/check", "POST", token);

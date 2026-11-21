@@ -23,7 +23,11 @@ function SignalHistoryList({ items }: { items: SignalHistoryItem[] }) {
   );
 }
 
-export default function SignalHistory({ sessionId, count, heading }: SignalHistoryProps) {
+export default function SignalHistory({
+  sessionId,
+  count,
+  heading,
+}: SignalHistoryProps) {
   const [open, setOpen] = useState(false);
   const [items, setItems] = useState<SignalHistoryItem[] | null>(null);
   const [loading, setLoading] = useState(false);
@@ -40,7 +44,11 @@ export default function SignalHistory({ sessionId, count, heading }: SignalHisto
       const synthesis = await api.getSynthesis(sessionId, "live", true);
       setItems(synthesis?.signal_history || []);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Der Signalverlauf konnte nicht geladen werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Der Signalverlauf konnte nicht geladen werden.",
+      );
     } finally {
       setLoading(false);
     }
@@ -56,11 +64,15 @@ export default function SignalHistory({ sessionId, count, heading }: SignalHisto
   };
 
   return (
-    <section className={heading ? "rounded-xl bg-surface p-5 shadow-sm" : "mt-3"}>
+    <section
+      className={heading ? "rounded-xl bg-surface p-5 shadow-sm" : "mt-3"}
+    >
       <div className="flex flex-wrap items-center justify-between gap-3">
         {heading && (
           <div>
-            <h3 className="font-display text-sm font-semibold text-brand-dark-gray">{heading}</h3>
+            <h3 className="font-display text-sm font-semibold text-brand-dark-gray">
+              {heading}
+            </h3>
             <p className="mt-0.5 font-body text-xs text-brand-mid-gray">
               Dauerhafte Signale aus dem gesamten Gespräch.
             </p>
@@ -78,19 +90,31 @@ export default function SignalHistory({ sessionId, count, heading }: SignalHisto
       </div>
       {open && (
         <div id={panelId}>
-          {loading && <p className="mt-3 font-body text-xs text-brand-mid-gray">Signalverlauf wird geladen ...</p>}
+          {loading && (
+            <p className="mt-3 font-body text-xs text-brand-mid-gray">
+              Signalverlauf wird geladen ...
+            </p>
+          )}
           {error && (
             <div className="mt-3 flex items-center gap-3 rounded-md border border-red-200 bg-red-50 px-3 py-2">
               <p className="font-body text-xs text-red-700">{error}</p>
-              <button type="button" onClick={() => void load()} className="font-body text-xs font-semibold text-red-700 underline">
+              <button
+                type="button"
+                onClick={() => void load()}
+                className="font-body text-xs font-semibold text-red-700 underline"
+              >
                 Erneut versuchen
               </button>
             </div>
           )}
           {!loading && !error && items?.length === 0 && (
-            <p className="mt-3 font-body text-xs text-brand-mid-gray">Noch kein Signalverlauf gespeichert.</p>
+            <p className="mt-3 font-body text-xs text-brand-mid-gray">
+              Noch kein Signalverlauf gespeichert.
+            </p>
           )}
-          {!loading && !error && items && items.length > 0 && <SignalHistoryList items={items} />}
+          {!loading && !error && items && items.length > 0 && (
+            <SignalHistoryList items={items} />
+          )}
         </div>
       )}
     </section>

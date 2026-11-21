@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const sourcePath = fileURLToPath(new URL("./interimTranscript.ts", import.meta.url));
+const sourcePath = fileURLToPath(
+  new URL("./interimTranscript.ts", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "interim-transcript-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -27,12 +29,19 @@ after(async () => {
 
 test("a corrected streaming hypothesis replaces the previous partial", () => {
   assert.equal(
-    updateInterimText("Die Kosten sinken", "Die Kosten sinken nicht", "replace"),
+    updateInterimText(
+      "Die Kosten sinken",
+      "Die Kosten sinken nicht",
+      "replace",
+    ),
     "Die Kosten sinken nicht",
   );
 });
 
 test("append-mode cloud chunks remain compatible and bounded", () => {
   assert.equal(updateInterimText("Guten ", "Tag", "append"), "Guten Tag");
-  assert.equal(updateInterimText("a".repeat(500), "Ende", "append").length, 500);
+  assert.equal(
+    updateInterimText("a".repeat(500), "Ende", "append").length,
+    500,
+  );
 });

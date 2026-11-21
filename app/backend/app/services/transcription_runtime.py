@@ -1,13 +1,14 @@
 from dataclasses import dataclass
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import MODEL_REGISTRY
 from app.models import AgentConfig
 from app.services.app_settings import get_app_setting, set_app_setting
 from app.services.pii.state import shield_enabled
-from app.services.privacy import DEFAULT_LOCAL_BATCH_MODEL, get_local_only, is_local_model
+from app.services.privacy import (
+    DEFAULT_LOCAL_BATCH_MODEL,
+    get_local_only,
+    is_local_model,
+)
 from app.services.transcription_language import (
     AUTO_LANGUAGE,
     SETTING_TRANSCRIPTION_LANGUAGE,
@@ -15,10 +16,14 @@ from app.services.transcription_language import (
     language_options,
     normalize_language,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 SETTING_BATCH_TRANSCRIBER_MODEL = "transcription.batch.model_id"
 AUDIO_GATEWAY_SLUG = "audio_gateway"
 DEFAULT_TRANSCRIPTION_LANGUAGE = "de"
+
+
 @dataclass(frozen=True)
 class TranscriptionRuntimeConfig:
     batch_model_id: str
@@ -47,7 +52,9 @@ def is_supported_live_model(model_id: str) -> bool:
 
 
 async def _get_audio_gateway_config(db: AsyncSession) -> AgentConfig | None:
-    result = await db.execute(select(AgentConfig).where(AgentConfig.slug == AUDIO_GATEWAY_SLUG))
+    result = await db.execute(
+        select(AgentConfig).where(AgentConfig.slug == AUDIO_GATEWAY_SLUG)
+    )
     return result.scalar_one_or_none()
 
 
@@ -66,7 +73,9 @@ async def audio_lock_reason(db: AsyncSession) -> str:
     return ""
 
 
-async def get_transcription_runtime_config(db: AsyncSession) -> TranscriptionRuntimeConfig:
+async def get_transcription_runtime_config(
+    db: AsyncSession,
+) -> TranscriptionRuntimeConfig:
     configured_model = await get_app_setting(
         db,
         SETTING_BATCH_TRANSCRIBER_MODEL,
@@ -103,7 +112,9 @@ async def get_transcription_runtime_config(db: AsyncSession) -> TranscriptionRun
     )
 
 
-async def set_transcription_language(db: AsyncSession, language: str) -> TranscriptionRuntimeConfig:
+async def set_transcription_language(
+    db: AsyncSession, language: str
+) -> TranscriptionRuntimeConfig:
     code = (language or "").strip().lower() or AUTO_LANGUAGE
     if not is_supported_language(code):
         raise ValueError(f"Unsupported transcription language: {language!r}.")
@@ -112,21 +123,31 @@ async def set_transcription_language(db: AsyncSession, language: str) -> Transcr
     return await get_transcription_runtime_config(db)
 
 
-async def set_batch_transcriber_model(db: AsyncSession, model_id: str) -> TranscriptionRuntimeConfig:
+async def set_batch_transcriber_model(
+    db: AsyncSession, model_id: str
+) -> TranscriptionRuntimeConfig:
     if model_id and not is_supported_transcription_model(model_id):
-        raise ValueError("Selected model is not available for batch audio transcription.")
+        raise ValueError(
+            "Selected model is not available for batch audio transcription."
+        )
     if model_id and not is_local_model(model_id):
         reason = await audio_lock_reason(db)
         if reason:
-            raise ValueError(f"{reason}: only local transcription models can be selected.")
+            raise ValueError(
+                f"{reason}: only local transcription models can be selected."
+            )
     await set_app_setting(db, SETTING_BATCH_TRANSCRIBER_MODEL, model_id)
     await db.commit()
     return await get_transcription_runtime_config(db)
 
 
-async def set_live_preview_model(db: AsyncSession, model_id: str) -> TranscriptionRuntimeConfig:
+async def set_live_preview_model(
+    db: AsyncSession, model_id: str
+) -> TranscriptionRuntimeConfig:
     if model_id and not is_supported_live_model(model_id):
-        raise ValueError("Selected model is not available for live interim transcription.")
+        raise ValueError(
+            "Selected model is not available for live interim transcription."
+        )
     if model_id and not is_local_model(model_id):
         reason = await audio_lock_reason(db)
         if reason:

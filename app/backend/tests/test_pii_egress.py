@@ -13,8 +13,8 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.services.pii import egress, shield, vault  # noqa: E402
-from app.services.pii.recognizers import EMAIL, ORG, PERSON, PHONE  # noqa: E402
+from app.services.pii import egress, shield, vault
+from app.services.pii.recognizers import EMAIL, ORG, PERSON, PHONE
 
 
 def _fake_db():
@@ -58,16 +58,30 @@ class LeakDetectionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_known_values_are_found_by_word_and_by_digits(self):
         await self._seed()
-        leaks = egress.find_leaks("Call Sarah Connor at 555 867 5309 or sarah@cyberdyne.com about Cyberdyne.")
+        leaks = egress.find_leaks(
+            "Call Sarah Connor at 555 867 5309 or sarah@cyberdyne.com about Cyberdyne."
+        )
         self.assertEqual(
-            sorted(leaks), sorted([("Sarah Connor", PERSON), ("Cyberdyne", ORG), ("sarah@cyberdyne.com", EMAIL), ("555-867-5309", PHONE)])
+            sorted(leaks),
+            sorted(
+                [
+                    ("Sarah Connor", PERSON),
+                    ("Cyberdyne", ORG),
+                    ("sarah@cyberdyne.com", EMAIL),
+                    ("555-867-5309", PHONE),
+                ]
+            ),
         )
 
     async def test_tokenized_text_and_near_misses_are_clean(self):
         await self._seed()
-        self.assertEqual(egress.find_leaks("[PERSON_1] at [ORG_1]: [EMAIL_1], [PHONE_1]"), [])
+        self.assertEqual(
+            egress.find_leaks("[PERSON_1] at [ORG_1]: [EMAIL_1], [PHONE_1]"), []
+        )
         # Whole words with their casing: a lowercase substring is not the name.
-        self.assertEqual(egress.find_leaks("the cyberdynes and sarah connors of this world"), [])
+        self.assertEqual(
+            egress.find_leaks("the cyberdynes and sarah connors of this world"), []
+        )
         self.assertEqual(egress.find_leaks("Ann met nobody"), [("Ann", PERSON)])
 
 
@@ -92,24 +106,49 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_a_leaking_prompt_is_refused_logged_and_audited(self):
         await self._seed()
         sid = uuid.uuid4()
-        with patch.object(shield, "get_settings_standalone", _settings(enabled=True, prompt_log=True)), \
-             patch.object(shield, "record_reveal", AsyncMock()) as audit:
+        with (
+            patch.object(
+                shield,
+                "get_settings_standalone",
+                _settings(enabled=True, prompt_log=True),
+            ),
+            patch.object(shield, "record_reveal", AsyncMock()) as audit,
+        ):
             with self.assertRaises(egress.PiiEgressBlocked) as ctx:
-                await egress.guard("Sarah Connor said hi", system="sys", model_id="gemini-x", session_id=sid, source="session_chat")
+                await egress.guard(
+                    "Sarah Connor said hi",
+                    system="sys",
+                    model_id="gemini-x",
+                    session_id=sid,
+                    source="session_chat",
+                )
         self.assertIn("PERSON", str(ctx.exception))
         self.assertIn("Nothing was sent", str(ctx.exception))
         audit.assert_awaited_once_with(sid, "egress-blocked:session_chat", 1)
         entries = egress.recent()
         self.assertEqual(len(entries), 1)
         self.assertTrue(entries[0]["blocked"])
-        self.assertEqual(entries[0]["leaks"], [{"category": PERSON, "length": 12, "fingerprint": hashlib.sha256("Sarah Connor".encode()).hexdigest()[:16]}])
+        self.assertEqual(
+            entries[0]["leaks"],
+            [
+                {
+                    "category": PERSON,
+                    "length": 12,
+                    "fingerprint": hashlib.sha256(b"Sarah Connor").hexdigest()[:16],
+                }
+            ],
+        )
         self.assertTrue(entries[0]["prompt"].startswith("sys\n\n[REDACTED]"))
         self.assertIsInstance(egress.PiiEgressBlocked("s", "m", []), ValueError)
 
     async def test_a_clean_prompt_passes_and_is_logged_with_tokens_noted(self):
         await self._seed()
-        with patch.object(shield, "get_settings_standalone", _settings(enabled=True, prompt_log=True)):
-            await egress.guard("[PERSON_1] said hi", model_id="gemini-x", source="consolidated_analyst")
+        with patch.object(
+            shield, "get_settings_standalone", _settings(enabled=True, prompt_log=True)
+        ):
+            await egress.guard(
+                "[PERSON_1] said hi", model_id="gemini-x", source="consolidated_analyst"
+            )
         entry = egress.recent()[0]
         self.assertFalse(entry["blocked"])
         self.assertTrue(entry["tokens_present"])
@@ -118,8 +157,14 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_reformatted_numeric_leaks_never_enter_the_prompt_log(self):
         await vault.token_for(_fake_db(), uuid.uuid4(), PHONE, "555-867-5309")
         prompt = "Call 555 867 5309, or (555) 867-5309, then 5558675309."
-        with patch.object(shield, "get_settings_standalone", _settings(enabled=True, prompt_log=True)), \
-             patch.object(shield, "record_reveal", AsyncMock()):
+        with (
+            patch.object(
+                shield,
+                "get_settings_standalone",
+                _settings(enabled=True, prompt_log=True),
+            ),
+            patch.object(shield, "record_reveal", AsyncMock()),
+        ):
             with self.assertRaises(egress.PiiEgressBlocked):
                 await egress.guard(prompt, model_id="m", source="chat")
         entry = egress.recent()[0]
@@ -129,17 +174,23 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_logging_without_the_shield_records_but_never_blocks(self):
         await self._seed()
-        with patch.object(shield, "get_settings_standalone", _settings(enabled=False, prompt_log=True)):
+        with patch.object(
+            shield, "get_settings_standalone", _settings(enabled=False, prompt_log=True)
+        ):
             await egress.guard("Sarah Connor said hi", model_id="m", source="chat")
         entry = egress.recent()[0]
         self.assertFalse(entry["blocked"])
         self.assertEqual(entry["leaks"], [])
 
     async def test_recent_is_newest_first_and_clear_removes_the_file(self):
-        with patch.object(shield, "get_settings_standalone", _settings(enabled=False, prompt_log=True)):
+        with patch.object(
+            shield, "get_settings_standalone", _settings(enabled=False, prompt_log=True)
+        ):
             for i in range(3):
                 await egress.guard(f"prompt {i}", model_id="m", source="s")
-        self.assertEqual([e["prompt"] for e in egress.recent(2)], ["prompt 2", "prompt 1"])
+        self.assertEqual(
+            [e["prompt"] for e in egress.recent(2)], ["prompt 2", "prompt 1"]
+        )
         self.assertEqual(egress.clear(), 1)
         self.assertEqual(egress.recent(), [])
 
@@ -147,9 +198,15 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         from app.services import llm
 
         target = MagicMock(endpoint=None, key="k")
-        with patch.object(llm, "_prepare_call", AsyncMock(return_value=target)), \
-             patch.object(llm.pii_egress, "guard", AsyncMock(side_effect=egress.PiiEgressBlocked("s", "m", [PERSON]))) as guard, \
-             patch.object(llm, "_call_google", AsyncMock()) as google:
+        with (
+            patch.object(llm, "_prepare_call", AsyncMock(return_value=target)),
+            patch.object(
+                llm.pii_egress,
+                "guard",
+                AsyncMock(side_effect=egress.PiiEgressBlocked("s", "m", [PERSON])),
+            ) as guard,
+            patch.object(llm, "_call_google", AsyncMock()) as google,
+        ):
             with self.assertRaises(egress.PiiEgressBlocked):
                 await llm.generate_text("gemini-x", "Sarah Connor", source="s")
         guard.assert_awaited_once()
@@ -164,11 +221,17 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         enabled = shield.ShieldSettings(enabled=True, ner=False)
         target = MagicMock(endpoint=None, key="k")
 
-        with patch.object(shield, "get_settings_standalone", AsyncMock(return_value=enabled)), \
-             patch.object(shield, "get_settings", AsyncMock(return_value=enabled)), \
-             patch("app.database.async_session", return_value=_DbContext(db)), \
-             patch.object(llm, "_prepare_call", AsyncMock(return_value=target)), \
-             patch.object(llm, "_call_google", AsyncMock(return_value=("answer", None))) as google:
+        with (
+            patch.object(
+                shield, "get_settings_standalone", AsyncMock(return_value=enabled)
+            ),
+            patch.object(shield, "get_settings", AsyncMock(return_value=enabled)),
+            patch("app.database.async_session", return_value=_DbContext(db)),
+            patch.object(llm, "_prepare_call", AsyncMock(return_value=target)),
+            patch.object(
+                llm, "_call_google", AsyncMock(return_value=("answer", None))
+            ) as google,
+        ):
             answer = await llm.generate_text(
                 "gemini-x",
                 "Compare AI Studio personas.",
@@ -180,7 +243,9 @@ class GuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Compare [ORG_1] personas.", google.await_args.args[1])
 
     def test_settings_round_trip_the_prompt_log_flag(self):
-        parsed = shield.ShieldSettings.from_json(json.dumps({"enabled": True, "prompt_log": True}))
+        parsed = shield.ShieldSettings.from_json(
+            json.dumps({"enabled": True, "prompt_log": True})
+        )
         self.assertTrue(parsed.prompt_log)
         self.assertFalse(shield.ShieldSettings.from_json("{}").prompt_log)
 

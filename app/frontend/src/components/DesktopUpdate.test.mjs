@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./DesktopUpdate.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./DesktopUpdate.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "desktop-update-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -44,13 +46,23 @@ await build({
   outfile: outputPath,
 });
 
-const { finishUpdateWindow, isUpdateGrantMessage, renderBanner, renderCard } =
-  createRequire(import.meta.url)(outputPath);
+const { finishUpdateWindow, renderBanner, renderCard } = createRequire(
+  import.meta.url,
+)(outputPath);
 
-const adminSource = readFileSync(new URL("./AdminPanel.tsx", import.meta.url), "utf8");
-const managementSource = readFileSync(new URL("./ManagementView.tsx", import.meta.url), "utf8");
+const adminSource = readFileSync(
+  new URL("./AdminPanel.tsx", import.meta.url),
+  "utf8",
+);
+const managementSource = readFileSync(
+  new URL("./ManagementView.tsx", import.meta.url),
+  "utf8",
+);
 const appSource = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
-const hookSource = readFileSync(new URL("../hooks/useDesktopUpdate.ts", import.meta.url), "utf8");
+const hookSource = readFileSync(
+  new URL("../hooks/useDesktopUpdate.ts", import.meta.url),
+  "utf8",
+);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
@@ -109,7 +121,10 @@ test("available update keeps the action visible above collapsed release notes", 
   });
   const action = markup.indexOf(">Update herunterladen");
   const notes = markup.indexOf("<details");
-  assert.ok(action >= 0 && notes > action, "download should stay above the notes disclosure");
+  assert.ok(
+    action >= 0 && notes > action,
+    "download should stay above the notes disclosure",
+  );
   assert.match(markup, /<summary[^>]*>Änderungen anzeigen<\/summary>/);
   assert.doesNotMatch(markup, /<details[^>]* open/);
 });
@@ -130,7 +145,9 @@ test("an accepted install closes the old app window before the launcher reopens 
   let closed = 0;
   let delay = null;
   globalThis.window = {
-    close: () => { closed += 1; },
+    close: () => {
+      closed += 1;
+    },
     setTimeout: (callback, timeout) => {
       delay = timeout;
       callback();
@@ -140,10 +157,16 @@ test("an accepted install closes the old app window before the launcher reopens 
   globalThis.document = { title: "Debate AI" };
   try {
     finishUpdateWindow();
-    assert.equal(globalThis.document.title, "Debate AI - Update wird installiert");
+    assert.equal(
+      globalThis.document.title,
+      "Debate AI - Update wird installiert",
+    );
     assert.equal(delay, 50);
     assert.equal(closed, 1);
-    assert.match(hookSource, /state === "applying"[\s\S]*finishUpdateWindow\(\)/);
+    assert.match(
+      hookSource,
+      /state === "applying"[\s\S]*finishUpdateWindow\(\)/,
+    );
   } finally {
     globalThis.window = previousWindow;
     globalThis.document = previousDocument;
@@ -184,13 +207,20 @@ test("ready update explains active-work blocking and disables restart", () => {
     downloaded: 1000,
     blocked_reason: "audio import",
   });
-  assert.match(markup, /Vor der Installation bitte zuerst audio import abschließen/);
+  assert.match(
+    markup,
+    /Vor der Installation bitte zuerst audio import abschließen/,
+  );
   assert.match(markup, /disabled=""/);
   assert.match(markup, />Neu starten und installieren</);
 });
 
 test("errors stay bounded and retryable", () => {
-  const markup = renderCard({ ...base, state: "error", error: "E".repeat(5000) });
+  const markup = renderCard({
+    ...base,
+    state: "error",
+    error: "E".repeat(5000),
+  });
   assert.ok(markup.length < 2000);
   assert.match(markup, />Erneut versuchen</);
 });
@@ -215,7 +245,13 @@ test("banner appears only for actionable states with a native button", () => {
 // wall in front of a build the same portal gives to anyone. Nothing in this
 // card may send the reader anywhere to prove who they are.
 test("updating never routes the user through a sign-in", () => {
-  for (const state of ["available", "downloading", "needs_authorization", "ready", "error"]) {
+  for (const state of [
+    "available",
+    "downloading",
+    "needs_authorization",
+    "ready",
+    "error",
+  ]) {
     const markup = renderCard({
       ...base,
       state,
@@ -225,7 +261,11 @@ test("updating never routes the user through a sign-in", () => {
     });
     assert.doesNotMatch(markup, /downloads\.debateai\.page/);
     assert.doesNotMatch(markup, /sign in|sign-in|log in|account/i);
-    assert.doesNotMatch(markup, /authoriz/i, `authorization language survived in "${state}"`);
+    assert.doesNotMatch(
+      markup,
+      /authoriz/i,
+      `authorization language survived in "${state}"`,
+    );
     assert.doesNotMatch(markup, /<a/, `the card opened a link in "${state}"`);
   }
 });

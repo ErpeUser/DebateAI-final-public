@@ -31,7 +31,9 @@ class ConvertToMarkdownTests(unittest.TestCase):
     def test_markdown_and_text_pass_through_unconverted(self):
         body = "# Heading\n\nSome *markdown* content."
         self.assertEqual(convert_to_markdown(body.encode(), "notes.md"), body)
-        self.assertEqual(convert_to_markdown(b"plain text\n", "notes.txt"), "plain text")
+        self.assertEqual(
+            convert_to_markdown(b"plain text\n", "notes.txt"), "plain text"
+        )
 
     def test_docx_converts_to_markdown(self):
         content = _docx_bytes("Service Catalog", "Managed firewall service.")

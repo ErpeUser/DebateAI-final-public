@@ -4,11 +4,10 @@ import os
 import unittest
 from unittest import mock
 
+from app.services import request_guard
 from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.testclient import TestClient
-
-from app.services import request_guard
 
 
 def _build_app() -> FastAPI:
@@ -59,7 +58,13 @@ class HostRuleTests(unittest.TestCase):
         self.env.stop()
 
     def test_loopback_names_and_ports(self):
-        for host in ("localhost", "localhost:3000", "127.0.0.1:8474", "[::1]:8000", "LOCALHOST"):
+        for host in (
+            "localhost",
+            "localhost:3000",
+            "127.0.0.1:8474",
+            "[::1]:8000",
+            "LOCALHOST",
+        ):
             with self.subTest(host=host):
                 self.assertTrue(request_guard.host_header_allowed(host))
 
@@ -76,12 +81,20 @@ class HostRuleTests(unittest.TestCase):
         self.assertTrue(request_guard.host_header_allowed("backend:8000"))
 
     def test_foreign_and_missing_hosts_fail(self):
-        for host in ("evil.example", "evil.example:8474", "", "localhost.evil.example", "not a host"):
+        for host in (
+            "evil.example",
+            "evil.example:8474",
+            "",
+            "localhost.evil.example",
+            "not a host",
+        ):
             with self.subTest(host=host):
                 self.assertFalse(request_guard.host_header_allowed(host))
 
     def test_environment_allowlist_and_wildcard(self):
-        os.environ[request_guard.ALLOWED_HOSTS_ENV] = "debateai.lan, Meeting-Box.internal"
+        os.environ[request_guard.ALLOWED_HOSTS_ENV] = (
+            "debateai.lan, Meeting-Box.internal"
+        )
         self.assertTrue(request_guard.host_header_allowed("debateai.lan:3000"))
         self.assertTrue(request_guard.host_header_allowed("meeting-box.internal"))
         self.assertFalse(request_guard.host_header_allowed("evil.example"))
@@ -100,12 +113,23 @@ class OriginRuleTests(unittest.TestCase):
         self.env.stop()
 
     def test_local_origins_pass(self):
-        for origin in ("http://localhost:3000", "http://127.0.0.1:8474", "http://[::1]:8000", "http://192.168.1.5:3000"):
+        for origin in (
+            "http://localhost:3000",
+            "http://127.0.0.1:8474",
+            "http://[::1]:8000",
+            "http://192.168.1.5:3000",
+        ):
             with self.subTest(origin=origin):
                 self.assertTrue(request_guard.origin_allowed(origin))
 
     def test_foreign_null_and_malformed_origins_fail(self):
-        for origin in ("https://evil.example", "null", "", "ftp://localhost", "http://evil.example/localhost"):
+        for origin in (
+            "https://evil.example",
+            "null",
+            "",
+            "ftp://localhost",
+            "http://evil.example/localhost",
+        ):
             with self.subTest(origin=origin):
                 self.assertFalse(request_guard.origin_allowed(origin))
 
@@ -113,7 +137,9 @@ class OriginRuleTests(unittest.TestCase):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = "https://tools.example"
         self.assertTrue(request_guard.origin_allowed("https://tools.example"))
         self.assertFalse(request_guard.origin_allowed("https://evil.example"))
-        self.assertEqual(["https://tools.example"], request_guard.cors_allowed_origins())
+        self.assertEqual(
+            ["https://tools.example"], request_guard.cors_allowed_origins()
+        )
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = "*"
         self.assertTrue(request_guard.origin_allowed("https://evil.example"))
         self.assertEqual([], request_guard.cors_allowed_origins())
@@ -135,7 +161,12 @@ class MiddlewareTests(unittest.TestCase):
         self.env.stop()
 
     def test_legitimate_hosts_are_served(self):
-        for host in ("localhost:8474", "127.0.0.1:8001", "192.168.1.5:3000", "backend:8000"):
+        for host in (
+            "localhost:8474",
+            "127.0.0.1:8001",
+            "192.168.1.5:3000",
+            "backend:8000",
+        ):
             with self.subTest(host=host):
                 response = self.client.get("/api/ping", headers={"Host": host})
                 self.assertEqual(200, response.status_code)
@@ -159,7 +190,9 @@ class MiddlewareTests(unittest.TestCase):
             "/manifest.webmanifest",
         ):
             with self.subTest(path=path):
-                self.assertTrue(request_guard._desktop_frontend_path(path, "GET", "localhost:8474"))
+                self.assertTrue(
+                    request_guard._desktop_frontend_path(path, "GET", "localhost:8474")
+                )
 
     def test_desktop_bootstrap_cookie_authorizes_same_origin_api_reads(self):
         os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
@@ -168,7 +201,10 @@ class MiddlewareTests(unittest.TestCase):
         self.assertEqual("test-token", cookie)
         response = self.client.get(
             "/api/ping",
-            headers={"Host": "localhost:8474", "Cookie": f"{request_guard.INSTANCE_COOKIE}={cookie}"},
+            headers={
+                "Host": "localhost:8474",
+                "Cookie": f"{request_guard.INSTANCE_COOKIE}={cookie}",
+            },
         )
         self.assertEqual(200, response.status_code)
 
@@ -176,25 +212,37 @@ class MiddlewareTests(unittest.TestCase):
         os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
         self.assertEqual(
             400,
-            self.client.get("/?desktop=1", headers={"Host": "attacker.example"}).status_code,
+            self.client.get(
+                "/?desktop=1", headers={"Host": "attacker.example"}
+            ).status_code,
         )
         self.assertEqual(
             403,
-            self.client.get("/api/ping", headers={"Host": "localhost:8474"}).status_code,
+            self.client.get(
+                "/api/ping", headers={"Host": "localhost:8474"}
+            ).status_code,
         )
 
     def test_rebound_host_is_rejected_before_routing(self):
-        response = self.client.get("/api/ping", headers={"Host": "attacker.example:8474"})
+        response = self.client.get(
+            "/api/ping", headers={"Host": "attacker.example:8474"}
+        )
         self.assertEqual(400, response.status_code)
         self.assertNotIn("ok", response.text)
 
     def test_websocket_with_foreign_host_is_refused(self):
-        with self.assertRaises(Exception):
-            with self.client.websocket_connect("/ws/echo", headers={"Host": "attacker.example"}):
-                pass
+        with (
+            self.assertRaises(Exception),
+            self.client.websocket_connect(
+                "/ws/echo", headers={"Host": "attacker.example"}
+            ),
+        ):
+            pass
 
     def test_websocket_with_local_host_connects(self):
-        with self.client.websocket_connect("/ws/echo", headers={"Host": "localhost:8474"}) as ws:
+        with self.client.websocket_connect(
+            "/ws/echo", headers={"Host": "localhost:8474"}
+        ) as ws:
             self.assertEqual("hi", ws.receive_text())
 
     def test_websocket_instance_token_uses_subprotocol_not_query(self):
@@ -206,23 +254,24 @@ class MiddlewareTests(unittest.TestCase):
         ) as ws:
             self.assertEqual("hi", ws.receive_text())
             self.assertEqual("debateai.instance.test-token", ws.accepted_subprotocol)
-        with self.assertRaises(Exception):
-            with self.client.websocket_connect(
+        with (
+            self.assertRaises(Exception),
+            self.client.websocket_connect(
                 "/ws/echo?instance_token=test-token",
                 headers={"Host": "localhost:8474"},
-            ):
-                pass
+            ),
+        ):
+            pass
 
     def test_websocket_from_foreign_origin_is_refused_even_with_loopback_host(self):
         # A hostile page can always put a loopback URL in new WebSocket(...);
         # the browser still stamps the page's own Origin on the handshake.
         for origin in ("https://attacker.example", "null"):
-            with self.subTest(origin=origin):
-                with self.assertRaises(Exception):
-                    with self.client.websocket_connect(
-                        "/ws/echo", headers={"Host": "127.0.0.1:8474", "Origin": origin}
-                    ):
-                        pass
+            with self.subTest(origin=origin), self.assertRaises(Exception):
+                with self.client.websocket_connect(
+                    "/ws/echo", headers={"Host": "127.0.0.1:8474", "Origin": origin}
+                ):
+                    pass
 
     def test_websocket_from_every_legitimate_frontend_origin_connects(self):
         origins = {
@@ -243,29 +292,40 @@ class MiddlewareTests(unittest.TestCase):
     # base_url, so every websocket case names its Host explicitly.
     def test_websocket_without_origin_connects(self):
         # Non-browser clients (tests, scripts) send no Origin at all.
-        with self.client.websocket_connect("/ws/echo", headers={"Host": "localhost:8474"}) as ws:
+        with self.client.websocket_connect(
+            "/ws/echo", headers={"Host": "localhost:8474"}
+        ) as ws:
             self.assertEqual("hi", ws.receive_text())
 
     def test_websocket_from_environment_origin_connects(self):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = "https://tools.example"
         client = TestClient(_build_app(), base_url="http://localhost")
         with client.websocket_connect(
-            "/ws/echo", headers={"Host": "localhost:8474", "Origin": "https://tools.example"}
+            "/ws/echo",
+            headers={"Host": "localhost:8474", "Origin": "https://tools.example"},
         ) as ws:
             self.assertEqual("hi", ws.receive_text())
 
     def test_cross_origin_mutation_is_rejected(self):
-        response = self.client.post("/api/mutate", headers={"Origin": "https://attacker.example"})
+        response = self.client.post(
+            "/api/mutate", headers={"Origin": "https://attacker.example"}
+        )
         self.assertEqual(403, response.status_code)
         response = self.client.post("/api/mutate", headers={"Origin": "null"})
         self.assertEqual(403, response.status_code)
 
     def test_same_origin_and_dev_origin_mutations_pass(self):
-        for origin in ("http://localhost:8474", "http://localhost:3000", "http://127.0.0.1:5173"):
+        for origin in (
+            "http://localhost:8474",
+            "http://localhost:3000",
+            "http://127.0.0.1:5173",
+        ):
             with self.subTest(origin=origin):
                 response = self.client.post("/api/mutate", headers={"Origin": origin})
                 self.assertEqual(200, response.status_code)
-                self.assertEqual(origin, response.headers.get("access-control-allow-origin"))
+                self.assertEqual(
+                    origin, response.headers.get("access-control-allow-origin")
+                )
 
     def test_mutation_without_origin_requires_instance_token(self):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = ""
@@ -273,17 +333,23 @@ class MiddlewareTests(unittest.TestCase):
         self.assertEqual(403, self.client.post("/api/mutate").status_code)
         self.assertEqual(
             200,
-            self.client.post("/api/mutate", headers={"X-DebateAI-Instance": "test-token"}).status_code,
+            self.client.post(
+                "/api/mutate", headers={"X-DebateAI-Instance": "test-token"}
+            ).status_code,
         )
 
     def test_legacy_instance_header_is_not_accepted(self):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = ""
         os.environ["DEBATEAI_INSTANCE_TOKEN"] = "test-token"
-        response = self.client.post("/api/mutate", headers={"X-Backchannel-Instance": "test-token"})
+        response = self.client.post(
+            "/api/mutate", headers={"X-Backchannel-Instance": "test-token"}
+        )
         self.assertEqual(403, response.status_code)
 
     def test_cross_origin_read_gets_no_cors_grant(self):
-        response = self.client.get("/api/ping", headers={"Origin": "https://attacker.example"})
+        response = self.client.get(
+            "/api/ping", headers={"Origin": "https://attacker.example"}
+        )
         self.assertEqual(200, response.status_code)
         self.assertIsNone(response.headers.get("access-control-allow-origin"))
 
@@ -309,15 +375,21 @@ class MiddlewareTests(unittest.TestCase):
             },
         )
         self.assertEqual(200, response.status_code)
-        self.assertEqual("http://localhost:3000", response.headers.get("access-control-allow-origin"))
+        self.assertEqual(
+            "http://localhost:3000", response.headers.get("access-control-allow-origin")
+        )
         self.assertIsNone(response.headers.get("access-control-allow-credentials"))
 
     def test_environment_origin_is_granted_by_both_layers(self):
         os.environ[request_guard.ALLOWED_ORIGINS_ENV] = "https://tools.example"
         client = TestClient(_build_app(), base_url="http://localhost")
-        response = client.post("/api/mutate", headers={"Origin": "https://tools.example"})
+        response = client.post(
+            "/api/mutate", headers={"Origin": "https://tools.example"}
+        )
         self.assertEqual(200, response.status_code)
-        self.assertEqual("https://tools.example", response.headers.get("access-control-allow-origin"))
+        self.assertEqual(
+            "https://tools.example", response.headers.get("access-control-allow-origin")
+        )
 
 
 class AppWiringTests(unittest.TestCase):
@@ -331,7 +403,9 @@ class AppWiringTests(unittest.TestCase):
         self.assertIs(request_guard.RequestGuardMiddleware, classes[0])
         cors = next(m for m in app.user_middleware if m.cls is CORSMiddleware)
         self.assertNotIn("*", cors.kwargs.get("allow_origins", []))
-        self.assertEqual(request_guard.CORS_ORIGIN_REGEX, cors.kwargs.get("allow_origin_regex"))
+        self.assertEqual(
+            request_guard.CORS_ORIGIN_REGEX, cors.kwargs.get("allow_origin_regex")
+        )
         self.assertFalse(cors.kwargs.get("allow_credentials"))
 
 

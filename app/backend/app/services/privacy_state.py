@@ -2,9 +2,8 @@
 
 import logging
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.services.app_settings import get_app_setting, set_app_setting
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -17,4 +16,6 @@ async def get_local_only(db: AsyncSession) -> bool:
 
 async def set_local_only(db: AsyncSession, enabled: bool) -> None:
     await set_app_setting(db, PRIVACY_LOCAL_ONLY_KEY, "true" if enabled else "false")
-    logger.info(f"Privacy First (local-only) mode {'enabled' if enabled else 'disabled'}")
+    logger.info(
+        f"Privacy First (local-only) mode {'enabled' if enabled else 'disabled'}"
+    )

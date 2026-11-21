@@ -28,11 +28,29 @@ IP = "IP"
 ADDRESS = "ADDRESS"
 
 # Every category the shield knows, in the order the settings card lists them.
-CATEGORIES: tuple[str, ...] = (PERSON, ORG, LOCATION, EMAIL, PHONE, SSN, CARD, IP, ADDRESS)
+CATEGORIES: tuple[str, ...] = (
+    PERSON,
+    ORG,
+    LOCATION,
+    EMAIL,
+    PHONE,
+    SSN,
+    CARD,
+    IP,
+    ADDRESS,
+)
 
 # Higher wins when two spans of equal length overlap.
 _PRIORITY = {
-    CARD: 9, SSN: 8, EMAIL: 7, PHONE: 6, IP: 5, ADDRESS: 4, PERSON: 3, ORG: 2, LOCATION: 1,
+    CARD: 9,
+    SSN: 8,
+    EMAIL: 7,
+    PHONE: 6,
+    IP: 5,
+    ADDRESS: 4,
+    PERSON: 3,
+    ORG: 2,
+    LOCATION: 1,
 }
 
 CATEGORY_LABELS = {
@@ -104,14 +122,56 @@ _INTRODUCTION = re.compile(
     r"((?:[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?)(?:\s+[A-Z][a-z]+(?:[-'][A-Z][a-z]+)?){0,2})\b"
 )
 # Capitalized words that follow an introduction cue but are not names.
-_NOT_NAMES = frozenset({
-    "The", "A", "An", "Not", "Just", "Going", "Here", "There", "So", "Also",
-    "Really", "Very", "Still", "Now", "Today", "Back", "Happy", "Sorry",
-    "Glad", "Good", "Great", "Okay", "Ok", "Yes", "No", "Sure", "Thanks",
-    "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday",
-    "January", "February", "March", "April", "May", "June", "July", "August",
-    "September", "October", "November", "December",
-})
+_NOT_NAMES = frozenset(
+    {
+        "The",
+        "A",
+        "An",
+        "Not",
+        "Just",
+        "Going",
+        "Here",
+        "There",
+        "So",
+        "Also",
+        "Really",
+        "Very",
+        "Still",
+        "Now",
+        "Today",
+        "Back",
+        "Happy",
+        "Sorry",
+        "Glad",
+        "Good",
+        "Great",
+        "Okay",
+        "Ok",
+        "Yes",
+        "No",
+        "Sure",
+        "Thanks",
+        "Monday",
+        "Tuesday",
+        "Wednesday",
+        "Thursday",
+        "Friday",
+        "Saturday",
+        "Sunday",
+        "January",
+        "February",
+        "March",
+        "April",
+        "May",
+        "June",
+        "July",
+        "August",
+        "September",
+        "October",
+        "November",
+        "December",
+    }
+)
 
 
 def _luhn_ok(digits: str) -> bool:
@@ -138,7 +198,9 @@ def _phone_ok(match_text: str) -> bool:
 
 # (category, pattern, score, accept) - accept() is the checksum or sanity
 # test a bare match still has to pass.
-_PATTERN_RECOGNIZERS: tuple[tuple[str, re.Pattern[str], float, "callable | None"], ...] = (
+_PATTERN_RECOGNIZERS: tuple[
+    tuple[str, re.Pattern[str], float, callable | None], ...
+] = (
     (EMAIL, _EMAIL, 1.0, None),
     (SSN, _SSN, 0.95, None),
     (CARD, _CARD, 0.95, _card_ok),
@@ -156,7 +218,9 @@ def find_patterns(text: str, categories: set[str]) -> list[Span]:
             continue
         for m in pattern.finditer(text):
             if accept is None or accept(m.group()):
-                spans.append(Span(m.start(), m.end(), category, m.group(), score, "pattern"))
+                spans.append(
+                    Span(m.start(), m.end(), category, m.group(), score, "pattern")
+                )
     if PERSON in categories:
         spans.extend(_find_introductions(text))
     return spans
@@ -180,7 +244,9 @@ class RosterEntry:
 _WORD_CHARS = r"A-Za-z0-9'À-ɏ"
 
 
-def find_roster(text: str, roster: list[RosterEntry], categories: set[str]) -> list[Span]:
+def find_roster(
+    text: str, roster: list[RosterEntry], categories: set[str]
+) -> list[Span]:
     """Known names and terms: the session's speakers and the protected-terms list.
 
     The full value matches case-insensitively as a whole word. For a person's
@@ -193,18 +259,36 @@ def find_roster(text: str, roster: list[RosterEntry], categories: set[str]) -> l
         value = entry.value.strip()
         if not value or entry.category not in categories:
             continue
-        pattern = re.compile(rf"(?<![{_WORD_CHARS}]){re.escape(value)}(?![{_WORD_CHARS}])", re.IGNORECASE)
+        pattern = re.compile(
+            rf"(?<![{_WORD_CHARS}]){re.escape(value)}(?![{_WORD_CHARS}])", re.IGNORECASE
+        )
         for m in pattern.finditer(text):
-            spans.append(Span(m.start(), m.end(), entry.category, m.group(), 1.0, "roster"))
+            spans.append(
+                Span(m.start(), m.end(), entry.category, m.group(), 1.0, "roster")
+            )
         if entry.category != PERSON:
             continue
-        parts = [p for p in re.split(r"[\s,]+", value) if len(p) >= 3 and p[0].isupper()]
+        parts = [
+            p for p in re.split(r"[\s,]+", value) if len(p) >= 3 and p[0].isupper()
+        ]
         if len(parts) < 2:
             continue
         for part in parts:
-            part_pattern = re.compile(rf"(?<![{_WORD_CHARS}]){re.escape(part)}(?![{_WORD_CHARS}])")
+            part_pattern = re.compile(
+                rf"(?<![{_WORD_CHARS}]){re.escape(part)}(?![{_WORD_CHARS}])"
+            )
             for m in part_pattern.finditer(text):
-                spans.append(Span(m.start(), m.end(), PERSON, m.group(), 0.9, "roster", canonical=value))
+                spans.append(
+                    Span(
+                        m.start(),
+                        m.end(),
+                        PERSON,
+                        m.group(),
+                        0.9,
+                        "roster",
+                        canonical=value,
+                    )
+                )
     return spans
 
 
@@ -218,7 +302,13 @@ def resolve_spans(spans: list[Span]) -> list[Span]:
     """Drop overlaps: longest first, then source, category priority, score."""
     ordered = sorted(
         spans,
-        key=lambda s: (-s.length, -_SOURCE_RANK.get(s.source, 0), -_PRIORITY.get(s.category, 0), -s.score, s.start),
+        key=lambda s: (
+            -s.length,
+            -_SOURCE_RANK.get(s.source, 0),
+            -_PRIORITY.get(s.category, 0),
+            -s.score,
+            s.start,
+        ),
     )
     kept: list[Span] = []
     for span in ordered:

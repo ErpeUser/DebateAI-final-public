@@ -5,7 +5,6 @@ Revises: 027_transcript_refinement
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "028_debate_claim_records"
@@ -21,7 +20,9 @@ def upgrade():
     op.create_table(
         "debate_claim_records",
         sa.Column("id", sa.Uuid(), primary_key=True),
-        sa.Column("session_id", sa.Uuid(), sa.ForeignKey("sessions.id"), nullable=False),
+        sa.Column(
+            "session_id", sa.Uuid(), sa.ForeignKey("sessions.id"), nullable=False
+        ),
         sa.Column("claim_id", sa.String(160), nullable=False),
         sa.Column("revision", sa.Integer(), nullable=False, server_default="0"),
         sa.Column("speaker_id", sa.String(80), nullable=False, server_default=""),
@@ -33,12 +34,18 @@ def upgrade():
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
         sa.UniqueConstraint(
-            "session_id", "claim_id", "revision",
+            "session_id",
+            "claim_id",
+            "revision",
             name="uq_debate_claim_session_claim_revision",
         ),
     )
-    op.create_index("ix_debate_claim_records_session_id", "debate_claim_records", ["session_id"])
-    op.create_index("ix_debate_claim_records_claim_id", "debate_claim_records", ["claim_id"])
+    op.create_index(
+        "ix_debate_claim_records_session_id", "debate_claim_records", ["session_id"]
+    )
+    op.create_index(
+        "ix_debate_claim_records_claim_id", "debate_claim_records", ["claim_id"]
+    )
 
 
 def downgrade():

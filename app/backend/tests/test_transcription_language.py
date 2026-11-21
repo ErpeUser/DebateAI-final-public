@@ -22,15 +22,15 @@ from fastapi import HTTPException
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.routers import diagnostics  # noqa: E402
-from app.services import local_transcriber, openai_transcriber, transcription_runtime  # noqa: E402
-from app.services.agents.orchestrator import AgentOrchestrator  # noqa: E402
-from app.services.batch_transcriber import BatchTranscriber, filter_transcript_text  # noqa: E402
-from app.services.gemini_live import GeminiLiveSession  # noqa: E402
-from app.services.local_transcriber import LocalTranscriber, create_transcriber  # noqa: E402
-from app.services.openai_realtime import OpenAIRealtimeSession, _session_update_payload  # noqa: E402
-from app.services.openai_transcriber import OpenAIChatTranscriber, OpenAITranscriber  # noqa: E402
-from app.services.transcription_language import (  # noqa: E402
+from app.routers import diagnostics
+from app.services import local_transcriber, openai_transcriber, transcription_runtime
+from app.services.agents.orchestrator import AgentOrchestrator
+from app.services.batch_transcriber import BatchTranscriber, filter_transcript_text
+from app.services.gemini_live import GeminiLiveSession
+from app.services.local_transcriber import LocalTranscriber, create_transcriber
+from app.services.openai_realtime import OpenAIRealtimeSession, _session_update_payload
+from app.services.openai_transcriber import OpenAIChatTranscriber, OpenAITranscriber
+from app.services.transcription_language import (
     AUTO_LANGUAGE,
     SETTING_TRANSCRIPTION_LANGUAGE,
     TRANSCRIPTION_LANGUAGES,
@@ -44,10 +44,108 @@ from app.services.transcription_language import (  # noqa: E402
 # looks up f"<|{code}|>" and raises KeyError on anything else, so every code
 # the Admin picker offers must be one of these.
 WHISPER_LANGUAGE_CODES = frozenset(
-    "en zh de es ru ko fr ja pt tr pl ca nl ar sv it id hi fi vi he uk el ms cs ro "
-    "da hu ta no th ur hr bg lt la mi ml cy sk te fa lv bn sr az sl kn et mk br eu "
-    "is hy ne mn bs kk sq sw gl mr pa si km sn yo so af oc ka be tg sd gu am yi lo "
-    "uz fo ht ps tk nn mt sa lb my bo tl mg as tt haw ln ha ba jw su yue".split()
+    [
+        "en",
+        "zh",
+        "de",
+        "es",
+        "ru",
+        "ko",
+        "fr",
+        "ja",
+        "pt",
+        "tr",
+        "pl",
+        "ca",
+        "nl",
+        "ar",
+        "sv",
+        "it",
+        "id",
+        "hi",
+        "fi",
+        "vi",
+        "he",
+        "uk",
+        "el",
+        "ms",
+        "cs",
+        "ro",
+        "da",
+        "hu",
+        "ta",
+        "no",
+        "th",
+        "ur",
+        "hr",
+        "bg",
+        "lt",
+        "la",
+        "mi",
+        "ml",
+        "cy",
+        "sk",
+        "te",
+        "fa",
+        "lv",
+        "bn",
+        "sr",
+        "az",
+        "sl",
+        "kn",
+        "et",
+        "mk",
+        "br",
+        "eu",
+        "is",
+        "hy",
+        "ne",
+        "mn",
+        "bs",
+        "kk",
+        "sq",
+        "sw",
+        "gl",
+        "mr",
+        "pa",
+        "si",
+        "km",
+        "sn",
+        "yo",
+        "so",
+        "af",
+        "oc",
+        "ka",
+        "be",
+        "tg",
+        "sd",
+        "gu",
+        "am",
+        "yi",
+        "lo",
+        "uz",
+        "fo",
+        "ht",
+        "ps",
+        "tk",
+        "nn",
+        "mt",
+        "sa",
+        "lb",
+        "my",
+        "bo",
+        "tl",
+        "mg",
+        "as",
+        "tt",
+        "haw",
+        "ln",
+        "ha",
+        "ba",
+        "jw",
+        "su",
+        "yue",
+    ]
 )
 
 
@@ -89,11 +187,23 @@ class RuntimeConfigTests(unittest.IsolatedAsyncioTestCase):
             return stored.get(key, default)
 
         gateway = MagicMock(model_id="")
-        with mock.patch.object(transcription_runtime, "get_app_setting", fake_get), \
-             mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), \
-             mock.patch.object(transcription_runtime, "_get_audio_gateway_config", AsyncMock(return_value=gateway)), \
-             mock.patch.object(transcription_runtime, "shield_enabled", AsyncMock(return_value=False)):
-            return await transcription_runtime.get_transcription_runtime_config(MagicMock())
+        with (
+            mock.patch.object(transcription_runtime, "get_app_setting", fake_get),
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            mock.patch.object(
+                transcription_runtime,
+                "_get_audio_gateway_config",
+                AsyncMock(return_value=gateway),
+            ),
+            mock.patch.object(
+                transcription_runtime, "shield_enabled", AsyncMock(return_value=False)
+            ),
+        ):
+            return await transcription_runtime.get_transcription_runtime_config(
+                MagicMock()
+            )
 
     async def test_language_defaults_to_german(self):
         config = await self._config_with({})
@@ -102,34 +212,72 @@ class RuntimeConfigTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(AUTO_LANGUAGE, config.to_dict()["language_options"][0]["code"])
 
     async def test_stored_language_is_read_and_junk_falls_back(self):
-        self.assertEqual("de", (await self._config_with({SETTING_TRANSCRIPTION_LANGUAGE: "de"})).language)
-        self.assertEqual(AUTO_LANGUAGE, (await self._config_with({SETTING_TRANSCRIPTION_LANGUAGE: "klingon"})).language)
+        self.assertEqual(
+            "de",
+            (await self._config_with({SETTING_TRANSCRIPTION_LANGUAGE: "de"})).language,
+        )
+        self.assertEqual(
+            AUTO_LANGUAGE,
+            (
+                await self._config_with({SETTING_TRANSCRIPTION_LANGUAGE: "klingon"})
+            ).language,
+        )
 
     async def test_set_language_validates_and_normalizes(self):
         db = MagicMock()
         db.commit = AsyncMock()
         saved = AsyncMock()
-        with mock.patch.object(transcription_runtime, "set_app_setting", saved), \
-             mock.patch.object(transcription_runtime, "get_transcription_runtime_config", AsyncMock(return_value="cfg")):
+        with (
+            mock.patch.object(transcription_runtime, "set_app_setting", saved),
+            mock.patch.object(
+                transcription_runtime,
+                "get_transcription_runtime_config",
+                AsyncMock(return_value="cfg"),
+            ),
+        ):
             await transcription_runtime.set_transcription_language(db, " FR ")
             saved.assert_awaited_once_with(db, SETTING_TRANSCRIPTION_LANGUAGE, "fr")
             saved.reset_mock()
             await transcription_runtime.set_transcription_language(db, "")
-            saved.assert_awaited_once_with(db, SETTING_TRANSCRIPTION_LANGUAGE, AUTO_LANGUAGE)
+            saved.assert_awaited_once_with(
+                db, SETTING_TRANSCRIPTION_LANGUAGE, AUTO_LANGUAGE
+            )
             with self.assertRaises(ValueError):
                 await transcription_runtime.set_transcription_language(db, "xx")
 
     async def test_patch_endpoint_sets_language_and_rejects_unknown_codes(self):
-        runtime = transcription_runtime.TranscriptionRuntimeConfig("m", "", "d", language="de")
-        with mock.patch.object(diagnostics, "get_transcription_runtime_config", AsyncMock(return_value=runtime)), \
-             mock.patch.object(diagnostics, "set_transcription_language", AsyncMock(return_value=runtime)) as setter:
+        runtime = transcription_runtime.TranscriptionRuntimeConfig(
+            "m", "", "d", language="de"
+        )
+        with (
+            mock.patch.object(
+                diagnostics,
+                "get_transcription_runtime_config",
+                AsyncMock(return_value=runtime),
+            ),
+            mock.patch.object(
+                diagnostics,
+                "set_transcription_language",
+                AsyncMock(return_value=runtime),
+            ) as setter,
+        ):
             result = await diagnostics.update_transcription_config(
                 diagnostics.BatchTranscriberUpdate(language="de"), db=MagicMock()
             )
             setter.assert_awaited_once()
             self.assertEqual("de", result["language"])
-        with mock.patch.object(diagnostics, "get_transcription_runtime_config", AsyncMock(return_value=runtime)), \
-             mock.patch.object(diagnostics, "set_transcription_language", AsyncMock(side_effect=ValueError("bad"))):
+        with (
+            mock.patch.object(
+                diagnostics,
+                "get_transcription_runtime_config",
+                AsyncMock(return_value=runtime),
+            ),
+            mock.patch.object(
+                diagnostics,
+                "set_transcription_language",
+                AsyncMock(side_effect=ValueError("bad")),
+            ),
+        ):
             with self.assertRaises(HTTPException) as ctx:
                 await diagnostics.update_transcription_config(
                     diagnostics.BatchTranscriberUpdate(language="xx"), db=MagicMock()
@@ -142,20 +290,29 @@ class LocalWhisperTests(unittest.IsolatedAsyncioTestCase):
         model = MagicMock()
         model.recognize.return_value = "guten morgen zusammen"
         with patch.object(local_transcriber, "_load_model", return_value=model):
-            await create_transcriber(model_id, language=language).transcribe_segment(_speech_pcm())
+            await create_transcriber(model_id, language=language).transcribe_segment(
+                _speech_pcm()
+            )
         return model.recognize.call_args.kwargs
 
     async def test_whisper_gets_the_language(self):
-        self.assertEqual({"language": "de"}, await self._recognize_kwargs("local-whisper-base", "de"))
+        self.assertEqual(
+            {"language": "de"}, await self._recognize_kwargs("local-whisper-base", "de")
+        )
 
     async def test_auto_leaves_whisper_detecting(self):
         self.assertEqual({}, await self._recognize_kwargs("local-whisper-base", "auto"))
 
     async def test_english_only_parakeet_gets_no_language(self):
-        self.assertEqual({}, await self._recognize_kwargs("local-parakeet-tdt-0.6b", "de"))
+        self.assertEqual(
+            {}, await self._recognize_kwargs("local-parakeet-tdt-0.6b", "de")
+        )
 
     def test_factory_passes_language_to_local(self):
-        self.assertEqual({"language": "ja"}, LocalTranscriber("local-whisper-base", language="ja")._recognize_kwargs)
+        self.assertEqual(
+            {"language": "ja"},
+            LocalTranscriber("local-whisper-base", language="ja")._recognize_kwargs,
+        )
 
 
 class _FakeResponse:
@@ -182,29 +339,47 @@ class _FakeHttp:
 
 class OpenAIBatchTests(unittest.IsolatedAsyncioTestCase):
     async def _run(self, transcriber):
-        with patch.object(openai_transcriber, "resolve_provider_key", AsyncMock(return_value="sk-test")), \
-             patch.object(openai_transcriber, "record_token_usage", AsyncMock()):
+        with (
+            patch.object(
+                openai_transcriber,
+                "resolve_provider_key",
+                AsyncMock(return_value="sk-test"),
+            ),
+            patch.object(openai_transcriber, "record_token_usage", AsyncMock()),
+        ):
             return await transcriber.transcribe_segment(_speech_pcm())
 
     async def test_speech_to_text_endpoint_gets_the_language_field(self):
         http = _FakeHttp({"text": "hola a todos"})
-        await self._run(OpenAITranscriber("gpt-4o-transcribe", client=http, language="es"))
+        await self._run(
+            OpenAITranscriber("gpt-4o-transcribe", client=http, language="es")
+        )
         self.assertEqual("es", http.calls[0]["data"]["language"])
 
     async def test_speech_to_text_endpoint_omits_language_for_auto(self):
         http = _FakeHttp({"text": "hello there everyone"})
-        await self._run(OpenAITranscriber("gpt-4o-transcribe", client=http, language="auto"))
+        await self._run(
+            OpenAITranscriber("gpt-4o-transcribe", client=http, language="auto")
+        )
         self.assertNotIn("language", http.calls[0]["data"])
 
     async def test_chat_audio_prompt_carries_the_language(self):
-        http = _FakeHttp({"choices": [{"message": {"content": "bonjour tout le monde"}}]})
-        await self._run(OpenAIChatTranscriber("gpt-audio-1.5", client=http, language="fr"))
+        http = _FakeHttp(
+            {"choices": [{"message": {"content": "bonjour tout le monde"}}]}
+        )
+        await self._run(
+            OpenAIChatTranscriber("gpt-audio-1.5", client=http, language="fr")
+        )
         text_part = http.calls[0]["json"]["messages"][0]["content"][1]["text"]
         self.assertIn("French", text_part)
 
     def test_factory_routes_language_to_openai_transcribers(self):
-        self.assertEqual("pt", create_transcriber("gpt-4o-transcribe", language="pt")._language)
-        self.assertIn("Portuguese", create_transcriber("gpt-audio-1.5", language="pt")._prompt)
+        self.assertEqual(
+            "pt", create_transcriber("gpt-4o-transcribe", language="pt")._language
+        )
+        self.assertIn(
+            "Portuguese", create_transcriber("gpt-audio-1.5", language="pt")._prompt
+        )
 
 
 class GeminiBatchTests(unittest.IsolatedAsyncioTestCase):
@@ -215,11 +390,15 @@ class GeminiBatchTests(unittest.IsolatedAsyncioTestCase):
             captured["prompt"] = contents[0].parts[1].text
             return SimpleNamespace(text="buongiorno a tutti", usage_metadata=None)
 
-        client = SimpleNamespace(aio=SimpleNamespace(models=SimpleNamespace(generate_content=generate_content)))
-        with patch("app.services.batch_transcriber.record_token_usage", AsyncMock()):
-            await BatchTranscriber(model_id="gemini-3.5-flash", client=client, language="it").transcribe_segment(
-                _speech_pcm()
+        client = SimpleNamespace(
+            aio=SimpleNamespace(
+                models=SimpleNamespace(generate_content=generate_content)
             )
+        )
+        with patch("app.services.batch_transcriber.record_token_usage", AsyncMock()):
+            await BatchTranscriber(
+                model_id="gemini-3.5-flash", client=client, language="it"
+            ).transcribe_segment(_speech_pcm())
         self.assertIn("Italian", captured["prompt"])
 
     def test_auto_keeps_the_original_prompt(self):
@@ -229,25 +408,53 @@ class GeminiBatchTests(unittest.IsolatedAsyncioTestCase):
 
 class LiveGatewayTests(unittest.TestCase):
     def test_gemini_live_sets_language_codes(self):
-        config = GeminiLiveSession(model_override="gemini-3.1-flash-live-preview", language="ko")._live_config()
+        config = GeminiLiveSession(
+            model_override="gemini-3.1-flash-live-preview", language="ko"
+        )._live_config()
         self.assertEqual(["ko"], config.input_audio_transcription.language_codes)
 
     def test_gemini_live_auto_leaves_detection_on(self):
-        config = GeminiLiveSession(model_override="gemini-3.1-flash-live-preview", language="auto")._live_config()
+        config = GeminiLiveSession(
+            model_override="gemini-3.1-flash-live-preview", language="auto"
+        )._live_config()
         self.assertIsNone(config.input_audio_transcription.language_codes)
 
     def test_openai_realtime_payload_carries_language(self):
-        transcription = _session_update_payload("gpt-live-transcribe", "de")["session"]["audio"]["input"]["transcription"]
-        self.assertEqual({"model": "gpt-live-transcribe", "language": "de"}, transcription)
-        bare = _session_update_payload("gpt-live-transcribe")["session"]["audio"]["input"]["transcription"]
+        transcription = _session_update_payload("gpt-live-transcribe", "de")["session"][
+            "audio"
+        ]["input"]["transcription"]
+        self.assertEqual(
+            {"model": "gpt-live-transcribe", "language": "de"}, transcription
+        )
+        bare = _session_update_payload("gpt-live-transcribe")["session"]["audio"][
+            "input"
+        ]["transcription"]
         self.assertEqual({"model": "gpt-live-transcribe"}, bare)
-        self.assertEqual("de", OpenAIRealtimeSession(model_override="gpt-live-transcribe", language="de")._language)
+        self.assertEqual(
+            "de",
+            OpenAIRealtimeSession(
+                model_override="gpt-live-transcribe", language="de"
+            )._language,
+        )
 
     def _gateway(self, model_id: str, language: str):
-        config = MagicMock(enabled=True, model_id=model_id, prompt="", interval_seconds=15, sub_types="", lenses="")
+        config = MagicMock(
+            enabled=True,
+            model_id=model_id,
+            prompt="",
+            interval_seconds=15,
+            sub_types="",
+            lenses="",
+        )
         with (
-            patch("app.services.agents.orchestrator.ConsolidatedAnalystAgent", return_value=MagicMock()),
-            patch("app.services.agents.orchestrator.ObjectionHandlerAgent", return_value=MagicMock()),
+            patch(
+                "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
+                return_value=MagicMock(),
+            ),
+            patch(
+                "app.services.agents.orchestrator.ObjectionHandlerAgent",
+                return_value=MagicMock(),
+            ),
         ):
             orchestrator = AgentOrchestrator(
                 session_id=uuid4(),
@@ -263,7 +470,9 @@ class LiveGatewayTests(unittest.TestCase):
         return orchestrator.audio_gateway
 
     def test_orchestrator_hands_the_language_to_cloud_gateways(self):
-        self.assertEqual("es", self._gateway("gemini-3.1-flash-live-preview", "es")._language)
+        self.assertEqual(
+            "es", self._gateway("gemini-3.1-flash-live-preview", "es")._language
+        )
         self.assertEqual("es", self._gateway("gpt-live-transcribe", "es")._language)
 
     def test_orchestrator_hands_the_language_to_local_live_captions(self):
@@ -279,7 +488,9 @@ class UnspacedScriptFilterTests(unittest.TestCase):
             self.assertEqual(text, filter_transcript_text(text))
 
     def test_three_characters_are_enough_and_fewer_are_not(self):
-        self.assertEqual("\u6211\u540c\u610f", filter_transcript_text("\u6211\u540c\u610f"))  # "I agree"
+        self.assertEqual(
+            "\u6211\u540c\u610f", filter_transcript_text("\u6211\u540c\u610f")
+        )  # "I agree"
         self.assertIsNone(filter_transcript_text("\u597d\u7684"))  # "okay"
         self.assertIsNone(filter_transcript_text("\u55ef"))  # "mm"
 
@@ -297,7 +508,9 @@ class UnspacedScriptFilterTests(unittest.TestCase):
             "\uc2dc\uccad\ud574 \uc8fc\uc154\uc11c \uac10\uc0ac\ud569\ub2c8\ub2e4",
             "\u8c22\u8c22\u89c2\u770b",
         ):
-            self.assertIsNone(filter_transcript_text(text), text.encode("unicode_escape"))
+            self.assertIsNone(
+                filter_transcript_text(text), text.encode("unicode_escape")
+            )
 
 
 if __name__ == "__main__":

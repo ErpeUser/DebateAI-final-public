@@ -16,14 +16,20 @@ class DownloadPgTests(unittest.TestCase):
         with mock.patch("scripts.download_pg.sys.platform", "win32"):
             self.assertEqual(artifact_platform(), "windows-amd64")
         with mock.patch("scripts.download_pg.sys.platform", "darwin"):
-            with mock.patch("scripts.download_pg.platform.machine", return_value="arm64"):
+            with mock.patch(
+                "scripts.download_pg.platform.machine", return_value="arm64"
+            ):
                 self.assertEqual(artifact_platform(), "darwin-arm64v8")
-            with mock.patch("scripts.download_pg.platform.machine", return_value="x86_64"):
+            with mock.patch(
+                "scripts.download_pg.platform.machine", return_value="x86_64"
+            ):
                 self.assertEqual(artifact_platform(), "darwin-amd64")
 
     def test_jar_url_points_at_maven_central(self):
         url = jar_url("windows-amd64")
-        self.assertTrue(url.startswith("https://repo1.maven.org/maven2/io/zonky/test/postgres/"))
+        self.assertTrue(
+            url.startswith("https://repo1.maven.org/maven2/io/zonky/test/postgres/")
+        )
         self.assertTrue(url.endswith(".jar"))
         self.assertIn("embedded-postgres-binaries-windows-amd64", url)
 
@@ -32,10 +38,16 @@ class DownloadPgTests(unittest.TestCase):
             destination = Path(tmp) / "pgsql"
             with (
                 mock.patch.object(download_pg, "DEST", destination),
-                mock.patch.object(download_pg.urllib.request, "urlopen", return_value=io.BytesIO(b"untrusted")),
+                mock.patch.object(
+                    download_pg.urllib.request,
+                    "urlopen",
+                    return_value=io.BytesIO(b"untrusted"),
+                ),
                 mock.patch.object(download_pg.zipfile, "ZipFile") as open_jar,
             ):
-                with self.assertRaisesRegex(RuntimeError, "PostgreSQL checksum mismatch"):
+                with self.assertRaisesRegex(
+                    RuntimeError, "PostgreSQL checksum mismatch"
+                ):
                     download_pg.main()
                 open_jar.assert_not_called()
                 self.assertFalse(destination.exists())
@@ -55,9 +67,17 @@ class DownloadPgTests(unittest.TestCase):
             destination = Path(tmp) / "pgsql"
             with (
                 mock.patch.object(download_pg, "DEST", destination),
-                mock.patch.object(download_pg, "artifact_platform", return_value="linux-amd64"),
-                mock.patch.object(download_pg, "PG_JAR_SHA256", {"linux-amd64": hashlib.sha256(data).hexdigest()}),
-                mock.patch.object(download_pg.urllib.request, "urlopen", return_value=io.BytesIO(data)),
+                mock.patch.object(
+                    download_pg, "artifact_platform", return_value="linux-amd64"
+                ),
+                mock.patch.object(
+                    download_pg,
+                    "PG_JAR_SHA256",
+                    {"linux-amd64": hashlib.sha256(data).hexdigest()},
+                ),
+                mock.patch.object(
+                    download_pg.urllib.request, "urlopen", return_value=io.BytesIO(data)
+                ),
             ):
                 download_pg.main()
             self.assertEqual((destination / "bin" / "postgres").read_bytes(), binary)

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import type { CallSegment, ModelInfo, Session, TranscriptionJob } from "../../types";
+import type {
+  CallSegment,
+  ModelInfo,
+  Session,
+  TranscriptionJob,
+} from "../../types";
 import * as api from "../../services/api";
 import { groupModels, optionLabel } from "../../lib/modelOptions";
 import { useConfirm } from "../ConfirmProvider";
@@ -11,7 +16,11 @@ interface CallAudioPanelProps {
   onRetranscribed: () => Promise<void> | void;
 }
 
-export default function CallAudioPanel({ session, segments, onRetranscribed }: CallAudioPanelProps) {
+export default function CallAudioPanel({
+  session,
+  segments,
+  onRetranscribed,
+}: CallAudioPanelProps) {
   const [models, setModels] = useState<ModelInfo[]>([]);
   const [modelId, setModelId] = useState("");
   const [job, setJob] = useState<TranscriptionJob | null>(null);
@@ -23,11 +32,16 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
   const audioSegments = segments.filter((s) => s.audio_path);
 
   useEffect(() => {
-    api.listModels().then((all) => {
-      const batch = all.filter((m) => m.supports_batch_audio && m.key_available !== false);
-      setModels(batch);
-      if (batch.length > 0) setModelId(batch[0].id);
-    }).catch(() => {});
+    api
+      .listModels()
+      .then((all) => {
+        const batch = all.filter(
+          (m) => m.supports_batch_audio && m.key_available !== false,
+        );
+        setModels(batch);
+        if (batch.length > 0) setModelId(batch[0].id);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -47,7 +61,8 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     if (!modelId) return;
     const ok = await confirm({
       title: "Audio des Gesprächs erneut transkribieren",
-      message: "Das vorhandene Transkript bleibt erhalten, bis die Ersetzung abgeschlossen ist.",
+      message:
+        "Das vorhandene Transkript bleibt erhalten, bis die Ersetzung abgeschlossen ist.",
       confirmLabel: "Erneut transkribieren",
       tone: "danger",
     });
@@ -56,22 +71,38 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     const controller = new AbortController();
     pollAbortRef.current = controller;
     try {
-      const queued = await api.retranscribeSession(session.id, modelId, controller.signal);
+      const queued = await api.retranscribeSession(
+        session.id,
+        modelId,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
       setJob(queued);
-      const result = await api.waitForTranscriptionJob(session.id, queued, setJob, 1000, controller.signal);
+      const result = await api.waitForTranscriptionJob(
+        session.id,
+        queued,
+        setJob,
+        1000,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
       if (result.status === "completed") {
         setMessage(`${result.entries} Einträge wurden erneut transkribiert.`);
         await onRetranscribed();
       } else if (result.status === "canceled") {
-        setMessage("Erneute Transkription abgebrochen. Das vorhandene Transkript bleibt erhalten.");
+        setMessage(
+          "Erneute Transkription abgebrochen. Das vorhandene Transkript bleibt erhalten.",
+        );
       } else {
         setMessage(result.error || "Erneute Transkription fehlgeschlagen.");
       }
     } catch (err) {
       if (controller.signal.aborted) return;
-      setMessage(err instanceof Error ? err.message : "Erneute Transkription fehlgeschlagen");
+      setMessage(
+        err instanceof Error
+          ? err.message
+          : "Erneute Transkription fehlgeschlagen",
+      );
     } finally {
       if (pollAbortRef.current === controller) pollAbortRef.current = null;
     }
@@ -81,7 +112,11 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
     try {
       setJob(await api.cancelTranscriptionJob(session.id, "retranscription"));
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : "Erneute Transkription konnte nicht abgebrochen werden.");
+      setMessage(
+        err instanceof Error
+          ? err.message
+          : "Erneute Transkription konnte nicht abgebrochen werden.",
+      );
     }
   };
 
@@ -91,8 +126,15 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
         <div className="flex flex-wrap items-center gap-4">
           {audioSegments.map((seg) => (
             <div key={seg.id} className="flex items-center gap-2">
-              <span className="font-body text-xs text-brand-mid-gray">Gespräch {seg.segment_number}</span>
-              <audio controls preload="none" src={api.segmentAudioUrl(session.id, seg.segment_number)} className="h-8" />
+              <span className="font-body text-xs text-brand-mid-gray">
+                Gespräch {seg.segment_number}
+              </span>
+              <audio
+                controls
+                preload="none"
+                src={api.segmentAudioUrl(session.id, seg.segment_number)}
+                className="h-8"
+              />
             </div>
           ))}
         </div>
@@ -107,7 +149,9 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
             {groupModels(models).map((group) => (
               <optgroup key={group.provider} label={group.provider}>
                 {group.models.map((m) => (
-                  <option key={m.id} value={m.id}>{optionLabel(m)}</option>
+                  <option key={m.id} value={m.id}>
+                    {optionLabel(m)}
+                  </option>
                 ))}
               </optgroup>
             ))}
@@ -125,7 +169,11 @@ export default function CallAudioPanel({ session, segments, onRetranscribed }: C
       {job && api.transcriptionJobActive(job) && (
         <TranscriptionJobProgress job={job} onCancel={handleCancel} />
       )}
-      {message && <p role="status" className="mt-2 font-body text-xs text-brand-mid-gray">{message}</p>}
+      {message && (
+        <p role="status" className="mt-2 font-body text-xs text-brand-mid-gray">
+          {message}
+        </p>
+      )}
     </div>
   );
 }

@@ -23,7 +23,6 @@ import unicodedata
 from pathlib import Path
 
 import numpy as np
-
 from app.services import model_downloads
 from app.services.pii.recognizers import LOCATION, ORG, PERSON, Span
 
@@ -45,10 +44,28 @@ _LABEL_TO_CATEGORY = {"PER": PERSON, "ORG": ORG, "LOC": LOCATION}
 # Capitalized words the model reads as a person in speech that are not one:
 # "Oh my God", "Jesus", "Lord". A miss here costs a spurious vault entry, not
 # a leak, so the list stays short and obvious.
-_NOT_ENTITIES = frozenset({
-    "god", "lord", "jesus", "christ", "gosh", "mom", "dad", "mum", "sir", "ma'am",
-    "okay", "ok", "yeah", "hello", "hi", "hey", "thanks", "thank you",
-})
+_NOT_ENTITIES = frozenset(
+    {
+        "god",
+        "lord",
+        "jesus",
+        "christ",
+        "gosh",
+        "mom",
+        "dad",
+        "mum",
+        "sir",
+        "ma'am",
+        "okay",
+        "ok",
+        "yeah",
+        "hello",
+        "hi",
+        "hey",
+        "thanks",
+        "thank you",
+    }
+)
 
 # The registry key the browser watches this download under.
 DOWNLOAD_KEY = "pii-ner"
@@ -62,7 +79,7 @@ DOWNLOAD_PURPOSE = "PII Shield"
 # network download is what wedged the whole app in v0.6.1 (ALP-373).
 _state_lock = threading.Lock()
 _install_lock = threading.Lock()
-_model: "NerModel | None" = None
+_model: NerModel | None = None
 _load_error: str | None = None
 
 
@@ -92,10 +109,12 @@ def _remote_total() -> int:
 
         total = 0
         for name in _MODEL_FILES:
-            meta = get_hf_file_metadata(hf_hub_url(MODEL_REPO, name, revision=MODEL_REVISION))
+            meta = get_hf_file_metadata(
+                hf_hub_url(MODEL_REPO, name, revision=MODEL_REVISION)
+            )
             total += int(meta.size or 0)
         return total
-    except Exception:  # noqa: BLE001 - a missing denominator is not a failure
+    except Exception:
         logger.debug("Could not read the NER model size from the hub", exc_info=True)
         return 0
 
@@ -123,7 +142,9 @@ def ensure_downloaded() -> Path:
             name,
             local_dir=str(root),
             revision=MODEL_REVISION,
-            tqdm_class=model_downloads.reporter_for(DOWNLOAD_KEY, base=done, total=total),
+            tqdm_class=model_downloads.reporter_for(
+                DOWNLOAD_KEY, base=done, total=total
+            ),
         )
         done += (root / name).stat().st_size if (root / name).is_file() else 0
         model_downloads.advance(DOWNLOAD_KEY, done, total)
@@ -178,7 +199,9 @@ class NerModel:
         options = ort.SessionOptions()
         options.intra_op_num_threads = 2
         self.session = ort.InferenceSession(
-            str(root / "onnx" / "model_quantized.onnx"), options, providers=["CPUExecutionProvider"]
+            str(root / "onnx" / "model_quantized.onnx"),
+            options,
+            providers=["CPUExecutionProvider"],
         )
         self.input_names = {i.name for i in self.session.get_inputs()}
         self.tokenizer = WordPiece(root / "vocab.txt")
@@ -218,7 +241,9 @@ class NerModel:
             spans.extend(self._entities_for(text, chunk))
         return spans
 
-    def _entities_for(self, text: str, chunk: list[tuple[int, int, list[int]]]) -> list[Span]:
+    def _entities_for(
+        self, text: str, chunk: list[tuple[int, int, list[int]]]
+    ) -> list[Span]:
         ids = [self.tokenizer.cls]
         first_piece_index: list[int] = []
         for _, _, pieces in chunk:
@@ -238,7 +263,11 @@ class NerModel:
             category = _LABEL_TO_CATEGORY.get(current["type"])
             start, end = current["start"], current["end"]
             entity = text[start:end]
-            if category and score >= MIN_SCORE and entity.strip().lower() not in _NOT_ENTITIES:
+            if (
+                category
+                and score >= MIN_SCORE
+                and entity.strip().lower() not in _NOT_ENTITIES
+            ):
                 spans.append(Span(start, end, category, entity, score, "ner"))
             current = None
 
@@ -258,24 +287,29 @@ class NerModel:
                 current["scores"].append(score)
             else:
                 close()
-                current = {"type": entity_type, "start": start, "end": end, "scores": [score]}
+                current = {
+                    "type": entity_type,
+                    "start": start,
+                    "end": end,
+                    "scores": [score],
+                }
         close()
         return spans
 
 
-def _current() -> "NerModel | None":
+def _current() -> NerModel | None:
     with _state_lock:
         return _model
 
 
-def _record(model: "NerModel | None", error: str | None) -> None:
+def _record(model: NerModel | None, error: str | None) -> None:
     global _model, _load_error
     with _state_lock:
         _model = model
         _load_error = error
 
 
-def get_model(download: bool = False) -> "NerModel | None":
+def get_model(download: bool = False) -> NerModel | None:
     """The loaded model, or None when it is not ready.
 
     Never blocks on another thread's fetch and, by default, never starts one.
@@ -309,7 +343,7 @@ def get_model(download: bool = False) -> "NerModel | None":
             _record(model, None)
             logger.info("On-device NER model loaded from %s", root)
             return model
-        except Exception as exc:  # noqa: BLE001 - detection must degrade, never crash ingest
+        except Exception as exc:
             message = f"{type(exc).__name__}: {exc}"
             _record(None, message)
             logger.warning("On-device NER model unavailable: %s", message)
@@ -318,7 +352,7 @@ def get_model(download: bool = False) -> "NerModel | None":
         _install_lock.release()
 
 
-def install() -> "NerModel | None":
+def install() -> NerModel | None:
     """Fetch and load the weights now, reporting into the download registry.
 
     Returns the model, or None with `load_error` set. Safe to call from a
@@ -332,20 +366,26 @@ def install() -> "NerModel | None":
         with model_downloads.download(DOWNLOAD_KEY, DOWNLOAD_LABEL, DOWNLOAD_PURPOSE):
             model = get_model(download=True)
             if model is None:
-                raise RuntimeError(_load_error or "The on-device NER model could not be installed.")
+                raise RuntimeError(
+                    _load_error or "The on-device NER model could not be installed."
+                )
             return model
-    except Exception:  # noqa: BLE001 - already recorded in the registry and in _load_error
+    except Exception:
         return None
 
 
-def find_entities(text: str, categories: set[str], download: bool = False) -> list[Span]:
+def find_entities(
+    text: str, categories: set[str], download: bool = False
+) -> list[Span]:
     model = get_model(download=download)
     if model is None:
         return []
     try:
         return [s for s in model.entities(text) if s.category in categories]
-    except Exception:  # noqa: BLE001
-        logger.warning("NER inference failed; continuing with pattern recognizers", exc_info=True)
+    except Exception:
+        logger.warning(
+            "NER inference failed; continuing with pattern recognizers", exc_info=True
+        )
         return []
 
 

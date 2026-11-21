@@ -5,14 +5,20 @@ const load = () => import("./providerOnboarding.ts");
 
 test("startup attention is required only for an installed unready web provider", async () => {
   const { webProviderStartupNeedsAttention } = await load();
-  assert.equal(webProviderStartupNeedsAttention([
-    { available: true, ready: true },
-    { available: true, ready: false },
-  ]), true);
-  assert.equal(webProviderStartupNeedsAttention([
-    { available: true, ready: true },
-    { available: false, ready: false },
-  ]), false);
+  assert.equal(
+    webProviderStartupNeedsAttention([
+      { available: true, ready: true },
+      { available: true, ready: false },
+    ]),
+    true,
+  );
+  assert.equal(
+    webProviderStartupNeedsAttention([
+      { available: true, ready: true },
+      { available: false, ready: false },
+    ]),
+    false,
+  );
 });
 
 // The seeded defaults: Gemini batch transcription plus Gemini text agents.
@@ -62,7 +68,10 @@ test("a backend-provided readiness reason is passed through verbatim", async () 
   const { setupReadiness } = await load();
   const result = setupReadiness({
     localOnly: false,
-    transcription: geminiTranscription(false, "Gemini transcription needs a Google API key."),
+    transcription: geminiTranscription(
+      false,
+      "Gemini transcription needs a Google API key.",
+    ),
     agentModels: geminiAgents(false),
   });
   assert.equal(result.ready, false);
@@ -73,7 +82,12 @@ test("ready transcription with keyless enabled agent models stays not ready and 
   const { setupReadiness } = await load();
   const result = setupReadiness({
     localOnly: false,
-    transcription: { ready: true, model_id: "local-whisper", provider: "Local", reason: "" },
+    transcription: {
+      ready: true,
+      model_id: "local-whisper",
+      provider: "Local",
+      reason: "",
+    },
     agentModels: geminiAgents(false),
   });
   assert.equal(result.ready, false);
@@ -117,7 +131,7 @@ test("agent/model join retains explicit unselected and unavailable states", asyn
       { name: "Analyst", enabled: true, model_id: "gemini-2.5-flash" },
       { name: "Ghost", enabled: true, model_id: "not-in-registry" },
     ],
-    [{ id: "gemini-2.5-flash", provider: "Google", key_available: false }]
+    [{ id: "gemini-2.5-flash", provider: "Google", key_available: false }],
   );
   assert.deepEqual(result, [
     {
@@ -145,16 +159,23 @@ test("an enabled unselected agent blocks readiness", async () => {
   const { setupReadiness } = await load();
   const result = setupReadiness({
     localOnly: false,
-    transcription: { ready: true, model_id: "local-whisper-base", provider: "Local", reason: "" },
-    agentModels: [{
-      agentName: "Consolidated Analyst",
-      enabled: true,
-      modelId: "",
-      provider: "",
-      keyAvailable: true,
-      available: false,
-      runsLocally: false,
-    }],
+    transcription: {
+      ready: true,
+      model_id: "local-whisper-base",
+      provider: "Local",
+      reason: "",
+    },
+    agentModels: [
+      {
+        agentName: "Consolidated Analyst",
+        enabled: true,
+        modelId: "",
+        provider: "",
+        keyAvailable: true,
+        available: false,
+        runsLocally: false,
+      },
+    ],
   });
   assert.equal(result.ready, false);
   assert.match(result.reason, /Consolidated Analyst/);
@@ -172,16 +193,23 @@ test("Privacy First still requires ready local transcription and agent choices",
 
   const ready = setupReadiness({
     localOnly: true,
-    transcription: { ready: true, model_id: "local-whisper-base", provider: "Local", reason: "" },
-    agentModels: [{
-      agentName: "Local Analyst",
-      enabled: true,
-      modelId: "endpoint:box:qwen",
-      provider: "Box",
-      keyAvailable: true,
-      available: true,
-      runsLocally: true,
-    }],
+    transcription: {
+      ready: true,
+      model_id: "local-whisper-base",
+      provider: "Local",
+      reason: "",
+    },
+    agentModels: [
+      {
+        agentName: "Local Analyst",
+        enabled: true,
+        modelId: "endpoint:box:qwen",
+        provider: "Box",
+        keyAvailable: true,
+        available: true,
+        runsLocally: true,
+      },
+    ],
   });
   assert.equal(ready.ready, true);
 });
@@ -197,22 +225,39 @@ test("onboarding stage walks choose -> partial -> ready", async () => {
     transcription: geminiTranscription(false),
     agentModels: geminiAgents(false),
   });
-  assert.equal(onboardingStage({ anyKeySaved: false, readiness: noKeys }), "choose");
+  assert.equal(
+    onboardingStage({ anyKeySaved: false, readiness: noKeys }),
+    "choose",
+  );
 
   // OpenAI key saved, existing Gemini selections still unusable: partial.
-  assert.equal(onboardingStage({ anyKeySaved: true, readiness: noKeys }), "partial");
+  assert.equal(
+    onboardingStage({ anyKeySaved: true, readiness: noKeys }),
+    "partial",
+  );
 
   const googleReady = setupReadiness({
     localOnly: false,
     transcription: geminiTranscription(true),
     agentModels: geminiAgents(true),
   });
-  assert.equal(onboardingStage({ anyKeySaved: true, readiness: googleReady }), "ready");
+  assert.equal(
+    onboardingStage({ anyKeySaved: true, readiness: googleReady }),
+    "ready",
+  );
 
   const privacyReady = setupReadiness({
     localOnly: true,
-    transcription: { ready: true, model_id: "local-whisper-base", provider: "Local", reason: "" },
+    transcription: {
+      ready: true,
+      model_id: "local-whisper-base",
+      provider: "Local",
+      reason: "",
+    },
     agentModels: [],
   });
-  assert.equal(onboardingStage({ anyKeySaved: false, readiness: privacyReady }), "ready");
+  assert.equal(
+    onboardingStage({ anyKeySaved: false, readiness: privacyReady }),
+    "ready",
+  );
 });

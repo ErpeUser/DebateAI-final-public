@@ -22,12 +22,14 @@ def test_split_keeps_video_and_claim_families_together():
 
 
 def test_blind_scores_are_aggregated_without_revealing_labels():
-    result = score_blind_pairs([
-        {"decision": "a"},
-        {"decision": "b"},
-        {"decision": "tie"},
-        {"decision": ""},
-    ])
+    result = score_blind_pairs(
+        [
+            {"decision": "a"},
+            {"decision": "b"},
+            {"decision": "tie"},
+            {"decision": ""},
+        ]
+    )
     assert result == {
         "pairs": 4,
         "scored": 3,

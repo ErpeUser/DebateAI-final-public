@@ -12,9 +12,8 @@ export type OAuthWindowOpener = (
 ) => OAuthWindow | null;
 
 export function reserveOAuthWindow(
-  openWindow: OAuthWindowOpener = (url, target, features) => (
-    window.open(url, target, features) as OAuthWindow | null
-  ),
+  openWindow: OAuthWindowOpener = (url, target, features) =>
+    window.open(url, target, features) as OAuthWindow | null,
 ): OAuthWindow | null {
   try {
     return openWindow("about:blank", "_blank", "popup,width=760,height=820");
@@ -25,7 +24,10 @@ export function reserveOAuthWindow(
   }
 }
 
-export function navigateOAuthWindow(popup: OAuthWindow | null, url: string): boolean {
+export function navigateOAuthWindow(
+  popup: OAuthWindow | null,
+  url: string,
+): boolean {
   if (!popup) return false;
   popup.opener = null;
   popup.location.replace(url);

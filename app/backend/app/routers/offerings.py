@@ -3,17 +3,16 @@
 import csv
 import io
 import uuid
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
-from sqlalchemy import select, func
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.database import get_db
-from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.models import Offering
 from app.schemas import OfferingCreate, OfferingOut, OfferingUpdate
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.services.upload_limits import UploadTooLarge, read_bounded_upload
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/offerings", tags=["offerings"])
 MAX_OFFERINGS_IMPORT_BYTES = 10 * 1024 * 1024
@@ -88,7 +87,7 @@ async def update_offering(
         raise HTTPException(404, "Offering not found")
     for field, value in body.model_dump(exclude_unset=True).items():
         setattr(offering, field, value)
-    offering.updated_at = datetime.now(timezone.utc)
+    offering.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(offering)
     return offering
@@ -105,7 +104,9 @@ async def delete_offering(offering_id: uuid.UUID, db: AsyncSession = Depends(get
 
 
 @router.post("/import")
-async def import_offerings(file: UploadFile = File(...), db: AsyncSession = Depends(get_db)):
+async def import_offerings(
+    file: UploadFile = File(...), db: AsyncSession = Depends(get_db)
+):
     """Import offerings from CSV or Excel file.
 
     Expected columns: vendor, product_name, category, subcategory, description, use_cases, note, tags.
@@ -114,7 +115,9 @@ async def import_offerings(file: UploadFile = File(...), db: AsyncSession = Depe
     try:
         content = await read_bounded_upload(file, max_bytes=MAX_OFFERINGS_IMPORT_BYTES)
     except UploadTooLarge as error:
-        raise HTTPException(413, "Offerings import exceeds the 10 MiB upload limit") from error
+        raise HTTPException(
+            413, "Offerings import exceeds the 10 MiB upload limit"
+        ) from error
     filename = (file.filename or "").lower()
     try:
         preflight_office_archive(content, filename)
@@ -132,10 +135,16 @@ async def import_offerings(file: UploadFile = File(...), db: AsyncSession = Depe
         try:
             import openpyxl
         except ImportError:
-            raise HTTPException(400, "openpyxl is required for Excel imports. Install it with: pip install openpyxl")
+            raise HTTPException(
+                400,
+                "openpyxl is required for Excel imports. Install it with: pip install openpyxl",
+            )
         wb = openpyxl.load_workbook(io.BytesIO(content), read_only=True)
         ws = wb.active
-        headers = [str(c.value or "").strip().lower().replace(" ", "_") for c in next(ws.iter_rows(min_row=1, max_row=1))]
+        headers = [
+            str(c.value or "").strip().lower().replace(" ", "_")
+            for c in next(ws.iter_rows(min_row=1, max_row=1))
+        ]
         for row in ws.iter_rows(min_row=2, values_only=True):
             row_dict = {}
             for i, val in enumerate(row):
@@ -200,10 +209,13 @@ async def seed_offerings(replace: bool = False, db: AsyncSession = Depends(get_d
     """
     count = await db.scalar(select(func.count(Offering.id)))
     if count and count > 0 and not replace:
-        return {"message": f"Database already has {count} offerings. Pass ?replace=true to reseed."}
+        return {
+            "message": f"Database already has {count} offerings. Pass ?replace=true to reseed."
+        }
 
     if replace and count:
         from sqlalchemy import delete
+
         await db.execute(delete(Offering))
 
     offerings = _get_seed_data()
@@ -217,41 +229,222 @@ def _get_seed_data() -> list[dict]:
     """Fictional sample catalog: well-known vendors, generic tags and notes."""
     return [
         # -- Microsoft --
-        {"vendor": "Microsoft", "product_name": "Microsoft 365 E5", "category": "Productivity", "subcategory": "Suite Licensing", "description": "Productivity suite with advanced security, compliance, and analytics add-ons.", "use_cases": "Collaboration, email security, insider risk, eDiscovery", "note": "Strong fit when a customer wants to consolidate point security tools.", "tags": "Hybrid Work, Compliance"},
-        {"vendor": "Microsoft", "product_name": "Microsoft Entra ID", "category": "Security", "subcategory": "Identity & Access", "description": "Cloud identity and access management with SSO, MFA, and conditional access.", "use_cases": "Single sign-on, MFA rollout, conditional access, identity governance", "note": "Pairs well with a Zero Trust assessment engagement.", "tags": "Zero Trust, Compliance"},
-        {"vendor": "Microsoft", "product_name": "Microsoft Sentinel", "category": "Security", "subcategory": "SIEM", "description": "Cloud-native SIEM and SOAR with built-in analytics and threat intelligence.", "use_cases": "Log analytics, threat detection, SOC automation, compliance reporting", "note": "Often attached to our managed detection service.", "tags": "Security Operations, Cloud"},
-        {"vendor": "Microsoft", "product_name": "Azure Landing Zone Deployment", "category": "Professional Services", "subcategory": "Cloud Foundations", "description": "Design and deployment of a governed Azure environment ready for workload migration.", "use_cases": "Cloud adoption, governance guardrails, migration readiness", "note": "Fixed-scope engagement, typically four to six weeks.", "tags": "Cloud, Consulting"},
-
+        {
+            "vendor": "Microsoft",
+            "product_name": "Microsoft 365 E5",
+            "category": "Productivity",
+            "subcategory": "Suite Licensing",
+            "description": "Productivity suite with advanced security, compliance, and analytics add-ons.",
+            "use_cases": "Collaboration, email security, insider risk, eDiscovery",
+            "note": "Strong fit when a customer wants to consolidate point security tools.",
+            "tags": "Hybrid Work, Compliance",
+        },
+        {
+            "vendor": "Microsoft",
+            "product_name": "Microsoft Entra ID",
+            "category": "Security",
+            "subcategory": "Identity & Access",
+            "description": "Cloud identity and access management with SSO, MFA, and conditional access.",
+            "use_cases": "Single sign-on, MFA rollout, conditional access, identity governance",
+            "note": "Pairs well with a Zero Trust assessment engagement.",
+            "tags": "Zero Trust, Compliance",
+        },
+        {
+            "vendor": "Microsoft",
+            "product_name": "Microsoft Sentinel",
+            "category": "Security",
+            "subcategory": "SIEM",
+            "description": "Cloud-native SIEM and SOAR with built-in analytics and threat intelligence.",
+            "use_cases": "Log analytics, threat detection, SOC automation, compliance reporting",
+            "note": "Often attached to our managed detection service.",
+            "tags": "Security Operations, Cloud",
+        },
+        {
+            "vendor": "Microsoft",
+            "product_name": "Azure Landing Zone Deployment",
+            "category": "Professional Services",
+            "subcategory": "Cloud Foundations",
+            "description": "Design and deployment of a governed Azure environment ready for workload migration.",
+            "use_cases": "Cloud adoption, governance guardrails, migration readiness",
+            "note": "Fixed-scope engagement, typically four to six weeks.",
+            "tags": "Cloud, Consulting",
+        },
         # -- AWS --
-        {"vendor": "AWS", "product_name": "AWS Migration Program", "category": "Cloud", "subcategory": "Migration", "description": "Assessment, planning, and execution of workload migrations to AWS.", "use_cases": "Data center exit, hardware refresh avoidance, app modernization", "note": "Migration funding credits may offset services cost.", "tags": "Cloud, Consulting"},
-        {"vendor": "AWS", "product_name": "Amazon Connect", "category": "Collaboration", "subcategory": "Contact Center", "description": "Cloud contact center with intelligent routing, IVR, and real-time analytics.", "use_cases": "Contact center modernization, seasonal scaling, agent analytics", "note": "Usage-based pricing suits variable call volumes.", "tags": "Customer Experience, Cloud"},
-        {"vendor": "AWS", "product_name": "AWS Cost Optimization Review", "category": "Professional Services", "subcategory": "FinOps", "description": "Structured review of AWS spend with a prioritized savings roadmap.", "use_cases": "Budget overruns, reserved instance planning, rightsizing", "note": "Two-week assessment with an executive readout.", "tags": "Cloud, Cost Optimization, Consulting"},
-
+        {
+            "vendor": "AWS",
+            "product_name": "AWS Migration Program",
+            "category": "Cloud",
+            "subcategory": "Migration",
+            "description": "Assessment, planning, and execution of workload migrations to AWS.",
+            "use_cases": "Data center exit, hardware refresh avoidance, app modernization",
+            "note": "Migration funding credits may offset services cost.",
+            "tags": "Cloud, Consulting",
+        },
+        {
+            "vendor": "AWS",
+            "product_name": "Amazon Connect",
+            "category": "Collaboration",
+            "subcategory": "Contact Center",
+            "description": "Cloud contact center with intelligent routing, IVR, and real-time analytics.",
+            "use_cases": "Contact center modernization, seasonal scaling, agent analytics",
+            "note": "Usage-based pricing suits variable call volumes.",
+            "tags": "Customer Experience, Cloud",
+        },
+        {
+            "vendor": "AWS",
+            "product_name": "AWS Cost Optimization Review",
+            "category": "Professional Services",
+            "subcategory": "FinOps",
+            "description": "Structured review of AWS spend with a prioritized savings roadmap.",
+            "use_cases": "Budget overruns, reserved instance planning, rightsizing",
+            "note": "Two-week assessment with an executive readout.",
+            "tags": "Cloud, Cost Optimization, Consulting",
+        },
         # -- Cisco --
-        {"vendor": "Cisco", "product_name": "Cisco Meraki", "category": "Networking", "subcategory": "Cloud-Managed Networking", "description": "Cloud-managed switches, wireless, security appliances, and cameras.", "use_cases": "Multi-site rollouts, simplified management, guest Wi-Fi", "note": "Licensing renews annually; co-termination available.", "tags": "Networking, Managed Service"},
-        {"vendor": "Cisco", "product_name": "Cisco Catalyst Center", "category": "Networking", "subcategory": "Network Automation", "description": "Network controller for automation, assurance, and policy across campus networks.", "use_cases": "Network automation, configuration drift, assurance analytics", "note": "Requires current Catalyst hardware; check install base first.", "tags": "Networking, Automation"},
-
+        {
+            "vendor": "Cisco",
+            "product_name": "Cisco Meraki",
+            "category": "Networking",
+            "subcategory": "Cloud-Managed Networking",
+            "description": "Cloud-managed switches, wireless, security appliances, and cameras.",
+            "use_cases": "Multi-site rollouts, simplified management, guest Wi-Fi",
+            "note": "Licensing renews annually; co-termination available.",
+            "tags": "Networking, Managed Service",
+        },
+        {
+            "vendor": "Cisco",
+            "product_name": "Cisco Catalyst Center",
+            "category": "Networking",
+            "subcategory": "Network Automation",
+            "description": "Network controller for automation, assurance, and policy across campus networks.",
+            "use_cases": "Network automation, configuration drift, assurance analytics",
+            "note": "Requires current Catalyst hardware; check install base first.",
+            "tags": "Networking, Automation",
+        },
         # -- Fortinet --
-        {"vendor": "Fortinet", "product_name": "FortiGate NGFW", "category": "Security", "subcategory": "Network Security", "description": "Next-generation firewall with IPS, web filtering, and VPN.", "use_cases": "Perimeter security, branch security, VPN consolidation", "note": "Available as hardware or virtual appliance.", "tags": "Networking, Data Protection"},
-        {"vendor": "Fortinet", "product_name": "Fortinet Secure SD-WAN", "category": "Networking", "subcategory": "SD-WAN", "description": "Integrated SD-WAN and security on a single platform.", "use_cases": "Branch connectivity, MPLS cost reduction, application steering", "note": "Strong option when firewall refresh and WAN projects align.", "tags": "Networking, Cost Optimization"},
-
+        {
+            "vendor": "Fortinet",
+            "product_name": "FortiGate NGFW",
+            "category": "Security",
+            "subcategory": "Network Security",
+            "description": "Next-generation firewall with IPS, web filtering, and VPN.",
+            "use_cases": "Perimeter security, branch security, VPN consolidation",
+            "note": "Available as hardware or virtual appliance.",
+            "tags": "Networking, Data Protection",
+        },
+        {
+            "vendor": "Fortinet",
+            "product_name": "Fortinet Secure SD-WAN",
+            "category": "Networking",
+            "subcategory": "SD-WAN",
+            "description": "Integrated SD-WAN and security on a single platform.",
+            "use_cases": "Branch connectivity, MPLS cost reduction, application steering",
+            "note": "Strong option when firewall refresh and WAN projects align.",
+            "tags": "Networking, Cost Optimization",
+        },
         # -- Okta --
-        {"vendor": "Okta", "product_name": "Okta Workforce Identity", "category": "Security", "subcategory": "Identity & Access", "description": "Independent identity platform with SSO, MFA, and lifecycle management.", "use_cases": "App consolidation, contractor access, identity lifecycle automation", "note": "Common coexistence questions with Microsoft Entra; position by app estate.", "tags": "Zero Trust, Hybrid Work"},
-
+        {
+            "vendor": "Okta",
+            "product_name": "Okta Workforce Identity",
+            "category": "Security",
+            "subcategory": "Identity & Access",
+            "description": "Independent identity platform with SSO, MFA, and lifecycle management.",
+            "use_cases": "App consolidation, contractor access, identity lifecycle automation",
+            "note": "Common coexistence questions with Microsoft Entra; position by app estate.",
+            "tags": "Zero Trust, Hybrid Work",
+        },
         # -- Datadog --
-        {"vendor": "Datadog", "product_name": "Datadog Observability Platform", "category": "Observability", "subcategory": "Monitoring & APM", "description": "Unified metrics, traces, and logs with dashboards and alerting.", "use_cases": "Cloud migration visibility, incident response, SLO tracking", "note": "Cost scales with hosts and log volume; set ingestion budgets early.", "tags": "Observability, Cloud"},
-
+        {
+            "vendor": "Datadog",
+            "product_name": "Datadog Observability Platform",
+            "category": "Observability",
+            "subcategory": "Monitoring & APM",
+            "description": "Unified metrics, traces, and logs with dashboards and alerting.",
+            "use_cases": "Cloud migration visibility, incident response, SLO tracking",
+            "note": "Cost scales with hosts and log volume; set ingestion budgets early.",
+            "tags": "Observability, Cloud",
+        },
         # -- Zoom --
-        {"vendor": "Zoom", "product_name": "Zoom Workplace", "category": "Collaboration", "subcategory": "Meetings & Chat", "description": "Video meetings, team chat, whiteboard, and phone in one client.", "use_cases": "Hybrid meetings, phone system replacement, room modernization", "note": "Competitive displacement pricing often available.", "tags": "Hybrid Work, Customer Experience"},
-
+        {
+            "vendor": "Zoom",
+            "product_name": "Zoom Workplace",
+            "category": "Collaboration",
+            "subcategory": "Meetings & Chat",
+            "description": "Video meetings, team chat, whiteboard, and phone in one client.",
+            "use_cases": "Hybrid meetings, phone system replacement, room modernization",
+            "note": "Competitive displacement pricing often available.",
+            "tags": "Hybrid Work, Customer Experience",
+        },
         # -- Veeam --
-        {"vendor": "Veeam", "product_name": "Veeam Data Platform", "category": "Data Management", "subcategory": "Backup & Recovery", "description": "Backup, recovery, and ransomware resilience for hybrid environments.", "use_cases": "Ransomware recovery, immutable backups, cloud tiering", "note": "Recovery-time stories resonate well with executive audiences.", "tags": "Data Protection, Compliance"},
-
+        {
+            "vendor": "Veeam",
+            "product_name": "Veeam Data Platform",
+            "category": "Data Management",
+            "subcategory": "Backup & Recovery",
+            "description": "Backup, recovery, and ransomware resilience for hybrid environments.",
+            "use_cases": "Ransomware recovery, immutable backups, cloud tiering",
+            "note": "Recovery-time stories resonate well with executive audiences.",
+            "tags": "Data Protection, Compliance",
+        },
         # -- Service integrator offerings --
-        {"vendor": "Service Integrator", "product_name": "Recovery Readiness Assessment", "category": "Professional Services", "subcategory": "Resilience Advisory", "description": "Evidence-led review of recovery objectives, runbooks, authority, and validation gaps.", "use_cases": "Board risk reporting, cyber insurance evidence, recovery planning", "note": "Two-week assessment with an executive decision brief.", "tags": "Data Protection, Consulting, Compliance"},
-        {"vendor": "Service Integrator", "product_name": "Recovery Implementation Pilot", "category": "Professional Services", "subcategory": "Resilience Engineering", "description": "Time-boxed integration and isolated recovery validation for critical services.", "use_cases": "Runbook proof, recovery sequencing, non-production validation", "note": "Fixed scope with synthetic data, accountable-owner validation, and an evidence pack.", "tags": "Data Protection, Consulting"},
-        {"vendor": "Service Integrator", "product_name": "Managed Recovery Operations", "category": "Managed Services", "subcategory": "Resilience Operations", "description": "Ongoing runbook maintenance, validation coordination, and recovery evidence production.", "use_cases": "Remote operations, staffing gaps, recurring governance evidence", "note": "The customer retains recovery declaration and approval authority.", "tags": "Data Protection, Managed Service, Compliance"},
-        {"vendor": "Service Integrator", "product_name": "Managed Detection & Response", "category": "Managed Services", "subcategory": "Security Operations", "description": "24/7 monitoring, triage, and guided response across endpoints and cloud.", "use_cases": "SOC coverage gaps, alert fatigue, compliance evidence", "note": "Thirty-day onboarding; works with the customer's existing tooling.", "tags": "Security Operations, Managed Service"},
-        {"vendor": "Service Integrator", "product_name": "Managed Cloud Operations", "category": "Managed Services", "subcategory": "Cloud Operations", "description": "Ongoing management of cloud infrastructure: patching, backup, and cost hygiene.", "use_cases": "Staff shortages, patching discipline, monthly cost reviews", "note": "Tiered by environment size; includes quarterly optimization reviews.", "tags": "Cloud, Managed Service, Cost Optimization"},
-        {"vendor": "Service Integrator", "product_name": "Network Assessment & Design", "category": "Professional Services", "subcategory": "Advisory", "description": "Discovery and design engagement covering LAN, WAN, and wireless.", "use_cases": "Office moves, refresh planning, performance complaints", "note": "Deliverables feed directly into an implementation statement of work.", "tags": "Consulting, Networking"},
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Recovery Readiness Assessment",
+            "category": "Professional Services",
+            "subcategory": "Resilience Advisory",
+            "description": "Evidence-led review of recovery objectives, runbooks, authority, and validation gaps.",
+            "use_cases": "Board risk reporting, cyber insurance evidence, recovery planning",
+            "note": "Two-week assessment with an executive decision brief.",
+            "tags": "Data Protection, Consulting, Compliance",
+        },
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Recovery Implementation Pilot",
+            "category": "Professional Services",
+            "subcategory": "Resilience Engineering",
+            "description": "Time-boxed integration and isolated recovery validation for critical services.",
+            "use_cases": "Runbook proof, recovery sequencing, non-production validation",
+            "note": "Fixed scope with synthetic data, accountable-owner validation, and an evidence pack.",
+            "tags": "Data Protection, Consulting",
+        },
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Managed Recovery Operations",
+            "category": "Managed Services",
+            "subcategory": "Resilience Operations",
+            "description": "Ongoing runbook maintenance, validation coordination, and recovery evidence production.",
+            "use_cases": "Remote operations, staffing gaps, recurring governance evidence",
+            "note": "The customer retains recovery declaration and approval authority.",
+            "tags": "Data Protection, Managed Service, Compliance",
+        },
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Managed Detection & Response",
+            "category": "Managed Services",
+            "subcategory": "Security Operations",
+            "description": "24/7 monitoring, triage, and guided response across endpoints and cloud.",
+            "use_cases": "SOC coverage gaps, alert fatigue, compliance evidence",
+            "note": "Thirty-day onboarding; works with the customer's existing tooling.",
+            "tags": "Security Operations, Managed Service",
+        },
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Managed Cloud Operations",
+            "category": "Managed Services",
+            "subcategory": "Cloud Operations",
+            "description": "Ongoing management of cloud infrastructure: patching, backup, and cost hygiene.",
+            "use_cases": "Staff shortages, patching discipline, monthly cost reviews",
+            "note": "Tiered by environment size; includes quarterly optimization reviews.",
+            "tags": "Cloud, Managed Service, Cost Optimization",
+        },
+        {
+            "vendor": "Service Integrator",
+            "product_name": "Network Assessment & Design",
+            "category": "Professional Services",
+            "subcategory": "Advisory",
+            "description": "Discovery and design engagement covering LAN, WAN, and wireless.",
+            "use_cases": "Office moves, refresh planning, performance complaints",
+            "note": "Deliverables feed directly into an implementation statement of work.",
+            "tags": "Consulting, Networking",
+        },
     ]

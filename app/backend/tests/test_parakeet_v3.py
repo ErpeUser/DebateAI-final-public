@@ -15,14 +15,14 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.config import MODEL_REGISTRY, PARAKEET_V3_LANGUAGES  # noqa: E402
-from app.routers.models import ModelOut  # noqa: E402
-from app.services import local_fit  # noqa: E402
-from app.services.local_fit import local_recommendations_from_fit  # noqa: E402
-from app.services.local_live_captioner import LOCAL_LIVE_MODEL_MAP, LocalLiveCaptioner  # noqa: E402
-from app.services.local_transcriber import LOCAL_MODEL_MAP, LOCAL_MODEL_QUANTIZATION  # noqa: E402
-from app.services.privacy import is_local_model  # noqa: E402
-from app.services.transcription_language import (  # noqa: E402
+from app.config import MODEL_REGISTRY, PARAKEET_V3_LANGUAGES
+from app.routers.models import ModelOut
+from app.services import local_fit
+from app.services.local_fit import local_recommendations_from_fit
+from app.services.local_live_captioner import LOCAL_LIVE_MODEL_MAP, LocalLiveCaptioner
+from app.services.local_transcriber import LOCAL_MODEL_MAP, LOCAL_MODEL_QUANTIZATION
+from app.services.privacy import is_local_model
+from app.services.transcription_language import (
     SETTING_TRANSCRIPTION_LANGUAGE,
     TRANSCRIPTION_LANGUAGES,
     is_english_only,
@@ -58,7 +58,13 @@ def _fit():
         "validity": CURRENT,
         "contention": 1.0,
         "text_models": [],
-        "asr": {"asr_models": [_asr(WHISPER, 0.25, 0.30), _asr(V2, 0.10, 0.10), _asr(V3, 0.12, 0.12)]},
+        "asr": {
+            "asr_models": [
+                _asr(WHISPER, 0.25, 0.30),
+                _asr(V2, 0.10, 0.10),
+                _asr(V3, 0.12, 0.12),
+            ]
+        },
     }
 
 
@@ -103,7 +109,9 @@ class RegistryTests(unittest.TestCase):
     def test_models_endpoint_schema_carries_languages(self):
         entry = {**_entry(V3), "runs_locally": True}
         self.assertEqual(list(PARAKEET_V3_LANGUAGES), ModelOut(**entry).languages)
-        self.assertIsNone(ModelOut(**{**_entry(WHISPER), "runs_locally": True}).languages)
+        self.assertIsNone(
+            ModelOut(**{**_entry(WHISPER), "runs_locally": True}).languages
+        )
 
 
 class LanguageRuleTests(unittest.TestCase):
@@ -146,7 +154,9 @@ class RecommendationTests(unittest.TestCase):
         self.assertEqual([V3], _badged(recommendations, "batch_transcription"))
         self.assertEqual([V3_LIVE], _badged(recommendations, "audio_gateway"))
 
-    def test_a_language_no_parakeet_covers_falls_back_to_whisper_and_no_live_badge(self):
+    def test_a_language_no_parakeet_covers_falls_back_to_whisper_and_no_live_badge(
+        self,
+    ):
         recommendations = local_recommendations_from_fit(_fit(), language="ja")
         self.assertEqual([WHISPER], _badged(recommendations, "batch_transcription"))
         self.assertEqual([], _badged(recommendations, "audio_gateway"))
@@ -157,8 +167,12 @@ class RecommendationSettingTests(unittest.IsolatedAsyncioTestCase):
         async def fake_setting(_db, key, default=""):
             return "de" if key == SETTING_TRANSCRIPTION_LANGUAGE else default
 
-        with mock.patch.object(local_fit, "get_app_setting", fake_setting), \
-             mock.patch.object(local_fit, "load_local_fit_result", AsyncMock(return_value=_fit())):
+        with (
+            mock.patch.object(local_fit, "get_app_setting", fake_setting),
+            mock.patch.object(
+                local_fit, "load_local_fit_result", AsyncMock(return_value=_fit())
+            ),
+        ):
             recommendations = await local_fit.local_model_recommendations(MagicMock())
         self.assertEqual([V3], _badged(recommendations, "batch_transcription"))
 

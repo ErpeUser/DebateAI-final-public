@@ -5,7 +5,7 @@ import tempfile
 import threading
 import unittest
 from contextlib import ExitStack
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from unittest.mock import ANY, Mock, patch
 
@@ -35,12 +35,14 @@ class LauncherHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(dir=Path.cwd()) as tmp:
             primary = Path(tmp) / "sandbox-temp" / "debateai.log"
             fallback = Path(tmp) / "DebateAI" / "debateai.log"
-            with patch.dict(launcher.os.environ, {"LOCALAPPDATA": tmp}, clear=False), \
-                    patch.object(
-                        launcher.logging,
-                        "basicConfig",
-                        side_effect=[PermissionError(13, "denied"), None],
-                    ) as basic_config:
+            with (
+                patch.dict(launcher.os.environ, {"LOCALAPPDATA": tmp}, clear=False),
+                patch.object(
+                    launcher.logging,
+                    "basicConfig",
+                    side_effect=[PermissionError(13, "denied"), None],
+                ) as basic_config,
+            ):
                 selected = launcher._configure_launcher_logging(primary)
 
         self.assertEqual(fallback, selected)
@@ -48,7 +50,10 @@ class LauncherHelperTests(unittest.TestCase):
         self.assertEqual(str(fallback), basic_config.call_args.kwargs["filename"])
 
     def test_updater_path_prefers_canonical_and_falls_back_to_legacy(self):
-        with patch.object(launcher.sys, "platform", "win32"), tempfile.TemporaryDirectory() as tmp:
+        with (
+            patch.object(launcher.sys, "platform", "win32"),
+            tempfile.TemporaryDirectory() as tmp,
+        ):
             root = Path(tmp)
             canonical = root / "DebateAIUpdater.exe"
             legacy = root / "DebateAIUpdater.exe"
@@ -72,7 +77,10 @@ class LauncherHelperTests(unittest.TestCase):
         window.events.closing = closing
         webview = Mock()
         webview.create_window.return_value = window
-        with patch.dict("sys.modules", {"webview": webview}), patch.object(launcher.sys, "platform", "win32"):
+        with (
+            patch.dict("sys.modules", {"webview": webview}),
+            patch.object(launcher.sys, "platform", "win32"),
+        ):
             result = launcher.run_embedded_webview(
                 "http://localhost:8474/?desktop=1",
                 "Debate AI",
@@ -129,7 +137,15 @@ class LauncherHelperTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             data_dir = Path(tmp)
             optional = data_dir / "optional" / "chatgpt_oracle"
-            cli = optional / "node_modules" / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
+            cli = (
+                optional
+                / "node_modules"
+                / "@steipete"
+                / "oracle"
+                / "dist"
+                / "bin"
+                / "oracle-cli.js"
+            )
             cli.parent.mkdir(parents=True)
             cli.write_text("// oracle", encoding="utf-8")
 
@@ -191,7 +207,9 @@ class LauncherHelperTests(unittest.TestCase):
         ):
             launcher._hydrate_windows_provider_environment()
             self.assertEqual("true", launcher.os.environ["GOOGLE_GENAI_USE_VERTEXAI"])
-            self.assertEqual("project-test", launcher.os.environ["GOOGLE_CLOUD_PROJECT"])
+            self.assertEqual(
+                "project-test", launcher.os.environ["GOOGLE_CLOUD_PROJECT"]
+            )
 
     def test_windows_persisted_settings_never_override_process_environment(self):
         with (
@@ -268,14 +286,15 @@ class LauncherHelperTests(unittest.TestCase):
 
         fallback_port = listener.getsockname()[1]
         self.assertNotEqual(fallback_port, occupied_port)
-        with socket.socket() as contender:
-            with self.assertRaises(OSError):
-                contender.bind((launcher.LOOPBACK_HOST, fallback_port))
+        with socket.socket() as contender, self.assertRaises(OSError):
+            contender.bind((launcher.LOOPBACK_HOST, fallback_port))
 
     def test_windows_overlay_opens_native_always_on_top_webview(self):
         with (
             patch.object(launcher.sys, "platform", "win32"),
-            patch.object(launcher, "open_desktop_window", return_value=True) as open_window,
+            patch.object(
+                launcher, "open_desktop_window", return_value=True
+            ) as open_window,
         ):
             self.assertTrue(launcher.open_debate_overlay(8474))
 
@@ -297,15 +316,18 @@ class LauncherHelperTests(unittest.TestCase):
                 "http://localhost:8474", "Debate AI", 1280, 820, False
             )
 
-        self.assertEqual(command, [
-            r"C:\DebateAI\DebateAI.exe",
-            "--embedded-webview",
-            "http://localhost:8474",
-            "Debate AI",
-            "1280",
-            "820",
-            "0",
-        ])
+        self.assertEqual(
+            command,
+            [
+                r"C:\DebateAI\DebateAI.exe",
+                "--embedded-webview",
+                "http://localhost:8474",
+                "Debate AI",
+                "1280",
+                "820",
+                "0",
+            ],
+        )
 
     def test_invisible_embedded_window_falls_back_to_system_browser(self):
         process = Mock(pid=1234)
@@ -314,7 +336,9 @@ class LauncherHelperTests(unittest.TestCase):
             patch.object(launcher.sys, "platform", "win32"),
             patch.object(launcher, "visible_popen", return_value=process),
             patch.object(launcher, "_wait_for_process_window", return_value=False),
-            patch.object(launcher, "_open_system_browser", return_value=True) as fallback,
+            patch.object(
+                launcher, "_open_system_browser", return_value=True
+            ) as fallback,
             patch.dict(launcher._embedded_windows, {}, clear=True),
         ):
             opened = launcher.open_desktop_window("http://localhost:8474/?desktop=1")
@@ -471,6 +495,7 @@ class LauncherHelperTests(unittest.TestCase):
 
             def is_alive(self):
                 return False
+
         watchdog_patch = patch.object(
             launcher,
             "_start_postgres_watchdog",
@@ -489,32 +514,64 @@ class LauncherHelperTests(unittest.TestCase):
             return True
 
         with tempfile.TemporaryDirectory() as tmp, ExitStack() as stack:
-            stack.enter_context(patch.object(launcher, "app_data_dir", return_value=Path(tmp)))
-            stack.enter_context(patch.object(launcher, "existing_instance_port", return_value=None))
-            stack.enter_context(patch.object(launcher, "EmbeddedPostgres", return_value=postgres))
+            stack.enter_context(
+                patch.object(launcher, "app_data_dir", return_value=Path(tmp))
+            )
+            stack.enter_context(
+                patch.object(launcher, "existing_instance_port", return_value=None)
+            )
+            stack.enter_context(
+                patch.object(launcher, "EmbeddedPostgres", return_value=postgres)
+            )
             stack.enter_context(patch.object(postgres, "pgdata", Path(tmp) / "pgdata"))
-            stack.enter_context(patch.object(postgres, "database_url", return_value="postgresql://db"))
-            stack.enter_context(patch.object(launcher, "resource", return_value=Path(tmp)))
+            stack.enter_context(
+                patch.object(postgres, "database_url", return_value="postgresql://db")
+            )
+            stack.enter_context(
+                patch.object(launcher, "resource", return_value=Path(tmp))
+            )
             stack.enter_context(patch.object(launcher.sys, "frozen", True, create=True))
             stack.enter_context(patch.object(launcher, "free_port", return_value=15432))
-            stack.enter_context(patch.object(launcher, "bind_app_socket", return_value=listener))
+            stack.enter_context(
+                patch.object(launcher, "bind_app_socket", return_value=listener)
+            )
             stack.enter_context(patch.object(launcher, "secrets", secrets, create=True))
             stack.enter_context(patch.dict(launcher.sys.modules, {"uvicorn": uvicorn}))
-            thread_factory = stack.enter_context(patch.object(launcher.threading, "Thread"))
+            thread_factory = stack.enter_context(
+                patch.object(launcher.threading, "Thread")
+            )
             thread_factory.side_effect = FakeThread
-            stack.enter_context(patch.object(launcher, "wait_healthy", side_effect=confirm_health))
+            stack.enter_context(
+                patch.object(launcher, "wait_healthy", side_effect=confirm_health)
+            )
             opener = stack.enter_context(patch.object(launcher, "open_desktop_window"))
             tray = stack.enter_context(patch.object(launcher, "_run_tray"))
+
             def run_tray_after_splash_closed(*_args, **_kwargs):
                 self.assertTrue(lifecycle.close.called)
                 return False
+
             tray.side_effect = run_tray_after_splash_closed
             stack.enter_context(patch.object(launcher, "_stop_embedded_windows"))
-            stack.enter_context(patch.object(launcher, "SubscriptionBridge", return_value=bridge))
-            stack.enter_context(patch.object(launcher, "GeminiWebBridge", return_value=gemini_web_bridge))
-            stack.enter_context(patch.object(launcher, "ConsoleWindowSuppressor", return_value=console_suppressor))
-            stack.enter_context(patch.object(launcher, "LifecycleSplash", return_value=lifecycle))
-            stack.enter_context(patch.object(launcher, "ManagedOllama", return_value=ollama))
+            stack.enter_context(
+                patch.object(launcher, "SubscriptionBridge", return_value=bridge)
+            )
+            stack.enter_context(
+                patch.object(
+                    launcher, "GeminiWebBridge", return_value=gemini_web_bridge
+                )
+            )
+            stack.enter_context(
+                patch.object(
+                    launcher, "ConsoleWindowSuppressor", return_value=console_suppressor
+                )
+            )
+            stack.enter_context(
+                patch.object(launcher, "LifecycleSplash", return_value=lifecycle)
+            )
+            stack.enter_context(
+                patch.object(launcher, "ManagedOllama", return_value=ollama)
+            )
             stack.enter_context(patch.object(launcher.logging, "basicConfig"))
             self.assertEqual(launcher.run(), 0)
 
@@ -533,10 +590,16 @@ class LauncherHelperTests(unittest.TestCase):
         ollama.warm_model.assert_called_once_with("qwen3:4b", timeout=45.0)
         ollama.stop.assert_called_once_with()
         start_postgres_watchdog.assert_called_once_with(postgres, 15432, ANY)
-        thread_factory.assert_any_call(target=server.run, kwargs={"sockets": [listener]}, daemon=True)
+        thread_factory.assert_any_call(
+            target=server.run, kwargs={"sockets": [listener]}, daemon=True
+        )
         thread_factory.assert_any_call(target=ANY, name="qwen-warmup", daemon=True)
-        thread_factory.assert_any_call(target=ANY, name="subscription-bridge-start", daemon=True)
-        self.assertEqual(started_background_targets, ["qwen-warmup", "subscription-bridge-start"])
+        thread_factory.assert_any_call(
+            target=ANY, name="subscription-bridge-start", daemon=True
+        )
+        self.assertEqual(
+            started_background_targets, ["qwen-warmup", "subscription-bridge-start"]
+        )
         self.assertEqual(
             observed_health,
             {
@@ -607,7 +670,9 @@ class LauncherHelperTests(unittest.TestCase):
             patch.dict(launcher.sys.modules, {"pystray": pystray}),
             patch.object(launcher, "_tray_image"),
             patch.object(launcher, "open_desktop_window") as opener,
-            patch.object(launcher, "_request_owner_window", return_value=True) as request,
+            patch.object(
+                launcher, "_request_owner_window", return_value=True
+            ) as request,
         ):
             launcher._run_tray(8474, Path("data"), open_initial=True)
 
@@ -624,9 +689,15 @@ class LauncherHelperTests(unittest.TestCase):
             state = updates / "state.json"
             state.write_text(json.dumps({"state": "applying"}))
             marker = updates / "apply.json"
-            marker.write_text(json.dumps({
-                "requested_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }))
+            marker.write_text(
+                json.dumps(
+                    {
+                        "requested_at": datetime.now(UTC).strftime(
+                            "%Y-%m-%dT%H:%M:%SZ"
+                        ),
+                    }
+                )
+            )
             with patch.object(launcher, "validate_plan") as validate:
                 self.assertTrue(launcher._claim_update_marker(data_dir))
             validate.assert_called_once()
@@ -635,11 +706,15 @@ class LauncherHelperTests(unittest.TestCase):
             (updates / "other.json").write_text("{}")
             self.assertFalse(launcher._claim_update_marker(data_dir))
 
-            marker.write_text(json.dumps({
-                "requested_at": (
-                    datetime.now(timezone.utc) - timedelta(seconds=61)
-                ).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            }))
+            marker.write_text(
+                json.dumps(
+                    {
+                        "requested_at": (
+                            datetime.now(UTC) - timedelta(seconds=61)
+                        ).strftime("%Y-%m-%dT%H:%M:%SZ"),
+                    }
+                )
+            )
             self.assertFalse(launcher._claim_update_marker(data_dir))
             self.assertFalse(marker.exists())
             self.assertEqual(json.loads(state.read_text())["state"], "ready")
@@ -661,10 +736,14 @@ class LauncherHelperTests(unittest.TestCase):
         requested = threading.Event()
         stopped = threading.Event()
         with (
-            patch.object(launcher, "_claim_owner_window_request", side_effect=[True, False]),
+            patch.object(
+                launcher, "_claim_owner_window_request", side_effect=[True, False]
+            ),
             patch.object(launcher, "_claim_update_marker", return_value=False),
             patch.object(launcher, "open_desktop_window") as opener,
-            patch.object(launcher, "_restore_hidden_embedded_windows") as restore_hidden,
+            patch.object(
+                launcher, "_restore_hidden_embedded_windows"
+            ) as restore_hidden,
             patch.object(stopped, "wait", side_effect=lambda _seconds: stopped.set()),
         ):
             launcher._watch_for_update(icon, Path("data"), 8474, requested, stopped)
@@ -698,7 +777,9 @@ class LauncherHelperTests(unittest.TestCase):
         response.__exit__ = Mock(return_value=False)
         response.read.return_value = b'{"state":"available"}'
         with patch("launcher.urllib.request.urlopen", return_value=response) as urlopen:
-            self.assertEqual(launcher._update_status(8474, "instance-secret"), {"state": "available"})
+            self.assertEqual(
+                launcher._update_status(8474, "instance-secret"), {"state": "available"}
+            )
         request = urlopen.call_args.args[0]
         self.assertEqual(
             {key.lower(): value for key, value in request.header_items()}.get(
@@ -708,11 +789,15 @@ class LauncherHelperTests(unittest.TestCase):
         )
 
     def test_available_tray_label_includes_version_and_signed_note_title(self):
-        with patch.object(launcher, "_update_status", return_value={
-            "state": "available",
-            "available_version": "v0.4.0",
-            "available_notes": "# Safer updates\nMore detail.",
-        }):
+        with patch.object(
+            launcher,
+            "_update_status",
+            return_value={
+                "state": "available",
+                "available_version": "v0.4.0",
+                "available_notes": "# Safer updates\nMore detail.",
+            },
+        ):
             self.assertEqual(
                 launcher._update_menu_label(8474, "instance-secret"),
                 "Update v0.4.0: Safer updates",
@@ -808,7 +893,9 @@ class LauncherHelperTests(unittest.TestCase):
             side_effect=[missing, response],
         ) as urlopen:
             self.assertTrue(launcher.instance_is_healthy(8474, "ours"))
-        self.assertEqual(launcher.readiness_url(8474), urlopen.call_args_list[0].args[0])
+        self.assertEqual(
+            launcher.readiness_url(8474), urlopen.call_args_list[0].args[0]
+        )
         self.assertEqual(launcher.health_url(8474), urlopen.call_args_list[1].args[0])
 
     def test_readiness_503_never_claims_a_legacy_healthy_instance(self):
@@ -829,9 +916,7 @@ class LauncherHelperTests(unittest.TestCase):
     def test_wait_healthy_false_when_nothing_listens(self):
         from debateai_desktop.paths import free_port
 
-        self.assertFalse(
-            launcher.wait_healthy(free_port(), timeout=1, token="ours")
-        )
+        self.assertFalse(launcher.wait_healthy(free_port(), timeout=1, token="ours"))
 
     def test_wait_for_other_instance_returns_port_once_lock_appears(self):
         token = "ours"
@@ -868,7 +953,9 @@ class LauncherHelperTests(unittest.TestCase):
         with (
             patch.object(launcher.sys, "platform", "linux"),
             patch.object(launcher, "visible_popen", return_value=process),
-            patch.object(launcher, "_open_system_browser", return_value=True) as fallback,
+            patch.object(
+                launcher, "_open_system_browser", return_value=True
+            ) as fallback,
         ):
             self.assertTrue(launcher.open_desktop_window("http://localhost:8474"))
         fallback.assert_called_once_with("http://localhost:8474")

@@ -2,7 +2,6 @@ import re
 import unittest
 from pathlib import Path
 
-
 MATRIX = Path(__file__).parents[2] / ".ai" / "DEBATE_AI_OPTIMIERUNG.md"
 
 
@@ -14,7 +13,9 @@ class V3MatrixCoverageTests(unittest.TestCase):
         # evidence checkout, while making the public CI suite honest about
         # the unavailable input instead of failing with FileNotFoundError.
         if not MATRIX.is_file():
-            self.skipTest("private V3 acceptance matrix is not present in public checkout")
+            self.skipTest(
+                "private V3 acceptance matrix is not present in public checkout"
+            )
 
     def test_matrix_lists_all_atomics_and_priority_contracts(self):
         text = MATRIX.read_text(encoding="utf-8")
@@ -23,7 +24,13 @@ class V3MatrixCoverageTests(unittest.TestCase):
             for line in text.splitlines()
             if line.startswith("| ") and line.count("|") >= 4
         }
-        for identifier in [*(f"A{i:02d}" for i in range(1, 25)), "N1", "N2", "N3", "N4"]:
+        for identifier in [
+            *(f"A{i:02d}" for i in range(1, 25)),
+            "N1",
+            "N2",
+            "N3",
+            "N4",
+        ]:
             self.assertTrue(
                 any(re.search(rf"\b{identifier}\b", cell) for cell in first_cells),
                 identifier,

@@ -1,4 +1,5 @@
 """Regression tests for the credential-free outbound request audit."""
+
 import json
 import tempfile
 import unittest
@@ -60,7 +61,14 @@ class ExternalAuditTests(unittest.TestCase):
             self.assertEqual(item["data_category"], "research_claim")
             self.assertEqual(item["claim_id"], external_audit.claim_id_for(claim))
         serialized = self.audit_file.read_text(encoding="utf-8")
-        for secret in ("secret", "api_key", "token", "customer claim", "cookie", "prompt"):
+        for secret in (
+            "secret",
+            "api_key",
+            "token",
+            "customer claim",
+            "cookie",
+            "prompt",
+        ):
             self.assertNotIn(secret, serialized)
 
     def test_context_is_scoped_and_source_categories_are_bounded(self):
@@ -83,13 +91,16 @@ class ExternalAuditTests(unittest.TestCase):
         expected = external_audit.claim_id_for("synthetic research claim")
         with external_audit.audit_context(claim="synthetic research claim"):
             request_id = external_audit.start_external_request(
-                provider_route="test", approval=True,
+                provider_route="test",
+                approval=True,
                 claim_id=external_audit.current_claim_id(),
             )
             external_audit.finish_external_request(
                 request_id, provider_route="test", approval=True, status="completed"
             )
-        self.assertEqual([row["claim_id"] for row in self._records()], [expected, expected])
+        self.assertEqual(
+            [row["claim_id"] for row in self._records()], [expected, expected]
+        )
 
     def test_independent_digest_is_preserved_but_untrusted_text_is_hashed(self):
         digest = external_audit.claim_id_for("different synthetic claim")

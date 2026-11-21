@@ -96,16 +96,16 @@ class Settings(BaseSettings):
     # Agent toggles
     AGENT_QUESTION_HUNTER_ENABLED: bool = True
     AGENT_CONSOLIDATED_ENABLED: bool = True  # single call for obs + opp + action items
-    AGENT_OBSERVER_ENABLED: bool = True      # sub-filter: include observations
+    AGENT_OBSERVER_ENABLED: bool = True  # sub-filter: include observations
     AGENT_OPPORTUNITY_SCOUT_ENABLED: bool = True  # sub-filter: include opportunities
-    AGENT_ACTION_TRACKER_ENABLED: bool = True     # sub-filter: include action items
+    AGENT_ACTION_TRACKER_ENABLED: bool = True  # sub-filter: include action items
     AGENT_SYNTHESIZER_ENABLED: bool = True
     AGENT_OPPORTUNITY_SPECIALIST_ENABLED: bool = True
 
     # Agent timing
-    TEXT_AGENT_INTERVAL_SECONDS: int = 40        # consolidated analyst cycle
+    TEXT_AGENT_INTERVAL_SECONDS: int = 40  # consolidated analyst cycle
     OBJECTION_HANDLER_INTERVAL_SECONDS: int = 10  # objection handler fast scan cycle
-    OBJECTION_WINDOW_SECONDS: int = 90           # transcript window for objection scans
+    OBJECTION_WINDOW_SECONDS: int = 90  # transcript window for objection scans
     # Optional keyless fact lookup for the debate copilot. Off by default
     # because enabling it sends a short factual query to public search
     # endpoints; Privacy First also blocks it at runtime.
@@ -117,9 +117,11 @@ class Settings(BaseSettings):
     # prompt. Past this it becomes a compact stub that merge/answer can still
     # target by id. Raising it costs tokens quadratically with call length.
     SYNTHESIZER_WORKING_SET_SECONDS: int = 600
-    SYNTHESIZER_COOLDOWN_SECONDS: int = 75       # min time between synthesizer runs
+    SYNTHESIZER_COOLDOWN_SECONDS: int = 75  # min time between synthesizer runs
     OPPORTUNITY_SPECIALIST_COOLDOWN_SECONDS: int = 55  # batch window for opp specialist
-    KNOWLEDGE_CONTEXT_CHAR_BUDGET: int = 60000  # max chars of knowledge context stuffed into a prompt
+    KNOWLEDGE_CONTEXT_CHAR_BUDGET: int = (
+        60000  # max chars of knowledge context stuffed into a prompt
+    )
 
     # Speaker diarization settings
     LIVE_DIARIZER: str = "lightweight"
@@ -219,8 +221,31 @@ DEFAULT_MODEL_RECOMMENDATION_ROLES: dict[str, tuple[str, ...]] = {
 # entry's "languages" names what a model can transcribe; an entry without one
 # is multilingual or the provider decides (ALP-405).
 PARAKEET_V3_LANGUAGES: tuple[str, ...] = (
-    "bg", "hr", "cs", "da", "nl", "en", "et", "fi", "fr", "de", "el", "hu", "it",
-    "lv", "lt", "mt", "pl", "pt", "ro", "sk", "sl", "es", "sv", "ru", "uk",
+    "bg",
+    "hr",
+    "cs",
+    "da",
+    "nl",
+    "en",
+    "et",
+    "fi",
+    "fr",
+    "de",
+    "el",
+    "hu",
+    "it",
+    "lv",
+    "lt",
+    "mt",
+    "pl",
+    "pt",
+    "ro",
+    "sk",
+    "sl",
+    "es",
+    "sv",
+    "ru",
+    "uk",
 )
 
 MODEL_REGISTRY: list[dict] = [

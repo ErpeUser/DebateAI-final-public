@@ -9,16 +9,16 @@ import math
 import unittest
 
 from app.services.capacity_planner import (
-    BatchAsrDemand,
-    CaptionerDemand,
     CONSUMER_LOCAL_OFF_PROCESS,
     CONSUMER_REMOTE,
     DEGRADATION_ORDER,
-    DiarizationDemand,
-    MachineBudget,
     STATUS_OK,
     STATUS_OVER_BUDGET,
     STATUS_THIN,
+    BatchAsrDemand,
+    CaptionerDemand,
+    DiarizationDemand,
+    MachineBudget,
     TextAgentDemand,
     plan_capacity,
 )
@@ -30,8 +30,12 @@ def _comfortable_budget() -> MachineBudget:
 
 class DiarizationDemandTests(unittest.TestCase):
     def test_track_count_multiplies_cpu_and_memory(self):
-        single = DiarizationDemand(track_count=1, per_track_rtf=0.5, per_instance_memory_mb=400)
-        dual = DiarizationDemand(track_count=2, per_track_rtf=0.5, per_instance_memory_mb=400)
+        single = DiarizationDemand(
+            track_count=1, per_track_rtf=0.5, per_instance_memory_mb=400
+        )
+        dual = DiarizationDemand(
+            track_count=2, per_track_rtf=0.5, per_instance_memory_mb=400
+        )
         self.assertEqual(0.5, single.cpu_cores())
         self.assertEqual(1.0, dual.cpu_cores())
         self.assertEqual(400, single.memory_mb())
@@ -112,8 +116,12 @@ class PlanCapacityTests(unittest.TestCase):
     def test_a_light_configuration_is_admitted_cleanly(self):
         verdict = plan_capacity(
             _comfortable_budget(),
-            diarization=DiarizationDemand(track_count=1, per_track_rtf=0.3, per_instance_memory_mb=300),
-            batch_asr=BatchAsrDemand(real_time_factor=0.3, speech_fraction=0.5, memory_mb=300),
+            diarization=DiarizationDemand(
+                track_count=1, per_track_rtf=0.3, per_instance_memory_mb=300
+            ),
+            batch_asr=BatchAsrDemand(
+                real_time_factor=0.3, speech_fraction=0.5, memory_mb=300
+            ),
         )
         self.assertEqual(STATUS_OK, verdict.status)
         self.assertTrue(verdict.admits())
@@ -124,8 +132,12 @@ class PlanCapacityTests(unittest.TestCase):
         budget = MachineBudget(usable_cores=4, memory_limit_mb=4096, overhead_mb=200)
         verdict = plan_capacity(
             budget,
-            diarization=DiarizationDemand(track_count=2, per_track_rtf=1.05, per_instance_memory_mb=900),
-            batch_asr=BatchAsrDemand(real_time_factor=0.5, speech_fraction=0.6, memory_mb=500),
+            diarization=DiarizationDemand(
+                track_count=2, per_track_rtf=1.05, per_instance_memory_mb=900
+            ),
+            batch_asr=BatchAsrDemand(
+                real_time_factor=0.5, speech_fraction=0.6, memory_mb=500
+            ),
             captioner=CaptionerDemand(real_time_factor=0.5, memory_mb=0.0),
             text_agents=[
                 TextAgentDemand(
@@ -150,7 +162,9 @@ class PlanCapacityTests(unittest.TestCase):
         self.assertFalse(verdict.admits())
         self.assertGreater(verdict.cpu_load_multiple, 1.0)
         # The override must state the measured shortfall, per role for the arbiter.
-        self.assertTrue(any("brief_arbiter" in r and "will not fit" in r for r in verdict.reasons))
+        self.assertTrue(
+            any("brief_arbiter" in r and "will not fit" in r for r in verdict.reasons)
+        )
         # Ratified degradation order, only the applicable levers.
         self.assertEqual(
             (
@@ -221,8 +235,12 @@ class PlanCapacityTests(unittest.TestCase):
         budget = MachineBudget(usable_cores=8, memory_limit_mb=2048, overhead_mb=200)
         verdict = plan_capacity(
             budget,
-            diarization=DiarizationDemand(track_count=2, per_track_rtf=0.3, per_instance_memory_mb=900),
-            batch_asr=BatchAsrDemand(real_time_factor=0.3, speech_fraction=0.5, memory_mb=500),
+            diarization=DiarizationDemand(
+                track_count=2, per_track_rtf=0.3, per_instance_memory_mb=900
+            ),
+            batch_asr=BatchAsrDemand(
+                real_time_factor=0.3, speech_fraction=0.5, memory_mb=500
+            ),
         )
         self.assertEqual(STATUS_OVER_BUDGET, verdict.status)
         self.assertGreater(verdict.cpu_headroom_cores, 0)
@@ -233,8 +251,12 @@ class PlanCapacityTests(unittest.TestCase):
         budget = MachineBudget(usable_cores=8, memory_limit_mb=2048, overhead_mb=200)
         verdict = plan_capacity(
             budget,
-            diarization=DiarizationDemand(track_count=2, per_track_rtf=0.3, per_instance_memory_mb=900),
-            batch_asr=BatchAsrDemand(real_time_factor=0.3, speech_fraction=0.5, memory_mb=500),
+            diarization=DiarizationDemand(
+                track_count=2, per_track_rtf=0.3, per_instance_memory_mb=900
+            ),
+            batch_asr=BatchAsrDemand(
+                real_time_factor=0.3, speech_fraction=0.5, memory_mb=500
+            ),
             text_agents=[
                 TextAgentDemand(
                     role="consolidated_analyst",
@@ -247,7 +269,9 @@ class PlanCapacityTests(unittest.TestCase):
             ],
         )
         # No captioner and a cpu-only lever must not appear for a memory breach.
-        self.assertIn("Stop before accepting new diarization audio", verdict.degradation_plan)
+        self.assertIn(
+            "Stop before accepting new diarization audio", verdict.degradation_plan
+        )
         self.assertNotIn("Widen text-agent intervals", verdict.degradation_plan)
         self.assertNotIn("Drop live interim captions", verdict.degradation_plan)
 
@@ -263,7 +287,13 @@ class DegradationOrderTests(unittest.TestCase):
     def test_protected_levers_are_last_and_never_planned(self):
         keys = [lever.key for lever in DEGRADATION_ORDER]
         self.assertEqual(
-            ["live_captions", "text_agent_cadence", "diarization_detail", "batch_transcript", "call_liveness"],
+            [
+                "live_captions",
+                "text_agent_cadence",
+                "diarization_detail",
+                "batch_transcript",
+                "call_liveness",
+            ],
             keys,
         )
         protected = [lever.key for lever in DEGRADATION_ORDER if lever.protected]

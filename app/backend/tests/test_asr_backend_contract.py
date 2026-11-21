@@ -5,8 +5,8 @@ import unittest
 from unittest import mock
 
 from app.services.asr_backend import (
-    ASRBackend,
     NEMO_SPEECH_CPP_VERSION,
+    ASRBackend,
     NemotronStreamingASRBackend,
     optional_nemotron_capability,
 )
@@ -31,12 +31,18 @@ class _FakeSocket:
             if event["type"] == "session.update":
                 self.events.put_nowait(json.dumps({"type": "session.updated"}))
             elif event["type"] == "input_audio_buffer.commit":
-                self.events.put_nowait(json.dumps({
-                    "type": "conversation.item.input_audio_transcription.completed",
-                    "transcript": "Der Preis bleibt 10 Euro.",
-                    "words": [{"word": "10", "start": 1.0, "end": 1.2}],
-                }))
-                self.events.put_nowait(json.dumps({"type": "input_audio_buffer.committed"}))
+                self.events.put_nowait(
+                    json.dumps(
+                        {
+                            "type": "conversation.item.input_audio_transcription.completed",
+                            "transcript": "Der Preis bleibt 10 Euro.",
+                            "words": [{"word": "10", "start": 1.0, "end": 1.2}],
+                        }
+                    )
+                )
+                self.events.put_nowait(
+                    json.dumps({"type": "input_audio_buffer.committed"})
+                )
 
     async def close(self):
         self.closed = True
@@ -51,7 +57,10 @@ class _BrokenAfterHandshakeSocket(_FakeSocket):
 
 class _FailCommitSocket(_FakeSocket):
     async def send(self, value):
-        if isinstance(value, str) and json.loads(value)["type"] == "input_audio_buffer.commit":
+        if (
+            isinstance(value, str)
+            and json.loads(value)["type"] == "input_audio_buffer.commit"
+        ):
             raise ConnectionError("socket dropped before commit")
         await super().send(value)
 
@@ -219,7 +228,9 @@ class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
         await backend.feed_audio(0, first)
         await asyncio.sleep(0)
         await backend.feed_audio(0, second)
-        replayed = b"".join(value for value in sockets[1].sent if isinstance(value, bytes))
+        replayed = b"".join(
+            value for value in sockets[1].sent if isinstance(value, bytes)
+        )
         self.assertEqual(first + second, replayed)
         await backend.close()
 
@@ -241,11 +252,15 @@ class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
             await backend.close()
 
         self.assertEqual("Der Preis bleibt 10 Euro.", result.text)
-        replayed = b"".join(value for value in sockets[1].sent if isinstance(value, bytes))
+        replayed = b"".join(
+            value for value in sockets[1].sent if isinstance(value, bytes)
+        )
         self.assertEqual(audio, replayed)
         self.assertEqual(2, len(sockets))
 
-    async def test_session_switch_discards_both_track_contexts_but_keeps_backend_usable(self):
+    async def test_session_switch_discards_both_track_contexts_but_keeps_backend_usable(
+        self,
+    ):
         sockets = []
 
         async def connect(_url, **_kwargs):
@@ -271,12 +286,14 @@ class NemotronStreamingTests(unittest.IsolatedAsyncioTestCase):
             connect=lambda _url: None,
             event_timeout=0.001,
         )
-        with mock.patch(
-            "app.services.asr_backend._server_readiness",
-            return_value=(False, "still down"),
+        with (
+            mock.patch(
+                "app.services.asr_backend._server_readiness",
+                return_value=(False, "still down"),
+            ),
+            self.assertRaisesRegex(RuntimeError, "not ready"),
         ):
-            with self.assertRaisesRegex(RuntimeError, "not ready"):
-                await backend._check_readiness()
+            await backend._check_readiness()
 
         self.assertEqual(1, manager.started)
         self.assertEqual(1, manager.stopped)

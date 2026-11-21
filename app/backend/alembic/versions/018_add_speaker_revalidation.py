@@ -6,7 +6,6 @@ Create Date: 2026-07-23
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "018_speaker_revalidation"
@@ -33,9 +32,7 @@ def upgrade():
         sa.Column("mapping_hash", sa.String(length=64), nullable=False),
         sa.Column("mapping_snapshot", sa.JSON(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-        sa.ForeignKeyConstraint(
-            ["session_id"], ["sessions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["session_id"], ["sessions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "session_id",
@@ -59,9 +56,7 @@ def upgrade():
             ["speaker_mapping_revisions.id"],
             ondelete="CASCADE",
         ),
-        sa.ForeignKeyConstraint(
-            ["session_id"], ["sessions.id"], ondelete="CASCADE"
-        ),
+        sa.ForeignKeyConstraint(["session_id"], ["sessions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
             "session_id",

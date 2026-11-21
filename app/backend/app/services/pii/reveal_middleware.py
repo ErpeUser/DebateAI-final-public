@@ -39,8 +39,14 @@ def _scope_target(scope) -> tuple[uuid.UUID | None, bool]:
 
 
 def _is_revealable(message) -> bool:
-    headers = {k.decode("latin-1").lower(): v.decode("latin-1") for k, v in message.get("headers", [])}
-    return "application/json" in headers.get("content-type", "") and message.get("status", 200) < 400
+    headers = {
+        k.decode("latin-1").lower(): v.decode("latin-1")
+        for k, v in message.get("headers", [])
+    }
+    return (
+        "application/json" in headers.get("content-type", "")
+        and message.get("status", 200) < 400
+    )
 
 
 class _BufferedSender:
@@ -62,16 +68,20 @@ class _BufferedSender:
             (b"content-type", b"application/json"),
             (b"content-length", str(len(error_body)).encode("latin-1")),
         ]
-        await self.send({
-            "type": "http.response.start",
-            "status": 413,
-            "headers": headers,
-        })
-        await self.send({
-            "type": "http.response.body",
-            "body": error_body,
-            "more_body": False,
-        })
+        await self.send(
+            {
+                "type": "http.response.start",
+                "status": 413,
+                "headers": headers,
+            }
+        )
+        await self.send(
+            {
+                "type": "http.response.body",
+                "body": error_body,
+                "more_body": False,
+            }
+        )
 
     async def __call__(self, message):
         kind = message["type"]
@@ -88,7 +98,10 @@ class _BufferedSender:
                 declared_length = int(raw_length) if raw_length is not None else None
             except (TypeError, ValueError):
                 declared_length = None
-            if declared_length is not None and declared_length > MAX_BUFFERED_JSON_BYTES:
+            if (
+                declared_length is not None
+                and declared_length > MAX_BUFFERED_JSON_BYTES
+            ):
                 await self._reject_oversized()
                 return
             self.start_message = message
@@ -113,12 +126,15 @@ class _BufferedSender:
             return
         revealed = await self.reveal(b"".join(self.body_parts))
         headers = [
-            (k, v) for k, v in self.start_message.get("headers", [])
+            (k, v)
+            for k, v in self.start_message.get("headers", [])
             if k.decode("latin-1").lower() != "content-length"
         ]
         headers.append((b"content-length", str(len(revealed)).encode("latin-1")))
         await self.send({**self.start_message, "headers": headers})
-        await self.send({"type": "http.response.body", "body": revealed, "more_body": False})
+        await self.send(
+            {"type": "http.response.body", "body": revealed, "more_body": False}
+        )
 
 
 class PiiRevealMiddleware:
@@ -126,7 +142,9 @@ class PiiRevealMiddleware:
         self.app = app
 
     async def __call__(self, scope, receive, send):
-        session_id, is_list = _scope_target(scope) if scope["type"] == "http" else (None, False)
+        session_id, is_list = (
+            _scope_target(scope) if scope["type"] == "http" else (None, False)
+        )
         if session_id is None and not is_list:
             await self.app(scope, receive, send)
             return
@@ -155,8 +173,14 @@ class PiiRevealMiddleware:
                         sid = uuid.UUID(str(item_id)) if item_id else None
                     except ValueError:
                         sid = None
-                    out.append(await shield.reveal_payload(db, sid, item, route=route) if sid else item)
+                    out.append(
+                        await shield.reveal_payload(db, sid, item, route=route)
+                        if sid
+                        else item
+                    )
                 payload = out
             elif session_id is not None:
-                payload = await shield.reveal_payload(db, session_id, payload, route=route)
+                payload = await shield.reveal_payload(
+                    db, session_id, payload, route=route
+                )
         return json.dumps(payload, ensure_ascii=False).encode("utf-8")

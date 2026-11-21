@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Callable
+from collections.abc import Callable
 
 
 class _TkLifecycleWindow:
@@ -18,13 +18,15 @@ class _TkLifecycleWindow:
             root.resizable(False, False)
             root.attributes("-topmost", True)
             root.overrideredirect(True)
-    
+
             width, height = 520, 270
             x = max(0, (root.winfo_screenwidth() - width) // 2)
             y = max(0, (root.winfo_screenheight() - height) // 2)
             root.geometry(f"{width}x{height}+{x}+{y}")
-    
-            frame = tk.Frame(root, bg="#111111", highlightbackground="#3f3f46", highlightthickness=1)
+
+            frame = tk.Frame(
+                root, bg="#111111", highlightbackground="#3f3f46", highlightthickness=1
+            )
             frame.pack(fill="both", expand=True, padx=1, pady=1)
             tk.Label(
                 frame,
@@ -77,7 +79,7 @@ class _TkLifecycleWindow:
             ).pack(fill="x", padx=34)
             root.update_idletasks()
             root.update()
-    
+
         except Exception:
             try:
                 root.destroy()
@@ -114,7 +116,9 @@ class _TkLifecycleWindow:
 class LifecycleSplash:
     """Best-effort presenter; GUI failures never block application startup."""
 
-    def __init__(self, window_factory: Callable[[], object] = _TkLifecycleWindow) -> None:
+    def __init__(
+        self, window_factory: Callable[[], object] = _TkLifecycleWindow
+    ) -> None:
         self._window_factory = window_factory
         self._window = None
 

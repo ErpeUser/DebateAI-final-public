@@ -1,15 +1,15 @@
 import tempfile
 import unittest
-from unittest.mock import patch
 from http.cookies import SimpleCookie
 from pathlib import Path
+from unittest.mock import patch
 
 from debateai_desktop.gemini_web_login import (
     REQUIRED_GEMINI_COOKIES,
+    _webview_gui,
     cookie_header_from_webview,
     wait_for_authenticated_cookie_header,
     write_login_result,
-    _webview_gui,
 )
 
 

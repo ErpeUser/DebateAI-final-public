@@ -20,7 +20,16 @@ logger = logging.getLogger(__name__)
 PASSTHROUGH_EXTENSIONS = {".md", ".markdown", ".txt"}
 
 # Binary/rich formats MarkItDown converts to Markdown
-CONVERTIBLE_EXTENSIONS = {".docx", ".pdf", ".pptx", ".xlsx", ".xls", ".csv", ".html", ".htm"}
+CONVERTIBLE_EXTENSIONS = {
+    ".docx",
+    ".pdf",
+    ".pptx",
+    ".xlsx",
+    ".xls",
+    ".csv",
+    ".html",
+    ".htm",
+}
 
 SUPPORTED_EXTENSIONS = PASSTHROUGH_EXTENSIONS | CONVERTIBLE_EXTENSIONS
 
@@ -63,7 +72,9 @@ def convert_to_markdown(content: bytes, filename: str) -> str:
         )
         markdown = (result.markdown or "").strip()
     except Exception as e:
-        logger.warning(f"[markdown_conversion] in-memory conversion failed for '{filename}': {e}")
+        logger.warning(
+            f"[markdown_conversion] in-memory conversion failed for '{filename}': {e}"
+        )
         markdown = _convert_via_tempfile(content, ext)
 
     if not markdown:

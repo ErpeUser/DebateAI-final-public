@@ -538,7 +538,15 @@ export interface PrivacyConfig {
 }
 
 export type PiiCategory =
-  | "PERSON" | "ORG" | "LOCATION" | "EMAIL" | "PHONE" | "SSN" | "CARD" | "IP" | "ADDRESS";
+  | "PERSON"
+  | "ORG"
+  | "LOCATION"
+  | "EMAIL"
+  | "PHONE"
+  | "SSN"
+  | "CARD"
+  | "IP"
+  | "ADDRESS";
 
 interface PiiProtectedTerm {
   value: string;
@@ -606,7 +614,12 @@ export interface PiiShieldStatus {
     // paused: a cloud gateway is configured but skipped while the shield is on.
     live_gateway: { covered: boolean; model_id: string; paused: boolean };
     documents: boolean;
-    refinement: { covered: boolean; enabled: boolean; model_id: string; interval_seconds: number };
+    refinement: {
+      covered: boolean;
+      enabled: boolean;
+      model_id: string;
+      interval_seconds: number;
+    };
   };
   vault: { entries: number };
   reveals_24h: { requests: number; tokens: number };
@@ -614,7 +627,13 @@ export interface PiiShieldStatus {
 
 export interface PiiPreview {
   protected: string;
-  findings: { text: string; category: PiiCategory; token: string; source: string; score: number }[];
+  findings: {
+    text: string;
+    category: PiiCategory;
+    token: string;
+    source: string;
+    score: number;
+  }[];
   enabled: boolean;
 }
 
@@ -635,7 +654,8 @@ export interface CallSegment {
 export interface TranscriptionJob {
   job_id: string;
   kind: "audio_import" | "retranscription";
-  status: "queued" | "running" | "canceling" | "canceled" | "completed" | "failed";
+  status:
+    "queued" | "running" | "canceling" | "canceled" | "completed" | "failed";
   model_id: string;
   segments_done: number;
   total_segments: number;
@@ -779,12 +799,7 @@ export interface AudioSendStats {
   lastSentAt: string | null;
 }
 
-type AgentActivityState =
-  | "running"
-  | "waiting"
-  | "blocked"
-  | "off"
-  | "failing";
+type AgentActivityState = "running" | "waiting" | "blocked" | "off" | "failing";
 
 interface AgentActivityOutcome {
   kind: string;
@@ -895,7 +910,8 @@ export interface DebateSource {
   provider: string;
   /** The precise transcript claim this source was retrieved to check. */
   claim: string;
-  verification_status: "found" | "read" | "supports" | "contradicts" | "unclear";
+  verification_status:
+    "found" | "read" | "supports" | "contradicts" | "unclear";
   retrieval_status?: "found" | "read" | "failed";
   claim_relation?: "supports" | "contradicts" | "unclear";
   source_type?: string;
@@ -930,10 +946,7 @@ export interface AtomicClaim {
 }
 
 export type DebateResearchCategory =
-  | "counterevidence"
-  | "translation"
-  | "interpretation"
-  | "all";
+  "counterevidence" | "translation" | "interpretation" | "all";
 
 interface ExperimentalStrategyOption {
   id: string;
@@ -1042,7 +1055,8 @@ export interface DebateRecommendation {
   counterargument: string;
   counter_question: string;
   primary_move: "answer" | "question";
-  question_status: "none" | "open" | "partial" | "answered" | "unclear" | "evaded";
+  question_status:
+    "none" | "open" | "partial" | "answered" | "unclear" | "evaded";
   open_question: string;
   follow_ups: Array<{ condition: string; question: string }>;
   analogy: string;
@@ -1053,9 +1067,16 @@ export interface DebateRecommendation {
   confidence: "high" | "medium" | "low";
   needs_research: boolean;
   research_query: string;
-  research_status: "idle" | "searching" | "completed" | "unavailable" | "blocked_by_privacy" | "cancelled";
+  research_status:
+    | "idle"
+    | "searching"
+    | "completed"
+    | "unavailable"
+    | "blocked_by_privacy"
+    | "cancelled";
   sources: DebateSource[];
-  analysis_status: "idle" | "analyzing" | "completed" | "unavailable" | "cancelled";
+  analysis_status:
+    "idle" | "analyzing" | "completed" | "unavailable" | "cancelled";
   analysis_can_cancel: boolean;
   generation_id: string;
   analyst_provider: string;
@@ -1118,7 +1139,12 @@ interface DebateReviewImprovement {
 }
 
 interface DebateReviewTrace {
-  category: "open_question" | "unsupported_claim" | "corrected_statement" | "concession" | "late_recommendation";
+  category:
+    | "open_question"
+    | "unsupported_claim"
+    | "corrected_statement"
+    | "concession"
+    | "late_recommendation";
   title: string;
   explanation: string;
   transcript_quote: string;
@@ -1182,21 +1208,37 @@ export type WSMessage = {
   event_id?: number;
   session_sequence?: number;
 } & (
-  | { type: "question"; data: Omit<Question, "session_id" | "starred" | "dismissed" | "created_at" | "answered" | "answer_summary" | "needs_followup" | "followup_question"> & { timestamp: string; is_followup?: boolean; item_type?: string } }
+  | {
+      type: "question";
+      data: Omit<
+        Question,
+        | "session_id"
+        | "starred"
+        | "dismissed"
+        | "created_at"
+        | "answered"
+        | "answer_summary"
+        | "needs_followup"
+        | "followup_question"
+      > & { timestamp: string; is_followup?: boolean; item_type?: string };
+    }
   | { type: "transcript"; data: TranscriptEntry }
   // The transcript refiner rewrote an entry; replaces the entry with that id.
   | { type: "transcript_updated"; data: TranscriptEntry }
-  | { type: "interim_transcript"; data: {
-      text: string;
-      mode?: "append" | "replace";
-      track_id?: string;
-      segment_id?: string;
-      segment_revision?: number;
-      audio_start_sample?: number;
-      audio_end_sample?: number;
-      sample_rate?: number;
-      final?: boolean;
-    } }
+  | {
+      type: "interim_transcript";
+      data: {
+        text: string;
+        mode?: "append" | "replace";
+        track_id?: string;
+        segment_id?: string;
+        segment_revision?: number;
+        audio_start_sample?: number;
+        audio_end_sample?: number;
+        sample_rate?: number;
+        final?: boolean;
+      };
+    }
   | { type: "audio_level"; data: { track: number; level: number } }
   | { type: "status"; data: WSStatusData }
   | { type: "agent_activity"; data: AgentActivitySnapshot }
@@ -1205,9 +1247,20 @@ export type WSMessage = {
   | { type: "experimental_lane_update"; data: ExperimentalLaneUpdate }
   | { type: "debate_research_control"; data: { enabled: boolean } }
   | { type: "synthesis_updated"; data: SessionSynthesis }
-  | { type: "question_answered"; data: { id: string; answer_summary: string; needs_followup: boolean; followup_question: string } }
+  | {
+      type: "question_answered";
+      data: {
+        id: string;
+        answer_summary: string;
+        needs_followup: boolean;
+        followup_question: string;
+      };
+    }
   | { type: "insight_updated"; data: Record<string, any> }
-  | { type: "insight_elevated"; data: Record<string, any> & { old_type: string } }
+  | {
+      type: "insight_elevated";
+      data: Record<string, any> & { old_type: string };
+    }
 );
 
 export interface WSSessionSnapshot {

@@ -8,8 +8,8 @@ from app.services.local_fit import (
     GREEN,
     MARGINAL,
     MAX_ASR_SECONDS,
-    MIN_ASR_SECONDS,
     MAX_INTERVAL,
+    MIN_ASR_SECONDS,
     MIN_INTERVAL,
     NOT_FEASIBLE,
     POST_CALL_GREEN_SECONDS,
@@ -28,6 +28,7 @@ from app.services.local_fit import (
     classify_live_feasibility,
     classify_post_call,
     classify_rtf,
+    clip_has_speech,
     effective_latency,
     is_asr_clip_too_short,
     parse_model_intervals,
@@ -38,7 +39,6 @@ from app.services.local_fit import (
     trim_asr_clip,
     validate_interval_updates,
 )
-from app.services.local_fit import clip_has_speech
 
 
 class ClassifyLatencyTests(unittest.TestCase):
@@ -56,8 +56,8 @@ class ClassifyLatencyTests(unittest.TestCase):
         self.assertEqual(classify_latency(50.0, 40), RED)
 
     def test_degenerate_inputs(self):
-        self.assertEqual(classify_latency(0.0, 10), GREEN)   # instantaneous
-        self.assertEqual(classify_latency(5.0, 0), RED)      # no budget
+        self.assertEqual(classify_latency(0.0, 10), GREEN)  # instantaneous
+        self.assertEqual(classify_latency(5.0, 0), RED)  # no budget
 
 
 class RecommendIntervalTests(unittest.TestCase):
@@ -98,10 +98,17 @@ class ScoreTextModelTests(unittest.TestCase):
         self.assertEqual(score_text_model(failed, {}), [])
 
     def test_includes_interval_and_post_call_agents(self):
-        roles = {r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.0)}
+        roles = {
+            r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.0)
+        }
         # Five interval agents plus the three post-call briefing agents.
-        for slug in ("objection_handler", "opportunity_specialist", "consolidated_analyst",
-                     "strategic_signals", "synthesizer"):
+        for slug in (
+            "objection_handler",
+            "opportunity_specialist",
+            "consolidated_analyst",
+            "strategic_signals",
+            "synthesizer",
+        ):
             self.assertFalse(roles[slug].post_call)
             self.assertTrue(roles[slug].editable)
         for slug in ("brief_meeting_lens", "brief_discovery_lens", "brief_arbiter"):
@@ -115,47 +122,67 @@ class ScoreTextModelTests(unittest.TestCase):
         self.assertTrue(all(not r.changed for r in interval_roles))
 
     def test_slow_model_flags_and_recommends_longer_intervals(self):
-        by_slug = {r.slug: r for r in score_text_model(_fit(8.0, 50.0), {}, contention=1.0)}
+        by_slug = {
+            r.slug: r for r in score_text_model(_fit(8.0, 50.0), {}, contention=1.0)
+        }
 
         self.assertEqual(by_slug["objection_handler"].verdict, YELLOW)
         self.assertEqual(by_slug["objection_handler"].recommended_interval_seconds, 20)
         self.assertTrue(by_slug["objection_handler"].changed)
 
         self.assertEqual(by_slug["consolidated_analyst"].verdict, RED)
-        self.assertEqual(by_slug["consolidated_analyst"].recommended_interval_seconds, 100)
+        self.assertEqual(
+            by_slug["consolidated_analyst"].recommended_interval_seconds, 100
+        )
 
         self.assertEqual(by_slug["opportunity_specialist"].verdict, GREEN)
         self.assertFalse(by_slug["opportunity_specialist"].changed)
 
     def test_per_model_budget_overrides_default(self):
         # A per-model budget of 120s for the analyst reads as green even when slow.
-        roles = {r.slug: r for r in score_text_model(
-            _fit(8.0, 50.0), {"consolidated_analyst": 120}, contention=1.0)}
+        roles = {
+            r.slug: r
+            for r in score_text_model(
+                _fit(8.0, 50.0), {"consolidated_analyst": 120}, contention=1.0
+            )
+        }
         self.assertEqual(roles["consolidated_analyst"].budget_seconds, 120)
         self.assertEqual(roles["consolidated_analyst"].verdict, GREEN)
 
     def test_contention_makes_verdicts_stricter(self):
         # Analyst at 20s vs 40s budget: green at 1x (0.5), tips to yellow at 1.5x.
-        green = {r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.0)}
-        strict = {r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.5)}
+        green = {
+            r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.0)
+        }
+        strict = {
+            r.slug: r for r in score_text_model(_fit(3.0, 20.0), {}, contention=1.5)
+        }
         self.assertEqual(green["consolidated_analyst"].verdict, GREEN)
         self.assertEqual(strict["consolidated_analyst"].verdict, YELLOW)
         self.assertTrue(strict["consolidated_analyst"].changed)
 
     def test_post_call_briefing_judged_on_end_of_call_wait(self):
         # Long call 40s: post-call briefing is fine (<=60s), interval analyst is not.
-        roles = {r.slug: r for r in score_text_model(_fit(5.0, 40.0), {}, contention=1.0)}
+        roles = {
+            r.slug: r for r in score_text_model(_fit(5.0, 40.0), {}, contention=1.0)
+        }
         self.assertEqual(roles["brief_arbiter"].verdict, GREEN)
         # A 200s briefing would be over the acceptable end-of-call wait.
-        slow = {r.slug: r for r in score_text_model(_fit(5.0, 200.0), {}, contention=1.0)}
+        slow = {
+            r.slug: r for r in score_text_model(_fit(5.0, 200.0), {}, contention=1.0)
+        }
         self.assertEqual(slow["brief_arbiter"].verdict, RED)
 
 
 class ContentionAndPostCallHelperTests(unittest.TestCase):
     def test_effective_latency_scales_and_clamps(self):
         self.assertEqual(effective_latency(10.0, 1.5), 15.0)
-        self.assertEqual(effective_latency(10.0, 5.0), 30.0)  # clamped to MAX_CONTENTION=3
-        self.assertEqual(effective_latency(10.0, 0.1), 10.0)  # clamped to MIN_CONTENTION=1
+        self.assertEqual(
+            effective_latency(10.0, 5.0), 30.0
+        )  # clamped to MAX_CONTENTION=3
+        self.assertEqual(
+            effective_latency(10.0, 0.1), 10.0
+        )  # clamped to MIN_CONTENTION=1
 
     def test_classify_post_call_thresholds(self):
         self.assertEqual(classify_post_call(POST_CALL_GREEN_SECONDS), GREEN)
@@ -168,7 +195,9 @@ class ContentionAndPostCallHelperTests(unittest.TestCase):
 
 class ParseModelIntervalsTests(unittest.TestCase):
     def test_valid_and_invalid_payloads(self):
-        self.assertEqual(parse_model_intervals('{"m1": 40, "m2": 90}'), {"m1": 40, "m2": 90})
+        self.assertEqual(
+            parse_model_intervals('{"m1": 40, "m2": 90}'), {"m1": 40, "m2": 90}
+        )
         self.assertEqual(parse_model_intervals(""), {})
         self.assertEqual(parse_model_intervals("not json"), {})
         self.assertEqual(parse_model_intervals("[1,2]"), {})
@@ -178,27 +207,41 @@ class ParseModelIntervalsTests(unittest.TestCase):
 
 class ValidateIntervalUpdatesTests(unittest.TestCase):
     def test_accepts_known_agents_in_range(self):
-        cleaned = validate_interval_updates([
-            {"slug": "objection_handler", "interval_seconds": 20},
-            {"slug": "consolidated_analyst", "interval_seconds": 100},
-        ])
-        self.assertEqual(cleaned, {"objection_handler": 20, "consolidated_analyst": 100})
+        cleaned = validate_interval_updates(
+            [
+                {"slug": "objection_handler", "interval_seconds": 20},
+                {"slug": "consolidated_analyst", "interval_seconds": 100},
+            ]
+        )
+        self.assertEqual(
+            cleaned, {"objection_handler": 20, "consolidated_analyst": 100}
+        )
 
     def test_rejects_unknown_agent(self):
         with self.assertRaises(ValueError):
-            validate_interval_updates([{"slug": "audio_gateway", "interval_seconds": 20}])
+            validate_interval_updates(
+                [{"slug": "audio_gateway", "interval_seconds": 20}]
+            )
 
     def test_rejects_out_of_range(self):
         with self.assertRaises(ValueError):
-            validate_interval_updates([{"slug": "objection_handler", "interval_seconds": 1}])
+            validate_interval_updates(
+                [{"slug": "objection_handler", "interval_seconds": 1}]
+            )
         with self.assertRaises(ValueError):
-            validate_interval_updates([{"slug": "objection_handler", "interval_seconds": 10_000}])
+            validate_interval_updates(
+                [{"slug": "objection_handler", "interval_seconds": 10_000}]
+            )
 
     def test_rejects_non_integer_and_bool(self):
         with self.assertRaises(ValueError):
-            validate_interval_updates([{"slug": "objection_handler", "interval_seconds": "20"}])
+            validate_interval_updates(
+                [{"slug": "objection_handler", "interval_seconds": "20"}]
+            )
         with self.assertRaises(ValueError):
-            validate_interval_updates([{"slug": "objection_handler", "interval_seconds": True}])
+            validate_interval_updates(
+                [{"slug": "objection_handler", "interval_seconds": True}]
+            )
 
 
 class BenchmarkTextModelTests(unittest.IsolatedAsyncioTestCase):
@@ -250,7 +293,10 @@ class BenchmarkTextModelTests(unittest.IsolatedAsyncioTestCase):
 class ApplyRecommendedIntervalsTests(unittest.IsolatedAsyncioTestCase):
     async def test_writes_per_model_budget_and_commits(self):
         row = SimpleNamespace(
-            slug="objection_handler", interval_seconds=10, model_intervals="", updated_at=None
+            slug="objection_handler",
+            interval_seconds=10,
+            model_intervals="",
+            updated_at=None,
         )
         result = MagicMock()
         result.scalars.return_value.all.return_value = [row]
@@ -264,7 +310,9 @@ class ApplyRecommendedIntervalsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(applied, {"objection_handler": 25})
         # Stored under the model id, not on the global interval.
         self.assertEqual(row.interval_seconds, 10)
-        self.assertEqual(parse_model_intervals(row.model_intervals), {"endpoint:x:m": 25})
+        self.assertEqual(
+            parse_model_intervals(row.model_intervals), {"endpoint:x:m": 25}
+        )
         self.assertIsNotNone(row.updated_at)
         db.commit.assert_awaited_once()
 
@@ -292,13 +340,17 @@ class ApplyRecommendedIntervalsTests(unittest.IsolatedAsyncioTestCase):
     async def test_invalid_payload_raises_before_touching_db(self):
         db = AsyncMock()
         with self.assertRaises(ValueError):
-            await apply_recommended_intervals(db, "m", [{"slug": "nope", "interval_seconds": 25}])
+            await apply_recommended_intervals(
+                db, "m", [{"slug": "nope", "interval_seconds": 25}]
+            )
         db.commit.assert_not_awaited()
 
     async def test_missing_model_id_raises(self):
         db = AsyncMock()
         with self.assertRaises(ValueError):
-            await apply_recommended_intervals(db, "", [{"slug": "objection_handler", "interval_seconds": 25}])
+            await apply_recommended_intervals(
+                db, "", [{"slug": "objection_handler", "interval_seconds": 25}]
+            )
 
 
 class BudgetsForModelTests(unittest.IsolatedAsyncioTestCase):
@@ -311,19 +363,28 @@ class BudgetsForModelTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_per_model_budget_wins_then_global_then_default(self):
         rows = [
-            SimpleNamespace(slug="consolidated_analyst", interval_seconds=40,
-                            model_intervals='{"m1": 90}'),
-            SimpleNamespace(slug="objection_handler", interval_seconds=None, model_intervals=""),
+            SimpleNamespace(
+                slug="consolidated_analyst",
+                interval_seconds=40,
+                model_intervals='{"m1": 90}',
+            ),
+            SimpleNamespace(
+                slug="objection_handler", interval_seconds=None, model_intervals=""
+            ),
         ]
         db = self._db_with_rows(rows)
 
         m1 = await budgets_for_model(db, "m1")
-        self.assertEqual(m1["consolidated_analyst"], 90)   # per-model wins
-        self.assertEqual(m1["objection_handler"], 10)      # seeded default (no global, no per-model)
+        self.assertEqual(m1["consolidated_analyst"], 90)  # per-model wins
+        self.assertEqual(
+            m1["objection_handler"], 10
+        )  # seeded default (no global, no per-model)
 
         db2 = self._db_with_rows(rows)
         m2 = await budgets_for_model(db2, "m2")
-        self.assertEqual(m2["consolidated_analyst"], 40)   # falls back to global interval
+        self.assertEqual(
+            m2["consolidated_analyst"], 40
+        )  # falls back to global interval
 
     async def test_only_interval_agents_are_returned(self):
         db = self._db_with_rows([])
@@ -381,7 +442,10 @@ class BenchmarkAsrModelTests(unittest.IsolatedAsyncioTestCase):
                 return "hello there"
 
         fit = await benchmark_asr_model(
-            "local-whisper-base", b"\x00" * 320000, 10.0, make_transcriber=FakeTranscriber
+            "local-whisper-base",
+            b"\x00" * 320000,
+            10.0,
+            make_transcriber=FakeTranscriber,
         )
 
         self.assertEqual(fit.status, "ok")
@@ -400,7 +464,10 @@ class BenchmarkAsrModelTests(unittest.IsolatedAsyncioTestCase):
                 raise RuntimeError("onnx runtime missing")
 
         fit = await benchmark_asr_model(
-            "local-whisper-base", b"\x00" * 320000, 10.0, make_transcriber=BrokenTranscriber
+            "local-whisper-base",
+            b"\x00" * 320000,
+            10.0,
+            make_transcriber=BrokenTranscriber,
         )
 
         self.assertEqual(fit.status, "failed")
@@ -430,7 +497,9 @@ class RunAsrFitTests(unittest.IsolatedAsyncioTestCase):
 
 class FillPlaceholdersTests(unittest.TestCase):
     def test_known_placeholders_get_representative_filler(self):
-        filled = _fill_placeholders("Analyze.\n{lens_sections}\nContext: {meeting_context_text}")
+        filled = _fill_placeholders(
+            "Analyze.\n{lens_sections}\nContext: {meeting_context_text}"
+        )
         self.assertNotIn("{lens_sections}", filled)
         self.assertNotIn("{meeting_context_text}", filled)
         self.assertIn("Lens", filled)  # representative lens block was inserted
@@ -485,7 +554,10 @@ class BuildLocalCapabilitiesTests(unittest.TestCase):
         self.assertIn("cloud", live["note"].lower())
 
     def test_per_model_usable_for_is_derived_from_flags(self):
-        usage = {m["id"]: m["usable_for"] for m in build_local_capabilities(self.MODELS)["models"]}
+        usage = {
+            m["id"]: m["usable_for"]
+            for m in build_local_capabilities(self.MODELS)["models"]
+        }
         self.assertEqual(usage["local-whisper-base"], ["Batch transcription"])
         self.assertIn("Analysis agents", usage["endpoint:antares:antares"])
         self.assertIn("Meeting chat & summarization", usage["endpoint:antares:antares"])

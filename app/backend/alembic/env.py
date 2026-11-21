@@ -2,11 +2,10 @@ import asyncio
 from logging.config import fileConfig
 
 from alembic import context
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import async_engine_from_config
-
 from app.config import settings
 from app.models import Base
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import async_engine_from_config
 
 config = context.config
 
@@ -20,14 +19,15 @@ def _apply_runtime_database_url() -> None:
     callhelper database or a stale password.
     """
     if hasattr(config, "set_main_option"):
+        # fmt: off
         config.set_main_option("sqlalchemy.url", settings.DATABASE_URL.replace("%", "%%"))
+        # fmt: on
 
 
 _apply_runtime_database_url()
 
-if (
-    config.config_file_name is not None
-    and config.attributes.get("configure_logger", True)
+if config.config_file_name is not None and config.attributes.get(
+    "configure_logger", True
 ):
     fileConfig(config.config_file_name)
 

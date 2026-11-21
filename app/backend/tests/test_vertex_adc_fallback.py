@@ -2,10 +2,9 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
-from pydantic import BaseModel
-
 from app.services import llm
 from app.services.llm_endpoint import OpenAIEndpoint
+from pydantic import BaseModel
 
 
 class _Reply(BaseModel):
@@ -22,16 +21,16 @@ class VertexAdcTests(unittest.IsolatedAsyncioTestCase):
         pii = mock.patch.object(
             llm.pii_egress,
             "protect_and_guard",
-            mock.AsyncMock(side_effect=lambda prompt, **kwargs: (prompt, kwargs.get("system"))),
+            mock.AsyncMock(
+                side_effect=lambda prompt, **kwargs: (prompt, kwargs.get("system"))
+            ),
         )
         pii.start()
         self.addCleanup(pii.stop)
 
     async def test_vertex_adc_google_call_needs_no_api_key(self):
         with (
-            mock.patch.dict(
-                llm.settings.__dict__, {"GOOGLE_GENAI_USE_VERTEXAI": True}
-            ),
+            mock.patch.dict(llm.settings.__dict__, {"GOOGLE_GENAI_USE_VERTEXAI": True}),
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="")),
             mock.patch.object(
                 llm, "_call_google", mock.AsyncMock(return_value=("adc reply", None))
@@ -84,7 +83,9 @@ class SpendCapFallbackTests(unittest.IsolatedAsyncioTestCase):
         pii = mock.patch.object(
             llm.pii_egress,
             "protect_and_guard",
-            mock.AsyncMock(side_effect=lambda prompt, **kwargs: (prompt, kwargs.get("system"))),
+            mock.AsyncMock(
+                side_effect=lambda prompt, **kwargs: (prompt, kwargs.get("system"))
+            ),
         )
         pii.start()
         self.addCleanup(pii.stop)
@@ -110,7 +111,9 @@ class SpendCapFallbackTests(unittest.IsolatedAsyncioTestCase):
         with (
             self._settings(),
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="")),
-            mock.patch.object(llm, "_call_google", mock.AsyncMock(side_effect=cap_error)),
+            mock.patch.object(
+                llm, "_call_google", mock.AsyncMock(side_effect=cap_error)
+            ),
             mock.patch.object(
                 llm, "resolve_endpoint", mock.AsyncMock(return_value=self.endpoint)
             ) as resolve,
@@ -132,7 +135,9 @@ class SpendCapFallbackTests(unittest.IsolatedAsyncioTestCase):
         with (
             self._settings(),
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="")),
-            mock.patch.object(llm, "_call_google", mock.AsyncMock(side_effect=rate_error)),
+            mock.patch.object(
+                llm, "_call_google", mock.AsyncMock(side_effect=rate_error)
+            ),
             mock.patch.object(llm, "_call_openai", fallback),
             mock.patch.object(llm, "record_token_usage", mock.AsyncMock()),
         ):
@@ -146,7 +151,9 @@ class SpendCapFallbackTests(unittest.IsolatedAsyncioTestCase):
         with (
             self._settings(),
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="")),
-            mock.patch.object(llm, "_google_json", mock.AsyncMock(side_effect=cap_error)),
+            mock.patch.object(
+                llm, "_google_json", mock.AsyncMock(side_effect=cap_error)
+            ),
             mock.patch.object(
                 llm, "resolve_endpoint", mock.AsyncMock(return_value=self.endpoint)
             ),

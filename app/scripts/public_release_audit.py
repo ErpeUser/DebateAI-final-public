@@ -4,14 +4,14 @@
 The report contains rule identifiers and paths only. It never prints matched
 secret values or file contents.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 import re
-from typing import Iterable
-
+from collections.abc import Iterable
+from pathlib import Path
 
 PRIVATE_DATA_SUFFIXES = {".db", ".sqlite", ".sqlite3", ".db-wal", ".db-shm"}
 FORBIDDEN_BINARY_SUFFIXES = {".dll", ".exe", ".msi", ".p12", ".pfx", ".pem", ".zip"}
@@ -30,8 +30,16 @@ CREDENTIAL_ASSIGNMENT_PATTERN = re.compile(
     r"\s*(?:=|:)\s*['\"]([^'\"]{4,})['\"]"
 )
 SAFE_FIXTURE_MARKERS = (
-    "example", "fixture", "placeholder", "dummy", "one-time", "temporary",
-    "unused", "localhost", "127.0.0.1", "acceptance",
+    "example",
+    "fixture",
+    "placeholder",
+    "dummy",
+    "one-time",
+    "temporary",
+    "unused",
+    "localhost",
+    "127.0.0.1",
+    "acceptance",
 )
 
 
@@ -81,7 +89,7 @@ def _scan_text(path: Path) -> set[str]:
             match = CREDENTIAL_ASSIGNMENT_PATTERN.search(line)
             if not match:
                 continue
-            remainder = line[match.end():].lstrip()
+            remainder = line[match.end() :].lstrip()
             if remainder.startswith(("+", ".")):
                 continue
             value = match.group(1).casefold()
@@ -105,9 +113,12 @@ def audit(repo_root: Path) -> dict[str, object]:
     if not (root / "LICENSE").is_file():
         findings.append(_finding("missing_root_license", root / "LICENSE", root))
     app_license = root / "app" / "LICENSE"
-    if app_license.is_file() and (root / "LICENSE").is_file():
-        if (root / "LICENSE").read_bytes() != app_license.read_bytes():
-            findings.append(_finding("license_mismatch", root / "LICENSE", root))
+    if (
+        app_license.is_file()
+        and (root / "LICENSE").is_file()
+        and (root / "LICENSE").read_bytes() != app_license.read_bytes()
+    ):
+        findings.append(_finding("license_mismatch", root / "LICENSE", root))
 
     for top_level in (root / "runtime", root / "DebateAI_Generated"):
         if top_level.exists():

@@ -23,8 +23,13 @@ class FakeDb:
 
 class TorchIndexUrlTests(unittest.TestCase):
     def test_shorthand_channel_maps_to_pytorch_index(self):
-        self.assertEqual("https://download.pytorch.org/whl/cpu", resolve_torch_index_url("cpu"))
-        self.assertEqual("https://download.pytorch.org/whl/rocm6.4", resolve_torch_index_url("rocm6.4"))
+        self.assertEqual(
+            "https://download.pytorch.org/whl/cpu", resolve_torch_index_url("cpu")
+        )
+        self.assertEqual(
+            "https://download.pytorch.org/whl/rocm6.4",
+            resolve_torch_index_url("rocm6.4"),
+        )
 
     def test_full_url_passes_through(self):
         url = "https://download.pytorch.org/whl/cu130"
@@ -36,7 +41,9 @@ class TorchIndexUrlTests(unittest.TestCase):
             self.assertEqual(CUDA_TORCH_INDEX_URL, resolve_torch_index_url(""))
 
     def test_auto_uses_cpu_without_nvidia_gpu(self):
-        with mock.patch.object(_install_sortformer, "nvidia_gpu_present", lambda: False):
+        with mock.patch.object(
+            _install_sortformer, "nvidia_gpu_present", lambda: False
+        ):
             self.assertEqual(CPU_TORCH_INDEX_URL, resolve_torch_index_url("auto"))
             self.assertEqual(CPU_TORCH_INDEX_URL, resolve_torch_index_url(""))
 
@@ -86,28 +93,36 @@ class ProviderHealthTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_passing_test_marks_connected(self):
         self.secrets_store["credentials.google.api_key"] = "stored-key-12345"
-        await self.health.record_test_outcome(self.db, "google", "stored-key-12345", True)
+        await self.health.record_test_outcome(
+            self.db, "google", "stored-key-12345", True
+        )
         status = await self.health.get_provider_status(self.db, "google")
         self.assertTrue(status["connected"])
         self.assertTrue(status["key_available"])
 
     async def test_failing_test_locks_provider(self):
         self.secrets_store["credentials.google.api_key"] = "stored-key-12345"
-        await self.health.record_test_outcome(self.db, "google", "stored-key-12345", False)
+        await self.health.record_test_outcome(
+            self.db, "google", "stored-key-12345", False
+        )
         status = await self.health.get_provider_status(self.db, "google")
         self.assertFalse(status["connected"])
         self.assertFalse(status["key_available"])
 
     async def test_replacing_a_failed_key_resets_to_untested_available(self):
         self.secrets_store["credentials.google.api_key"] = "bad-key-1234567"
-        await self.health.record_test_outcome(self.db, "google", "bad-key-1234567", False)
+        await self.health.record_test_outcome(
+            self.db, "google", "bad-key-1234567", False
+        )
         self.secrets_store["credentials.google.api_key"] = "new-key-1234567"
         status = await self.health.get_provider_status(self.db, "google")
         self.assertTrue(status["key_available"])
         self.assertFalse(status["connected"])
 
     async def test_env_fallback_reported(self):
-        with mock.patch.object(self.health, "env_provider_key", lambda provider: "env-key-1234567"):
+        with mock.patch.object(
+            self.health, "env_provider_key", lambda provider: "env-key-1234567"
+        ):
             status = await self.health.get_provider_status(self.db, "openai")
         self.assertTrue(status["env_fallback"])
         self.assertFalse(status["configured"])

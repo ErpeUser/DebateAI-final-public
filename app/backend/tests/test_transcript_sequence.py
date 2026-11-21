@@ -37,8 +37,7 @@ class TranscriptSequenceContractTests(unittest.IsolatedAsyncioTestCase):
 
     def test_model_enforces_one_sequence_per_session(self):
         constraints = {
-            constraint.name
-            for constraint in TranscriptEntry.__table__.constraints
+            constraint.name for constraint in TranscriptEntry.__table__.constraints
         }
         self.assertIn("uq_transcript_entries_session_sequence", constraints)
 

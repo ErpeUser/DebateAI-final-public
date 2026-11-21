@@ -1,11 +1,10 @@
 """Built-in knowledge adapter over the Offering catalog table."""
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import KnowledgeSource, Offering
 from app.services.adapter_contracts import AdapterContract
 from app.services.knowledge.base import char_budget, truncate_to_budget
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def render_offerings(offerings: list[Offering]) -> str:

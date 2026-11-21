@@ -1,24 +1,31 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Question, Speaker, TranscriptEntry
-from app.schemas import SpeakerCreate, SpeakerMergeOut, SpeakerMergeRequest, SpeakerOut, SpeakerUpdate
+from app.schemas import (
+    SpeakerCreate,
+    SpeakerMergeOut,
+    SpeakerMergeRequest,
+    SpeakerOut,
+    SpeakerUpdate,
+)
 from app.services.pii import shield
 from app.services.speaker_context_enhancer import (
     mark_speaker_context_dirty_if_completed,
     speaker_update_changes_enhancement_context,
 )
 from app.services.speaker_merge import SpeakerMergeError, merge_speakers
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/speakers", tags=["speakers"])
 
 
 @router.post("", response_model=SpeakerOut, status_code=201)
-async def create_speaker(session_id: uuid.UUID, body: SpeakerCreate, db: AsyncSession = Depends(get_db)):
+async def create_speaker(
+    session_id: uuid.UUID, body: SpeakerCreate, db: AsyncSession = Depends(get_db)
+):
     speaker = Speaker(
         session_id=session_id,
         name=await shield.protect_name(db, session_id, body.name),
@@ -82,7 +89,9 @@ async def merge_speaker(
     db: AsyncSession = Depends(get_db),
 ):
     try:
-        result = await merge_speakers(db, session_id, speaker_id, body.target_speaker_id)
+        result = await merge_speakers(
+            db, session_id, speaker_id, body.target_speaker_id
+        )
         if await mark_speaker_context_dirty_if_completed(db, session_id):
             await db.commit()
         return result

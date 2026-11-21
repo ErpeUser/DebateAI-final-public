@@ -13,13 +13,12 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field, field_validator
-
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.app_settings import get_app_setting, set_app_setting
+from app.services.debate_contracts import DebateSource
 from app.services.debate_settings import DebateSettings
 from app.services.llm import generate_json
-from app.services.agents.prompt_resources import load_prompt_resource
-from app.services.debate_contracts import DebateSource
+from pydantic import BaseModel, Field, field_validator
 
 
 class DebateImprovement(BaseModel):
@@ -38,7 +37,9 @@ class DebateReviewDraft(BaseModel):
     strengths: list[str] = Field(default_factory=list, max_length=3)
     improvements: list[DebateImprovement] = Field(default_factory=list, max_length=5)
     source_quality: str = ""
-    suggested_style_focus: Literal["balanced", "natural", "concise", "evidence"] = "balanced"
+    suggested_style_focus: Literal["balanced", "natural", "concise", "evidence"] = (
+        "balanced"
+    )
     suggested_mode: Literal["persuasive", "forceful"] = "persuasive"
     suggested_research_frequency: Literal["low", "normal", "often"] = "normal"
     suggested_always_analogy: bool = True
@@ -92,9 +93,11 @@ def _transcript_reference(
 ) -> tuple[str, str, str]:
     """Resolve a review trace only through durable transcript identity."""
     matching = [
-        entry for entry in entries
+        entry
+        for entry in entries
         if claim_id
-        and claim_id in {
+        and claim_id
+        in {
             str(getattr(entry, "utterance_id", "") or ""),
             str(getattr(entry, "id", "") or ""),
         }
@@ -118,7 +121,9 @@ def _late_recommendation_reason(sample: dict, latency: int) -> str | None:
     """Judge whether advice missed its moment, not a fixed stopwatch."""
     if latency < 3000 or sample.get("ui_acknowledged"):
         return None
-    if sample.get("superseded_before_delivery") or sample.get("topic_changed_before_delivery"):
+    if sample.get("superseded_before_delivery") or sample.get(
+        "topic_changed_before_delivery"
+    ):
         return "The relevant conversation turn had already changed before delivery."
     origin = str(sample.get("origin") or "model")
     materially_enriched = bool(sample.get("sources")) or (
@@ -140,25 +145,35 @@ def build_review_traces(
 ) -> tuple[list[DebateReviewTrace], list[str]]:
     """Derive auditable learning traces without inventing a win/loss score."""
     traces: list[DebateReviewTrace] = []
-    claim_nodes = {
-        node.claim_id: node for node in graph.nodes if node.kind == "claim"
-    }
+    claim_nodes = {node.claim_id: node for node in graph.nodes if node.kind == "claim"}
 
     for node in graph.nodes:
-        if node.kind != "question" or node.status not in {"", "open", "partial", "unclear", "evaded"}:
+        if node.kind != "question" or node.status not in {
+            "",
+            "open",
+            "partial",
+            "unclear",
+            "evaded",
+        }:
             continue
         claim = claim_nodes.get(node.claim_id)
         quote, speaker, timestamp = _transcript_reference(
-            entries, claim.text if claim else node.text, speakers,
+            entries,
+            claim.text if claim else node.text,
+            speakers,
             claim_id=node.claim_id,
         )
-        traces.append(DebateReviewTrace(
-            category="open_question",
-            title=node.text,
-            explanation=f"Status: {node.status or 'offen'}; im Gespräch nicht belastbar geklärt.",
-            transcript_quote=quote, speaker=speaker, timestamp=timestamp,
-            claim_id=node.claim_id,
-        ))
+        traces.append(
+            DebateReviewTrace(
+                category="open_question",
+                title=node.text,
+                explanation=f"Status: {node.status or 'offen'}; im Gespräch nicht belastbar geklärt.",
+                transcript_quote=quote,
+                speaker=speaker,
+                timestamp=timestamp,
+                claim_id=node.claim_id,
+            )
+        )
 
     newest_claims = {}
     for claim in claims:
@@ -166,7 +181,9 @@ def build_review_traces(
         if previous is None or claim.revision > previous.revision:
             newest_claims[claim.claim_id] = claim
     for claim in newest_claims.values():
-        sources = [source for source in (claim.sources or []) if isinstance(source, dict)]
+        sources = [
+            source for source in (claim.sources or []) if isinstance(source, dict)
+        ]
         supported = any(
             source.get("claim_relation") == "supports"
             or source.get("verification_status") in {"verified", "supports"}
@@ -176,13 +193,17 @@ def build_review_traces(
             quote, speaker, timestamp = _transcript_reference(
                 entries, claim.original_text, speakers, claim_id=claim.claim_id
             )
-            traces.append(DebateReviewTrace(
-                category="unsupported_claim",
-                title=claim.original_text[:500],
-                explanation="Für diese Behauptung ist kein bestätigender Beleg im gespeicherten Quellenstand verknüpft.",
-                transcript_quote=quote, speaker=speaker, timestamp=timestamp,
-                claim_id=claim.claim_id,
-            ))
+            traces.append(
+                DebateReviewTrace(
+                    category="unsupported_claim",
+                    title=claim.original_text[:500],
+                    explanation="Für diese Behauptung ist kein bestätigender Beleg im gespeicherten Quellenstand verknüpft.",
+                    transcript_quote=quote,
+                    speaker=speaker,
+                    timestamp=timestamp,
+                    claim_id=claim.claim_id,
+                )
+            )
         corrections = (claim.feedback or {}).get("source_corrections", [])
         for correction in corrections[-3:]:
             if not isinstance(correction, dict):
@@ -190,29 +211,36 @@ def build_review_traces(
             quote, speaker, timestamp = _transcript_reference(
                 entries, claim.original_text, speakers, claim_id=claim.claim_id
             )
-            traces.append(DebateReviewTrace(
-                category="corrected_statement",
-                title=claim.original_text[:500],
-                explanation=(
-                    f"Quellenzuordnung nachträglich auf „{correction.get('relation', 'unklar')}“ korrigiert: "
-                    f"{correction.get('url', '')}"
-                ),
-                transcript_quote=quote, speaker=speaker, timestamp=timestamp,
-                claim_id=claim.claim_id,
-            ))
+            traces.append(
+                DebateReviewTrace(
+                    category="corrected_statement",
+                    title=claim.original_text[:500],
+                    explanation=(
+                        f"Quellenzuordnung nachträglich auf „{correction.get('relation', 'unklar')}“ korrigiert: "
+                        f"{correction.get('url', '')}"
+                    ),
+                    transcript_quote=quote,
+                    speaker=speaker,
+                    timestamp=timestamp,
+                    claim_id=claim.claim_id,
+                )
+            )
 
     for entry in entries:
         raw = str(getattr(entry, "raw_text", None) or "").strip()
         if raw and raw != str(entry.text).strip():
             speaker = speakers.get(getattr(entry, "speaker_id", None), "Unbekannt")
             timestamp = getattr(entry, "timestamp", None)
-            traces.append(DebateReviewTrace(
-                category="corrected_statement",
-                title=str(entry.text)[:500],
-                explanation="Das Transkript wurde sprachlich korrigiert; die ursprüngliche Fassung bleibt hier nachvollziehbar.",
-                transcript_quote=raw[:500], speaker=str(speaker),
-                timestamp=timestamp.isoformat() if timestamp else "",
-            ))
+            traces.append(
+                DebateReviewTrace(
+                    category="corrected_statement",
+                    title=str(entry.text)[:500],
+                    explanation="Das Transkript wurde sprachlich korrigiert; die ursprüngliche Fassung bleibt hier nachvollziehbar.",
+                    transcript_quote=raw[:500],
+                    speaker=str(speaker),
+                    timestamp=timestamp.isoformat() if timestamp else "",
+                )
+            )
 
     nodes = {node.id: node for node in graph.nodes}
     for edge in graph.edges:
@@ -225,13 +253,18 @@ def build_review_traces(
         quote, speaker, timestamp = _transcript_reference(
             entries, source.text, speakers, claim_id=source.claim_id
         )
-        traces.append(DebateReviewTrace(
-            category="concession",
-            title=f"Zugeständnis zu: {target.text}"[:500],
-            explanation=edge.rationale or "Die gespeicherte Argumentbeziehung markiert ein Zugeständnis.",
-            transcript_quote=quote, speaker=speaker, timestamp=timestamp,
-            claim_id=source.claim_id,
-        ))
+        traces.append(
+            DebateReviewTrace(
+                category="concession",
+                title=f"Zugeständnis zu: {target.text}"[:500],
+                explanation=edge.rationale
+                or "Die gespeicherte Argumentbeziehung markiert ein Zugeständnis.",
+                transcript_quote=quote,
+                speaker=speaker,
+                timestamp=timestamp,
+                claim_id=source.claim_id,
+            )
+        )
 
     for sample in samples:
         try:
@@ -242,34 +275,58 @@ def build_review_traces(
         if late_reason is None:
             continue
         target = str(sample.get("target_claim") or "").strip()
-        answer = str(sample.get("answer_now") or sample.get("counterargument") or "").strip()
+        answer = str(
+            sample.get("answer_now") or sample.get("counterargument") or ""
+        ).strip()
         quote, speaker, timestamp = _transcript_reference(
             entries, target, speakers, claim_id=str(sample.get("claim_id") or "")
         )
-        traces.append(DebateReviewTrace(
-            category="late_recommendation",
-            title=target[:500] or "Späte Empfehlung",
-            explanation=late_reason,
-            transcript_quote=quote, speaker=speaker, timestamp=timestamp,
-            claim_id=str(sample.get("claim_id") or ""),
-            recommendation=answer[:700], latency_ms=latency,
-        ))
+        traces.append(
+            DebateReviewTrace(
+                category="late_recommendation",
+                title=target[:500] or "Späte Empfehlung",
+                explanation=late_reason,
+                transcript_quote=quote,
+                speaker=speaker,
+                timestamp=timestamp,
+                claim_id=str(sample.get("claim_id") or ""),
+                recommendation=answer[:700],
+                latency_ms=latency,
+            )
+        )
 
     traces = traces[:40]
-    counts = {category: sum(trace.category == category for trace in traces) for category in {
-        "open_question", "unsupported_claim", "corrected_statement", "concession", "late_recommendation"
-    }}
+    counts = {
+        category: sum(trace.category == category for trace in traces)
+        for category in (
+            "open_question",
+            "unsupported_claim",
+            "corrected_statement",
+            "concession",
+            "late_recommendation",
+        )
+    }
     notes = []
     if counts["open_question"]:
-        notes.append(f"{counts['open_question']} offene Frage(n) gezielt erneut stellen und eine überprüfbare Antwort einfordern.")
+        notes.append(
+            f"{counts['open_question']} offene Frage(n) gezielt erneut stellen und eine überprüfbare Antwort einfordern."
+        )
     if counts["unsupported_claim"]:
-        notes.append(f"{counts['unsupported_claim']} unbelegte Behauptung(en) vor der nächsten Debatte mit einer Primärquelle absichern.")
+        notes.append(
+            f"{counts['unsupported_claim']} unbelegte Behauptung(en) vor der nächsten Debatte mit einer Primärquelle absichern."
+        )
     if counts["corrected_statement"]:
-        notes.append(f"{counts['corrected_statement']} Korrektur(en) anhand der Originalpassage prüfen und künftig früher kenntlich machen.")
+        notes.append(
+            f"{counts['corrected_statement']} Korrektur(en) anhand der Originalpassage prüfen und künftig früher kenntlich machen."
+        )
     if counts["concession"]:
-        notes.append(f"{counts['concession']} Zugeständnis(se) ausdrücklich festhalten und an die nächste Schlussfolgerung anbinden.")
+        notes.append(
+            f"{counts['concession']} Zugeständnis(se) ausdrücklich festhalten und an die nächste Schlussfolgerung anbinden."
+        )
     if counts["late_recommendation"]:
-        notes.append(f"{counts['late_recommendation']} späte Empfehlung(en) kürzen oder den lokalen Schnellpfad priorisieren.")
+        notes.append(
+            f"{counts['late_recommendation']} späte Empfehlung(en) kürzen oder den lokalen Schnellpfad priorisieren."
+        )
     return traces, notes
 
 

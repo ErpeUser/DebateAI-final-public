@@ -7,17 +7,17 @@ an ff-only pull of the default branch. Integrating a candidate remains a
 reviewed local commit because GitHub cannot decide whether two changes should
 be cherry-picked, merged, or combined.
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import os
-from pathlib import Path
 import re
 import subprocess
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
-
 
 ROOT = Path(__file__).resolve().parents[2]
 DEFAULT_REPOSITORY = "ErpeUser/DebateAI-final-public"
@@ -80,14 +80,8 @@ def gh_json(repository: str, endpoint: str, *, paginate: bool = False):
 def changed_impact(paths: list[str]) -> dict[str, object]:
     """Classify generated-client work required by a pulled source change."""
     extension_paths = [path for path in paths if EXTENSION_PATH_RE.search(path)]
-    desktop_paths = [
-        path for path in paths
-        if path.startswith(DESKTOP_PREFIXES)
-    ]
-    shortcut_paths = [
-        path for path in paths
-        if path.startswith(SHORTCUT_PREFIXES)
-    ]
+    desktop_paths = [path for path in paths if path.startswith(DESKTOP_PREFIXES)]
+    shortcut_paths = [path for path in paths if path.startswith(SHORTCUT_PREFIXES)]
     return {
         "changed_paths": paths,
         "extension_paths": extension_paths,
@@ -115,14 +109,25 @@ def run_affected_build(impact: dict[str, object]) -> dict[str, object]:
                 f"-File {script} -Rebuild -NoLaunch"
             )
             command(
-                "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                "-File", str(script), "-Rebuild", "-NoLaunch",
+                "powershell.exe",
+                "-NoProfile",
+                "-ExecutionPolicy",
+                "Bypass",
+                "-File",
+                str(script),
+                "-Rebuild",
+                "-NoLaunch",
             )
             statuses.append("desktop-rebuilt-and-smoke-tested")
             if impact["shortcut_paths"]:
                 command(
-                    "powershell.exe", "-NoProfile", "-ExecutionPolicy", "Bypass",
-                    "-File", str(script), "-Check",
+                    "powershell.exe",
+                    "-NoProfile",
+                    "-ExecutionPolicy",
+                    "Bypass",
+                    "-File",
+                    str(script),
+                    "-Check",
                 )
                 statuses.append("launcher-verified")
     if extension_paths:
@@ -156,10 +161,16 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--remote", default="origin")
     parser.add_argument("--repository", default="")
-    parser.add_argument("--pull", action="store_true",
-                        help="Fetch, inspect, then ff-only pull the default branch")
-    parser.add_argument("--strict", action="store_true",
-                        help="Exit non-zero when non-default branches or open PRs exist")
+    parser.add_argument(
+        "--pull",
+        action="store_true",
+        help="Fetch, inspect, then ff-only pull the default branch",
+    )
+    parser.add_argument(
+        "--strict",
+        action="store_true",
+        help="Exit non-zero when non-default branches or open PRs exist",
+    )
     parser.add_argument("--json", action="store_true", dest="as_json")
     args = parser.parse_args(argv)
 
@@ -180,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     pull_requests = gh_json(repository, "pulls?state=open&per_page=100", paginate=True)
     non_default = [
         {"name": branch["name"], "sha": branch["commit"]["sha"]}
-        for branch in branches if branch.get("name") != default_branch
+        for branch in branches
+        if branch.get("name") != default_branch
     ]
     open_prs = [
         {
@@ -224,7 +236,9 @@ def main(argv: list[str] | None = None) -> int:
     impact = changed_impact(changed)
     result["impact"] = impact
     result["affected_build"] = (
-        run_affected_build(impact) if result["pulled"] else {"status": "not-run", "command": ""}
+        run_affected_build(impact)
+        if result["pulled"]
+        else {"status": "not-run", "command": ""}
     )
 
     if args.as_json:

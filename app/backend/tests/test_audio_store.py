@@ -26,7 +26,9 @@ class AudioStoreTests(unittest.TestCase):
                 path.write_bytes(b"wav")
 
             with patch("app.services.audio_store.data_dir", return_value=root):
-                removed = cleanup_orphan_track_audio({"audio/session/segment_1_mic.wav"})
+                removed = cleanup_orphan_track_audio(
+                    {"audio/session/segment_1_mic.wav"}
+                )
 
             self.assertEqual(2, removed)
             self.assertTrue(referenced.exists())

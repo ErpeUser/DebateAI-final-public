@@ -11,9 +11,6 @@ import os
 from dataclasses import dataclass
 from pathlib import Path
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
 from app.models import AgentConfig
 from app.services import fit_staleness, local_fit, transcription_runtime
@@ -30,7 +27,8 @@ from app.services.diarizer_runtime import get_diarizer_runtime_config
 from app.services.diarizer_selection import DIARIZER_SORTFORMER
 from app.services.local_live_captioner import LOCAL_LIVE_MODEL_MAP
 from app.services.local_transcriber import LOCAL_MODEL_MAP
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Leave at least this many cores for the event loop, WebSocket I/O, the database
 # driver, and the OS; the audio and model stack gets the rest.
@@ -68,7 +66,7 @@ def _container_memory_limit_mb() -> float | None:
             continue
         if value <= 0 or value >= _UNLIMITED_MEMORY_BYTES:
             return None
-        return value / (1024 ** 2)
+        return value / (1024**2)
     return None
 
 
@@ -117,7 +115,9 @@ class CapacityAssessment:
             "cpu_demand_cores": round(verdict.cpu_demand_cores, 3),
             "cpu_headroom_cores": round(verdict.cpu_headroom_cores, 3),
             "cpu_load_multiple": (
-                None if verdict.cpu_load_multiple == float("inf") else round(verdict.cpu_load_multiple, 3)
+                None
+                if verdict.cpu_load_multiple == float("inf")
+                else round(verdict.cpu_load_multiple, 3)
             ),
             "memory_limit_mb": round(verdict.memory_limit_mb, 1),
             "memory_demand_mb": round(verdict.memory_demand_mb, 1),
@@ -251,11 +251,7 @@ def _measured_text_latency(
     if not isinstance(roles, list):
         return _Measured()
     role = next(
-        (
-            item
-            for item in roles
-            if isinstance(item, dict) and item.get("slug") == slug
-        ),
+        (item for item in roles if isinstance(item, dict) and item.get("slug") == slug),
         None,
     )
     latency = _positive_number(role.get("latency_seconds")) if role else None
@@ -294,9 +290,7 @@ def _diarization_demand(
         )
         return None, modelled, not_modelled
     if diarizer.benchmark_validity in ("incompatible", "superseded"):
-        not_modelled.append(
-            f"diarization: {diarizer.benchmark_validity_reason}"
-        )
+        not_modelled.append(f"diarization: {diarizer.benchmark_validity_reason}")
         return None, modelled, not_modelled
 
     # A record that survived the validity gate carries all three numbers:
@@ -336,18 +330,14 @@ def _transcription_demands(
             "real_time_factor",
         )
         if measured_rtf.unusable:
-            not_modelled.append(
-                f"batch_asr:{batch_model_id}: {measured_rtf.unusable}"
-            )
+            not_modelled.append(f"batch_asr:{batch_model_id}: {measured_rtf.unusable}")
         elif measured_rtf.value is None:
             not_modelled.append(
                 f"batch_asr:{batch_model_id}: run the local fit test for this model"
             )
         else:
             if measured_rtf.aged:
-                annotations.append(
-                    f"batch_asr:{batch_model_id}: {measured_rtf.aged}"
-                )
+                annotations.append(f"batch_asr:{batch_model_id}: {measured_rtf.aged}")
             batch_asr = BatchAsrDemand(real_time_factor=measured_rtf.value)
             modelled.append(f"batch_asr:{batch_model_id}")
             not_modelled.append(
@@ -403,11 +393,7 @@ def _text_agent_demands(
 
     for row in agent_rows:
         role = _ROLES_BY_SLUG.get(row.slug)
-        if (
-            not row.enabled
-            or role is None
-            or row.model_id not in local_text_model_ids
-        ):
+        if not row.enabled or role is None or row.model_id not in local_text_model_ids:
             continue
         latency = _measured_text_latency(fit_result, row.model_id, row.slug)
         if latency.unusable:
@@ -415,15 +401,18 @@ def _text_agent_demands(
             continue
         if latency.value is None or output_budget <= 0:
             not_modelled.append(
-                f"text_agent:{row.slug}: run the local fit test for "
-                f"{row.model_id}"
+                f"text_agent:{row.slug}: run the local fit test for {row.model_id}"
             )
             continue
         if latency.aged:
             annotations.append(f"text_agent:{row.slug}: {latency.aged}")
-        interval = 0 if role.post_call else _effective_interval(
-            row,
-            role.default_interval,
+        interval = (
+            0
+            if role.post_call
+            else _effective_interval(
+                row,
+                role.default_interval,
+            )
         )
         if not role.post_call and not interval:
             not_modelled.append(
@@ -473,9 +462,9 @@ async def assess_call_capacity(
     runtime = await transcription_runtime.get_transcription_runtime_config(db)
     fit_result = await local_fit.load_local_fit_result(db) or {}
     agent_rows = list(
-        (
-            await db.execute(select(AgentConfig).order_by(AgentConfig.display_order))
-        ).scalars().all()
+        (await db.execute(select(AgentConfig).order_by(AgentConfig.display_order)))
+        .scalars()
+        .all()
     )
     agents = {row.slug: row for row in agent_rows}
     local_text_model_ids = {
@@ -484,8 +473,8 @@ async def assess_call_capacity(
         if model.get("id")
     }
 
-    diarization, diarization_modelled, diarization_not_modelled = (
-        _diarization_demand(diarizer, track_count)
+    diarization, diarization_modelled, diarization_not_modelled = _diarization_demand(
+        diarizer, track_count
     )
     (
         batch_asr,

@@ -9,7 +9,6 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-
 VERSION = "8.0.54"
 GEMINI_PLUGIN_VERSION = "1.0.5"
 DEST = Path(__file__).resolve().parent.parent / "cliproxyapi"
@@ -19,9 +18,7 @@ PLUGIN_BASE = (
     "https://github.com/router-for-me/cpa-plugin-gemini-cli/releases/download/"
     f"v{GEMINI_PLUGIN_VERSION}"
 )
-PLUGIN_ARCHIVE = (
-    f"gemini-cli_{GEMINI_PLUGIN_VERSION}_windows_amd64.zip"
-)
+PLUGIN_ARCHIVE = f"gemini-cli_{GEMINI_PLUGIN_VERSION}_windows_amd64.zip"
 
 
 def _download(base_url: str, name: str) -> bytes:
@@ -54,9 +51,12 @@ def _verified_archive(base_url: str, archive_name: str) -> bytes:
 def _install_proxy() -> None:
     target = DEST / "cli-proxy-api.exe"
     version_file = DEST / "VERSION"
-    if target.is_file() and version_file.is_file():
-        if version_file.read_text(encoding="ascii").strip() == VERSION:
-            return
+    if (
+        target.is_file()
+        and version_file.is_file()
+        and version_file.read_text(encoding="ascii").strip() == VERSION
+    ):
+        return
     payload = _verified_archive(CPA_BASE, CPA_ARCHIVE)
     DEST.mkdir(parents=True, exist_ok=True)
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
@@ -84,9 +84,12 @@ def _install_gemini_plugin() -> None:
     plugin_dir = DEST / "plugins" / "windows" / "amd64"
     target = plugin_dir / f"gemini-cli-v{GEMINI_PLUGIN_VERSION}.dll"
     version_file = DEST / "GEMINI_PLUGIN_VERSION"
-    if target.is_file() and version_file.is_file():
-        if version_file.read_text(encoding="ascii").strip() == GEMINI_PLUGIN_VERSION:
-            return
+    if (
+        target.is_file()
+        and version_file.is_file()
+        and version_file.read_text(encoding="ascii").strip() == GEMINI_PLUGIN_VERSION
+    ):
+        return
     payload = _verified_archive(PLUGIN_BASE, PLUGIN_ARCHIVE)
     with zipfile.ZipFile(io.BytesIO(payload)) as archive:
         library = next(

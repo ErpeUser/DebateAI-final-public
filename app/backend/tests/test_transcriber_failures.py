@@ -11,7 +11,6 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import numpy as np
-
 from app.services import local_transcriber
 from app.services.batch_transcriber import BatchTranscriber, TranscriptionError
 from app.services.local_transcriber import LocalTranscriber

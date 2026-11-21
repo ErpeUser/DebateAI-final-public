@@ -24,7 +24,9 @@ def ensure() -> None:
     for name in ("stdout", "stderr"):
         if getattr(sys, name, None) is None:
             try:
-                setattr(sys, name, open(os.devnull, "w", encoding="utf-8", errors="replace"))
+                setattr(
+                    sys, name, open(os.devnull, "w", encoding="utf-8", errors="replace")
+                )
             except OSError:  # pragma: no cover - no devnull is not survivable anyway
                 continue
         # Libraries fall back to __stdout__/__stderr__ when the main pair looks odd.

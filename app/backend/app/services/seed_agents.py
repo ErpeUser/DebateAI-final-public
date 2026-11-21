@@ -3,29 +3,28 @@
 import hashlib
 import json
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import AgentConfig, CustomEndpoint
-from app.services.app_settings import get_app_setting, set_app_setting
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.prompts import (
     AUDIO_BRIDGE_PROMPT,
     BRIEF_ARBITER_PROMPT,
     BRIEF_DISCOVERY_LENS_PROMPT,
     BRIEF_MEETING_LENS_PROMPT,
     CONSOLIDATED_ANALYST_BASE_PROMPT,
-    DEFAULT_ANALYST_LENSES,
     DEBATE_RECOMMENDATION_PROMPT,
+    DEFAULT_ANALYST_LENSES,
     OBJECTION_HANDLER_PROMPT,
     OPPORTUNITY_SPECIALIST_PROMPT,
     PRINCIPAL_AGENT_PROMPT,
     STRATEGIC_SIGNALS_PROMPT,
 )
-from app.services.transcript_refiner import SYSTEM_PROMPT as TRANSCRIPT_REFINER_PROMPT
-from app.services.transcription_runtime import SETTING_BATCH_TRANSCRIBER_MODEL
-from app.services.transcription_language import SETTING_TRANSCRIPTION_LANGUAGE
-from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.app_settings import get_app_setting, set_app_setting
 from app.services.identity import env_value
+from app.services.transcript_refiner import SYSTEM_PROMPT as TRANSCRIPT_REFINER_PROMPT
+from app.services.transcription_language import SETTING_TRANSCRIPTION_LANGUAGE
+from app.services.transcription_runtime import SETTING_BATCH_TRANSCRIBER_MODEL
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # Default prompt lookup by slug (used for reset endpoint)
 DEFAULT_PROMPTS = {
@@ -206,21 +205,18 @@ async def seed_agent_configs(db: AsyncSession):
         if existing is not None and existing.description != cfg["description"]:
             existing.description = cfg["description"]
         # Preserve custom names while translating former seeded labels.
-        if (
-            existing is not None
-            and existing.name in {
-                "Audio Bridge",
-                "Consolidated Analyst",
-                "Objection Handler",
-                "Principal Agent",
-                "Opportunity Specialist",
-                "Strategic Signals",
-                "Transcript Refiner",
-                "Briefing Meeting Lens",
-                "Briefing Discovery Lens",
-                "Briefing Arbiter",
-            }
-        ):
+        if existing is not None and existing.name in {
+            "Audio Bridge",
+            "Consolidated Analyst",
+            "Objection Handler",
+            "Principal Agent",
+            "Opportunity Specialist",
+            "Strategic Signals",
+            "Transcript Refiner",
+            "Briefing Meeting Lens",
+            "Briefing Discovery Lens",
+            "Briefing Arbiter",
+        }:
             existing.name = cfg["name"]
         if existing is not None:
             _seed_missing_lenses(existing)
@@ -265,12 +261,12 @@ async def configure_desktop_debate_runtime(db: AsyncSession) -> None:
     completed = await get_app_setting(db, _DESKTOP_DEBATE_BOOTSTRAP_KEY, "")
     first_bootstrap = completed != "1"
 
-    defaults_version = await get_app_setting(
-        db, _IDEAL_DEBATE_DEFAULTS_VERSION_KEY, ""
-    )
+    defaults_version = await get_app_setting(db, _IDEAL_DEBATE_DEFAULTS_VERSION_KEY, "")
     if defaults_version != "1":
         from app.services.debate_settings import (
             SETTING_KEY as DEBATE_SETTINGS_KEY,
+        )
+        from app.services.debate_settings import (
             DebateSettings,
             set_debate_settings,
         )
@@ -285,21 +281,24 @@ async def configure_desktop_debate_runtime(db: AsyncSession) -> None:
             ).to_json(),
         }
         if raw_settings in known_old_defaults:
-            await set_debate_settings(db, DebateSettings(
-                mode="persuasive",
-                research_enabled=False,
-                research_frequency="never",
-                always_analogy=False,
-                style_focus="natural",
-                voice_commands_enabled=True,
-                argument_memory_enabled=True,
-                transcript_retention_enabled=True,
-                audio_archive_enabled=False,
-                session_retrieval_enabled=True,
-                learning_examples_enabled=True,
-                graph_recording_enabled=True,
-                performance_profile="balanced",
-            ))
+            await set_debate_settings(
+                db,
+                DebateSettings(
+                    mode="persuasive",
+                    research_enabled=False,
+                    research_frequency="never",
+                    always_analogy=False,
+                    style_focus="natural",
+                    voice_commands_enabled=True,
+                    argument_memory_enabled=True,
+                    transcript_retention_enabled=True,
+                    audio_archive_enabled=False,
+                    session_retrieval_enabled=True,
+                    learning_examples_enabled=True,
+                    graph_recording_enabled=True,
+                    performance_profile="balanced",
+                ),
+            )
         await set_app_setting(db, _IDEAL_DEBATE_DEFAULTS_VERSION_KEY, "1")
 
     # Older desktop seeds pointed every analysis role at the official Gemini

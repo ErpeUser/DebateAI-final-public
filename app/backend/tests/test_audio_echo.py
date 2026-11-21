@@ -4,7 +4,6 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 
 import numpy as np
-
 from app.services.audio_echo import (
     build_echo_cancelled_mix,
     cancel_and_mix,
@@ -35,7 +34,7 @@ def speechlike(seconds, rate=RATE, seed=0, level=3000.0):
     kernel = np.hanning(rate // 8)
     envelope = np.convolve(envelope, kernel / kernel.sum(), mode="same")
     signal *= envelope
-    return signal / (np.sqrt(np.mean(signal ** 2)) or 1.0) * level
+    return signal / (np.sqrt(np.mean(signal**2)) or 1.0) * level
 
 
 def echo_path(reference, rate=RATE, delay_ms=230.0, drift=DRIFT, seed=1):
@@ -48,18 +47,20 @@ def echo_path(reference, rate=RATE, delay_ms=230.0, drift=DRIFT, seed=1):
     impulse = np.zeros(int(delay_ms / 1000 * rate) + taps + 1)
     start = int(delay_ms / 1000 * rate)
     impulse[start] = 1.0
-    impulse[start + 1:] = (rng.normal(0, 0.22, taps)
-                           * np.exp(-np.arange(taps) / (0.030 * rate)))
-    impulse /= np.sqrt((impulse ** 2).sum())
+    impulse[start + 1 :] = rng.normal(0, 0.22, taps) * np.exp(
+        -np.arange(taps) / (0.030 * rate)
+    )
+    impulse /= np.sqrt((impulse**2).sum())
     size = 1 << int(np.ceil(np.log2(len(moved) + len(impulse))))
     convolved = np.fft.irfft(
-        np.fft.rfft(moved, size) * np.fft.rfft(impulse, size), size)[: len(reference)]
+        np.fft.rfft(moved, size) * np.fft.rfft(impulse, size), size
+    )[: len(reference)]
     return convolved
 
 
 def scale_to(signal, reference, ratio):
-    energy = np.sum(signal ** 2) or 1.0
-    return signal * ratio * np.sqrt(np.sum(reference ** 2) / energy)
+    energy = np.sum(signal**2) or 1.0
+    return signal * ratio * np.sqrt(np.sum(reference**2) / energy)
 
 
 class DelayTrajectoryTests(unittest.TestCase):
@@ -104,7 +105,7 @@ class CancelEchoTests(unittest.TestCase):
 
         # cleaned = near + (echo - estimate), so the residual echo is exact.
         residual = cleaned - near[: len(cleaned)]
-        erle = 10 * np.log10(np.sum(echo[: len(cleaned)] ** 2) / np.sum(residual ** 2))
+        erle = 10 * np.log10(np.sum(echo[: len(cleaned)] ** 2) / np.sum(residual**2))
         self.assertGreater(erle, 9.0)
 
     def test_does_not_touch_audio_that_has_no_echo_in_it(self):
@@ -133,13 +134,14 @@ class CancelEchoTests(unittest.TestCase):
         # so a level check cannot tell preservation from over-cancellation.
         survived = with_probe - base
         kept = float(survived @ probe[: len(survived)]) / float(
-            probe[: len(survived)] @ probe[: len(survived)])
+            probe[: len(survived)] @ probe[: len(survived)]
+        )
         self.assertGreater(kept, 0.95)
         self.assertLess(kept, 1.05)
 
     def test_is_a_no_op_while_the_far_end_is_silent(self):
         far = speechlike(90, seed=12)
-        far[40 * RATE: 60 * RATE] = 0.0
+        far[40 * RATE : 60 * RATE] = 0.0
         near = speechlike(90, seed=13, level=1200.0)
         echo = scale_to(echo_path(far), near, 1.6)
 
@@ -166,8 +168,9 @@ class CancelEchoTests(unittest.TestCase):
         near = speechlike(45, seed=24, level=1200.0)
         odd = len(near) - 517
 
-        cleaned = cancel_echo(near[:odd] + scale_to(echo_path(far), near, 1.6)[:odd],
-                              far[:odd], RATE)
+        cleaned = cancel_echo(
+            near[:odd] + scale_to(echo_path(far), near, 1.6)[:odd], far[:odd], RATE
+        )
 
         self.assertEqual(odd, len(cleaned))
 
@@ -237,7 +240,8 @@ class BuildMixTests(unittest.TestCase):
 
             with self.assertRaises(ValueError):
                 build_echo_cancelled_mix(
-                    root / "mic.wav", root / "sys.wav", root / "clean.wav")
+                    root / "mic.wav", root / "sys.wav", root / "clean.wav"
+                )
 
 
 if __name__ == "__main__":  # pragma: no cover

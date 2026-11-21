@@ -3,23 +3,22 @@ import uuid
 from html import escape as escape_html
 from urllib.parse import quote
 
-from fastapi import APIRouter, Depends, HTTPException
-from fastapi.responses import StreamingResponse
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Directive, Question, Session, Speaker, TranscriptEntry
 from app.services import briefing_document, insight_workbook, runtime_activity
-from app.services.pii import shield, vault
 from app.services.briefing_synthesis import get_session_synthesis
+from app.services.pii import shield, vault
+from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/artifacts", tags=["artifacts"])
 
 
 def _attachment_header(filename: str) -> str:
-    clean = re.sub(r'[\x00-\x1f\x7f/\\]', '_', filename)
-    fallback = re.sub(r'[^A-Za-z0-9._-]', '_', clean) or "download"
+    clean = re.sub(r"[\x00-\x1f\x7f/\\]", "_", filename)
+    fallback = re.sub(r"[^A-Za-z0-9._-]", "_", clean) or "download"
     header = f'attachment; filename="{fallback}"'
     if clean != fallback:
         header += "; filename*=UTF-8''" + quote(clean, safe="")
@@ -27,8 +26,14 @@ def _attachment_header(filename: str) -> str:
 
 
 _INSIGHT_TEXT_FIELDS = (
-    "question", "rationale", "source_context", "answer_summary",
-    "followup_question", "enrichment_notes", "offering_match", "lens_label",
+    "question",
+    "rationale",
+    "source_context",
+    "answer_summary",
+    "followup_question",
+    "enrichment_notes",
+    "offering_match",
+    "lens_label",
 )
 
 
@@ -69,7 +74,9 @@ def _stream_bytes(data: bytes):
 
 
 @router.get("/transcript-export")
-async def export_transcript(session_id: uuid.UUID, reveal: bool = False, db: AsyncSession = Depends(get_db)):
+async def export_transcript(
+    session_id: uuid.UUID, reveal: bool = False, db: AsyncSession = Depends(get_db)
+):
     """Export session transcript as a downloadable text file. Generated in-memory, never stored."""
     session = await db.get(Session, session_id)
     if not session:
@@ -97,7 +104,11 @@ async def export_transcript(session_id: uuid.UUID, reveal: bool = False, db: Asy
             text = text.replace(original, display)
         return text
 
-    lines = [f"Transcript: {session.name}", f"Date: {session.started_at or session.created_at}", ""]
+    lines = [
+        f"Transcript: {session.name}",
+        f"Date: {session.started_at or session.created_at}",
+        "",
+    ]
     for entry in entries:
         ts = entry.timestamp.strftime("%H:%M:%S") if entry.timestamp else ""
         lines.append(f"[{ts}] {_apply_names(entry.text)}")
@@ -123,10 +134,16 @@ async def export_insights(
 ):
     """Export all session insights."""
     from io import BytesIO
+
     from openpyxl import Workbook
-    from openpyxl.worksheet.table import Table, TableStyleInfo
-    from openpyxl.worksheet.filters import AutoFilter, CustomFilter, CustomFilters, FilterColumn
     from openpyxl.utils import get_column_letter
+    from openpyxl.worksheet.filters import (
+        AutoFilter,
+        CustomFilter,
+        CustomFilters,
+        FilterColumn,
+    )
+    from openpyxl.worksheet.table import Table, TableStyleInfo
 
     session = await db.get(Session, session_id)
     if not session:
@@ -150,7 +167,9 @@ async def export_insights(
 
     # Load speakers for source_context name replacement
     spk_result = await db.execute(
-        select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+        select(Speaker)
+        .where(Speaker.session_id == session_id)
+        .order_by(Speaker.created_at)
     )
     speakers = spk_result.scalars().all()
     speaker_name_map = {}
@@ -169,7 +188,10 @@ async def export_insights(
     participants = [
         insight_workbook.Participant(
             id=str(s.id),
-            label=(s.display_name if s.display_name and s.display_name_enabled else s.name) or "Unknown",
+            label=(
+                s.display_name if s.display_name and s.display_name_enabled else s.name
+            )
+            or "Unknown",
             role=s.role or "",
             side="Team" if s.speaker_type == "team" else "External",
         )
@@ -196,7 +218,9 @@ async def export_insights(
             label, count = shield.substitute(person.label, mapping)
             revealed_total += count
             revealed_participants.append(
-                insight_workbook.Participant(id=person.id, label=label, role=person.role, side=person.side)
+                insight_workbook.Participant(
+                    id=person.id, label=label, role=person.role, side=person.side
+                )
             )
         participants = revealed_participants
         if revealed_total:
@@ -233,26 +257,30 @@ async def export_insights(
     }
 
     for q in questions:
-        ws.append([
-            type_labels.get(q.item_type, (q.item_type or "question").replace("_", " ").title()),
-            q.lens_label or "",
-            _apply_speaker_names(q.question),
-            _apply_speaker_names(q.rationale),
-            _apply_speaker_names(q.source_context),
-            q.vote or 0,
-            q.starred,
-            q.answered,
-            _apply_speaker_names(q.answer_summary) if q.answer_summary else "",
-            q.needs_followup,
-            q.followup_question or "",
-            q.offering_match or "",
-            q.enhanced,
-            q.dismissed,
-            q.enrichment_notes or "",
-            q.agent_source or "",
-            q.revision_count,
-            q.created_at.strftime("%Y-%m-%d %H:%M:%S") if q.created_at else "",
-        ])
+        ws.append(
+            [
+                type_labels.get(
+                    q.item_type, (q.item_type or "question").replace("_", " ").title()
+                ),
+                q.lens_label or "",
+                _apply_speaker_names(q.question),
+                _apply_speaker_names(q.rationale),
+                _apply_speaker_names(q.source_context),
+                q.vote or 0,
+                q.starred,
+                q.answered,
+                _apply_speaker_names(q.answer_summary) if q.answer_summary else "",
+                q.needs_followup,
+                q.followup_question or "",
+                q.offering_match or "",
+                q.enhanced,
+                q.dismissed,
+                q.enrichment_notes or "",
+                q.agent_source or "",
+                q.revision_count,
+                q.created_at.strftime("%Y-%m-%d %H:%M:%S") if q.created_at else "",
+            ]
+        )
 
     # Format as an Excel Table
     if questions:
@@ -271,9 +299,13 @@ async def export_insights(
         dismissed_col_idx = headers.index("Dismissed")
         dismissed_filter = FilterColumn(
             colId=dismissed_col_idx,
-            customFilters=CustomFilters(customFilter=[
-                CustomFilter(val="FALSE"),  # openpyxl custom filter matches string repr
-            ]),
+            customFilters=CustomFilters(
+                customFilter=[
+                    CustomFilter(
+                        val="FALSE"
+                    ),  # openpyxl custom filter matches string repr
+                ]
+            ),
         )
         table.autoFilter = AutoFilter(ref=table_ref)
         table.autoFilter.filterColumn.append(dismissed_filter)
@@ -309,10 +341,16 @@ async def export_insights(
         rename=_apply_speaker_names,
     )
     insight_workbook.build_action_items_sheet(
-        actions_ws, questions=live, participants=participants, rename=_apply_speaker_names
+        actions_ws,
+        questions=live,
+        participants=participants,
+        rename=_apply_speaker_names,
     )
     insight_workbook.build_opportunities_sheet(
-        opportunities_ws, questions=live, participants=participants, rename=_apply_speaker_names
+        opportunities_ws,
+        questions=live,
+        participants=participants,
+        rename=_apply_speaker_names,
     )
 
     _sanitize_excel_workbook(wb)
@@ -330,7 +368,9 @@ async def export_insights(
 
 
 @router.get("/summary-export")
-async def export_summary(session_id: uuid.UUID, reveal: bool = False, db: AsyncSession = Depends(get_db)):
+async def export_summary(
+    session_id: uuid.UUID, reveal: bool = False, db: AsyncSession = Depends(get_db)
+):
     """Export the session briefing as one self-contained HTML file.
 
     Generated in memory, never stored. The markup lives in
@@ -385,31 +425,49 @@ async def _briefing_data(
     everywhere else in the app.
     """
     questions = (
-        await db.execute(
-            select(Question)
-            .where(Question.session_id == session_id, Question.dismissed.is_(False))
-            .order_by(Question.vote.desc(), Question.created_at)
+        (
+            await db.execute(
+                select(Question)
+                .where(Question.session_id == session_id, Question.dismissed.is_(False))
+                .order_by(Question.vote.desc(), Question.created_at)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     speakers = (
-        await db.execute(
-            select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+        (
+            await db.execute(
+                select(Speaker)
+                .where(Speaker.session_id == session_id)
+                .order_by(Speaker.created_at)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     transcript = (
-        await db.execute(
-            select(TranscriptEntry)
-            .where(TranscriptEntry.session_id == session_id)
-            .order_by(TranscriptEntry.sequence)
+        (
+            await db.execute(
+                select(TranscriptEntry)
+                .where(TranscriptEntry.session_id == session_id)
+                .order_by(TranscriptEntry.sequence)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     directives = (
-        await db.execute(
-            select(Directive)
-            .where(Directive.session_id == session_id, Directive.active.is_(True))
-            .order_by(Directive.created_at)
+        (
+            await db.execute(
+                select(Directive)
+                .where(Directive.session_id == session_id, Directive.active.is_(True))
+                .order_by(Directive.created_at)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return briefing_document.BriefingData(
         session=session,
         synthesis=synthesis,

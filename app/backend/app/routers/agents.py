@@ -2,21 +2,20 @@
 
 import json
 import uuid
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.config import MODEL_REGISTRY
 from app.database import get_db
 from app.models import AgentConfig, KnowledgeSource
 from app.schemas import AgentConfigOut, AgentConfigUpdate
 from app.services.agents.consolidated_analyst import TYPE_SLUG_RE
-from app.services.custom_endpoints import endpoint_model_entry
-from app.services.seed_agents import DEFAULT_LENSES_BY_SLUG, DEFAULT_PROMPTS
 from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.ai_config import ai_directory, save_prompt
+from app.services.custom_endpoints import endpoint_model_entry
+from app.services.seed_agents import DEFAULT_LENSES_BY_SLUG, DEFAULT_PROMPTS
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/agents", tags=["agents"])
 
@@ -54,9 +53,7 @@ def _validate_lenses(value: str) -> None:
 
 @router.get("", response_model=list[AgentConfigOut])
 async def list_agents(db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(AgentConfig).order_by(AgentConfig.display_order)
-    )
+    result = await db.execute(select(AgentConfig).order_by(AgentConfig.display_order))
     agents = result.scalars().all()
     for agent in agents:
         agent.prompt = load_prompt_resource(f"agent.{agent.slug}", agent.prompt or "")
@@ -65,9 +62,7 @@ async def list_agents(db: AsyncSession = Depends(get_db)):
 
 @router.get("/{slug}", response_model=AgentConfigOut)
 async def get_agent(slug: str, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(AgentConfig).where(AgentConfig.slug == slug)
-    )
+    result = await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -76,10 +71,10 @@ async def get_agent(slug: str, db: AsyncSession = Depends(get_db)):
 
 
 @router.patch("/{slug}", response_model=AgentConfigOut)
-async def update_agent(slug: str, body: AgentConfigUpdate, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(
-        select(AgentConfig).where(AgentConfig.slug == slug)
-    )
+async def update_agent(
+    slug: str, body: AgentConfigUpdate, db: AsyncSession = Depends(get_db)
+):
+    result = await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -104,16 +99,20 @@ async def update_agent(slug: str, body: AgentConfigUpdate, db: AsyncSession = De
                 if source is None:
                     raise HTTPException(400, f"Unknown knowledge source id: {raw_id}")
     prompt_path = ai_directory() / f"agent.{slug}.txt"
-    previous_prompt = prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    previous_prompt = (
+        prompt_path.read_text(encoding="utf-8") if prompt_path.is_file() else None
+    )
     if updates.get("prompt") is not None:
         try:
-            updates["prompt"] = save_prompt(f"agent.{slug}", updates["prompt"])["content"]
+            updates["prompt"] = save_prompt(f"agent.{slug}", updates["prompt"])[
+                "content"
+            ]
         except ValueError as exc:
             raise HTTPException(400, str(exc)) from exc
     for field, value in updates.items():
         setattr(agent, field, value)
 
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     try:
         await db.commit()
     except Exception:
@@ -131,9 +130,7 @@ async def update_agent(slug: str, body: AgentConfigUpdate, db: AsyncSession = De
 @router.post("/reset/{slug}", response_model=AgentConfigOut)
 async def reset_agent_prompt(slug: str, db: AsyncSession = Depends(get_db)):
     """Reset an agent's prompt to the hardcoded default."""
-    result = await db.execute(
-        select(AgentConfig).where(AgentConfig.slug == slug)
-    )
+    result = await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
@@ -147,7 +144,7 @@ async def reset_agent_prompt(slug: str, db: AsyncSession = Depends(get_db)):
     default_lenses = DEFAULT_LENSES_BY_SLUG.get(slug)
     if default_lenses is not None:
         agent.lenses = json.dumps(default_lenses)
-    agent.updated_at = datetime.now(timezone.utc)
+    agent.updated_at = datetime.now(UTC)
     await db.commit()
     await db.refresh(agent)
     return agent

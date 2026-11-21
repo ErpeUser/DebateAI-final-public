@@ -54,11 +54,13 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(method, url, kwargs):
             calls.append((method, url, kwargs))
-            return _Response({
-                "status": "ok",
-                "url": "https://accounts.google.com/o/oauth2/auth?state=test",
-                "state": "gemini-state-123",
-            })
+            return _Response(
+                {
+                    "status": "ok",
+                    "url": "https://accounts.google.com/o/oauth2/auth?state=test",
+                    "state": "gemini-state-123",
+                }
+            )
 
         _Client.handler = staticmethod(handler)
         with mock.patch.object(self.oauth.httpx, "AsyncClient", _Client):
@@ -74,10 +76,12 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(method, url, kwargs):
             calls.append((method, url, kwargs))
-            return _Response({
-                "model": "gemini-3.1-pro-preview",
-                "choices": [{"message": {"content": "OK"}}],
-            })
+            return _Response(
+                {
+                    "model": "gemini-3.1-pro-preview",
+                    "choices": [{"message": {"content": "OK"}}],
+                }
+            )
 
         _Client.handler = staticmethod(handler)
         with (
@@ -114,10 +118,12 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
 
         def handler(method, url, kwargs):
             calls.append((method, url, kwargs))
-            return _Response({
-                "model": "gemini-3.8-flash-high",
-                "choices": [{"message": {"content": "OK"}}],
-            })
+            return _Response(
+                {
+                    "model": "gemini-3.8-flash-high",
+                    "choices": [{"message": {"content": "OK"}}],
+                }
+            )
 
         _Client.handler = staticmethod(handler)
         with (
@@ -125,7 +131,9 @@ class SubscriptionOAuthTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.object(
                 self.oauth,
                 "models",
-                mock.AsyncMock(return_value=["gemini-3-flash", "gemini-3.8-flash-high"]),
+                mock.AsyncMock(
+                    return_value=["gemini-3-flash", "gemini-3.8-flash-high"]
+                ),
             ),
         ):
             result = await self.oauth.verify_preferred_gemini_high()

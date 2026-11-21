@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+import sys
 import tempfile
 import unittest
 from pathlib import Path
-import sys
 
 APP = Path(__file__).resolve().parents[2]
 if str(APP) not in sys.path:
@@ -17,7 +17,9 @@ class GeneratedPathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             target = output_dir("benchmarks", root)
-            self.assertEqual(target, root / "DebateAI_Generated" / "reports" / "benchmarks")
+            self.assertEqual(
+                target, root / "DebateAI_Generated" / "reports" / "benchmarks"
+            )
 
     def test_external_output_is_rejected(self):
         with tempfile.TemporaryDirectory() as temporary:

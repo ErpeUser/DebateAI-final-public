@@ -6,7 +6,7 @@ persisted app setting so it survives restarts and applies to all sessions.
 """
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 from app.config import MODEL_REGISTRY
 from app.services.custom_endpoints import (
@@ -15,7 +15,8 @@ from app.services.custom_endpoints import (
     parse_model_id,
     resolve_target_standalone,
 )
-from app.services.privacy_state import get_local_only, set_local_only as set_local_only
+from app.services.privacy_state import get_local_only
+from app.services.privacy_state import set_local_only as set_local_only
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +34,10 @@ class LocalOnlyModeError(ValueError):
     """
 
     def __init__(self, feature: str, model_id: str = "", agent: str = ""):
-        target = f"'{agent}' is set to {model_id}" if agent and model_id else (
-            f"it is set to {model_id}" if model_id else ""
+        target = (
+            f"'{agent}' is set to {model_id}"
+            if agent and model_id
+            else (f"it is set to {model_id}" if model_id else "")
         )
         cause = (
             f", and {target}, which sends data off this machine and its network"
@@ -83,7 +86,9 @@ async def allows_local_only(model_id: str) -> bool:
     return bool(target and target.on_prem)
 
 
-async def admitted_model_ids(model_ids: Iterable[str], local_only: bool = True) -> set[str]:
+async def admitted_model_ids(
+    model_ids: Iterable[str], local_only: bool = True
+) -> set[str]:
     """The subset of model_ids Privacy First still admits.
 
     Callers that gate several agents at once (the orchestrator, the briefing
@@ -118,7 +123,8 @@ async def admitted_model_ids(model_ids: Iterable[str], local_only: bool = True) 
 def local_models(capability: str) -> list[dict]:
     """Registry entries with the given capability that run locally."""
     return [
-        m for m in MODEL_REGISTRY
+        m
+        for m in MODEL_REGISTRY
         if m["provider"].lower() == "local" and m.get(capability)
     ]
 
@@ -177,68 +183,78 @@ def privacy_impact(on_prem_text_models: list[dict] | None = None) -> dict:
     ]
 
     if local_text:
-        available.append({
-            "feature": (
-                "AI analysis agents, transcript analysis, insight enhancement, "
-                "and meeting chat"
-            ),
-            "detail": (
-                "Point them at a self-hosted model: "
-                + ", ".join(m["name"] for m in local_text)
-                + ". Prompts and transcripts stay on your network."
-            ),
-        })
+        available.append(
+            {
+                "feature": (
+                    "AI analysis agents, transcript analysis, insight enhancement, "
+                    "and meeting chat"
+                ),
+                "detail": (
+                    "Point them at a self-hosted model: "
+                    + ", ".join(m["name"] for m in local_text)
+                    + ". Prompts and transcripts stay on your network."
+                ),
+            }
+        )
 
     if local_live:
-        available.append({
-            "feature": "Live interim captions (on-device)",
-            "detail": (
-                "Experimental on-device captioner: "
-                + ", ".join(m["name"] for m in local_live)
-                + " transcribes short audio chunks locally. CPU-heavy; check the fit test first."
-            ),
-        })
+        available.append(
+            {
+                "feature": "Live interim captions (on-device)",
+                "detail": (
+                    "Experimental on-device captioner: "
+                    + ", ".join(m["name"] for m in local_live)
+                    + " transcribes short audio chunks locally. CPU-heavy; check the fit test first."
+                ),
+            }
+        )
 
     disabled = []
     if not local_live:
-        disabled.append({
-            "feature": "Live interim captions (audio gateway)",
-            "detail": "Streams call audio to Gemini Live or OpenAI Realtime; no local option.",
-        })
+        disabled.append(
+            {
+                "feature": "Live interim captions (audio gateway)",
+                "detail": "Streams call audio to Gemini Live or OpenAI Realtime; no local option.",
+            }
+        )
     # Unconditional: this one is not a text-model choice. It calls the Gemini
     # Files API itself, so no self-hosted model can stand in for it and the
     # entry must not disappear the moment an on-prem text model is configured.
-    disabled.append({
-        "feature": "Document upload & summarization",
-        "detail": (
-            "Full summarization uploads documents to the Gemini Files API, "
-            "which has no self-hosted equivalent. Text documents (.txt, .md, "
-            ".docx) can still be attached: a bounded excerpt is extracted on "
-            "this machine instead. Configuring a local text model does not "
-            "enable the cloud path."
-        ),
-    })
+    disabled.append(
+        {
+            "feature": "Document upload & summarization",
+            "detail": (
+                "Full summarization uploads documents to the Gemini Files API, "
+                "which has no self-hosted equivalent. Text documents (.txt, .md, "
+                ".docx) can still be attached: a bounded excerpt is extracted on "
+                "this machine instead. Configuring a local text model does not "
+                "enable the cloud path."
+            ),
+        }
+    )
     if not local_text:
-        disabled.extend([
-            {
-                "feature": "AI analysis agents",
-                "detail": (
-                    "Consolidated Analyst, Objection Handler, Synthesizer, Opportunity "
-                    "Specialist, and Call Briefing all need a cloud text model."
-                ),
-            },
-            {
-                "feature": "Post-import transcript analysis",
-                "detail": "The Analyze action sends the transcript to a cloud model.",
-            },
-            {
-                "feature": "Meeting chat",
-                "detail": "Chat over past transcripts routes through a cloud text model.",
-            },
-            {
-                "feature": "Insight enhancement",
-                "detail": "Speaker-context insight enrichment uses a cloud text model.",
-            },
-        ])
+        disabled.extend(
+            [
+                {
+                    "feature": "AI analysis agents",
+                    "detail": (
+                        "Consolidated Analyst, Objection Handler, Synthesizer, Opportunity "
+                        "Specialist, and Call Briefing all need a cloud text model."
+                    ),
+                },
+                {
+                    "feature": "Post-import transcript analysis",
+                    "detail": "The Analyze action sends the transcript to a cloud model.",
+                },
+                {
+                    "feature": "Meeting chat",
+                    "detail": "Chat over past transcripts routes through a cloud text model.",
+                },
+                {
+                    "feature": "Insight enhancement",
+                    "detail": "Speaker-context insight enrichment uses a cloud text model.",
+                },
+            ]
+        )
 
     return {"available": available, "disabled": disabled}

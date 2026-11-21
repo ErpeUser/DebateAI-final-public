@@ -10,14 +10,21 @@ interface Props {
 
 function suggestedName(): string {
   const now = new Date();
-  const date = now.toLocaleDateString("de-DE", { month: "short", day: "numeric" });
-  const time = now.toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  const date = now.toLocaleDateString("de-DE", {
+    month: "short",
+    day: "numeric",
+  });
+  const time = now.toLocaleTimeString("de-DE", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
   return `Debatte ${date}, ${time}`;
 }
 
 export default function NewSessionModal({ open, onClose, onCreate }: Props) {
   const [name, setName] = useState("");
-  const [meetingType, setMeetingType] = useState<MeetingType>("debate_persuasive");
+  const [meetingType, setMeetingType] =
+    useState<MeetingType>("debate_persuasive");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -55,7 +62,11 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
     try {
       await onCreate(finalName, meetingType);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Sitzung konnte nicht erstellt werden.");
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Sitzung konnte nicht erstellt werden.",
+      );
       setCreating(false);
     }
   };
@@ -75,11 +86,15 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
       >
         <div className="flex items-start justify-between border-b border-brand-light-gray-1 px-6 py-4">
           <div>
-            <h2 id="new-session-title" className="font-display text-lg font-semibold text-brand-dark-gray">
+            <h2
+              id="new-session-title"
+              className="font-display text-lg font-semibold text-brand-dark-gray"
+            >
               Neue Debatte
             </h2>
             <p className="mt-0.5 font-body text-xs text-brand-mid-gray">
-              Deutsch, Auto-Recherche, Analogien und alle Debattenassistenten sind fertig eingestellt.
+              Deutsch, Auto-Recherche, Analogien und alle Debattenassistenten
+              sind fertig eingestellt.
             </p>
           </div>
           <button
@@ -89,14 +104,27 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
             className="inline-flex h-11 w-11 items-center justify-center rounded-lg text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-dark-gray disabled:opacity-50"
             aria-label="Schließen"
           >
-            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+            <svg
+              className="h-4 w-4"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              strokeWidth={2}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M6 18 18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
 
         <div className="px-6 py-5">
-          <label htmlFor="new-session-name" className="mb-1.5 block font-body text-xs font-semibold uppercase tracking-wide text-brand-mid-gray">
+          <label
+            htmlFor="new-session-name"
+            className="mb-1.5 block font-body text-xs font-semibold uppercase tracking-wide text-brand-mid-gray"
+          >
             Name der Debatte
           </label>
           <input
@@ -116,7 +144,10 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
             Leer lassen, um den vorgeschlagenen Namen zu verwenden.
           </p>
 
-          <div className="mt-5 grid gap-2 sm:grid-cols-2" aria-label="Debattenmodus">
+          <div
+            className="mt-5 grid gap-2 sm:grid-cols-2"
+            aria-label="Debattenmodus"
+          >
             {MEETING_TYPES.slice(0, 2).map((type) => {
               const active = type.value === meetingType;
               return (
@@ -132,8 +163,12 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
                       : "border-brand-light-gray-1 bg-surface hover:bg-brand-light-gray-2/60"
                   }`}
                 >
-                  <span className="block font-body text-xs font-semibold text-brand-dark-gray">{type.label}</span>
-                  <span className="mt-1 block font-body text-[11px] leading-relaxed text-brand-mid-gray">{type.hint}</span>
+                  <span className="block font-body text-xs font-semibold text-brand-dark-gray">
+                    {type.label}
+                  </span>
+                  <span className="mt-1 block font-body text-[11px] leading-relaxed text-brand-mid-gray">
+                    {type.hint}
+                  </span>
                 </button>
               );
             })}
@@ -162,9 +197,24 @@ export default function NewSessionModal({ open, onClose, onCreate }: Props) {
             className="inline-flex min-h-11 items-center gap-2 rounded-lg bg-brand-teal px-4 py-2 font-display text-sm font-semibold text-white shadow-sm transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:opacity-60"
           >
             {creating && (
-              <svg className="h-3.5 w-3.5 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z" />
+              <svg
+                className="h-3.5 w-3.5 animate-spin"
+                fill="none"
+                viewBox="0 0 24 24"
+              >
+                <circle
+                  className="opacity-25"
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="currentColor"
+                  strokeWidth="4"
+                />
+                <path
+                  className="opacity-75"
+                  fill="currentColor"
+                  d="M4 12a8 8 0 0 1 8-8v4a4 4 0 0 0-4 4H4z"
+                />
               </svg>
             )}
             {creating ? "Wird erstellt..." : "Erstellen"}

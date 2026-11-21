@@ -7,7 +7,13 @@ import { useEffect, useRef, useState } from "react";
 // Exports carry the shield's tokens by default. Putting the real names and
 // details back into a file that leaves this machine is a deliberate choice,
 // made per export with the checkbox at the foot of the menu.
-export default function ExportMenu({ sessionId, shielded = false }: { sessionId: string; shielded?: boolean }) {
+export default function ExportMenu({
+  sessionId,
+  shielded = false,
+}: {
+  sessionId: string;
+  shielded?: boolean;
+}) {
   const [open, setOpen] = useState(false);
   const [reveal, setReveal] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -32,7 +38,8 @@ export default function ExportMenu({ sessionId, shielded = false }: { sessionId:
     };
   }, [open]);
 
-  const itemClass = "block px-4 py-2.5 text-sm text-brand-dark-gray hover:bg-brand-light-gray-2";
+  const itemClass =
+    "block px-4 py-2.5 text-sm text-brand-dark-gray hover:bg-brand-light-gray-2";
   const query = shielded && reveal ? "?reveal=1" : "";
 
   return (
@@ -40,7 +47,8 @@ export default function ExportMenu({ sessionId, shielded = false }: { sessionId:
       ref={menuRef}
       className="relative"
       onBlur={(event) => {
-        if (!menuRef.current?.contains(event.relatedTarget as Node | null)) setOpen(false);
+        if (!menuRef.current?.contains(event.relatedTarget as Node | null))
+          setOpen(false);
       }}
     >
       <button
@@ -101,7 +109,8 @@ export default function ExportMenu({ sessionId, shielded = false }: { sessionId:
             <span className="font-body text-xs leading-snug text-brand-dark-gray">
               Include personal data
               <span className="block text-[11px] text-brand-mid-gray">
-            Aus: Dateien enthalten Platzhalter wie [PERSON_1]. Ein: echte Namen und Angaben; die Freigabe wird protokolliert.
+                Aus: Dateien enthalten Platzhalter wie [PERSON_1]. Ein: echte
+                Namen und Angaben; die Freigabe wird protokolliert.
               </span>
             </span>
           </label>

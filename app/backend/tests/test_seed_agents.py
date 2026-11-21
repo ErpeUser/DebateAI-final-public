@@ -2,20 +2,20 @@ import unittest
 from types import SimpleNamespace
 from unittest import mock
 
+from app.models import AgentConfig
+from app.routers.endpoints import _merge_desktop_qwen_models
 from app.services.agents.prompts import (
     DEBATE_RECOMMENDATION_PROMPT,
     OPPORTUNITY_SPECIALIST_PROMPT,
 )
-from app.models import AgentConfig
 from app.services.seed_agents import (
     DESKTOP_DEBATE_MODEL_ID,
     SEED_CONFIGS,
     configure_desktop_debate_runtime,
     seed_agent_configs,
 )
-from app.routers.endpoints import _merge_desktop_qwen_models
-from app.services.transcription_runtime import SETTING_BATCH_TRANSCRIBER_MODEL
 from app.services.transcription_language import SETTING_TRANSCRIPTION_LANGUAGE
+from app.services.transcription_runtime import SETTING_BATCH_TRANSCRIBER_MODEL
 
 
 class SeedAgentConfigTests(unittest.TestCase):
@@ -48,13 +48,17 @@ class SeedPromptTests(unittest.TestCase):
         self.assertIn("{opportunities_json}", OPPORTUNITY_SPECIALIST_PROMPT)
         self.assertNotIn("{offerings_catalog}", OPPORTUNITY_SPECIALIST_PROMPT)
         # Must format without KeyError (braces in JSON examples are escaped)
-        OPPORTUNITY_SPECIALIST_PROMPT.format(knowledge_context="ctx", opportunities_json="[]")
+        OPPORTUNITY_SPECIALIST_PROMPT.format(
+            knowledge_context="ctx", opportunities_json="[]"
+        )
 
 
 class SeedPersistenceTests(unittest.IsolatedAsyncioTestCase):
     async def test_existing_model_prompt_interval_and_batch_choice_are_preserved(self):
         agents = [_existing_agent(cfg) for cfg in SEED_CONFIGS]
-        analyst = next(agent for agent in agents if agent.slug == "consolidated_analyst")
+        analyst = next(
+            agent for agent in agents if agent.slug == "consolidated_analyst"
+        )
         analyst.model_id = "gpt-5.6-terra"
         analyst.prompt = "My saved prompt"
         analyst.interval_seconds = 45
@@ -72,7 +76,9 @@ class SeedPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("gpt-4o-mini-transcribe", batch.value)
         db.commit.assert_awaited_once()
 
-    async def test_missing_rows_are_blank_and_missing_batch_setting_uses_fixed_german_whisper(self):
+    async def test_missing_rows_are_blank_and_missing_batch_setting_uses_fixed_german_whisper(
+        self,
+    ):
         db = _FakeSession(agents=[])
 
         await seed_agent_configs(db)
@@ -97,7 +103,9 @@ class SeedPersistenceTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("de", db.settings[SETTING_TRANSCRIPTION_LANGUAGE].value)
 
-    async def test_old_german_parakeet_default_is_migrated_to_fixed_german_whisper(self):
+    async def test_old_german_parakeet_default_is_migrated_to_fixed_german_whisper(
+        self,
+    ):
         batch = SimpleNamespace(
             key=SETTING_BATCH_TRANSCRIBER_MODEL,
             value="local-parakeet-tdt-0.6b-v3",
@@ -123,6 +131,7 @@ class DesktopDebateRuntimeTests(unittest.IsolatedAsyncioTestCase):
             [item["id"] for item in merged],
         )
         self.assertNotIn("llama3:8b", [item["id"] for item in merged])
+
     async def test_first_desktop_start_registers_local_live_model_once(self):
         objection = _existing_agent(_seed_config("objection_handler"))
         objection.model_id = "gemini-3-flash-preview"
@@ -133,9 +142,14 @@ class DesktopDebateRuntimeTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(DESKTOP_DEBATE_MODEL_ID, objection.model_id)
         self.assertEqual(DEBATE_RECOMMENDATION_PROMPT, objection.prompt)
-        endpoint = next(item for item in db.added if item.__class__.__name__ == "CustomEndpoint")
+        endpoint = next(
+            item for item in db.added if item.__class__.__name__ == "CustomEndpoint"
+        )
         self.assertEqual("http://127.0.0.1:11434/v1", endpoint.base_url)
-        self.assertEqual([{"id": "qwen3:4b", "label": "Qwen3 4B – Deutsche Live-Debatte"}], endpoint.models)
+        self.assertEqual(
+            [{"id": "qwen3:4b", "label": "Qwen3 4B – Deutsche Live-Debatte"}],
+            endpoint.models,
+        )
         self.assertEqual("1", db.settings["debate.desktop.local_live.v1"].value)
         self.assertEqual(
             "debate_live_v3",
@@ -154,7 +168,9 @@ class DesktopDebateRuntimeTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual("gemini-3.8-flash", objection.model_id)
         self.assertEqual("My later custom prompt", objection.prompt)
-        self.assertFalse(any(item.__class__.__name__ == "CustomEndpoint" for item in db.added))
+        self.assertFalse(
+            any(item.__class__.__name__ == "CustomEndpoint" for item in db.added)
+        )
         self.assertEqual(
             "manual-preserved",
             db.settings["debate.prompt.objection_handler.version"].value,
@@ -218,7 +234,7 @@ class _DesktopFakeSession:
     async def execute(self, _statement):
         return SimpleNamespace(
             scalar_one_or_none=lambda: self.objection,
-            scalars=lambda: SimpleNamespace(all=lambda: []),
+            scalars=lambda: SimpleNamespace(all=list),
         )
 
     def add(self, item):

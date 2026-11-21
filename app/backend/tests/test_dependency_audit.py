@@ -18,8 +18,13 @@ class DependencyAuditTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             requirements = Path(tmp) / "requirements.txt"
             output = Path(tmp) / "audit.json"
-            requirements.write_text("onnxruntime==1.21.1\nrequests>=2.0\n", encoding="utf-8")
-            with patch("scripts.audit_dependencies.metadata.version", side_effect={"onnxruntime": "1.21.1", "requests": "2.32.0"}.get):
+            requirements.write_text(
+                "onnxruntime==1.21.1\nrequests>=2.0\n", encoding="utf-8"
+            )
+            with patch(
+                "scripts.audit_dependencies.metadata.version",
+                side_effect={"onnxruntime": "1.21.1", "requests": "2.32.0"}.get,
+            ):
                 records = audit_requirements(requirements)
             self.assertEqual(2, len(records))
             self.assertEqual("1.21.1", records[0]["installed"])

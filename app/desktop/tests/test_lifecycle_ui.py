@@ -79,7 +79,9 @@ class LifecycleSplashTests(unittest.TestCase):
         self.assertFalse(splash.visible)
 
     def test_unavailable_gui_never_blocks_the_launcher(self):
-        splash = LifecycleSplash(window_factory=lambda: (_ for _ in ()).throw(RuntimeError("no GUI")))
+        splash = LifecycleSplash(
+            window_factory=lambda: (_ for _ in ()).throw(RuntimeError("no GUI"))
+        )
 
         splash.show_startup("Start")
         splash.set_detail("Weiter")
@@ -92,28 +94,60 @@ class LifecycleSplashTests(unittest.TestCase):
         destroyed = []
 
         class Root:
-            def title(self, _value): pass
-            def configure(self, **_kwargs): pass
-            def resizable(self, *_args): pass
-            def attributes(self, *_args): pass
-            def overrideredirect(self, *_args): pass
-            def winfo_screenwidth(self): return 1000
-            def winfo_screenheight(self): return 800
-            def geometry(self, _value): pass
-            def update_idletasks(self): raise RuntimeError("display vanished")
-            def update(self): pass
-            def destroy(self): destroyed.append(True)
+            def title(self, _value):
+                pass
+
+            def configure(self, **_kwargs):
+                pass
+
+            def resizable(self, *_args):
+                pass
+
+            def attributes(self, *_args):
+                pass
+
+            def overrideredirect(self, *_args):
+                pass
+
+            def winfo_screenwidth(self):
+                return 1000
+
+            def winfo_screenheight(self):
+                return 800
+
+            def geometry(self, _value):
+                pass
+
+            def update_idletasks(self):
+                raise RuntimeError("display vanished")
+
+            def update(self):
+                pass
+
+            def destroy(self):
+                destroyed.append(True)
 
         class Widget:
-            def __init__(self, *_args, **_kwargs): pass
-            def pack(self, **_kwargs): return self
-            def pack_propagate(self, *_args): pass
-            def configure(self, **_kwargs): pass
+            def __init__(self, *_args, **_kwargs):
+                pass
 
-        fake_tk = type("Tk", (), {"Tk": staticmethod(Root), "Frame": Widget, "Label": Widget})
-        with mock.patch.dict(sys.modules, {"tkinter": fake_tk}):
-            with self.assertRaisesRegex(RuntimeError, "display vanished"):
-                lifecycle_ui._TkLifecycleWindow()
+            def pack(self, **_kwargs):
+                return self
+
+            def pack_propagate(self, *_args):
+                pass
+
+            def configure(self, **_kwargs):
+                pass
+
+        fake_tk = type(
+            "Tk", (), {"Tk": staticmethod(Root), "Frame": Widget, "Label": Widget}
+        )
+        with (
+            mock.patch.dict(sys.modules, {"tkinter": fake_tk}),
+            self.assertRaisesRegex(RuntimeError, "display vanished"),
+        ):
+            lifecycle_ui._TkLifecycleWindow()
         self.assertEqual(destroyed, [True])
 
 

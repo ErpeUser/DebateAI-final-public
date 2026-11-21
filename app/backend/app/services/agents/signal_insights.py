@@ -29,13 +29,12 @@ from __future__ import annotations
 import logging
 import re
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
-
-from sqlalchemy import select
 
 from app.database import async_session
 from app.models import Question
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -69,7 +68,9 @@ def signal_identity(value: Any) -> str:
 
 
 def _item_text(item: Any) -> str:
-    return (getattr(item, "title", "") or "").strip() or (getattr(item, "summary", "") or "").strip()
+    return (getattr(item, "title", "") or "").strip() or (
+        getattr(item, "summary", "") or ""
+    ).strip()
 
 
 def ordered_signal_items(arbiter_output) -> list[dict]:
@@ -186,7 +187,7 @@ async def sync_signal_insights(
                 row.rationale = fresh_rationale
                 changed = True
             if changed:
-                row.updated_at = datetime.now(timezone.utc)
+                row.updated_at = datetime.now(UTC)
                 updated.append(_row_payload(row))
 
         # Anything the current cycle did not emit has aged out into history.
@@ -197,7 +198,7 @@ async def sync_signal_insights(
                 row.item_type = SIGNAL_HISTORY_ITEM_TYPE
                 # The retirement moment, so the client can show the most
                 # recently retired signals under the Strategic filter.
-                row.updated_at = datetime.now(timezone.utc)
+                row.updated_at = datetime.now(UTC)
                 updated.append(_row_payload(row))
 
         await db.commit()

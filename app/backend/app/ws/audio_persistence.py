@@ -25,16 +25,19 @@ async def _flush_remaining_audio(
             pass
 
 
-
 def _preserve_failed_archive(writer: SegmentAudioWriter, track: str) -> None:
     try:
         path = writer.quarantine_failed_archive()
         if isinstance(path, str):
-            logger.warning("Preserved incomplete %s archive for recovery: %s", track, path)
+            logger.warning(
+                "Preserved incomplete %s archive for recovery: %s", track, path
+            )
     except Exception:
         # Never unlink previously confirmed audio just because preservation
         # itself failed. Keep the original and report the recovery failure.
-        logger.exception("Could not quarantine failed %s archive; original was not deleted", track)
+        logger.exception(
+            "Could not quarantine failed %s archive; original was not deleted", track
+        )
 
 
 def _close_audio_writers(

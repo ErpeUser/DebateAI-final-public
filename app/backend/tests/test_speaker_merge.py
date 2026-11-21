@@ -99,7 +99,9 @@ class SpeakerMergeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.questions_updated, 1)
         self.assertEqual("Michael to revise the file.", question.question)
         self.assertEqual("Michael owns the next step.", question.rationale)
-        self.assertEqual("Context: Michael stated the commitment.", question.source_context)
+        self.assertEqual(
+            "Context: Michael stated the commitment.", question.source_context
+        )
         self.assertTrue(question.enhanced)
         self.assertEqual(1, question.revision_count)
 

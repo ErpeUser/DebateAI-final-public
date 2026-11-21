@@ -1,12 +1,13 @@
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 
-from app import models
 from app.services.transcript_refiner import is_refinable
 from app.services.transcript_revisions import apply_manual_transcript_revision
+
+from app import models
 
 
 class _ScalarResult:
@@ -20,10 +21,18 @@ class _ScalarResult:
 class TranscriptRevisionModelTests(unittest.TestCase):
     def test_history_has_stable_identity_source_and_unique_revision(self):
         model = models.TranscriptEntryRevision
-        self.assertTrue({
-            "session_id", "transcript_id", "revision", "text", "speaker_id",
-            "source", "reason", "created_at",
-        }.issubset(model.__table__.columns.keys()))
+        self.assertTrue(
+            {
+                "session_id",
+                "transcript_id",
+                "revision",
+                "text",
+                "speaker_id",
+                "source",
+                "reason",
+                "created_at",
+            }.issubset(model.__table__.columns.keys())
+        )
         self.assertIn(
             "uq_transcript_entry_revision",
             {constraint.name for constraint in model.__table__.constraints},
@@ -36,13 +45,15 @@ class TranscriptRevisionModelTests(unittest.TestCase):
         entry = SimpleNamespace(
             text="Manuell korrigiert.",
             refined_at=None,
-            manual_corrected_at=datetime.now(timezone.utc),
+            manual_corrected_at=datetime.now(UTC),
         )
         self.assertFalse(is_refinable(entry))
 
 
 class TranscriptRevisionServiceTests(unittest.IsolatedAsyncioTestCase):
-    async def test_first_manual_edit_keeps_original_and_appends_corrected_revision(self):
+    async def test_first_manual_edit_keeps_original_and_appends_corrected_revision(
+        self,
+    ):
         session_id = uuid.uuid4()
         transcript_id = uuid.uuid4()
         old_speaker = uuid.uuid4()
@@ -75,8 +86,14 @@ class TranscriptRevisionServiceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(new_speaker, entry.speaker_id)
         self.assertIsNotNone(entry.manual_corrected_at)
         original, corrected = [call.args[0] for call in db.add.call_args_list]
-        self.assertEqual((1, "original", "Fuenfzig Prozent."), (original.revision, original.source, original.text))
-        self.assertEqual((2, "manual", "Fuenfzehn Prozent."), (corrected.revision, corrected.source, corrected.text))
+        self.assertEqual(
+            (1, "original", "Fuenfzig Prozent."),
+            (original.revision, original.source, original.text),
+        )
+        self.assertEqual(
+            (2, "manual", "Fuenfzehn Prozent."),
+            (corrected.revision, corrected.source, corrected.text),
+        )
         self.assertEqual("Zahl und Sprecher korrigiert", corrected.reason)
         self.assertIs(result.revision, corrected)
 

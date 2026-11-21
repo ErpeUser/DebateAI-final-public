@@ -3,7 +3,6 @@ import tempfile
 import unittest
 
 import numpy as np
-
 from app.services.speaker_diarizer import (
     EMBED_MODEL_FILENAME,
     LEGACY_EMBED_MODEL_FILENAME,
@@ -49,12 +48,18 @@ class EmbedModelPathTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as models_dir:
             open(os.path.join(models_dir, EMBED_MODEL_FILENAME), "wb").close()
             open(os.path.join(models_dir, LEGACY_EMBED_MODEL_FILENAME), "wb").close()
-            self.assertTrue(resolve_embed_model_path(models_dir).endswith(EMBED_MODEL_FILENAME))
+            self.assertTrue(
+                resolve_embed_model_path(models_dir).endswith(EMBED_MODEL_FILENAME)
+            )
 
     def test_falls_back_to_legacy_model(self):
         with tempfile.TemporaryDirectory() as models_dir:
             open(os.path.join(models_dir, LEGACY_EMBED_MODEL_FILENAME), "wb").close()
-            self.assertTrue(resolve_embed_model_path(models_dir).endswith(LEGACY_EMBED_MODEL_FILENAME))
+            self.assertTrue(
+                resolve_embed_model_path(models_dir).endswith(
+                    LEGACY_EMBED_MODEL_FILENAME
+                )
+            )
 
 
 if __name__ == "__main__":

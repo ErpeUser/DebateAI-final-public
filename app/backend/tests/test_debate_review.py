@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
+from app.services.argument_graph import ArgumentEdge, ArgumentGraph, ArgumentNode
 from app.services.debate_review import (
     DebateReviewDraft,
     DebateReviewMetrics,
@@ -12,25 +13,35 @@ from app.services.debate_review import (
     collect_review_sources,
     evaluate_debate,
 )
-from app.services.argument_graph import ArgumentEdge, ArgumentGraph, ArgumentNode
 from app.services.debate_settings import DebateSettings
 
 
 class DebateReviewTests(unittest.IsolatedAsyncioTestCase):
     def test_useful_acknowledged_research_is_not_labeled_late_by_duration(self):
         traces, _notes = build_review_traces(
-            entries=[], speakers={}, claims=[], graph=ArgumentGraph(session_id="s"),
-            samples=[{
-                "claim_id": "c", "target_claim": "Eine Zahl",
-                "answer_now": "Die Quelle praezisiert die Zahl.",
-                "latency_ms": 9000, "origin": "research",
-                "sources": [{"url": "https://example.org", "passage": "Beleg"}],
-                "ui_acknowledged": True,
-            }],
+            entries=[],
+            speakers={},
+            claims=[],
+            graph=ArgumentGraph(session_id="s"),
+            samples=[
+                {
+                    "claim_id": "c",
+                    "target_claim": "Eine Zahl",
+                    "answer_now": "Die Quelle praezisiert die Zahl.",
+                    "latency_ms": 9000,
+                    "origin": "research",
+                    "sources": [{"url": "https://example.org", "passage": "Beleg"}],
+                    "ui_acknowledged": True,
+                }
+            ],
         )
-        self.assertFalse(any(trace.category == "late_recommendation" for trace in traces))
+        self.assertFalse(
+            any(trace.category == "late_recommendation" for trace in traces)
+        )
 
-    def test_review_traces_link_open_claims_and_late_advice_to_original_transcript(self):
+    def test_review_traces_link_open_claims_and_late_advice_to_original_transcript(
+        self,
+    ):
         speaker_id = uuid.uuid4()
         entry = SimpleNamespace(
             text="Die Quote liegt sicher bei acht Prozent.",
@@ -39,21 +50,51 @@ class DebateReviewTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime(2026, 1, 1, tzinfo=UTC),
         )
         claim = SimpleNamespace(
-            claim_id="claim-1", revision=1,
-            original_text=entry.text, sources=[], feedback={},
+            claim_id="claim-1",
+            revision=1,
+            original_text=entry.text,
+            sources=[],
+            feedback={},
         )
         graph = ArgumentGraph(
             session_id="session",
             nodes=[
-                ArgumentNode(id="claim:claim-1", kind="claim", claim_id="claim-1", text=entry.text),
-                ArgumentNode(id="question:claim-1", kind="question", claim_id="claim-1", text="Welche Quelle belegt das?", status="open"),
+                ArgumentNode(
+                    id="claim:claim-1",
+                    kind="claim",
+                    claim_id="claim-1",
+                    text=entry.text,
+                ),
+                ArgumentNode(
+                    id="question:claim-1",
+                    kind="question",
+                    claim_id="claim-1",
+                    text="Welche Quelle belegt das?",
+                    status="open",
+                ),
             ],
-            edges=[ArgumentEdge(source_id="question:claim-1", target_id="claim:claim-1", relation="questions")],
+            edges=[
+                ArgumentEdge(
+                    source_id="question:claim-1",
+                    target_id="claim:claim-1",
+                    relation="questions",
+                )
+            ],
         )
 
         traces, notes = build_review_traces(
-            entries=[entry], speakers={speaker_id: "Alex"}, claims=[claim], graph=graph,
-            samples=[{"claim_id": "claim-1", "target_claim": entry.text, "answer_now": "Bitte Quelle nennen.", "latency_ms": 4200}],
+            entries=[entry],
+            speakers={speaker_id: "Alex"},
+            claims=[claim],
+            graph=graph,
+            samples=[
+                {
+                    "claim_id": "claim-1",
+                    "target_claim": entry.text,
+                    "answer_now": "Bitte Quelle nennen.",
+                    "latency_ms": 4200,
+                }
+            ],
         )
 
         self.assertEqual(
@@ -85,13 +126,19 @@ class DebateReviewTests(unittest.IsolatedAsyncioTestCase):
             timestamp=datetime(2026, 1, 2, tzinfo=UTC),
         )
         claim = SimpleNamespace(
-            claim_id="claim-1", revision=1,
-            original_text=right.text, sources=[], feedback={},
+            claim_id="claim-1",
+            revision=1,
+            original_text=right.text,
+            sources=[],
+            feedback={},
         )
 
         traces, _notes = build_review_traces(
-            entries=[wrong, right], speakers={"other": "Bea", "owner": "Alex"},
-            claims=[claim], graph=ArgumentGraph(session_id="session"), samples=[],
+            entries=[wrong, right],
+            speakers={"other": "Bea", "owner": "Alex"},
+            claims=[claim],
+            graph=ArgumentGraph(session_id="session"),
+            samples=[],
         )
 
         self.assertEqual(1, len(traces))
@@ -100,20 +147,28 @@ class DebateReviewTests(unittest.IsolatedAsyncioTestCase):
 
     def test_sources_are_deduplicated_and_remain_linked_to_checked_claims(self):
         samples = [
-            {"sources": [{
-                "title": "Amtliche Reihe",
-                "url": "https://example.test/rate",
-                "snippet": "2,2 Prozent",
-                "provider": "test",
-                "claim": "Die Quote liegt bei acht Prozent.",
-            }]},
-            {"sources": [{
-                "title": "Amtliche Reihe (erneut)",
-                "url": "https://example.test/rate",
-                "snippet": "2,2 Prozent",
-                "provider": "test",
-                "claim": "Die Quote liegt bei acht Prozent.",
-            }]},
+            {
+                "sources": [
+                    {
+                        "title": "Amtliche Reihe",
+                        "url": "https://example.test/rate",
+                        "snippet": "2,2 Prozent",
+                        "provider": "test",
+                        "claim": "Die Quote liegt bei acht Prozent.",
+                    }
+                ]
+            },
+            {
+                "sources": [
+                    {
+                        "title": "Amtliche Reihe (erneut)",
+                        "url": "https://example.test/rate",
+                        "snippet": "2,2 Prozent",
+                        "provider": "test",
+                        "claim": "Die Quote liegt bei acht Prozent.",
+                    }
+                ]
+            },
         ]
 
         sources = collect_review_sources(samples)
@@ -151,7 +206,12 @@ class DebateReviewTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.services.debate_review.generate_json", new=generate):
             review = await evaluate_debate(
                 transcript="[team]: Unser Punkt ist klar.\n[external]: Welcher Beleg?",
-                samples=[{"answer_now": "Der Beleg folgt.", "counter_question": "Welcher Teil fehlt?"}],
+                samples=[
+                    {
+                        "answer_now": "Der Beleg folgt.",
+                        "counter_question": "Welcher Teil fehlt?",
+                    }
+                ],
                 metrics=metrics,
                 model_id="qwen3:4b",
                 session_id=uuid.uuid4(),

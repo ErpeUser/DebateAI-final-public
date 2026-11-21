@@ -1,10 +1,11 @@
 """Regression guards: deleting Generated must not remove source, Git or runtime."""
+
 from __future__ import annotations
 
 import importlib.util
-from pathlib import Path
 import tempfile
 import unittest
+from pathlib import Path
 from unittest import mock
 
 SCRIPT = Path(__file__).resolve().parents[1] / "workspace_refs.py"
@@ -71,8 +72,9 @@ class DisposableWorkspaceTests(unittest.TestCase):
                 "source_frontend": root / "frontend",
                 "source_desktop": root / "desktop",
             }
-            with mock.patch.object(refs, "ROOT", root), mock.patch.object(
-                refs, "RESOURCES", adjusted
+            with (
+                mock.patch.object(refs, "ROOT", root),
+                mock.patch.object(refs, "RESOURCES", adjusted),
             ):
                 report = refs.collect(source_only=True)
             self.assertTrue(report["essential_missing"])
@@ -84,22 +86,31 @@ class DisposableWorkspaceTests(unittest.TestCase):
             gitdir = generated / "git"
             gitdir.mkdir(parents=True)
             (gitdir / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
-            (root / ".git").write_text(
-                "gitdir: Generated/git\n", encoding="utf-8"
-            )
+            (root / ".git").write_text("gitdir: Generated/git\n", encoding="utf-8")
             source_paths = {}
             for key in ("source_backend", "source_frontend", "source_desktop"):
                 path = root / key
                 path.write_text("source\n", encoding="utf-8")
                 source_paths[key] = path
-            with mock.patch.object(refs, "ROOT", root), mock.patch.object(
-                refs, "GENERATED", generated
-            ), mock.patch.object(refs, "RESOURCES", source_paths):
+            with (
+                mock.patch.object(refs, "ROOT", root),
+                mock.patch.object(refs, "GENERATED", generated),
+                mock.patch.object(refs, "RESOURCES", source_paths),
+            ):
                 report = refs.collect(source_only=True)
             self.assertFalse(report["git_independent_of_generated"])
 
     def test_no_critical_directories_in_generated(self):
-        forbidden = {"git", "backups", "databases", "tools", "configs", "agents", "docs", "runtime"}
+        forbidden = {
+            "git",
+            "backups",
+            "databases",
+            "tools",
+            "configs",
+            "agents",
+            "docs",
+            "runtime",
+        }
         first_parts = {Path(p).parts[0] for p in refs.GENERATED_DIRS}
         self.assertTrue(forbidden.isdisjoint(first_parts))
 
@@ -107,11 +118,13 @@ class DisposableWorkspaceTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as td:
             absent = Path(td)
             adjusted = dict(refs.RESOURCES)
-            adjusted.update({
-                "runtime_executable": absent / "DebateAI.exe",
-                "runtime_updater": absent / "DebateAIUpdater.exe",
-                "runtime_internal": absent / "_internal",
-            })
+            adjusted.update(
+                {
+                    "runtime_executable": absent / "DebateAI.exe",
+                    "runtime_updater": absent / "DebateAIUpdater.exe",
+                    "runtime_internal": absent / "_internal",
+                }
+            )
             with mock.patch.object(refs, "RESOURCES", adjusted):
                 result = refs.collect(source_only=True)
                 self.assertEqual(result["essential_missing"], [])
@@ -120,11 +133,26 @@ class DisposableWorkspaceTests(unittest.TestCase):
 
     def test_release_build_outputs_are_disposable(self):
         generated = refs.ROOT / "DebateAI_Generated"
-        self.assertEqual(refs.RESOURCES["build_release_bundle"],
-                         generated / "build/releases/DebateAI")
-        self.assertEqual(refs.RESOURCES["build_release_archive"],
-                         generated / "build/releases/DebateAI-windows-x64.zip")
+        self.assertEqual(
+            refs.RESOURCES["build_release_bundle"],
+            generated / "build/releases/DebateAI",
+        )
+        self.assertEqual(
+            refs.RESOURCES["build_release_archive"],
+            generated / "build/releases/DebateAI-windows-x64.zip",
+        )
         self.assertEqual(refs.RESOURCES["npm_cache"], generated / "cache/npm")
+
+    def test_native_smoke_outputs_are_disposable(self):
+        generated = refs.ROOT / "DebateAI_Generated"
+        self.assertEqual(
+            refs.RESOURCES["build_native_smoke"],
+            generated / "build/native-smoke",
+        )
+        self.assertEqual(
+            refs.RESOURCES["build_native_smoke_data"],
+            generated / "build/native-smoke-data",
+        )
 
     def test_ci_runs_disposable_source_and_native_launcher_contracts(self):
         ci = (refs.ROOT / ".github/workflows/tests.yml").read_text(encoding="utf-8")

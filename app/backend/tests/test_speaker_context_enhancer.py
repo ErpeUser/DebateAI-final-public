@@ -1,10 +1,8 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
-
-from fastapi import BackgroundTasks
 
 from app.routers.sessions import (
     enhance_insights_after_speaker_changes,
@@ -21,6 +19,7 @@ from app.services.speaker_name_rewriter import (
     build_speaker_label_replacements,
     replace_speaker_labels,
 )
+from fastapi import BackgroundTasks
 
 
 class SpeakerContextEnhancerTests(unittest.TestCase):
@@ -33,10 +32,22 @@ class SpeakerContextEnhancerTests(unittest.TestCase):
             "speaker_type": "external",
         }
 
-        self.assertTrue(speaker_update_changes_enhancement_context(speaker, {"name": "Sam"}))
-        self.assertTrue(speaker_update_changes_enhancement_context(speaker, {"display_name": "Sam"}))
-        self.assertTrue(speaker_update_changes_enhancement_context(speaker, {"display_name_enabled": True}))
-        self.assertTrue(speaker_update_changes_enhancement_context(speaker, {"speaker_type": "team"}))
+        self.assertTrue(
+            speaker_update_changes_enhancement_context(speaker, {"name": "Sam"})
+        )
+        self.assertTrue(
+            speaker_update_changes_enhancement_context(speaker, {"display_name": "Sam"})
+        )
+        self.assertTrue(
+            speaker_update_changes_enhancement_context(
+                speaker, {"display_name_enabled": True}
+            )
+        )
+        self.assertTrue(
+            speaker_update_changes_enhancement_context(
+                speaker, {"speaker_type": "team"}
+            )
+        )
 
     def test_ignores_non_contextual_speaker_changes(self):
         speaker = {
@@ -47,8 +58,14 @@ class SpeakerContextEnhancerTests(unittest.TestCase):
             "speaker_type": "external",
         }
 
-        self.assertFalse(speaker_update_changes_enhancement_context(speaker, {"role": "Account Manager"}))
-        self.assertFalse(speaker_update_changes_enhancement_context(speaker, {"color": "#f59e0b"}))
+        self.assertFalse(
+            speaker_update_changes_enhancement_context(
+                speaker, {"role": "Account Manager"}
+            )
+        )
+        self.assertFalse(
+            speaker_update_changes_enhancement_context(speaker, {"color": "#f59e0b"})
+        )
 
     def test_enhancement_prompt_includes_insights_transcript_and_speaker_context(self):
         system, user = build_enhancement_prompt(
@@ -101,7 +118,9 @@ class SpeakerContextEnhancerTests(unittest.TestCase):
         self.assertIn('"enhanced": true', system)
         self.assertIn('"op": "dismiss"', system)
         self.assertIn('"new_source_context"', system)
-        self.assertIn("Do not change the item_type/category/tag of an existing insight", system)
+        self.assertIn(
+            "Do not change the item_type/category/tag of an existing insight", system
+        )
         self.assertNotIn('"op": "elevate"', system)
 
         self.assertIn("Evaluate managed SIEM fit.", user)
@@ -117,18 +136,20 @@ class SpeakerContextEnhancerTests(unittest.TestCase):
         self.assertNotIn("22222222-2222-2222-2222-222222222222", user)
 
     def test_speaker_label_replacement_uses_enabled_display_names(self):
-        replacements = build_speaker_label_replacements([
-            {
-                "name": "Participant 1",
-                "display_name": "Michael",
-                "display_name_enabled": True,
-            },
-            {
-                "name": "Participant 2",
-                "display_name": "Disabled Name",
-                "display_name_enabled": False,
-            },
-        ])
+        replacements = build_speaker_label_replacements(
+            [
+                {
+                    "name": "Participant 1",
+                    "display_name": "Michael",
+                    "display_name_enabled": True,
+                },
+                {
+                    "name": "Participant 2",
+                    "display_name": "Disabled Name",
+                    "display_name_enabled": False,
+                },
+            ]
+        )
 
         text = "Participant 1 to revise. Context: participant 1 stated the ask. Participant 2 remains unchanged."
 
@@ -153,7 +174,9 @@ class SpeakerContextEnhancerFailureTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(session.speaker_context_dirty)
         self.assertEqual(5, session.speaker_context_version)
 
-    async def test_batch_applies_and_stamps_only_assigned_insights_in_caller_transaction(self):
+    async def test_batch_applies_and_stamps_only_assigned_insights_in_caller_transaction(
+        self,
+    ):
         question_id = uuid4()
         mapping_revision_id = uuid4()
         question = SimpleNamespace(
@@ -276,7 +299,7 @@ class SpeakerContextEnhancerFailureTests(unittest.IsolatedAsyncioTestCase):
 
 class SpeakerContextEnhancementRouteTests(unittest.IsolatedAsyncioTestCase):
     async def test_unchanged_context_skips_all_ai_work(self):
-        enhanced_at = datetime.now(timezone.utc)
+        enhanced_at = datetime.now(UTC)
         session = SimpleNamespace(
             state="completed",
             speaker_context_dirty=False,
@@ -347,11 +370,9 @@ class SpeakerContextEnhancementRouteTests(unittest.IsolatedAsyncioTestCase):
                 "app.routers.sessions.start_or_resume_revalidation",
                 new=AsyncMock(),
             ) as start,
+            self.assertRaises(LLMModelNotSelected),
         ):
-            with self.assertRaises(LLMModelNotSelected):
-                await enhance_insights_after_speaker_changes(
-                    uuid4(), background_tasks, db
-                )
+            await enhance_insights_after_speaker_changes(uuid4(), background_tasks, db)
 
         start.assert_not_awaited()
         self.assertEqual([], background_tasks.tasks)

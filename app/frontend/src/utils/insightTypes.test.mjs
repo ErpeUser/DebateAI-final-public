@@ -5,7 +5,10 @@ import { readFileSync } from "node:fs";
 const src = readFileSync(new URL("./insightTypes.ts", import.meta.url), "utf8");
 
 test("asked is a built-in type with the operator label", () => {
-  assert.match(src, /asked:\s*\{\s*label:\s*"Eigene Frage",\s*plural:\s*"Eigene Fragen",\s*color:\s*"#475569"\s*\}/);
+  assert.match(
+    src,
+    /asked:\s*\{\s*label:\s*"Eigene Frage",\s*plural:\s*"Eigene Fragen",\s*color:\s*"#475569"\s*\}/,
+  );
 });
 
 test("asked sorts before every agent type", () => {
@@ -88,7 +91,10 @@ test("lens-produced groups still take their heading from the producing lens", as
     row("o-3", "observation", ""),
   ];
   assert.equal(typeGroupLabel("observation", observations), "Notable Facts");
-  assert.equal(typeGroupLabel("observation", [row("o-4", "observation", "")]), "Beobachtungen");
+  assert.equal(
+    typeGroupLabel("observation", [row("o-4", "observation", "")]),
+    "Beobachtungen",
+  );
   assert.equal(typeGroupLabel("custom_lens", []), "Custom Lens");
 });
 
@@ -96,12 +102,13 @@ test("visible refinement notes omit bookkeeping-only revisions", async () => {
   const { visibleEnrichmentNotes } = await load();
 
   assert.deepEqual(
-    visibleEnrichmentNotes("Merged with another insight\nAdjusted\nCustomer confirmed timing"),
+    visibleEnrichmentNotes(
+      "Merged with another insight\nAdjusted\nCustomer confirmed timing",
+    ),
     ["Customer confirmed timing"],
   );
-  assert.deepEqual(
-    visibleEnrichmentNotes("Adjusted: clarified the owner"),
-    ["Adjusted: clarified the owner"],
-  );
+  assert.deepEqual(visibleEnrichmentNotes("Adjusted: clarified the owner"), [
+    "Adjusted: clarified the owner",
+  ]);
   assert.deepEqual(visibleEnrichmentNotes(undefined), []);
 });

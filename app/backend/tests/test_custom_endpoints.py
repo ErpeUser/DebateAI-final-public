@@ -8,7 +8,7 @@ box - with its own key, and without a cloud provider key ever being required.
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest import mock
 
 from app.models import CustomEndpoint
@@ -45,7 +45,11 @@ class _FakeSession:
                     continue
                 # SQLAlchemy wraps a zero-argument default in a context-taking
                 # callable, so callables are invoked the way an INSERT does.
-                setattr(obj, column.name, default.arg(None) if default.is_callable else default.arg)
+                setattr(
+                    obj,
+                    column.name,
+                    default.arg(None) if default.is_callable else default.arg,
+                )
             self.rows[obj.id] = obj
         self._pending.clear()
 
@@ -111,12 +115,22 @@ class ModelIdTests(unittest.TestCase):
         self.assertEqual(("ollama", "llama3.1:8b"), ce.parse_model_id(model_id))
 
     def test_registry_ids_are_not_endpoint_models(self):
-        for model_id in ("gemini-3.5-flash", "gpt-5.4-mini", "openai-compatible", "local-whisper-base"):
+        for model_id in (
+            "gemini-3.5-flash",
+            "gpt-5.4-mini",
+            "openai-compatible",
+            "local-whisper-base",
+        ):
             self.assertFalse(ce.is_endpoint_model(model_id))
             self.assertIsNone(ce.parse_model_id(model_id))
 
     def test_malformed_ids_parse_to_none(self):
-        for model_id in ("endpoint:", "endpoint:lm-studio", "endpoint::model", "endpoint:lm-studio:"):
+        for model_id in (
+            "endpoint:",
+            "endpoint:lm-studio",
+            "endpoint::model",
+            "endpoint:lm-studio:",
+        ):
             self.assertIsNone(ce.parse_model_id(model_id))
 
     def test_slugify_produces_a_safe_bounded_id(self):
@@ -142,7 +156,11 @@ class OnPremDetectionTests(unittest.TestCase):
     def test_public_hosts_are_not_on_prem(self):
         # These speak the same protocol but send call data off the network,
         # so Privacy First must keep treating them as cloud.
-        for url in ("https://api.together.xyz/v1", "https://api.groq.com/openai/v1", "http://8.8.8.8/v1"):
+        for url in (
+            "https://api.together.xyz/v1",
+            "https://api.groq.com/openai/v1",
+            "http://8.8.8.8/v1",
+        ):
             self.assertFalse(ce.is_on_prem(url), url)
 
     def test_alternate_ip_encodings_do_not_bypass_privacy_first(self):
@@ -172,14 +190,26 @@ class ValidationTests(unittest.TestCase):
                 ce.validate_base_url(bad)
 
     def test_base_url_is_trimmed_so_paths_join_cleanly(self):
-        self.assertEqual("http://localhost:1234/v1", ce.validate_base_url(" http://localhost:1234/v1/ "))
+        self.assertEqual(
+            "http://localhost:1234/v1",
+            ce.validate_base_url(" http://localhost:1234/v1/ "),
+        )
 
     def test_model_list_is_deduped_and_labelled(self):
         entries = ce.normalize_models(
-            ["antares-1b", {"id": " antares-1b "}, {"id": "qwen3", "label": "Qwen 3"}, {"id": ""}, 7]
+            [
+                "antares-1b",
+                {"id": " antares-1b "},
+                {"id": "qwen3", "label": "Qwen 3"},
+                {"id": ""},
+                7,
+            ]
         )
         self.assertEqual(
-            [{"id": "antares-1b", "label": "antares-1b"}, {"id": "qwen3", "label": "Qwen 3"}],
+            [
+                {"id": "antares-1b", "label": "antares-1b"},
+                {"id": "qwen3", "label": "Qwen 3"},
+            ],
             entries,
         )
 
@@ -212,8 +242,12 @@ class StorageTests(_EncryptionCase):
 
     async def test_second_endpoint_with_the_same_name_gets_its_own_slug(self):
         db = _FakeSession()
-        await ce.create_endpoint(db, name="LM Studio", base_url="http://localhost:1234/v1")
-        await ce.create_endpoint(db, name="LM Studio", base_url="http://gpu-box:1234/v1")
+        await ce.create_endpoint(
+            db, name="LM Studio", base_url="http://localhost:1234/v1"
+        )
+        await ce.create_endpoint(
+            db, name="LM Studio", base_url="http://gpu-box:1234/v1"
+        )
         self.assertEqual(["lm-studio", "lm-studio-2"], sorted(db.rows))
 
     async def test_collision_suffix_never_exceeds_the_slug_cap(self):
@@ -233,14 +267,20 @@ class StorageTests(_EncryptionCase):
     async def test_remote_endpoint_models_are_not_marked_local(self):
         db = _FakeSession()
         await ce.create_endpoint(
-            db, name="Hosted", base_url="https://api.together.xyz/v1", models=["mixtral"]
+            db,
+            name="Hosted",
+            base_url="https://api.together.xyz/v1",
+            models=["mixtral"],
         )
         self.assertFalse((await ce.endpoint_models(db))[0]["runs_locally"])
 
     async def test_disabled_endpoints_offer_no_models(self):
         db = _FakeSession()
         endpoint = await ce.create_endpoint(
-            db, name="LM Studio", base_url="http://localhost:1234/v1", models=["antares-1b"]
+            db,
+            name="LM Studio",
+            base_url="http://localhost:1234/v1",
+            models=["antares-1b"],
         )
         await ce.update_endpoint(db, endpoint, enabled=False)
         self.assertEqual([], await ce.endpoint_models(db))
@@ -275,7 +315,11 @@ class StorageTests(_EncryptionCase):
     async def test_clearing_the_key_makes_the_endpoint_keyless_again(self):
         db = _FakeSession()
         endpoint = await ce.create_endpoint(
-            db, name="Box", base_url="http://localhost:1234/v1", api_key="sk-x", models=["m"]
+            db,
+            name="Box",
+            base_url="http://localhost:1234/v1",
+            api_key="sk-x",
+            models=["m"],
         )
         await ce.update_endpoint(db, endpoint, api_key="")
         self.assertEqual("", endpoint.api_key)
@@ -284,23 +328,31 @@ class StorageTests(_EncryptionCase):
 
     async def test_changing_the_address_clears_the_recorded_test_result(self):
         db = _FakeSession()
-        endpoint = await ce.create_endpoint(db, name="Box", base_url="http://localhost:1234/v1")
+        endpoint = await ce.create_endpoint(
+            db, name="Box", base_url="http://localhost:1234/v1"
+        )
         await ce.record_probe(db, endpoint, True, "Connected. 1 model(s) available.")
         self.assertEqual("ok", endpoint.last_status)
-        await ce.update_endpoint(db, endpoint, base_url="http://gpu-box:1234/v1", confirm_off_prem=True)
+        await ce.update_endpoint(
+            db, endpoint, base_url="http://gpu-box:1234/v1", confirm_off_prem=True
+        )
         self.assertEqual("", endpoint.last_status)
         self.assertIsNone(endpoint.last_checked_at)
 
     async def test_editing_other_fields_keeps_the_recorded_test_result(self):
         db = _FakeSession()
-        endpoint = await ce.create_endpoint(db, name="Box", base_url="http://localhost:1234/v1")
+        endpoint = await ce.create_endpoint(
+            db, name="Box", base_url="http://localhost:1234/v1"
+        )
         await ce.record_probe(db, endpoint, True, "Connected.")
         await ce.update_endpoint(db, endpoint, name="Workstation")
         self.assertEqual("ok", endpoint.last_status)
 
     async def test_privacy_first_rejects_moving_an_endpoint_off_prem(self):
         db = _FakeSession()
-        endpoint = await ce.create_endpoint(db, name="Box", base_url="http://localhost:1234/v1")
+        endpoint = await ce.create_endpoint(
+            db, name="Box", base_url="http://localhost:1234/v1"
+        )
         with (
             mock.patch(
                 "app.services.custom_endpoints.get_local_only",
@@ -317,7 +369,9 @@ class StorageTests(_EncryptionCase):
 
     async def test_off_prem_move_requires_confirmation_when_privacy_first_is_off(self):
         db = _FakeSession()
-        endpoint = await ce.create_endpoint(db, name="Box", base_url="http://localhost:1234/v1")
+        endpoint = await ce.create_endpoint(
+            db, name="Box", base_url="http://localhost:1234/v1"
+        )
         with mock.patch(
             "app.services.custom_endpoints.get_local_only",
             new=mock.AsyncMock(return_value=False),
@@ -364,7 +418,7 @@ class StorageTests(_EncryptionCase):
         endpoint = await ce.create_endpoint(
             db, name="Box", base_url="http://localhost:1234/v1", models=["m"]
         )
-        deleted_at = datetime(2026, 7, 28, 6, 45, tzinfo=timezone.utc)
+        deleted_at = datetime(2026, 7, 28, 6, 45, tzinfo=UTC)
         endpoint.deleted_at = deleted_at
         with self.assertRaisesRegex(
             ce.EndpointError,
@@ -407,7 +461,9 @@ class SelectableEverywhereTests(_EncryptionCase):
     async def test_a_model_the_endpoint_does_not_serve_is_rejected(self):
         db = _FakeSession()
         await self._endpoint(db)
-        self.assertIsNone(await ce.endpoint_model_entry(db, "endpoint:lm-studio:not-listed"))
+        self.assertIsNone(
+            await ce.endpoint_model_entry(db, "endpoint:lm-studio:not-listed")
+        )
         self.assertIsNone(await ce.endpoint_model_entry(db, "endpoint:nope:antares-1b"))
 
     async def test_resolution_stays_lenient_for_an_already_stored_model(self):
@@ -423,7 +479,9 @@ class SelectableEverywhereTests(_EncryptionCase):
         db = _FakeSession()
         endpoint = await self._endpoint(db)
         await ce.update_endpoint(db, endpoint, enabled=False)
-        self.assertIsNone(await ce.endpoint_model_entry(db, "endpoint:lm-studio:antares-1b"))
+        self.assertIsNone(
+            await ce.endpoint_model_entry(db, "endpoint:lm-studio:antares-1b")
+        )
 
     async def test_registry_ids_are_not_claimed_by_the_endpoint_lookup(self):
         db = _FakeSession()
@@ -486,8 +544,10 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
             headers={"content-length": str(len(str(payload)))},
             raise_for_status=mock.Mock(),
         )
+
         async def chunks(*, chunk_size):
             yield __import__("json").dumps(payload).encode()
+
         response.aiter_bytes = chunks
         stream = mock.AsyncMock()
         stream.__aenter__.return_value = response
@@ -506,10 +566,14 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual({"Authorization": "Bearer sk-x"}, ce.auth_headers("sk-x"))
 
     async def test_an_unreachable_server_reports_the_address_it_tried(self):
-        response = mock.Mock(headers={"content-length": "0"}, raise_for_status=mock.Mock())
+        response = mock.Mock(
+            headers={"content-length": "0"}, raise_for_status=mock.Mock()
+        )
+
         async def chunks(*, chunk_size):
             raise ce.httpx.ConnectError("refused")
             yield  # Async generator with the same interface as httpx.
+
         response.aiter_bytes = chunks
         stream = mock.AsyncMock()
         stream.__aenter__.return_value = response
@@ -524,7 +588,7 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([], served)
 
     async def test_an_invalid_url_fails_without_a_request(self):
-        ok, message, served = await ce.probe("localhost:1234")
+        ok, message, _served = await ce.probe("localhost:1234")
         self.assertFalse(ok)
         self.assertIn("http://", message)
 

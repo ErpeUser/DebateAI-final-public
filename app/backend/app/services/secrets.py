@@ -31,11 +31,10 @@ import sys
 import threading
 from pathlib import Path
 
-from cryptography.fernet import Fernet, InvalidToken
-
 from app.config import settings
 from app.services.app_settings import get_app_setting, set_app_setting
 from app.services.redaction import register_secret
+from cryptography.fernet import Fernet, InvalidToken
 
 logger = logging.getLogger(__name__)
 
@@ -91,7 +90,10 @@ def _dpapi_call(function_name: str, data: bytes) -> bytes:
     from ctypes import wintypes
 
     class DataBlob(ctypes.Structure):
-        _fields_ = [("cbData", wintypes.DWORD), ("pbData", ctypes.POINTER(ctypes.c_char))]
+        _fields_ = [
+            ("cbData", wintypes.DWORD),
+            ("pbData", ctypes.POINTER(ctypes.c_char)),
+        ]
 
     crypt32 = ctypes.WinDLL("crypt32", use_last_error=True)  # type: ignore[attr-defined]
     kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
@@ -104,7 +106,9 @@ def _dpapi_call(function_name: str, data: bytes) -> bytes:
         ctypes.byref(blob_in), None, None, None, None, 0, ctypes.byref(blob_out)
     )
     if not ok:
-        raise MasterKeyUnavailable(f"{function_name} failed (error {ctypes.get_last_error()})")
+        raise MasterKeyUnavailable(
+            f"{function_name} failed (error {ctypes.get_last_error()})"
+        )
     try:
         return ctypes.string_at(blob_out.pbData, blob_out.cbData)
     finally:
@@ -134,11 +138,11 @@ def _read_master_key_file(key_file: Path) -> tuple[bytes, bool]:
             "account that created it"
         )
     try:
-        blob = base64.b64decode(raw[len(_DPAPI_PREFIX):])
+        blob = base64.b64decode(raw[len(_DPAPI_PREFIX) :])
         return _dpapi_unprotect(blob), True
     except MasterKeyUnavailable:
         raise
-    except Exception as exc:  # noqa: BLE001 - any failure here means the same thing
+    except Exception as exc:
         raise MasterKeyUnavailable(f"{key_file} could not be unwrapped: {exc}") from exc
 
 
@@ -157,9 +161,10 @@ def _write_master_key_file(key_file: Path, key: bytes) -> None:
     if protection_mode() == DPAPI_MODE and dpapi_available():
         try:
             payload = _wrap_master_key(key)
-        except Exception:  # noqa: BLE001
+        except Exception:
             logger.warning(
-                "Could not DPAPI-wrap the master key; storing it unwrapped at %s", key_file
+                "Could not DPAPI-wrap the master key; storing it unwrapped at %s",
+                key_file,
             )
             payload = key
     _atomic_write(key_file, payload)
@@ -173,10 +178,13 @@ def _upgrade_plaintext_file(key_file: Path, key: bytes) -> None:
     """
     try:
         wrapped_payload = _wrap_master_key(key)
-        if _dpapi_unprotect(base64.b64decode(wrapped_payload[len(_DPAPI_PREFIX):])) == key:
+        if (
+            _dpapi_unprotect(base64.b64decode(wrapped_payload[len(_DPAPI_PREFIX) :]))
+            == key
+        ):
             _atomic_write(key_file, wrapped_payload)
             logger.info("Wrapped the credentials master key with DPAPI")
-    except Exception:  # noqa: BLE001
+    except Exception:
         logger.warning("Could not DPAPI-wrap the master key; leaving the file as is")
 
 
@@ -196,7 +204,9 @@ def _master_key_unlocked() -> bytes:
                 if mode & 0o077:
                     raise MasterKeyUnavailable(f"{key_file} is readable by other users")
         except OSError as exc:
-            raise MasterKeyUnavailable(f"{key_file} permissions could not be secured: {exc}") from exc
+            raise MasterKeyUnavailable(
+                f"{key_file} permissions could not be secured: {exc}"
+            ) from exc
         key, wrapped = _read_master_key_file(key_file)
         if not key:
             raise MasterKeyUnavailable(f"{key_file} is empty")
@@ -210,8 +220,7 @@ def _master_key_unlocked() -> bytes:
     logger.info(f"Generated new credentials master key at {key_file}")
     return key
 
- 
- 
+
 def _master_key() -> bytes:
     # Concurrent first-use requests must not generate competing master.key
     # files or overwrite the shared temporary file while it is being renamed.
@@ -229,7 +238,9 @@ def derive_subkey(purpose: bytes, length: int = 32) -> bytes:
     from cryptography.hazmat.primitives import hashes
     from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
-    return HKDF(algorithm=hashes.SHA256(), length=length, salt=None, info=purpose).derive(_master_key())
+    return HKDF(
+        algorithm=hashes.SHA256(), length=length, salt=None, info=purpose
+    ).derive(_master_key())
 
 
 def _get_fernet() -> Fernet:

@@ -73,7 +73,10 @@ function fromInsight(question: Question, status?: string): OverviewItem {
   };
 }
 
-function briefingRows(section: string, items: SynthesisSectionItem[] | null | undefined): OverviewItem[] {
+function briefingRows(
+  section: string,
+  items: SynthesisSectionItem[] | null | undefined,
+): OverviewItem[] {
   const rows: OverviewItem[] = [];
   (items || []).forEach((item, index) => {
     const title = (item.title || "").trim() || (item.summary || "").trim();
@@ -82,7 +85,8 @@ function briefingRows(section: string, items: SynthesisSectionItem[] | null | un
     rows.push({
       key: `briefing:${section}:${index}`,
       title,
-      detail: summary && summary !== title ? summary : (item.rationale || "").trim(),
+      detail:
+        summary && summary !== title ? summary : (item.rationale || "").trim(),
       owner: (item.owner || "").trim() || undefined,
       status: (item.status || "").trim() || undefined,
     });
@@ -104,41 +108,91 @@ export const OPEN_LOOP_CAP = 5;
 export const OPPORTUNITY_CAP = 4;
 export const RISK_CAP = 4;
 
-export function commitments(questions: Question[], synthesis: SessionSynthesis | null, cap = COMMITMENT_CAP): OverviewSection {
-  const live = liveRows(questions).filter((q) => itemType(q) === "action_item").sort(starredFirst);
-  const insights = { matching: live.length, shown: live.length, filter: "action_item" };
+export function commitments(
+  questions: Question[],
+  synthesis: SessionSynthesis | null,
+  cap = COMMITMENT_CAP,
+): OverviewSection {
+  const live = liveRows(questions)
+    .filter((q) => itemType(q) === "action_item")
+    .sort(starredFirst);
+  const insights = {
+    matching: live.length,
+    shown: live.length,
+    filter: "action_item",
+  };
   const plan = briefingRows("action_plan", synthesis?.action_plan);
   if (plan.length > 0) return section("briefing", plan, cap, insights);
-  return section("insights", live.map((q) => fromInsight(q, q.starred ? "Markiert" : undefined)), cap, insights);
-}
-
-// Questions still waiting on an answer. The Insights "question" filter shows
-// every question, answered or not, so the footer states the open share.
-export function openLoops(questions: Question[], synthesis: SessionSynthesis | null, cap = OPEN_LOOP_CAP): OverviewSection {
-  const allQuestions = liveRows(questions).filter((q) => itemType(q) === "question");
-  const open = [
-    ...allQuestions.filter((q) => q.needs_followup),
-    ...allQuestions.filter((q) => !q.needs_followup && !q.answered),
-  ];
-  const insights = { matching: open.length, shown: allQuestions.length, filter: "question" };
-  const unresolved = briefingRows("unresolved_discovery_questions", synthesis?.unresolved_discovery_questions);
-  if (unresolved.length > 0) return section("briefing", unresolved, cap, insights);
   return section(
     "insights",
-    open.map((q) => fromInsight(q, q.needs_followup ? "Nachfassen nötig" : undefined)),
+    live.map((q) => fromInsight(q, q.starred ? "Markiert" : undefined)),
     cap,
     insights,
   );
 }
 
-export function opportunities(questions: Question[], synthesis: SessionSynthesis | null, cap = OPPORTUNITY_CAP): OverviewSection {
-  const live = liveRows(questions).filter((q) => itemType(q) === "opportunity").sort(starredFirst);
-  const insights = { matching: live.length, shown: live.length, filter: "opportunity" };
+// Questions still waiting on an answer. The Insights "question" filter shows
+// every question, answered or not, so the footer states the open share.
+export function openLoops(
+  questions: Question[],
+  synthesis: SessionSynthesis | null,
+  cap = OPEN_LOOP_CAP,
+): OverviewSection {
+  const allQuestions = liveRows(questions).filter(
+    (q) => itemType(q) === "question",
+  );
+  const open = [
+    ...allQuestions.filter((q) => q.needs_followup),
+    ...allQuestions.filter((q) => !q.needs_followup && !q.answered),
+  ];
+  const insights = {
+    matching: open.length,
+    shown: allQuestions.length,
+    filter: "question",
+  };
+  const unresolved = briefingRows(
+    "unresolved_discovery_questions",
+    synthesis?.unresolved_discovery_questions,
+  );
+  if (unresolved.length > 0)
+    return section("briefing", unresolved, cap, insights);
+  return section(
+    "insights",
+    open.map((q) =>
+      fromInsight(q, q.needs_followup ? "Nachfassen nötig" : undefined),
+    ),
+    cap,
+    insights,
+  );
+}
+
+export function opportunities(
+  questions: Question[],
+  synthesis: SessionSynthesis | null,
+  cap = OPPORTUNITY_CAP,
+): OverviewSection {
+  const live = liveRows(questions)
+    .filter((q) => itemType(q) === "opportunity")
+    .sort(starredFirst);
+  const insights = {
+    matching: live.length,
+    shown: live.length,
+    filter: "opportunity",
+  };
   const top = briefingRows("top_opportunities", synthesis?.top_opportunities);
   if (top.length > 0) return section("briefing", top, cap, insights);
   return section(
     "insights",
-    live.map((q) => fromInsight(q, q.offering_match ? "Passendes Material gefunden" : q.starred ? "Markiert" : undefined)),
+    live.map((q) =>
+      fromInsight(
+        q,
+        q.offering_match
+          ? "Passendes Material gefunden"
+          : q.starred
+            ? "Markiert"
+            : undefined,
+      ),
+    ),
     cap,
     insights,
   );
@@ -148,13 +202,28 @@ export function opportunities(questions: Question[], synthesis: SessionSynthesis
 // strategic-signals agent writes the section name into lens_label). The
 // Insights "signal" filter shows every current signal, so the footer states
 // how many of those are risks; retired risks live under Signal History.
-export function risks(questions: Question[], synthesis: SessionSynthesis | null, cap = RISK_CAP): OverviewSection {
+export function risks(
+  questions: Question[],
+  synthesis: SessionSynthesis | null,
+  cap = RISK_CAP,
+): OverviewSection {
   const current = liveRows(questions).filter((q) => itemType(q) === "signal");
-  const riskRows = current.filter((q) => normalizeText(q.lens_label) === "risk");
-  const insights = { matching: riskRows.length, shown: current.length, filter: "signal" };
+  const riskRows = current.filter(
+    (q) => normalizeText(q.lens_label) === "risk",
+  );
+  const insights = {
+    matching: riskRows.length,
+    shown: current.length,
+    filter: "signal",
+  };
   const blockers = briefingRows("risks_blockers", synthesis?.risks_blockers);
   if (blockers.length > 0) return section("briefing", blockers, cap, insights);
-  return section("insights", riskRows.map((q) => fromInsight(q)), cap, insights);
+  return section(
+    "insights",
+    riskRows.map((q) => fromInsight(q)),
+    cap,
+    insights,
+  );
 }
 
 // --- Participation -----------------------------------------------------
@@ -176,7 +245,9 @@ function wordCount(text: string): number {
 }
 
 export function speakerDisplayName(speaker: Speaker): string {
-  return speaker.display_name && speaker.display_name_enabled ? speaker.display_name : speaker.name;
+  return speaker.display_name && speaker.display_name_enabled
+    ? speaker.display_name
+    : speaker.name;
 }
 
 // Talk share by words spoken, with a turn counted each time the floor changes
@@ -189,14 +260,18 @@ interface Tally {
 
 // Words and floor changes per speaker id (null for unknown speakers), plus
 // the grand total so shares can be taken.
-function tallyWords(transcripts: TranscriptEntry[], known: Set<string>): { totals: Map<string | null, Tally>; totalWords: number } {
+function tallyWords(
+  transcripts: TranscriptEntry[],
+  known: Set<string>,
+): { totals: Map<string | null, Tally>; totalWords: number } {
   const totals = new Map<string | null, Tally>();
   let previous: string | null | undefined;
   let totalWords = 0;
   for (const entry of transcripts) {
     const words = wordCount(entry.text);
     if (words === 0) continue;
-    const id = entry.speaker_id && known.has(entry.speaker_id) ? entry.speaker_id : null;
+    const id =
+      entry.speaker_id && known.has(entry.speaker_id) ? entry.speaker_id : null;
     const row = totals.get(id) || { words: 0, turns: 0 };
     row.words += words;
     if (id !== previous) row.turns += 1;
@@ -208,12 +283,19 @@ function tallyWords(transcripts: TranscriptEntry[], known: Set<string>): { total
 }
 
 // Named speakers by share, the unattributed remainder last.
-function compareParticipation(a: ParticipationRow, b: ParticipationRow): number {
-  if ((a.speakerId === null) !== (b.speakerId === null)) return a.speakerId === null ? 1 : -1;
+function compareParticipation(
+  a: ParticipationRow,
+  b: ParticipationRow,
+): number {
+  if ((a.speakerId === null) !== (b.speakerId === null))
+    return a.speakerId === null ? 1 : -1;
   return b.words - a.words || a.name.localeCompare(b.name);
 }
 
-export function participation(transcripts: TranscriptEntry[], speakers: Speaker[]): ParticipationRow[] {
+export function participation(
+  transcripts: TranscriptEntry[],
+  speakers: Speaker[],
+): ParticipationRow[] {
   const byId = new Map<string, Speaker>(speakers.map((s) => [s.id, s]));
   const { totals, totalWords } = tallyWords(transcripts, new Set(byId.keys()));
   if (totalWords === 0) return [];
@@ -270,10 +352,17 @@ function latestActivityMs(session: Session, activity: Activity): number | null {
 // Recorded call windows in call time: each segment's wall-clock span, laid
 // end to end so an eleven-hour gap before a resume takes no room. A segment
 // with no end (or an end before its start) closes at the latest activity.
-export function callWindows(session: Session, segments: CallSegment[], activity: Activity = {}): CallWindow[] {
+export function callWindows(
+  session: Session,
+  segments: CallSegment[],
+  activity: Activity = {},
+): CallWindow[] {
   const fallbackEnd = latestActivityMs(session, activity);
   const spans = segments.length
-    ? segments.map((s) => ({ start: parseMs(s.started_at), end: parseMs(s.ended_at) }))
+    ? segments.map((s) => ({
+        start: parseMs(s.started_at),
+        end: parseMs(s.ended_at),
+      }))
     : [{ start: parseMs(session.started_at), end: parseMs(session.ended_at) }];
   const windows: CallWindow[] = [];
   for (const span of spans) {
@@ -293,8 +382,15 @@ export function callWindows(session: Session, segments: CallSegment[], activity:
 }
 
 // Time actually on the call: the sum of the windows above.
-export function totalCallMs(session: Session, segments: CallSegment[], activity: Activity = {}): number {
-  return callWindows(session, segments, activity).reduce((sum, w) => sum + (w.endMs - w.startMs), 0);
+export function totalCallMs(
+  session: Session,
+  segments: CallSegment[],
+  activity: Activity = {},
+): number {
+  return callWindows(session, segments, activity).reduce(
+    (sum, w) => sum + (w.endMs - w.startMs),
+    0,
+  );
 }
 
 export interface RhythmBucket {
@@ -323,8 +419,10 @@ export function toCallTime(ms: number, windows: CallWindow[]): number | null {
   let best: CallWindow | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
   for (const window of windows) {
-    if (ms >= window.startMs && ms <= window.endMs) return window.offsetMs + (ms - window.startMs);
-    const distance = ms < window.startMs ? window.startMs - ms : ms - window.endMs;
+    if (ms >= window.startMs && ms <= window.endMs)
+      return window.offsetMs + (ms - window.startMs);
+    const distance =
+      ms < window.startMs ? window.startMs - ms : ms - window.endMs;
     if (distance < bestDistance) {
       bestDistance = distance;
       best = window;
@@ -348,14 +446,20 @@ export function callRhythm(
   const bucketCount = Math.max(1, Math.ceil(span / bucketMs));
   // Guard against a pathological window producing thousands of empty bars.
   if (bucketCount > 400) return null;
-  const buckets: RhythmBucket[] = Array.from({ length: bucketCount }, (_, i) => ({ startMs: i * bucketMs, count: 0 }));
+  const buckets: RhythmBucket[] = Array.from(
+    { length: bucketCount },
+    (_, i) => ({ startMs: i * bucketMs, count: 0 }),
+  );
   let total = 0;
   for (const q of liveRows(questions)) {
     const at = parseMs(q.created_at);
     if (at === null) continue;
     const callTime = toCallTime(at, windows);
     if (callTime === null) continue;
-    const index = Math.min(bucketCount - 1, Math.max(0, Math.floor(callTime / bucketMs)));
+    const index = Math.min(
+      bucketCount - 1,
+      Math.max(0, Math.floor(callTime / bucketMs)),
+    );
     buckets[index].count += 1;
     total += 1;
   }
@@ -401,7 +505,9 @@ function trimmed(value: string | null | undefined): string {
 // The briefing's first outcome that has any text: its title (or summary when
 // untitled) as the sentence, and whichever of summary or rationale adds to it.
 function briefingHeadline(synthesis: SessionSynthesis | null): Headline | null {
-  const top = synthesis?.top_outcomes?.find((item) => trimmed(item.title) || trimmed(item.summary));
+  const top = synthesis?.top_outcomes?.find(
+    (item) => trimmed(item.title) || trimmed(item.summary),
+  );
   if (!top) return null;
   const text = trimmed(top.title) || trimmed(top.summary);
   const summary = trimmed(top.summary);
@@ -418,11 +524,17 @@ function derivedLead(ms: number, speakerCount: number): string {
 }
 
 function derivedCounts(live: Question[]): string {
-  if (live.length === 0) return "Für diese Debatte wurden noch keine Argumente erfasst.";
+  if (live.length === 0)
+    return "Für diese Debatte wurden noch keine Argumente erfasst.";
   const actions = live.filter((q) => itemType(q) === "action_item").length;
-  const open = live.filter((q) => itemType(q) === "question" && !q.answered).length;
-  const counts = [`${live.length} ${live.length === 1 ? "Argument" : "Argumente"}`];
-  if (actions) counts.push(`${actions} ${actions === 1 ? "Aufgabe" : "Aufgaben"}`);
+  const open = live.filter(
+    (q) => itemType(q) === "question" && !q.answered,
+  ).length;
+  const counts = [
+    `${live.length} ${live.length === 1 ? "Argument" : "Argumente"}`,
+  ];
+  if (actions)
+    counts.push(`${actions} ${actions === 1 ? "Aufgabe" : "Aufgaben"}`);
   if (open) counts.push(`${open} offene ${open === 1 ? "Frage" : "Fragen"}`);
   return `${counts.join(", ")}.`;
 }
@@ -438,5 +550,9 @@ export function headline(
   const fromBriefing = briefingHeadline(synthesis);
   if (fromBriefing) return fromBriefing;
   const ms = totalCallMs(session, segments, { questions, transcripts });
-  return { text: derivedLead(ms, speakers.length), detail: derivedCounts(liveRows(questions)), source: "derived" };
+  return {
+    text: derivedLead(ms, speakers.length),
+    detail: derivedCounts(liveRows(questions)),
+    source: "derived",
+  };
 }

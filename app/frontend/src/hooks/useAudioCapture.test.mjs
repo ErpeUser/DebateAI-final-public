@@ -48,10 +48,15 @@ test("capture startup can retry after a rejected attempt", async () => {
   let attempts = 0;
   const operation = () => {
     attempts += 1;
-    return attempts === 1 ? Promise.reject(new Error("capture denied")) : Promise.resolve();
+    return attempts === 1
+      ? Promise.reject(new Error("capture denied"))
+      : Promise.resolve();
   };
 
-  await assert.rejects(startSingleFlight(inFlight, operation), /capture denied/);
+  await assert.rejects(
+    startSingleFlight(inFlight, operation),
+    /capture denied/,
+  );
   await startSingleFlight(inFlight, operation);
 
   assert.equal(attempts, 2);
@@ -64,8 +69,15 @@ test("ending the share stops system frames and reports the track inactive", asyn
   const stopped = [];
   const states = [];
   const stop = createSystemCaptureStop({
-    disconnect: () => { forwarding = false; },
-    stream: { getTracks: () => [{ stop: () => stopped.push("audio") }, { stop: () => stopped.push("video") }] },
+    disconnect: () => {
+      forwarding = false;
+    },
+    stream: {
+      getTracks: () => [
+        { stop: () => stopped.push("audio") },
+        { stop: () => stopped.push("video") },
+      ],
+    },
     notify: (active) => states.push(active),
   });
 
@@ -73,8 +85,16 @@ test("ending the share stops system frames and reports the track inactive", asyn
   assert.equal(stop(), true);
 
   assert.equal(forwarding, false, "system frames must stop being forwarded");
-  assert.deepEqual(states, [false], "the backend must be told the system track went inactive");
-  assert.deepEqual(stopped, ["audio", "video"], "every display track is released");
+  assert.deepEqual(
+    states,
+    [false],
+    "the backend must be told the system track went inactive",
+  );
+  assert.deepEqual(
+    stopped,
+    ["audio", "video"],
+    "every display track is released",
+  );
 });
 
 test("ending the share twice reports the track inactive only once", async () => {
@@ -83,7 +103,9 @@ test("ending the share twice reports the track inactive only once", async () => 
   let disconnects = 0;
   const states = [];
   const stop = createSystemCaptureStop({
-    disconnect: () => { disconnects += 1; },
+    disconnect: () => {
+      disconnects += 1;
+    },
     stream: null,
     notify: (active) => states.push(active),
   });
@@ -98,15 +120,27 @@ test("ending the share twice reports the track inactive only once", async () => 
 });
 
 test("the display stream keeps a live track to carry the native stop signal", () => {
-  const hook = readFileSync(new URL("./useAudioCapture.ts", import.meta.url), "utf8");
+  const hook = readFileSync(
+    new URL("./useAudioCapture.ts", import.meta.url),
+    "utf8",
+  );
 
   // Chrome hangs the share's lifetime on the video track, and a track we stop
   // ourselves never fires "ended", so stopping it here would discard the only
   // signal that the user ended the share.
-  assert.match(hook, /getVideoTracks\(\)\.forEach\(\(track\) => \{ track\.enabled = false; \}\)/);
-  assert.doesNotMatch(hook, /getVideoTracks\(\)\.forEach\(\(track\) => track\.stop\(\)\)/);
+  assert.match(
+    hook,
+    /getVideoTracks\(\)\.forEach\(\(track\) => \{\s*track\.enabled = false;\s*\}\)/,
+  );
+  assert.doesNotMatch(
+    hook,
+    /getVideoTracks\(\)\.forEach\(\(track\) => track\.stop\(\)\)/,
+  );
   // Listen on every track, not just audio: which one ends first varies.
-  assert.match(hook, /candidate\.getTracks\(\)\.forEach\(\(track\) => \{\s*track\.addEventListener\("ended", handleEnded/);
+  assert.match(
+    hook,
+    /candidate\.getTracks\(\)\.forEach\(\(track\) => \{\s*track\.addEventListener\("ended", handleEnded/,
+  );
 });
 
 test("admin recorder cancels pending and active capture on unmount", () => {
@@ -122,7 +156,10 @@ test("admin recorder cancels pending and active capture on unmount", () => {
 });
 
 test("a display share without audio stops every candidate track", () => {
-  const hook = readFileSync(new URL("./useAudioCapture.ts", import.meta.url), "utf8");
+  const hook = readFileSync(
+    new URL("./useAudioCapture.ts", import.meta.url),
+    "utf8",
+  );
   assert.match(
     hook,
     /if \(candidate\.getAudioTracks\(\)\.length > 0\) \{[\s\S]*?\} else \{[\s\S]*?candidate\.getTracks\(\)\.forEach\(\(track\) => track\.stop\(\)\)/,

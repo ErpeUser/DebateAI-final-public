@@ -1,12 +1,11 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type {
-  DesktopUpdateController,
-  DesktopUpdateStatus,
-} from "../types";
+import type { DesktopUpdateController, DesktopUpdateStatus } from "../types";
 
-const primaryButton = "min-h-11 rounded-lg bg-brand-teal px-4 py-2 font-body text-sm font-semibold text-white transition-colors motion-reduce:transition-none hover:bg-brand-teal-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-brand-light-gray-1 disabled:text-brand-mid-gray";
-const secondaryButton = "min-h-11 rounded-lg border border-brand-light-gray-1 px-4 py-2 font-body text-sm font-semibold text-brand-dark-gray transition-colors motion-reduce:transition-none hover:border-brand-teal hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
+const primaryButton =
+  "min-h-11 rounded-lg bg-brand-teal px-4 py-2 font-body text-sm font-semibold text-white transition-colors motion-reduce:transition-none hover:bg-brand-teal-dark focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:bg-brand-light-gray-1 disabled:text-brand-mid-gray";
+const secondaryButton =
+  "min-h-11 rounded-lg border border-brand-light-gray-1 px-4 py-2 font-body text-sm font-semibold text-brand-dark-gray transition-colors motion-reduce:transition-none hover:border-brand-teal hover:text-brand-teal focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-teal-light focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 function bytes(value = 0): string {
   if (value < 1024) return `${value} B`;
@@ -41,9 +40,15 @@ function DesktopUpdateTransferBody({
             <p className="font-body text-sm font-semibold text-brand-dark-gray">
               Herunterladen unterbrochen
             </p>
-            <p className="mt-1 font-mono text-xs text-brand-mid-gray">{progressText(status)}</p>
+            <p className="mt-1 font-mono text-xs text-brand-mid-gray">
+              {progressText(status)}
+            </p>
           </div>
-          <button type="button" onClick={() => void update.download()} className={primaryButton}>
+          <button
+            type="button"
+            onClick={() => void update.download()}
+            className={primaryButton}
+          >
             Herunterladen fortsetzen
           </button>
         </div>
@@ -55,14 +60,20 @@ function DesktopUpdateTransferBody({
             <p className="font-body text-sm font-semibold text-brand-dark-gray">
               {version} wird heruntergeladen
             </p>
-            <span className="font-mono text-xs text-brand-mid-gray">{progressText(status)}</span>
+            <span className="font-mono text-xs text-brand-mid-gray">
+              {progressText(status)}
+            </span>
           </div>
           <progress
             className="h-2 w-full overflow-hidden rounded-full accent-brand-teal"
             value={status.downloaded || 0}
             max={status.size || 1}
           />
-          <button type="button" onClick={() => void update.cancel()} className={secondaryButton}>
+          <button
+            type="button"
+            onClick={() => void update.cancel()}
+            className={secondaryButton}
+          >
             Abbrechen
           </button>
         </div>
@@ -76,7 +87,8 @@ function DesktopUpdateTransferBody({
               {version} ist installationsbereit
             </p>
             <p className="mt-1 font-body text-xs text-brand-mid-gray">
-              Debate AI schließt das Fenster, installiert das Update und startet anschließend automatisch neu.
+              Debate AI schließt das Fenster, installiert das Update und startet
+              anschließend automatisch neu.
             </p>
             {blocked && (
               <p className="mt-2 rounded-lg bg-brand-light-gray-2 px-3 py-2 font-body text-xs text-brand-dark-gray">
@@ -102,13 +114,22 @@ function DesktopUpdateTransferBody({
         </p>
       );
     case "error": {
-      const error = (status.error || "Die Update-Aktion konnte nicht abgeschlossen werden.").slice(0, 240);
+      const error = (
+        status.error || "Die Update-Aktion konnte nicht abgeschlossen werden."
+      ).slice(0, 240);
       return (
         <div className="space-y-3">
-          <p role="alert" className="rounded-lg bg-brand-light-gray-2 px-3 py-2 font-body text-sm text-brand-dark-gray">
+          <p
+            role="alert"
+            className="rounded-lg bg-brand-light-gray-2 px-3 py-2 font-body text-sm text-brand-dark-gray"
+          >
             {error}
           </p>
-          <button type="button" onClick={() => void update.check()} className={secondaryButton}>
+          <button
+            type="button"
+            onClick={() => void update.check()}
+            className={secondaryButton}
+          >
             Erneut versuchen
           </button>
         </div>
@@ -127,8 +148,14 @@ function DesktopUpdateBody({ update }: { update: DesktopUpdateController }) {
     case "idle":
       return (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-body text-sm text-brand-gray">Debate AI ist auf dem neuesten Stand.</p>
-          <button type="button" onClick={() => void update.check()} className={secondaryButton}>
+          <p className="font-body text-sm text-brand-gray">
+            Debate AI ist auf dem neuesten Stand.
+          </p>
+          <button
+            type="button"
+            onClick={() => void update.check()}
+            className={secondaryButton}
+          >
             Nach Updates suchen
           </button>
         </div>
@@ -136,7 +163,9 @@ function DesktopUpdateBody({ update }: { update: DesktopUpdateController }) {
     case "checking":
       return (
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <p className="font-body text-sm text-brand-gray">Updates werden gesucht ...</p>
+          <p className="font-body text-sm text-brand-gray">
+            Updates werden gesucht ...
+          </p>
           <button type="button" disabled className={secondaryButton}>
             Suche läuft
           </button>
@@ -149,9 +178,15 @@ function DesktopUpdateBody({ update }: { update: DesktopUpdateController }) {
             <p className="font-body text-sm font-semibold text-brand-dark-gray">
               {version} ist verfügbar
             </p>
-            <span className="font-mono text-xs text-brand-mid-gray">{bytes(status.size)}</span>
+            <span className="font-mono text-xs text-brand-mid-gray">
+              {bytes(status.size)}
+            </span>
           </div>
-          <button type="button" onClick={() => void update.download()} className={primaryButton}>
+          <button
+            type="button"
+            onClick={() => void update.download()}
+            className={primaryButton}
+          >
             Update herunterladen
           </button>
           {status.available_notes && (
@@ -160,7 +195,9 @@ function DesktopUpdateBody({ update }: { update: DesktopUpdateController }) {
                 Änderungen anzeigen
               </summary>
               <div className="chat-markdown mt-3 border-t border-brand-light-gray-1/70 pt-3 font-body text-sm text-brand-dark-gray">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{status.available_notes}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  {status.available_notes}
+                </ReactMarkdown>
               </div>
             </details>
           )}
@@ -171,19 +208,30 @@ function DesktopUpdateBody({ update }: { update: DesktopUpdateController }) {
   }
 }
 
-export function DesktopUpdateCard({ update }: { update: DesktopUpdateController }) {
+export function DesktopUpdateCard({
+  update,
+}: {
+  update: DesktopUpdateController;
+}) {
   const { status } = update;
   if (!status.enabled) return null;
 
   return (
-    <section className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-brand-light-gray-1/60" aria-labelledby="desktop-update-title">
+    <section
+      className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-brand-light-gray-1/60"
+      aria-labelledby="desktop-update-title"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 id="desktop-update-title" className="font-display text-base font-semibold text-brand-dark-gray">
+          <h2
+            id="desktop-update-title"
+            className="font-display text-base font-semibold text-brand-dark-gray"
+          >
             Desktop-Updates
           </h2>
           <p className="mt-1 font-body text-xs text-brand-mid-gray">
-            Vor der Installation geprüft; automatisches Zurücksetzen, falls die neue Version nicht startet.
+            Vor der Installation geprüft; automatisches Zurücksetzen, falls die
+            neue Version nicht startet.
           </p>
         </div>
         {status.current_version && (
@@ -206,16 +254,18 @@ export function DesktopUpdateBanner({
   status: DesktopUpdateStatus;
   onOpen: () => void;
 }) {
-  if (!["available", "downloading", "ready"].includes(status.state)) return null;
+  if (!["available", "downloading", "ready"].includes(status.state))
+    return null;
   const version = status.available_version || "Update";
   const percent = status.size
     ? Math.min(100, Math.round(((status.downloaded || 0) / status.size) * 100))
     : 0;
-  const message = status.state === "available"
-    ? `${version} ist verfügbar`
-    : status.state === "ready"
-      ? `${version} ist installationsbereit`
-      : `${version} wird heruntergeladen – ${percent} %`;
+  const message =
+    status.state === "available"
+      ? `${version} ist verfügbar`
+      : status.state === "ready"
+        ? `${version} ist installationsbereit`
+        : `${version} wird heruntergeladen – ${percent} %`;
 
   return (
     <div className="flex items-center justify-between gap-3 rounded-xl bg-surface px-4 py-3 shadow-lg ring-1 ring-brand-light-gray-1">

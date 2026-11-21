@@ -2,13 +2,12 @@
 
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Session, SessionGroup
 from app.schemas import SessionGroupCreate, SessionGroupOut, SessionGroupUpdate
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/groups", tags=["groups"])
 

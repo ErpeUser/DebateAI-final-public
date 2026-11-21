@@ -7,13 +7,14 @@ import re
 from datetime import datetime
 from pathlib import Path
 
-
 CHUNK_SIZE = 1024 * 1024
 VERSION_RE = re.compile(
     r"^(?=.{2,32}$)v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$"
 )
 COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
-UTC_RE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|\+00:00)$")
+UTC_RE = re.compile(
+    r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(?:Z|\+00:00)$"
+)
 ASSETS = (
     ("windows-x64", "Windows x64", "DebateAI-windows-x64.zip", "application/zip"),
     ("macos-arm64", "macOS arm64", "DebateAI-macos-arm64.zip", "application/zip"),
@@ -116,7 +117,11 @@ def build_manifest(
     normal = {asset[2] for asset in ASSETS}
     legacy = {asset[2] for asset in ASSETS[:2]}
     expected = legacy if allow_legacy_partial else normal
-    mode = "legacy Windows/macOS pair" if allow_legacy_partial else "exactly three release assets"
+    mode = (
+        "legacy Windows/macOS pair"
+        if allow_legacy_partial
+        else "exactly three release assets"
+    )
     if actual != expected:
         raise ValueError(f"asset directory must contain {mode}")
 
@@ -164,7 +169,9 @@ def _validate_latest(path: Path, candidate: str) -> None:
         raise ValueError("current Latest must be one-field JSON")
     current = _version(latest["version"], "Latest version")
     if _version(candidate) < current:
-        raise ValueError(f"candidate {candidate} would regress Latest from {latest['version']}")
+        raise ValueError(
+            f"candidate {candidate} would regress Latest from {latest['version']}"
+        )
 
 
 def _json_bytes(value: dict) -> bytes:

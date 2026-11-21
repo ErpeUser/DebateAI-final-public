@@ -2,18 +2,22 @@ import inspect
 import os
 import uuid
 
+from app.database import get_db
+from app.models import Document, Session
+from app.schemas import DocumentOut
+from app.services.file_parsing import (
+    parse_docx,
+    parse_markdown,
+    parse_text,
+    safe_upload_filename,
+)
+from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
+from app.services.pii import shield
+from app.services.privacy import is_local_only
 from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.database import get_db
-from app.services.office_archive import OfficeArchiveError, preflight_office_archive
-from app.models import Document, Session
-from app.schemas import DocumentOut
-from app.services.pii import shield
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
-from app.services.gemini_files import delete_uploaded_file, upload_and_summarize
-from app.services.privacy import is_local_only
 
 router = APIRouter(prefix="/api/sessions/{session_id}/documents", tags=["documents"])
 
@@ -65,10 +69,14 @@ def local_extract_summary(content: bytes, filename: str, shielded: bool = False)
 
 
 @router.post("", response_model=DocumentOut, status_code=201)
-async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)):
+async def upload_document(
+    session_id: uuid.UUID, file: UploadFile, db: AsyncSession = Depends(get_db)
+):
     if await _maybe_await(db.get(Session, session_id)) is None:
         raise HTTPException(404, "Session not found")
-    filename = safe_upload_filename(file.filename, fallback="document", max_length=MAX_DOCUMENT_FILENAME_CHARS)
+    filename = safe_upload_filename(
+        file.filename, fallback="document", max_length=MAX_DOCUMENT_FILENAME_CHARS
+    )
     content = await file.read(MAX_DOCUMENT_UPLOAD_BYTES + 1)
     if len(content) > MAX_DOCUMENT_UPLOAD_BYTES:
         raise HTTPException(413, "Document exceeds the 25 MiB upload limit")
@@ -87,7 +95,9 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
             mime_type=file.content_type or "application/octet-stream",
             gemini_file_uri="",
             summary=await shield.protect_text(
-                db, session_id, local_extract_summary(content, filename, shielded=shielded)
+                db,
+                session_id,
+                local_extract_summary(content, filename, shielded=shielded),
             ),
             summary_source="local_extract",
         )
@@ -96,7 +106,9 @@ async def upload_document(session_id: uuid.UUID, file: UploadFile, db: AsyncSess
             session_id=session_id,
             filename=filename,
             mime_type=file.content_type or "application/octet-stream",
-            gemini_file_uri=await upload_and_summarize(content, filename, file.content_type),
+            gemini_file_uri=await upload_and_summarize(
+                content, filename, file.content_type
+            ),
         )
     db.add(doc)
     await db.commit()
@@ -122,7 +134,9 @@ async def list_documents(
 
 
 @router.delete("/{document_id}", status_code=204)
-async def delete_document(session_id: uuid.UUID, document_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_document(
+    session_id: uuid.UUID, document_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+):
     doc = await db.get(Document, document_id)
     if not doc or doc.session_id != session_id:
         raise HTTPException(404, "Document not found")

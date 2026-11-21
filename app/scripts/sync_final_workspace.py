@@ -8,6 +8,7 @@ rebased onto the latest remote. No user data, untracked files or ignored
 runtime directories are deleted. Codex follows AGENTS.md to inspect,
 discard obsolete work and selectively integrate genuinely unique improvements.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -17,7 +18,7 @@ import re
 import secrets
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPOSITORY = "ErpeUser/DebateAI"
@@ -33,10 +34,15 @@ class SyncError(RuntimeError):
     pass
 
 
-def git(repo: Path, *args: str, ok: tuple[int, ...] = (0,)) -> subprocess.CompletedProcess[str]:
+def git(
+    repo: Path, *args: str, ok: tuple[int, ...] = (0,)
+) -> subprocess.CompletedProcess[str]:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
-        text=True, encoding="utf-8", errors="replace", capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        capture_output=True,
         check=False,
     )
     if result.returncode not in ok:
@@ -51,7 +57,7 @@ def present(repo: Path, *args: str) -> bool:
 
 
 def branch_safe_name() -> str:
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
     return f"codex/final-sync-backup-{stamp}-{secrets.token_hex(4)}"
 
 
@@ -73,16 +79,21 @@ class WorkspaceCollision(RuntimeError):
 
 def _git_paths(repo: Path, *args: str) -> list[str]:
     result = subprocess.run(
-        ['git', '-C', str(repo), *args], capture_output=True, check=False,
+        ["git", "-C", str(repo), *args],
+        capture_output=True,
+        check=False,
     )
     if result.returncode:
-        raise WorkspaceCollision('Cannot inspect Git paths; no sync is safe yet.')
+        raise WorkspaceCollision("Cannot inspect Git paths; no sync is safe yet.")
     # NUL delimiters preserve spaces, newlines and quoted Unicode paths.
-    return [p.decode('utf-8', 'surrogateescape').rstrip('/')
-            for p in result.stdout.split(b'\0') if p]
+    return [
+        p.decode("utf-8", "surrogateescape").rstrip("/")
+        for p in result.stdout.split(b"\0")
+        if p
+    ]
 
 
-def protect_local_only_files(repo: Path, target_ref: str = 'origin/master') -> None:
+def protect_local_only_files(repo: Path, target_ref: str = "origin/master") -> None:
     """Fail closed on any local-only / tracked tree overlap, Windows-aware.
 
     Case-folding is conservative on case-sensitive systems. It can require
@@ -90,49 +101,72 @@ def protect_local_only_files(repo: Path, target_ref: str = 'origin/master') -> N
     Empty directories have no bytes to protect; symlinks and nested repositories
     are treated as paths, never recursively followed by Python.
     """
-    local = set(_git_paths(repo, 'ls-files', '--others', '--exclude-standard', '-z'))
-    local.update(_git_paths(repo, 'ls-files', '--others', '--ignored', '--exclude-standard', '-z'))
+    local = set(_git_paths(repo, "ls-files", "--others", "--exclude-standard", "-z"))
+    local.update(
+        _git_paths(
+            repo, "ls-files", "--others", "--ignored", "--exclude-standard", "-z"
+        )
+    )
     if not local:
         return
-    tracked = set(_git_paths(repo, 'ls-tree', '-r', '--name-only', '-z', 'HEAD'))
-    tracked.update(_git_paths(repo, 'ls-tree', '-r', '--name-only', '-z', target_ref))
+    tracked = set(_git_paths(repo, "ls-tree", "-r", "--name-only", "-z", "HEAD"))
+    tracked.update(_git_paths(repo, "ls-tree", "-r", "--name-only", "-z", target_ref))
     # Rebase may materialize a path later deleted by a subsequent local commit.
-    revisions = subprocess.run(['git', '-C', str(repo), 'rev-list', f'{target_ref}..HEAD'],
-                               capture_output=True, check=False)
+    revisions = subprocess.run(
+        ["git", "-C", str(repo), "rev-list", f"{target_ref}..HEAD"],
+        capture_output=True,
+        check=False,
+    )
     if revisions.returncode:
-        raise WorkspaceCollision('Cannot inspect local history safely.')
-    for revision in revisions.stdout.decode('ascii').splitlines():
-        tracked.update(_git_paths(repo, 'diff-tree', '--root', '-r', '-m', '--no-commit-id',
-                                  '--name-only', '-z', revision))
-    folded = {p.casefold().rstrip('/') for p in tracked if p}
+        raise WorkspaceCollision("Cannot inspect local history safely.")
+    for revision in revisions.stdout.decode("ascii").splitlines():
+        tracked.update(
+            _git_paths(
+                repo,
+                "diff-tree",
+                "--root",
+                "-r",
+                "-m",
+                "--no-commit-id",
+                "--name-only",
+                "-z",
+                revision,
+            )
+        )
+    folded = {p.casefold().rstrip("/") for p in tracked if p}
     ordered = sorted(folded)
     count = 0
     for original in local:
-        path = original.casefold().rstrip('/')
-        parts = path.split('/')
-        has_parent = any('/'.join(parts[:i]) in folded for i in range(1, len(parts) + 1))
-        prefix = path + '/'
+        path = original.casefold().rstrip("/")
+        parts = path.split("/")
+        has_parent = any(
+            "/".join(parts[:i]) in folded for i in range(1, len(parts) + 1)
+        )
+        prefix = path + "/"
         index = bisect.bisect_left(ordered, prefix)
         has_child = index < len(ordered) and ordered[index].startswith(prefix)
         if has_parent or has_child:
             count += 1
     if count:
         raise WorkspaceCollision(
-            f'{count} local-only path(s) overlap tracked paths. Sync stopped BEFORE stash. '
-            'Secure these files outside the checkout and review the collision; '
-            'do not use git clean, reset --hard or overwrite-ignore to bypass this guard.'
+            f"{count} local-only path(s) overlap tracked paths. Sync stopped BEFORE stash. "
+            "Secure these files outside the checkout and review the collision; "
+            "do not use git clean, reset --hard or overwrite-ignore to bypass this guard."
         )
 
 
-
-def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = None) -> dict:
+def sync(
+    repo: Path, expected_remote: str | None, minimum_commit: str | None = None
+) -> dict:
     repo = repo.expanduser().resolve()
     if not repo.is_dir():
         raise SyncError("The requested local project directory does not exist.")
     if checkout_root(repo) != repo:
         raise SyncError("Use the repository ROOT, not its source/ directory.")
     validate_origin(git(repo, "remote", "get-url", "origin").stdout, expected_remote)
-    current_branch = git(repo, "symbolic-ref", "--quiet", "--short", "HEAD").stdout.strip()
+    current_branch = git(
+        repo, "symbolic-ref", "--quiet", "--short", "HEAD"
+    ).stdout.strip()
     if current_branch != "master":
         raise SyncError(
             "The existing worktree is not on master. Codex must first inspect "
@@ -143,19 +177,33 @@ def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = N
         if not marker.is_absolute():
             marker = repo / marker
         if marker.exists():
-            raise SyncError("A Git merge/rebase/cherry-pick is in progress. Codex must resolve it first.")
+            raise SyncError(
+                "A Git merge/rebase/cherry-pick is in progress. Codex must resolve it first."
+            )
 
     start_head = git(repo, "rev-parse", "HEAD").stdout.strip()
     # Explicit remote-tracking refspec prevents FETCH_HEAD-only updates.
-    git(repo, "fetch", "--no-tags", "origin", "+refs/heads/master:refs/remotes/origin/master")
+    git(
+        repo,
+        "fetch",
+        "--no-tags",
+        "origin",
+        "+refs/heads/master:refs/remotes/origin/master",
+    )
     remote_head = git(repo, "rev-parse", "refs/remotes/origin/master").stdout.strip()
     if minimum_commit:
         check = git(
-            repo, "merge-base", "--is-ancestor", minimum_commit,
-            "refs/remotes/origin/master", ok=(0, 1, 128),
+            repo,
+            "merge-base",
+            "--is-ancestor",
+            minimum_commit,
+            "refs/remotes/origin/master",
+            ok=(0, 1, 128),
         )
         if check.returncode != 0:
-            raise SyncError("Remote master does not contain the known final-fix commit; refusing a downgrade.")
+            raise SyncError(
+                "Remote master does not contain the known final-fix commit; refusing a downgrade."
+            )
     result = {
         "repository": REPOSITORY,
         "local_worktree": str(repo),
@@ -175,33 +223,51 @@ def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = N
 
     # Only stash TRACKED changes: untracked/ignored user data and .env files
     # are neither staged, cleaned, deleted nor published.
-    tracked = bool(git(repo, "status", "--porcelain", "--untracked-files=no").stdout.strip())
+    tracked = bool(
+        git(repo, "status", "--porcelain", "--untracked-files=no").stdout.strip()
+    )
     if tracked:
-        old_stash = git(repo, "rev-parse", "--verify", "-q", "refs/stash", ok=(0, 1)).stdout.strip()
+        old_stash = git(
+            repo, "rev-parse", "--verify", "-q", "refs/stash", ok=(0, 1)
+        ).stdout.strip()
         git(repo, "stash", "push", "-m", "codex-final-sync-tracked-worktree")
-        new_stash = git(repo, "rev-parse", "--verify", "-q", "refs/stash", ok=(0, 1)).stdout.strip()
+        new_stash = git(
+            repo, "rev-parse", "--verify", "-q", "refs/stash", ok=(0, 1)
+        ).stdout.strip()
         if not new_stash or new_stash == old_stash:
-            raise SyncError("Tracked changes were not secured in Git stash; refusing overwrite.")
+            raise SyncError(
+                "Tracked changes were not secured in Git stash; refusing overwrite."
+            )
         result["local_changes_stash"] = new_stash
 
     try:
         if start_head == remote_head:
             result["action"] = "already_at_remote_head"
-        elif present(repo, "merge-base", "--is-ancestor", "HEAD", "refs/remotes/origin/master"):
+        elif present(
+            repo, "merge-base", "--is-ancestor", "HEAD", "refs/remotes/origin/master"
+        ):
             git(repo, "merge", "--ff-only", "refs/remotes/origin/master")
             result["action"] = "fast_forward_to_newest_master"
         else:
             backup = branch_safe_name()
             git(repo, "branch", backup, start_head)
             result["local_commits_backup"] = backup
-            if present(repo, "merge-base", "--is-ancestor", "refs/remotes/origin/master", "HEAD"):
+            if present(
+                repo,
+                "merge-base",
+                "--is-ancestor",
+                "refs/remotes/origin/master",
+                "HEAD",
+            ):
                 result["action"] = "local_commits_ahead_review_needed"
             else:
                 # No ours/theirs auto-conflict strategy: Codex must choose
                 # by comparing functionality, not by timestamps alone.
                 rebase = subprocess.run(
                     ["git", "-C", str(repo), "rebase", "refs/remotes/origin/master"],
-                    text=True, capture_output=True, check=False,
+                    text=True,
+                    capture_output=True,
+                    check=False,
                 )
                 if rebase.returncode:
                     result["action"] = "rebase_conflict_codex_must_resolve"
@@ -238,15 +304,19 @@ def sync(repo: Path, expected_remote: str | None, minimum_commit: str | None = N
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--repo", type=Path, default=Path(__file__).resolve().parents[2],
+        "--repo",
+        type=Path,
+        default=Path(__file__).resolve().parents[2],
         help="Existing local repository root, not a temporary clone or source/.",
     )
     parser.add_argument(
-        "--minimum-commit", default=MINIMUM_FIXED_COMMIT,
+        "--minimum-commit",
+        default=MINIMUM_FIXED_COMMIT,
         help="Required ancestor of origin/master; rejects older remote history.",
     )
     parser.add_argument(
-        "--expected-remote", default=None,
+        "--expected-remote",
+        default=None,
         help="Override expected origin URL ONLY for isolated fixture tests.",
     )
     args = parser.parse_args()

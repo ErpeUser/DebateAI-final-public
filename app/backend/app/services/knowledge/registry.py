@@ -32,7 +32,9 @@ def get_adapter(source: KnowledgeSource | None) -> KnowledgeAdapter | None:
     else:
         cls = _ADAPTERS.get(source.source_type)
         if cls is None:
-            logger.warning(f"[knowledge] unknown source_type '{source.source_type}' on source '{source.name}'")
+            logger.warning(
+                f"[knowledge] unknown source_type '{source.source_type}' on source '{source.name}'"
+            )
             return None
         adapter = cls(source)
     try:

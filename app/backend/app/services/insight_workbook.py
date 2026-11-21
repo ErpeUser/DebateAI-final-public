@@ -27,14 +27,14 @@ from openpyxl.worksheet.worksheet import Worksheet
 
 # The product palette, straight from frontend/src/index.css primitives, so an
 # exported workbook and the app it came from are recognizably the same thing.
-INK = "0F172A"          # slate-900
-INK_SOFT = "475569"     # slate-600
-INK_FAINT = "64748B"    # slate-500
+INK = "0F172A"  # slate-900
+INK_SOFT = "475569"  # slate-600
+INK_FAINT = "64748B"  # slate-500
 TEAL = "0D9488"
 TEAL_DARK = "0F766E"
-TEAL_WASH = "E7F4F2"    # a tint of TEAL, for header bands
-LINE = "CBD5E1"         # slate-300
-CANVAS = "F8FAFC"       # slate-50
+TEAL_WASH = "E7F4F2"  # a tint of TEAL, for header bands
+LINE = "CBD5E1"  # slate-300
+CANVAS = "F8FAFC"  # slate-50
 AMBER = "B45309"
 
 _TYPE_LABELS = {
@@ -48,7 +48,14 @@ _TYPE_LABELS = {
 
 # Reading order for the mix table: what was decided, then what was found, then
 # what was asked. Types outside this list keep their relative order after it.
-_TYPE_ORDER = ["action_item", "opportunity", "objection", "observation", "question", "asked"]
+_TYPE_ORDER = [
+    "action_item",
+    "opportunity",
+    "objection",
+    "observation",
+    "question",
+    "asked",
+]
 
 _THIN = Side(style="thin", color=LINE)
 _BOTTOM_RULE = Border(bottom=Side(style="thin", color=LINE))
@@ -102,7 +109,9 @@ def _write(
 def _section(ws: Worksheet, row: int, title: str, span: int) -> int:
     """A small-caps section rule spanning the sheet's used width."""
     for column in range(1, span + 1):
-        cell = ws.cell(row=row, column=column, value=title.upper() if column == 1 else None)
+        cell = ws.cell(
+            row=row, column=column, value=title.upper() if column == 1 else None
+        )
         cell.font = Font(name="Calibri", size=9, bold=True, color=TEAL_DARK)
         cell.border = _BOTTOM_RULE
     ws.row_dimensions[row].height = 20
@@ -189,7 +198,9 @@ def build_summary_sheet(
     ws.freeze_panes = "A5"
 
 
-def _summary_masthead(ws, session, questions: list, participants: list, rename: Rename) -> int:
+def _summary_masthead(
+    ws, session, questions: list, participants: list, rename: Rename
+) -> int:
     row = _write(ws, 1, ["DEBATEAI BRIEFING"], bold=True, size=9, color=TEAL_DARK)
     name = rename(_clean(getattr(session, "name", ""))) or "Session"
     row = _write(ws, row, [name], bold=True, size=20)
@@ -200,7 +211,9 @@ def _summary_masthead(ws, session, questions: list, participants: list, rename: 
     meta = [f"Started {_fmt(started)}"]
     if span := _duration(started, ended):
         meta.append(span)
-    meta.append(f"{len(participants)} participant{'s' if len(participants) != 1 else ''}")
+    meta.append(
+        f"{len(participants)} participant{'s' if len(participants) != 1 else ''}"
+    )
     meta.append(f"{len(questions)} insight{'s' if len(questions) != 1 else ''}")
     return _write(ws, row, [" | ".join(meta)], size=10, color=INK_FAINT) + 1
 
@@ -237,14 +250,21 @@ def _at_a_glance_block(ws, row: int, questions: list) -> int:
         row = _write(
             ws,
             row,
-            [type_label(slug), counts[slug], f"{counts[slug] / total:.0%}", starred.get(slug, 0) or ""],
+            [
+                type_label(slug),
+                counts[slug],
+                f"{counts[slug] / total:.0%}",
+                starred.get(slug, 0) or "",
+            ],
             border=_BOTTOM_RULE,
         )
     # A native data bar rather than a drawn chart: it survives a re-sort,
     # prints, and costs the file nothing.
     ws.conditional_formatting.add(
         f"B{first}:B{row - 1}",
-        DataBarRule(start_type="num", start_value=0, end_type="max", color=TEAL, showValue=True),
+        DataBarRule(
+            start_type="num", start_value=0, end_type="max", color=TEAL, showValue=True
+        ),
     )
     return row + 1
 
@@ -267,9 +287,16 @@ def _participants_block(ws, row: int, questions: list, participants: list) -> in
     row = _section(ws, row, "Participants", 4)
     row = _table_header(ws, row, ["Participant", "Side", "Role", "Insights attributed"])
     if not participants:
-        return _write(
-            ws, row, ["No speakers were enrolled for this session."], size=10, color=INK_FAINT
-        ) + 1
+        return (
+            _write(
+                ws,
+                row,
+                ["No speakers were enrolled for this session."],
+                size=10,
+                color=INK_FAINT,
+            )
+            + 1
+        )
 
     attributed = _attributed_counts(questions)
     for person in participants:
@@ -282,14 +309,20 @@ def _participants_block(ws, row: int, questions: list, participants: list) -> in
     return row + 1
 
 
-def _needs_attention_block(ws, row: int, questions: list, participants: list, rename: Rename) -> int:
+def _needs_attention_block(
+    ws, row: int, questions: list, participants: list, rename: Rename
+) -> int:
     lookup = _speaker_lookup(participants)
     row = _section(ws, row, "Needs attention", 4)
     row = _table_header(ws, row, ["Item", "Type", "Why it is here", "Raised by"])
     flagged = _needs_attention(questions)
     if not flagged:
         return _write(
-            ws, row, ["Nothing starred, unanswered, or contested."], size=10, color=INK_FAINT
+            ws,
+            row,
+            ["Nothing starred, unanswered, or contested."],
+            size=10,
+            color=INK_FAINT,
         )
 
     for q, reason in flagged:
@@ -330,7 +363,9 @@ def _needs_attention(questions: list) -> list[tuple[object, str]]:
     for q in questions:
         if id(q) in seen:
             continue
-        if (getattr(q, "item_type", None) or "") == "question" and not getattr(q, "answered", False):
+        if (getattr(q, "item_type", None) or "") == "question" and not getattr(
+            q, "answered", False
+        ):
             flagged.append((q, "Unanswered"))
             seen.add(id(q))
     return flagged
@@ -352,14 +387,18 @@ def build_action_items_sheet(
     ws.sheet_view.showGridLines = False
     _widths(ws, [62, 20, 12, 40, 44, 18])
     lookup = _speaker_lookup(participants)
-    text = lambda value: rename(_clean(value))  # noqa: E731
-    items = [q for q in questions if (getattr(q, "item_type", None) or "") == "action_item"]
+    text = lambda value: rename(_clean(value))
+    items = [
+        q for q in questions if (getattr(q, "item_type", None) or "") == "action_item"
+    ]
 
     row = _write(ws, 1, ["ACTION ITEMS"], bold=True, size=9, color=TEAL_DARK)
     row = _write(ws, row, [f"{len(items)} captured"], size=10, color=INK_FAINT)
     row += 1
     header_row = row
-    row = _table_header(ws, row, ["Action", "Raised by", "Status", "Follow-up", "Context", "Captured"])
+    row = _table_header(
+        ws, row, ["Action", "Raised by", "Status", "Follow-up", "Context", "Captured"]
+    )
     for q in items:
         status = "Done" if getattr(q, "answered", False) else "Open"
         row = _write(
@@ -369,7 +408,8 @@ def build_action_items_sheet(
                 text(q.question),
                 _attributed(q, lookup),
                 status,
-                text(getattr(q, "followup_question", "")) or text(getattr(q, "answer_summary", "")),
+                text(getattr(q, "followup_question", ""))
+                or text(getattr(q, "answer_summary", "")),
                 text(getattr(q, "source_context", "")),
                 _created(q),
             ],
@@ -378,9 +418,17 @@ def build_action_items_sheet(
         )
         ws.row_dimensions[row - 1].height = 32
         if getattr(q, "starred", False):
-            ws.cell(row=row - 1, column=1).font = Font(name="Calibri", size=11, bold=True, color=INK)
+            ws.cell(row=row - 1, column=1).font = Font(
+                name="Calibri", size=11, bold=True, color=INK
+            )
     if not items:
-        _write(ws, row, ["No action items were captured on this call."], size=10, color=INK_FAINT)
+        _write(
+            ws,
+            row,
+            ["No action items were captured on this call."],
+            size=10,
+            color=INK_FAINT,
+        )
     ws.freeze_panes = f"A{header_row + 1}"
 
 
@@ -395,9 +443,13 @@ def build_opportunities_sheet(
     ws.sheet_view.showGridLines = False
     _widths(ws, [56, 56, 40, 20, 18])
     lookup = _speaker_lookup(participants)
-    text = lambda value: rename(_clean(value))  # noqa: E731
-    items = [q for q in questions if (getattr(q, "item_type", None) or "") == "opportunity"]
-    matched = sum(1 for q in items if _clean(getattr(q, "offering_match", "")))  # rename cannot empty a value
+    text = lambda value: rename(_clean(value))
+    items = [
+        q for q in questions if (getattr(q, "item_type", None) or "") == "opportunity"
+    ]
+    matched = sum(
+        1 for q in items if _clean(getattr(q, "offering_match", ""))
+    )  # rename cannot empty a value
 
     row = _write(ws, 1, ["OPPORTUNITIES"], bold=True, size=9, color=TEAL_DARK)
     row = _write(
@@ -409,7 +461,11 @@ def build_opportunities_sheet(
     )
     row += 1
     header_row = row
-    row = _table_header(ws, row, ["Opportunity", "Offering match", "Why it matters", "Raised by", "Captured"])
+    row = _table_header(
+        ws,
+        row,
+        ["Opportunity", "Offering match", "Why it matters", "Raised by", "Captured"],
+    )
     for q in items:
         match = text(getattr(q, "offering_match", ""))
         row = _write(
@@ -427,11 +483,27 @@ def build_opportunities_sheet(
         )
         ws.row_dimensions[row - 1].height = 34
         if not match:
-            ws.cell(row=row - 1, column=2).font = Font(name="Calibri", size=11, color=INK_FAINT, italic=True)
+            ws.cell(row=row - 1, column=2).font = Font(
+                name="Calibri", size=11, color=INK_FAINT, italic=True
+            )
         if notes := text(getattr(q, "enrichment_notes", "")):
-            row = _write(ws, row, ["", notes], size=10, color=INK_SOFT, wrap=True, border=_BOTTOM_RULE)
+            row = _write(
+                ws,
+                row,
+                ["", notes],
+                size=10,
+                color=INK_SOFT,
+                wrap=True,
+                border=_BOTTOM_RULE,
+            )
     if not items:
-        _write(ws, row, ["No opportunities were surfaced on this call."], size=10, color=INK_FAINT)
+        _write(
+            ws,
+            row,
+            ["No opportunities were surfaced on this call."],
+            size=10,
+            color=INK_FAINT,
+        )
     ws.freeze_panes = f"A{header_row + 1}"
 
 

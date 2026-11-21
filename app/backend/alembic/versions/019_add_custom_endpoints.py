@@ -11,7 +11,6 @@ Create Date: 2026-07-25
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "019_custom_endpoints"
@@ -29,7 +28,9 @@ def upgrade():
         sa.Column("api_key", sa.Text(), nullable=False, server_default=""),
         sa.Column("models", sa.JSON(), nullable=False),
         sa.Column("enabled", sa.Boolean(), nullable=False, server_default=sa.true()),
-        sa.Column("last_status", sa.String(length=20), nullable=False, server_default=""),
+        sa.Column(
+            "last_status", sa.String(length=20), nullable=False, server_default=""
+        ),
         sa.Column("last_error", sa.Text(), nullable=False, server_default=""),
         sa.Column("last_checked_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("display_order", sa.Integer(), nullable=False, server_default="0"),

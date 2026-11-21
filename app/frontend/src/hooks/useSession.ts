@@ -1,5 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { CallSegment, Directive, Document, Question, Session, SessionSynthesis, Speaker, TranscriptEntry } from "../types";
+import type {
+  CallSegment,
+  Directive,
+  Document,
+  Question,
+  Session,
+  SessionSynthesis,
+  Speaker,
+  TranscriptEntry,
+} from "../types";
 import {
   getSynthesis,
   getSession,
@@ -25,70 +34,102 @@ export function useSession(sessionId: string | null) {
   const [speakers, setSpeakers] = useState<Speaker[]>([]);
   const [transcripts, setTranscripts] = useState<TranscriptEntry[]>([]);
   const [synthesis, setSynthesis] = useState<SessionSynthesis | null>(null);
-  const [liveSynthesis, setLiveSynthesis] = useState<SessionSynthesis | null>(null);
+  const [liveSynthesis, setLiveSynthesis] = useState<SessionSynthesis | null>(
+    null,
+  );
   const [loading, setLoading] = useState(false);
 
   const refreshSession = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await getSession(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setSession(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setSession(data);
   }, [sessionId]);
 
   const refreshDirectives = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listDirectives(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setDirectives(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setDirectives(data);
   }, [sessionId]);
 
   const refreshDocuments = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listDocuments(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setDocuments(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setDocuments(data);
   }, [sessionId]);
 
   const refreshQuestions = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listQuestions(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setQuestions(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setQuestions(data);
   }, [sessionId]);
 
   const refreshSegments = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listSegments(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setSegments(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setSegments(data);
   }, [sessionId]);
 
   const refreshSpeakers = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listSpeakers(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setSpeakers(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setSpeakers(data);
   }, [sessionId]);
 
   const refreshTranscripts = useCallback(async () => {
     if (!sessionId) return;
     const requestedSessionId = sessionId;
     const data = await listTranscripts(sessionId);
-    if (isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) setTranscripts(data);
+    if (
+      isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)
+    )
+      setTranscripts(data);
   }, [sessionId]);
 
-  const refreshSynthesis = useCallback(async (mode = "post_call") => {
-    if (!sessionId) return;
-    const requestedSessionId = sessionId;
-    const data = await getSynthesis(sessionId, mode);
-    if (!isCurrentSessionResponse(requestedSessionId, currentSessionIdRef.current)) return data;
-    if (mode === "live") {
-      setLiveSynthesis(data);
-    } else {
-      setSynthesis(data);
-    }
-    return data;
-  }, [sessionId]);
+  const refreshSynthesis = useCallback(
+    async (mode = "post_call") => {
+      if (!sessionId) return;
+      const requestedSessionId = sessionId;
+      const data = await getSynthesis(sessionId, mode);
+      if (
+        !isCurrentSessionResponse(
+          requestedSessionId,
+          currentSessionIdRef.current,
+        )
+      )
+        return data;
+      if (mode === "live") {
+        setLiveSynthesis(data);
+      } else {
+        setSynthesis(data);
+      }
+      return data;
+    },
+    [sessionId],
+  );
 
   useEffect(() => {
     if (!sessionId) {
@@ -130,7 +171,8 @@ export function useSession(sessionId: string | null) {
           getSynthesis(sessionId, "live"),
         ]);
         if (cancelled) return;
-        const [sess, dirs, docs, qs, segs, spkrs, txs, synth, liveSynth] = results;
+        const [sess, dirs, docs, qs, segs, spkrs, txs, synth, liveSynth] =
+          results;
         if (sess.status === "fulfilled") setSession(sess.value);
         if (dirs.status === "fulfilled") setDirectives(dirs.value);
         if (docs.status === "fulfilled") setDocuments(docs.value);
@@ -140,8 +182,11 @@ export function useSession(sessionId: string | null) {
         if (txs.status === "fulfilled") setTranscripts(txs.value);
         if (synth.status === "fulfilled") setSynthesis(synth.value);
         if (liveSynth.status === "fulfilled") setLiveSynthesis(liveSynth.value);
-        const failures = results.filter((result) => result.status === "rejected");
-        if (failures.length) console.warn("Some session resources failed to load", failures);
+        const failures = results.filter(
+          (result) => result.status === "rejected",
+        );
+        if (failures.length)
+          console.warn("Some session resources failed to load", failures);
       } catch (err) {
         console.error("Failed to load session data", err);
       } finally {

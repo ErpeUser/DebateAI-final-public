@@ -1,10 +1,9 @@
 """In-process progress for long audio transcription work."""
 
-from dataclasses import dataclass, field
+import threading
 import time
 import uuid
-import threading
-
+from dataclasses import dataclass, field
 
 ACTIVE_STATUSES = {"queued", "running", "canceling"}
 
@@ -39,8 +38,10 @@ class TranscriptionJob:
     def snapshot(self) -> dict:
         with _jobs_lock:
             self._touch()
-            progress = 100 if self.status == "completed" else round(
-                self.segments_done * 100 / max(1, self.total_segments)
+            progress = (
+                100
+                if self.status == "completed"
+                else round(self.segments_done * 100 / max(1, self.total_segments))
             )
             return {
                 "job_id": str(self.id),
@@ -124,7 +125,9 @@ def create_job(
     with _jobs_lock:
         current = _jobs.get(session_id)
         if current and current.status in ACTIVE_STATUSES:
-            raise JobAlreadyRunning(f"A {current.kind.replace('_', ' ')} job is already running")
+            raise JobAlreadyRunning(
+                f"A {current.kind.replace('_', ' ')} job is already running"
+            )
         job = TranscriptionJob(
             session_id=session_id,
             kind=kind,

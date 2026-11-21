@@ -1,18 +1,17 @@
 import logging
-import tempfile
 import os
+import tempfile
 import time
 from collections import OrderedDict
 from dataclasses import dataclass
 from urllib.parse import urlsplit
-
-from google import genai
 
 from app.config import settings
 from app.services.privacy import LocalOnlyModeError, is_local_only
 from app.services.redaction import redact_text
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
+from google import genai
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +39,9 @@ class PendingFileDeletion:
 _delete_outbox: OrderedDict[str, PendingFileDeletion] = OrderedDict()
 
 
-def _queue_file_deletion(file_uri: str, error: Exception | str, *, now: float | None = None) -> None:
+def _queue_file_deletion(
+    file_uri: str, error: Exception | str, *, now: float | None = None
+) -> None:
     raw = str(file_uri).strip()
     if not raw:
         return
@@ -48,7 +49,10 @@ def _queue_file_deletion(file_uri: str, error: Exception | str, *, now: float | 
     task = _delete_outbox.pop(raw, None) or PendingFileDeletion(raw)
     task.attempts += 1
     task.last_error = str(error)[:500]
-    delay = min(FILE_DELETE_RETRY_MAX_SECONDS, FILE_DELETE_RETRY_BASE_SECONDS * (2 ** min(task.attempts - 1, 8)))
+    delay = min(
+        FILE_DELETE_RETRY_MAX_SECONDS,
+        FILE_DELETE_RETRY_BASE_SECONDS * (2 ** min(task.attempts - 1, 8)),
+    )
     task.next_attempt_at = now + delay
     _delete_outbox[raw] = task
     while len(_delete_outbox) > MAX_FILE_DELETE_OUTBOX:
@@ -68,7 +72,9 @@ async def _delete_uploaded_file(file_uri: str) -> None:
     else:
         resource_name = raw.removeprefix("files/")
     if not resource_name or resource_name == "files/":
-        raise ValueError(f"Cannot derive Gemini Files resource name from {file_uri[:160]!r}")
+        raise ValueError(
+            f"Cannot derive Gemini Files resource name from {file_uri[:160]!r}"
+        )
     await client.aio.files.delete(name=resource_name)
     logger.info("Deleted remote Gemini file %s", resource_name)
 
@@ -86,7 +92,9 @@ async def upload_and_summarize(content: bytes, filename: str, mime_type: str) ->
         tmp_path = tmp.name
 
     try:
-        uploaded = await client.aio.files.upload(file=tmp_path, config={"mime_type": mime_type})
+        uploaded = await client.aio.files.upload(
+            file=tmp_path, config={"mime_type": mime_type}
+        )
         logger.info(
             "Uploaded document (%d filename chars) to Gemini Files API: %s",
             len(filename or ""),
@@ -112,11 +120,15 @@ async def delete_uploaded_file(file_uri: str) -> bool:
         return True
     except Exception as exc:
         _queue_file_deletion(file_uri, exc)
-        logger.warning("Could not delete remote Gemini file %r", file_uri[:160], exc_info=True)
+        logger.warning(
+            "Could not delete remote Gemini file %r", file_uri[:160], exc_info=True
+        )
         return False
 
 
-async def retry_pending_file_deletions(*, now: float | None = None, max_items: int = 16) -> int:
+async def retry_pending_file_deletions(
+    *, now: float | None = None, max_items: int = 16
+) -> int:
     """Retry due remote deletes without blocking local session deletion."""
     now = time.monotonic() if now is None else now
     completed = 0
@@ -127,7 +139,9 @@ async def retry_pending_file_deletions(*, now: float | None = None, max_items: i
             await _delete_uploaded_file(file_uri)
         except Exception as exc:
             _queue_file_deletion(file_uri, exc, now=now)
-            logger.warning("Retry of remote Gemini file delete failed for %r", file_uri[:160])
+            logger.warning(
+                "Retry of remote Gemini file delete failed for %r", file_uri[:160]
+            )
         else:
             _delete_outbox.pop(file_uri, None)
             completed += 1
@@ -146,7 +160,9 @@ async def summarize_document(file_uri: str, session_id=None) -> str:
             {
                 "parts": [
                     {"file_data": {"file_uri": file_uri}},
-                    {"text": "Summarize this document concisely. Focus on key concepts, capabilities, metrics, decisions, risks, talking points, and follow-up context that may be relevant to the session. Keep it under 500 words."},
+                    {
+                        "text": "Summarize this document concisely. Focus on key concepts, capabilities, metrics, decisions, risks, talking points, and follow-up context that may be relevant to the session. Keep it under 500 words."
+                    },
                 ]
             }
         ],

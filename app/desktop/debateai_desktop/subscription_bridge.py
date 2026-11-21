@@ -18,10 +18,10 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-from debateai_desktop.paths import resource
-from debateai_desktop.windows_console import hidden_startupinfo
 from debateai_identity import env_value, set_env
 
+from debateai_desktop.paths import resource
+from debateai_desktop.windows_console import hidden_startupinfo
 
 DEFAULT_PORT = 8317
 _LOGIN_FLAGS = {
@@ -79,15 +79,14 @@ class SubscriptionBridge:
         )
         configured_executable = env_value("DEBATEAI_CLIPROXYAPI_EXECUTABLE").strip()
         self.external_executable = (
-            Path(configured_executable).expanduser()
-            if configured_executable
-            else None
+            Path(configured_executable).expanduser() if configured_executable else None
         )
-        if self.external_executable is not None and not self.external_executable.is_absolute():
+        if (
+            self.external_executable is not None
+            and not self.external_executable.is_absolute()
+        ):
             self.log = logger
-            self.log.warning(
-                "ignoring relative DEBATEAI_CLIPROXYAPI_EXECUTABLE"
-            )
+            self.log.warning("ignoring relative DEBATEAI_CLIPROXYAPI_EXECUTABLE")
             self.external_executable = None
         self.executable = self.external_executable or self.managed_executable
         self.bundled_root = resource("cliproxyapi")
@@ -110,9 +109,7 @@ class SubscriptionBridge:
                 for part in candidate_auth_dir.parts
             )
         ):
-            self.log.warning(
-                "ignoring unsafe DEBATEAI_CLIPROXYAPI_AUTH_DIR"
-            )
+            self.log.warning("ignoring unsafe DEBATEAI_CLIPROXYAPI_AUTH_DIR")
             candidate_auth_dir = self.root / "auth"
         self.auth_dir = candidate_auth_dir
         try:
@@ -132,10 +129,7 @@ class SubscriptionBridge:
 
     @property
     def installed(self) -> bool:
-        return (
-            self.executable.is_file()
-            and not self.executable.is_symlink()
-        ) or (
+        return (self.executable.is_file() and not self.executable.is_symlink()) or (
             self.bundled_executable.is_file()
             and not self.bundled_executable.is_symlink()
         )
@@ -167,18 +161,19 @@ class SubscriptionBridge:
         if not self.bundled_executable.is_file():
             return
         bundled_version = self._bundled_version()
-        if self.executable.is_file() and bundled_version:
-            if self._installed_version() == bundled_version:
-                self._provision_plugins()
-                return
+        if (
+            self.executable.is_file()
+            and bundled_version
+            and self._installed_version() == bundled_version
+        ):
+            self._provision_plugins()
+            return
         self.root.mkdir(parents=True, exist_ok=True)
         temporary = self.executable.with_suffix(self.executable.suffix + ".new")
         shutil.copy2(self.bundled_executable, temporary)
         temporary.replace(self.executable)
         if bundled_version:
-            (self.root / "VERSION").write_text(
-                bundled_version + "\n", encoding="ascii"
-            )
+            (self.root / "VERSION").write_text(bundled_version + "\n", encoding="ascii")
         self._provision_plugins()
 
     def _provision_plugins(self) -> None:
@@ -361,9 +356,7 @@ class SubscriptionBridge:
                     return False
                 self.served_models = models
                 self._export_connection()
-                self.log.info(
-                    "subscription bridge started with %s models", len(models)
-                )
+                self.log.info("subscription bridge started with %s models", len(models))
                 return True
             if self.process.poll() is not None:
                 break

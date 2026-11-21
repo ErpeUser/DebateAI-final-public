@@ -57,7 +57,9 @@ class TestPrivacyImpact(unittest.TestCase):
         self.assertTrue(any("Transcription" in f for f in features))
 
     def test_a_self_hosted_text_model_re_enables_the_analysis_features(self):
-        impact = privacy_impact([{"id": "endpoint:lm-studio:antares-1b", "name": "antares-1b"}])
+        impact = privacy_impact(
+            [{"id": "endpoint:lm-studio:antares-1b", "name": "antares-1b"}]
+        )
         available = [item["feature"] for item in impact["available"]]
         disabled = [item["feature"] for item in impact["disabled"]]
         self.assertTrue(any("AI analysis agents" in f for f in available))
@@ -74,7 +76,9 @@ class TestPrivacyAllowsSelfHostedModels(unittest.IsolatedAsyncioTestCase):
 
     def _patch_target(self, target):
         patcher = mock.patch.object(
-            privacy_mod, "resolve_target_standalone", mock.AsyncMock(return_value=target)
+            privacy_mod,
+            "resolve_target_standalone",
+            mock.AsyncMock(return_value=target),
         )
         patcher.start()
         self.addCleanup(patcher.stop)
@@ -83,7 +87,9 @@ class TestPrivacyAllowsSelfHostedModels(unittest.IsolatedAsyncioTestCase):
         return EndpointTarget(
             endpoint_id="lm-studio",
             name="LM Studio",
-            base_url="http://localhost:1234/v1" if on_prem else "https://api.together.xyz/v1",
+            base_url="http://localhost:1234/v1"
+            if on_prem
+            else "https://api.together.xyz/v1",
             model="antares-1b",
             api_key="",
             on_prem=on_prem,

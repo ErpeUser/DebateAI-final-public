@@ -1,13 +1,13 @@
 import asyncio
 
 from app.services.video_eval_pipeline import (
-    attach_media_metadata,
     SourceCandidate,
     TranscriptSegment,
     VideoEvalArtifact,
+    attach_media_metadata,
     build_eval_cases,
-    build_video_artifact,
     build_rhetorical_profile,
+    build_video_artifact,
     evaluate_rhetoric_profile,
     extract_source_candidates,
 )
@@ -61,7 +61,8 @@ def test_video_source_extraction_focuses_source_context(monkeypatch):
 
     asyncio.run(
         extract_source_candidates_with_ai(
-            "DISTANT_ONLY_MARKER " + ("irrelevanter Verlauf " * 1500)
+            "DISTANT_ONLY_MARKER "
+            + ("irrelevanter Verlauf " * 1500)
             + " Siehe Studie Alpha 2024 unter https://example.org/report. "
             + ("weiterer irrelevanter Verlauf " * 1500)
         )
@@ -84,12 +85,16 @@ def test_rhetoric_review_uses_claim_focused_excerpt(monkeypatch):
 
     monkeypatch.setattr(chatgpt_web, "generate", fake_generate)
     artifact = VideoEvalArtifact(
-        transcript_segments=[{"text": "DISTANT_TRANSCRIPT_MARKER " + ("Fülltext " * 1500)}],
-        eval_cases=[{
-            "claim": "Aktueller Claim",
-            "speaker": "S1",
-            "context_before": "Benötigter Kontext",
-        }],
+        transcript_segments=[
+            {"text": "DISTANT_TRANSCRIPT_MARKER " + ("Fülltext " * 1500)}
+        ],
+        eval_cases=[
+            {
+                "claim": "Aktueller Claim",
+                "speaker": "S1",
+                "context_before": "Benötigter Kontext",
+            }
+        ],
     )
 
     asyncio.run(evaluate_rhetoric_profile(artifact, sample_chars=12000))
@@ -105,7 +110,9 @@ def test_rhetorical_profile_counts_debate_moves():
     segments = [
         TranscriptSegment(0, 2, "Ist das wirklich immer so?"),
         TranscriptSegment(2, 5, "Nein, aber ein Beispiel ist der Handytarif."),
-        TranscriptSegment(5, 8, "Das stimmt nicht, weil der Maßstab sonst doppelt wäre."),
+        TranscriptSegment(
+            5, 8, "Das stimmt nicht, weil der Maßstab sonst doppelt wäre."
+        ),
     ]
     profile = build_rhetorical_profile(segments, source_candidates=[])
     assert profile["question_rate"] > 0
@@ -129,7 +136,9 @@ def test_attach_media_metadata_records_hashes_and_quality_checks(tmp_path):
         build_video_artifact(
             video_id="v1",
             source_url="https://example.test/watch?v=1",
-            segments=[TranscriptSegment(0, 2, "Eine Studie von Ada 2021.", speaker="S1")],
+            segments=[
+                TranscriptSegment(0, 2, "Eine Studie von Ada 2021.", speaker="S1")
+            ],
         ),
         media,
     )
@@ -155,4 +164,7 @@ def test_attach_media_metadata_keeps_audio_identity_for_video_fallback(tmp_path)
     )
     assert artifact.video_hash
     assert artifact.audio_hash
-    assert artifact.ingestion_checks["audio_hash_kind"] in {"decoded_audio", "container_fallback"}
+    assert artifact.ingestion_checks["audio_hash_kind"] in {
+        "decoded_audio",
+        "container_fallback",
+    }

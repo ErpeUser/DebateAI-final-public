@@ -4,11 +4,11 @@
    resolves under the Starlight base in dev and in the assembled Worker. */
 
 @font-face {
-  font-family: 'Newsreader';
+  font-family: "Newsreader";
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: url('/docs/fonts/newsreader-latin-500.woff2') format('woff2');
+  src: url("/docs/fonts/newsreader-latin-500.woff2") format("woff2");
 }
 
 :root {
@@ -23,7 +23,7 @@
   --sl-color-hairline-light: #1a2825;
 }
 
-:root[data-theme='light'] {
+:root[data-theme="light"] {
   --sl-color-accent-low: #e3f2ef;
   --sl-color-accent: #0f766e;
   --sl-color-accent-high: #0b5750;
@@ -39,7 +39,7 @@
 .content-panel h1,
 .sl-markdown-content h1,
 .sl-markdown-content h2 {
-  font-family: 'Newsreader', Georgia, 'Times New Roman', serif;
+  font-family: "Newsreader", Georgia, "Times New Roman", serif;
   font-weight: 500;
   letter-spacing: -0.01em;
 }

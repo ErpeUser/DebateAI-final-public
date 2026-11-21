@@ -1,27 +1,28 @@
 import logging
 import uuid
 
+from app.database import get_db
+from app.models import Session, Speaker, TranscriptEntry, TranscriptEntryRevision
+from app.schemas import TranscriptEntryOut, TranscriptEntryRevisionOut
+from app.services.agents.orchestrator import get_live_orchestrator
+from app.services.pii import shield
+from app.services.provisional_transcripts import (
+    list_visible_provisional_revisions,
+    provisional_transcript_payload,
+)
+from app.services.session_manager import get_next_sequence
+from app.services.transcript_revisions import (
+    UNCHANGED,
+    apply_manual_transcript_revision,
+)
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_db
-from app.models import Session, Speaker, TranscriptEntry, TranscriptEntryRevision
-from app.schemas import TranscriptEntryOut, TranscriptEntryRevisionOut
-from app.services.pii import shield
-from app.services.session_manager import get_next_sequence
-from app.services.provisional_transcripts import (
-    list_visible_provisional_revisions,
-    provisional_transcript_payload,
+router = APIRouter(
+    prefix="/api/sessions/{session_id}/transcripts", tags=["transcripts"]
 )
-from app.services.transcript_revisions import (
-    UNCHANGED,
-    apply_manual_transcript_revision,
-)
-from app.services.agents.orchestrator import get_live_orchestrator
-
-router = APIRouter(prefix="/api/sessions/{session_id}/transcripts", tags=["transcripts"])
 logger = logging.getLogger(__name__)
 
 
@@ -37,17 +38,23 @@ class TranscriptUpdate(BaseModel):
 
 
 @router.post("", status_code=201)
-async def create_transcript(session_id: uuid.UUID, body: TranscriptCreate, db: AsyncSession = Depends(get_db)):
+async def create_transcript(
+    session_id: uuid.UUID, body: TranscriptCreate, db: AsyncSession = Depends(get_db)
+):
     """Save a transcript entry from the browser's Speech Recognition API."""
     if await db.get(Session, session_id) is None:
         raise HTTPException(status_code=404, detail="Session not found")
     if body.speaker_id is not None:
         speaker = await db.get(Speaker, body.speaker_id)
         if speaker is None or speaker.session_id != session_id:
-            raise HTTPException(status_code=422, detail="Speaker does not belong to this session")
+            raise HTTPException(
+                status_code=422, detail="Speaker does not belong to this session"
+            )
     text = await shield.protect_text(db, session_id, body.text)
     seq = await get_next_sequence(session_id, db)
-    entry = TranscriptEntry(session_id=session_id, text=text, sequence=seq, speaker_id=body.speaker_id)
+    entry = TranscriptEntry(
+        session_id=session_id, text=text, sequence=seq, speaker_id=body.speaker_id
+    )
     db.add(entry)
     await db.commit()
     return {"ok": True}
@@ -90,7 +97,10 @@ async def update_transcript(
     if "text" in body.model_fields_set:
         if body.text is None or not body.text.strip():
             from fastapi import HTTPException
-            raise HTTPException(status_code=422, detail="Transcript text cannot be empty")
+
+            raise HTTPException(
+                status_code=422, detail="Transcript text cannot be empty"
+            )
         text = await shield.protect_text(db, session_id, body.text)
     speaker_id: uuid.UUID | None | object = (
         body.speaker_id if "speaker_id" in body.model_fields_set else UNCHANGED
@@ -106,6 +116,7 @@ async def update_transcript(
     entry = applied.entry
     if entry is None:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Transcript entry not found")
     utterance_id = entry.utterance_id or str(entry.id)
     corrected_utterance_text = entry.text
@@ -141,7 +152,9 @@ async def update_transcript(
                 speaker_type=speaker.speaker_type if speaker is not None else None,
                 utterance_id=utterance_id,
             )
-        except Exception as exc:  # Durable correction must survive a closed live socket.
+        except (
+            Exception
+        ) as exc:  # Durable correction must survive a closed live socket.
             logger.warning("Live recommendation invalidation failed: %s", exc)
     return entry
 
@@ -158,6 +171,7 @@ async def list_transcript_revisions(
     entry = await db.get(TranscriptEntry, transcript_id)
     if entry is None or entry.session_id != session_id:
         from fastapi import HTTPException
+
         raise HTTPException(status_code=404, detail="Transcript entry not found")
     result = await db.execute(
         select(TranscriptEntryRevision)

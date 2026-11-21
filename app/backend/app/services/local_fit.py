@@ -19,15 +19,12 @@ import logging
 import math
 import re
 import time
-from datetime import datetime, timezone
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Awaitable, Callable
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
+from typing import Any
 
 from app.models import AgentConfig
-from app.services.model_intervals import parse_model_intervals
 from app.services.app_settings import get_app_setting, set_app_setting
 from app.services.audio_utils import synthetic_speech_clip
 from app.services.batch_transcriber import _audio_has_speech_energy
@@ -42,6 +39,7 @@ from app.services.fit_staleness import (
 from app.services.llm import generate_text
 from app.services.local_live_captioner import LOCAL_LIVE_MODEL_MAP
 from app.services.local_transcriber import LOCAL_MODEL_MAP, LocalTranscriber
+from app.services.model_intervals import parse_model_intervals
 from app.services.transcription_language import (
     AUTO_LANGUAGE,
     SETTING_TRANSCRIPTION_LANGUAGE,
@@ -51,6 +49,8 @@ from app.services.transcription_language import (
     normalize_language,
     recommendable_for_language,
 )
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -114,9 +114,27 @@ AGENT_ROLES: tuple[AgentRole, ...] = (
     AgentRole("consolidated_analyst", "Consolidated Analyst", "long", 40),
     AgentRole("strategic_signals", "Strategic Signals", "long", 45),
     AgentRole("synthesizer", "Principal Agent", "long", 75),
-    AgentRole("brief_meeting_lens", "Briefing Meeting Lens", "long", POST_CALL_GREEN_SECONDS, post_call=True),
-    AgentRole("brief_discovery_lens", "Briefing Discovery Lens", "long", POST_CALL_GREEN_SECONDS, post_call=True),
-    AgentRole("brief_arbiter", "Briefing Arbiter", "long", POST_CALL_GREEN_SECONDS, post_call=True),
+    AgentRole(
+        "brief_meeting_lens",
+        "Briefing Meeting Lens",
+        "long",
+        POST_CALL_GREEN_SECONDS,
+        post_call=True,
+    ),
+    AgentRole(
+        "brief_discovery_lens",
+        "Briefing Discovery Lens",
+        "long",
+        POST_CALL_GREEN_SECONDS,
+        post_call=True,
+    ),
+    AgentRole(
+        "brief_arbiter",
+        "Briefing Arbiter",
+        "long",
+        POST_CALL_GREEN_SECONDS,
+        post_call=True,
+    ),
 )
 
 _ROLES_BY_SLUG = {role.slug: role for role in AGENT_ROLES}
@@ -236,7 +254,9 @@ def _fill_placeholders(prompt: str) -> str:
     Known placeholders get realistic filler; any unknown `{token}` is dropped so
     the benchmark never sends a stray literal brace to a picky server.
     """
-    return _PLACEHOLDER_RE.sub(lambda m: _PLACEHOLDER_FILLERS.get(m.group(1), ""), prompt)
+    return _PLACEHOLDER_RE.sub(
+        lambda m: _PLACEHOLDER_FILLERS.get(m.group(1), ""), prompt
+    )
 
 
 async def role_system_prompts(db: AsyncSession) -> dict[str, str]:
@@ -246,13 +266,15 @@ async def role_system_prompts(db: AsyncSession) -> dict[str, str]:
     generic system prompt) with placeholders filled, so the timed call carries
     the same heavy prefill a production call would.
     """
-    from app.services.seed_agents import DEFAULT_PROMPTS
     from app.services.agents.prompt_resources import load_prompt_resource
+    from app.services.seed_agents import DEFAULT_PROMPTS
 
     slugs = list(_PROFILE_ROLE.values())
     rows = (
-        await db.execute(select(AgentConfig).where(AgentConfig.slug.in_(slugs)))
-    ).scalars().all()
+        (await db.execute(select(AgentConfig).where(AgentConfig.slug.in_(slugs))))
+        .scalars()
+        .all()
+    )
     by_slug = {row.slug: row.prompt for row in rows}
     prompts: dict[str, str] = {}
     for profile, slug in _PROFILE_ROLE.items():
@@ -361,7 +383,9 @@ def recommend_interval(latency_seconds: float, current_interval_seconds: int) ->
     latency, clamped so an unusably slow model tops out at MAX_INTERVAL rather
     than recommending a non-live number.
     """
-    needed = _round_up(latency_seconds / HEADROOM) if latency_seconds > 0 else MIN_INTERVAL
+    needed = (
+        _round_up(latency_seconds / HEADROOM) if latency_seconds > 0 else MIN_INTERVAL
+    )
     recommended = max(current_interval_seconds, needed, MIN_INTERVAL)
     return min(recommended, MAX_INTERVAL)
 
@@ -443,8 +467,10 @@ async def benchmark_text_model(
     system_prompts = system_prompts or {}
     try:
         await generate(model_id, _WARMUP_PROMPT, source="local_fit")
-    except Exception as exc:  # noqa: BLE001 - surfaced to the user as a reason
-        return TextModelFit(model_id, model_name, status="failed", reason=f"Model call failed: {exc}")
+    except Exception as exc:
+        return TextModelFit(
+            model_id, model_name, status="failed", reason=f"Model call failed: {exc}"
+        )
 
     profiles: dict[str, ProfileLatency] = {}
     for name, prompt in _PROMPTS.items():
@@ -454,9 +480,12 @@ async def benchmark_text_model(
                 model_id, prompt, system=system_prompts.get(name), source="local_fit"
             )
             elapsed = time.perf_counter() - started
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return TextModelFit(
-                model_id, model_name, status="failed", reason=f"{name} benchmark failed: {exc}"
+                model_id,
+                model_name,
+                status="failed",
+                reason=f"{name} benchmark failed: {exc}",
             )
         output_chars = len(text or "")
         profiles[name] = ProfileLatency(
@@ -484,12 +513,16 @@ async def local_text_models(db: AsyncSession) -> list[dict]:
 
 async def _interval_agent_rows(db: AsyncSession) -> dict[str, AgentConfig]:
     rows = (
-        await db.execute(
-            select(AgentConfig).where(
-                AgentConfig.slug.in_([role.slug for role in _INTERVAL_ROLES])
+        (
+            await db.execute(
+                select(AgentConfig).where(
+                    AgentConfig.slug.in_([role.slug for role in _INTERVAL_ROLES])
+                )
             )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     return {row.slug: row for row in rows}
 
 
@@ -501,7 +534,10 @@ async def current_intervals(db: AsyncSession) -> dict[str, int]:
     """
     by_slug = await _interval_agent_rows(db)
     return {
-        role.slug: (getattr(by_slug.get(role.slug), "interval_seconds", None) or role.default_interval)
+        role.slug: (
+            getattr(by_slug.get(role.slug), "interval_seconds", None)
+            or role.default_interval
+        )
         for role in _INTERVAL_ROLES
     }
 
@@ -594,7 +630,9 @@ async def local_models_all(db: AsyncSession) -> list[dict]:
     """Every model that runs on this machine: bundled ONNX plus on-prem endpoints."""
     from app.config import MODEL_REGISTRY
 
-    bundled = [m for m in MODEL_REGISTRY if str(m.get("provider", "")).lower() == "local"]
+    bundled = [
+        m for m in MODEL_REGISTRY if str(m.get("provider", "")).lower() == "local"
+    ]
     served = [m for m in await endpoint_models(db) if m.get("runs_locally")]
     return bundled + served
 
@@ -625,7 +663,7 @@ async def run_local_fit(
     bundled local ASR models on a synthetic clip, in one pass."""
     models = await local_text_models(db)
     host = host_fingerprint(probe_sortformer_environment())
-    measured_at = datetime.now(timezone.utc)
+    measured_at = datetime.now(UTC)
     systems = await role_system_prompts(db)
     text_models: list[dict] = []
     for model in models:
@@ -785,7 +823,9 @@ async def local_model_recommendations(db: AsyncSession) -> dict[str, list[dict]]
     language = normalize_language(
         await get_app_setting(db, SETTING_TRANSCRIPTION_LANGUAGE, AUTO_LANGUAGE)
     )
-    return local_recommendations_from_fit(await load_local_fit_result(db), language=language)
+    return local_recommendations_from_fit(
+        await load_local_fit_result(db), language=language
+    )
 
 
 def local_recommendations_from_fit(
@@ -817,8 +857,12 @@ def local_recommendations_from_fit(
                 model_id=measurement["model_id"],
                 model_name=measurement.get("model_name") or measurement["model_id"],
                 status="ok",
-                short=ProfileLatency(float(measurement["short"]["latency_seconds"]), 0, None),
-                long=ProfileLatency(float(measurement["long"]["latency_seconds"]), 0, None),
+                short=ProfileLatency(
+                    float(measurement["short"]["latency_seconds"]), 0, None
+                ),
+                long=ProfileLatency(
+                    float(measurement["long"]["latency_seconds"]), 0, None
+                ),
             )
         except (KeyError, TypeError, ValueError):
             continue
@@ -865,9 +909,7 @@ def local_recommendations_from_fit(
         except (KeyError, TypeError, ValueError):
             continue
         if classify_rtf(effective_rtf) == GREEN:
-            asr_candidates.append(
-                (effective_rtf, measurement["model_id"], measurement)
-            )
+            asr_candidates.append((effective_rtf, measurement["model_id"], measurement))
 
     def suits_language(model_id: str) -> bool:
         return language is None or recommendable_for_language(model_id, language)
@@ -878,14 +920,20 @@ def local_recommendations_from_fit(
     # wins if it keeps up, because Base is always the faster (ALP-406).
     code = language_code_or_none(language)
     if code is not None:
-        specialists = [c for c in batch_candidates if code in (model_languages(c[1]) or ())]
+        specialists = [
+            c for c in batch_candidates if code in (model_languages(c[1]) or ())
+        ]
         if specialists:
             batch_candidates = specialists
         elif batch_candidates:
             best_rank = max(multilingual_rank(c[1]) for c in batch_candidates)
-            batch_candidates = [c for c in batch_candidates if multilingual_rank(c[1]) == best_rank]
+            batch_candidates = [
+                c for c in batch_candidates if multilingual_rank(c[1]) == best_rank
+            ]
     if batch_candidates:
-        _, model_id, _ = min(batch_candidates, key=lambda choice: (choice[0], choice[1]))
+        _, model_id, _ = min(
+            batch_candidates, key=lambda choice: (choice[0], choice[1])
+        )
         recommendations.setdefault(model_id, []).append(
             {
                 "role": "batch_transcription",
@@ -969,7 +1017,7 @@ async def apply_recommended_intervals(
     The budget is stored under model_id in each agent's model_intervals, so it
     only applies when that agent runs that model; other models are untouched.
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
     if not model_id or not isinstance(model_id, str):
         raise ValueError("model_id is required")
@@ -977,12 +1025,16 @@ async def apply_recommended_intervals(
     if not cleaned:
         return {}
     rows = (
-        await db.execute(
-            select(AgentConfig).where(AgentConfig.slug.in_(list(cleaned)))
+        (
+            await db.execute(
+                select(AgentConfig).where(AgentConfig.slug.in_(list(cleaned)))
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     applied: dict[str, int] = {}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     for row in rows:
         model_intervals = parse_model_intervals(getattr(row, "model_intervals", ""))
         model_intervals[model_id] = cleaned[row.slug]
@@ -1096,7 +1148,9 @@ async def benchmark_asr_model(
     name = _asr_model_name(model_id)
     try:
         transcriber = make_transcriber(model_id)
-        await transcriber.transcribe_segment(pcm_bytes)  # warmup: model load is not charged
+        await transcriber.transcribe_segment(
+            pcm_bytes
+        )  # warmup: model load is not charged
         started = time.perf_counter()
         await transcriber.transcribe_segment(pcm_bytes)
         elapsed = time.perf_counter() - started
@@ -1105,7 +1159,7 @@ async def benchmark_asr_model(
             short_started = time.perf_counter()
             await transcriber.transcribe_segment(short_pcm)
             short_rtf = round((time.perf_counter() - short_started) / short_seconds, 3)
-    except Exception as exc:  # noqa: BLE001 - surfaced to the user as a reason
+    except Exception as exc:
         return ASRModelFit(
             model_id,
             name,
@@ -1124,7 +1178,9 @@ async def benchmark_asr_model(
         real_time_factor=rtf,
         verdict=classify_rtf(rtf) if rtf is not None else RED,
         short_real_time_factor=short_rtf,
-        live_feasibility=classify_live_feasibility(short_rtf) if short_rtf is not None else "",
+        live_feasibility=classify_live_feasibility(short_rtf)
+        if short_rtf is not None
+        else "",
         estimated=estimated,
     )
 

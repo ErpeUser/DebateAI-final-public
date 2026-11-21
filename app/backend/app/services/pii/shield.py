@@ -15,11 +15,9 @@ import json
 import logging
 import time
 import uuid
+from collections.abc import Callable
 from dataclasses import asdict, dataclass, field
-from typing import Any, Callable
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Any
 
 from app.models import PiiRevealEvent, Speaker
 from app.services.app_settings import get_app_setting, set_app_setting
@@ -38,6 +36,8 @@ from app.services.pii.recognizers import (
 from app.services.pii.state import SETTINGS_KEY
 from app.services.pii.transaction_cache import TransactionCache
 from app.services.pii.vault import TOKEN_PATTERN, has_tokens
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ class ShieldSettings:
         return json.dumps(asdict(self))
 
     @classmethod
-    def from_json(cls, raw: str) -> "ShieldSettings":
+    def from_json(cls, raw: str) -> ShieldSettings:
         if not raw:
             return cls()
         try:
@@ -76,9 +76,11 @@ class ShieldSettings:
         raw_categories = data.get("categories", DEFAULT_CATEGORIES)
         if not isinstance(raw_categories, list):
             raw_categories = DEFAULT_CATEGORIES
-        categories = list(dict.fromkeys(
-            c for c in raw_categories if isinstance(c, str) and c in CATEGORIES
-        ))[:32]
+        categories = list(
+            dict.fromkeys(
+                c for c in raw_categories if isinstance(c, str) and c in CATEGORIES
+            )
+        )[:32]
         raw_terms = data.get("protected_terms", [])
         if not isinstance(raw_terms, list):
             raw_terms = []
@@ -125,7 +127,11 @@ async def set_settings(db: AsyncSession, new: ShieldSettings) -> ShieldSettings:
     await set_app_setting(db, SETTINGS_KEY, new.to_json())
     _settings_cache = (time.monotonic(), new)
     _roster_cache.invalidate()
-    logger.info("PII Shield %s (%s)", "enabled" if new.enabled else "disabled", ", ".join(new.categories))
+    logger.info(
+        "PII Shield %s (%s)",
+        "enabled" if new.enabled else "disabled",
+        ", ".join(new.categories),
+    )
     return new
 
 
@@ -149,12 +155,12 @@ async def get_settings_standalone() -> ShieldSettings:
     try:
         async with async_session() as db:
             return await get_settings(db)
-    except Exception:  # noqa: BLE001 - the database, not the shield, is the problem here
+    except Exception:
         # Keep the last known settings rather than let a database hiccup
         # disable an already enabled policy. A cold-start failure below fails closed.
         if _settings_cache:
             return _settings_cache[1]
-        logger.error("PII Shield settings could not be read; failing closed", exc_info=True)
+        logger.exception("PII Shield settings could not be read; failing closed")
         # A database outage must never silently disable protection.
         return ShieldSettings(enabled=True)
 
@@ -178,8 +184,7 @@ def _is_generic_speaker_name(name: str) -> bool:
     return (
         not lowered
         or lowered == "unknown"
-        or lowered.startswith("participant ")
-        or lowered.startswith("remote participant ")
+        or lowered.startswith(("participant ", "remote participant "))
         or lowered in ("me", "you", "speaker")
         or has_tokens(name)
     )
@@ -188,7 +193,9 @@ def _is_generic_speaker_name(name: str) -> bool:
 _ROSTER_CATEGORIES = (PERSON, ORG, LOCATION)
 
 
-async def session_roster(db: AsyncSession, session_id: uuid.UUID, settings: ShieldSettings) -> list[RosterEntry]:
+async def session_roster(
+    db: AsyncSession, session_id: uuid.UUID, settings: ShieldSettings
+) -> list[RosterEntry]:
     """Known names for this session: its speakers, the protected terms, and
     every name the session's vault already holds.
 
@@ -218,7 +225,7 @@ async def session_roster(db: AsyncSession, session_id: uuid.UUID, settings: Shie
     for term in settings.protected_terms:
         add(term["value"], term["category"])
     for token, value in (await vault.reveal_map(db, session_id)).items():
-        category = token[1:token.index("_")]
+        category = token[1 : token.index("_")]
         if category in _ROSTER_CATEGORIES:
             add(value, category)
     # The queries above may have started the caller's outer transaction.
@@ -228,18 +235,30 @@ async def session_roster(db: AsyncSession, session_id: uuid.UUID, settings: Shie
 
 # ── Encode path ───────────────────────────────────────────────────────────
 
-def detect(text: str, roster: list[RosterEntry], settings: ShieldSettings, *, use_ner: bool | None = None) -> list[Span]:
+
+def detect(
+    text: str,
+    roster: list[RosterEntry],
+    settings: ShieldSettings,
+    *,
+    use_ner: bool | None = None,
+) -> list[Span]:
     """Every span the shield would replace, overlaps resolved. Pure CPU."""
     categories = set(settings.categories)
     spans = find_patterns(text, categories)
     spans.extend(find_roster(text, roster, categories))
-    if (settings.ner if use_ner is None else use_ner) and categories & {PERSON, ORG, LOCATION}:
+    if (settings.ner if use_ner is None else use_ner) and categories & {
+        PERSON,
+        ORG,
+        LOCATION,
+    }:
         spans.extend(ner.find_entities(text, categories))
     # Never re-tokenize a token, and never split one.
     token_ranges = [(m.start(), m.end()) for m in TOKEN_PATTERN.finditer(text)]
     if token_ranges:
         spans = [
-            s for s in spans
+            s
+            for s in spans
             if not any(s.start < end and start < s.end for start, end in token_ranges)
         ]
     return resolve_spans(spans)
@@ -271,7 +290,7 @@ async def protect_text(
     known_before = await vault.entry_count(db, session_id)
     for span in spans:
         token = await vault.token_for(db, session_id, span.category, span.value)
-        pieces.append(text[cursor:span.start])
+        pieces.append(text[cursor : span.start])
         pieces.append(token)
         cursor = span.end
     pieces.append(text[cursor:])
@@ -317,7 +336,7 @@ async def protect_text_for_sessions(
     cursor = 0
     for span in spans:
         token = await vault.token_for(db, primary_session, span.category, span.value)
-        pieces.append(text[cursor:span.start])
+        pieces.append(text[cursor : span.start])
         pieces.append(token)
         cursor = span.end
     pieces.append(text[cursor:])
@@ -325,7 +344,9 @@ async def protect_text_for_sessions(
     return "".join(pieces)
 
 
-async def protect_name(db: AsyncSession, session_id: uuid.UUID, name: str | None) -> str:
+async def protect_name(
+    db: AsyncSession, session_id: uuid.UUID, name: str | None
+) -> str:
     """A speaker's name is a person's name by definition: no detection needed.
 
     Generic labels ("Participant 2", "Unknown") and values that are already
@@ -334,7 +355,11 @@ async def protect_name(db: AsyncSession, session_id: uuid.UUID, name: str | None
     if not name or not name.strip():
         return name or ""
     settings = await get_settings(db)
-    if not settings.enabled or PERSON not in settings.categories or _is_generic_speaker_name(name):
+    if (
+        not settings.enabled
+        or PERSON not in settings.categories
+        or _is_generic_speaker_name(name)
+    ):
         return name
     token = await vault.token_for(db, session_id, PERSON, name.strip())
     invalidate_roster(session_id)
@@ -347,7 +372,9 @@ def forget_session(session_id: uuid.UUID) -> None:
     invalidate_roster(session_id)
 
 
-async def protect_fields(db: AsyncSession, session_id: uuid.UUID, obj: Any, fields: tuple[str, ...]) -> None:
+async def protect_fields(
+    db: AsyncSession, session_id: uuid.UUID, obj: Any, fields: tuple[str, ...]
+) -> None:
     """Protect the named string attributes of an ORM row in place."""
     settings = await get_settings(db)
     if not settings.enabled:
@@ -355,19 +382,25 @@ async def protect_fields(db: AsyncSession, session_id: uuid.UUID, obj: Any, fiel
     for name in fields:
         value = getattr(obj, name, None)
         if isinstance(value, str) and value:
-            setattr(obj, name, await protect_text(db, session_id, value, settings=settings))
+            setattr(
+                obj, name, await protect_text(db, session_id, value, settings=settings)
+            )
 
 
-async def preview(db: AsyncSession, text: str, session_id: uuid.UUID | None = None) -> dict:
+async def preview(
+    db: AsyncSession, text: str, session_id: uuid.UUID | None = None
+) -> dict:
     """What the shield would do to ``text``, without touching the vault.
 
     Tokens are numbered from 1 in the order found; the real session vault
     would reuse existing ordinals for values it has already seen.
     """
     settings = await get_settings(db)
-    roster = await session_roster(db, session_id, settings) if session_id else [
-        RosterEntry(t["value"], t["category"]) for t in settings.protected_terms
-    ]
+    roster = (
+        await session_roster(db, session_id, settings)
+        if session_id
+        else [RosterEntry(t["value"], t["category"]) for t in settings.protected_terms]
+    )
     spans = await asyncio.to_thread(detect, text, roster, settings)
     counters: dict[str, int] = {}
     seen: dict[tuple[str, str], str] = {}
@@ -381,15 +414,28 @@ async def preview(db: AsyncSession, text: str, session_id: uuid.UUID | None = No
             counters[span.category] = counters.get(span.category, 0) + 1
             token = vault.make_token(span.category, counters[span.category])
             seen[key] = token
-        pieces.append(text[cursor:span.start])
+        pieces.append(text[cursor : span.start])
         pieces.append(token)
         cursor = span.end
-        findings.append({"text": span.text, "category": span.category, "token": token, "source": span.source, "score": round(span.score, 2)})
+        findings.append(
+            {
+                "text": span.text,
+                "category": span.category,
+                "token": token,
+                "source": span.source,
+                "score": round(span.score, 2),
+            }
+        )
     pieces.append(text[cursor:])
-    return {"protected": "".join(pieces), "findings": findings, "enabled": settings.enabled}
+    return {
+        "protected": "".join(pieces),
+        "findings": findings,
+        "enabled": settings.enabled,
+    }
 
 
 # ── Decode path ───────────────────────────────────────────────────────────
+
 
 def substitute(text: str, mapping: dict[str, str]) -> tuple[str, int]:
     """Replace every token in ``text`` that ``mapping`` knows. Pure."""
@@ -477,9 +523,13 @@ async def record_reveal(session_id: uuid.UUID | None, route: str, count: int) ->
 
     try:
         async with async_session() as db:
-            db.add(PiiRevealEvent(session_id=session_id, route=route[:160], token_count=count))
+            db.add(
+                PiiRevealEvent(
+                    session_id=session_id, route=route[:160], token_count=count
+                )
+            )
             await db.commit()
-    except Exception:  # noqa: BLE001 - the audit trail must not break the page it describes
+    except Exception:
         logger.warning("Could not record a PII reveal event", exc_info=True)
 
 

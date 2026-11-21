@@ -26,9 +26,9 @@ import json
 import logging
 import os
 import re
-import uuid
 import threading
-from datetime import datetime, timezone
+import uuid
+from datetime import UTC, datetime
 from pathlib import Path
 
 from app.services.pii import vault
@@ -206,30 +206,38 @@ async def guard(
     leaks = find_leaks(text) if settings.enabled else []
     blocked = bool(leaks)
     if settings.prompt_log:
-        await asyncio.to_thread(record, {
-            "at": datetime.now(timezone.utc).isoformat(),
-            "source": source,
-            "model_id": model_id,
-            "session_id": str(session_id) if session_id else None,
-            "chars": len(text),
-            "tokens_present": bool(vault.has_tokens(text)),
-            "blocked": blocked,
-            "leaks": [
-                {
-                    "category": category,
-                    "length": len(value),
-                    "fingerprint": hashlib.sha256(value.encode("utf-8")).hexdigest()[:16],
-                }
-                for value, category in leaks
-            ],
-            "prompt": _safe_prompt_for_log(text, leaks)[:MAX_PROMPT_CHARS_STORED],
-            "truncated": len(text) > MAX_PROMPT_CHARS_STORED,
-        })
+        await asyncio.to_thread(
+            record,
+            {
+                "at": datetime.now(UTC).isoformat(),
+                "source": source,
+                "model_id": model_id,
+                "session_id": str(session_id) if session_id else None,
+                "chars": len(text),
+                "tokens_present": bool(vault.has_tokens(text)),
+                "blocked": blocked,
+                "leaks": [
+                    {
+                        "category": category,
+                        "length": len(value),
+                        "fingerprint": hashlib.sha256(
+                            value.encode("utf-8")
+                        ).hexdigest()[:16],
+                    }
+                    for value, category in leaks
+                ],
+                "prompt": _safe_prompt_for_log(text, leaks)[:MAX_PROMPT_CHARS_STORED],
+                "truncated": len(text) > MAX_PROMPT_CHARS_STORED,
+            },
+        )
     if blocked:
         categories = [category for _, category in leaks]
         logger.warning(
             "PII egress tripwire: %d vault value(s) (%s) found in the %s prompt for %s; call refused",
-            len(leaks), ", ".join(sorted(set(categories))), source or "text", model_id,
+            len(leaks),
+            ", ".join(sorted(set(categories))),
+            source or "text",
+            model_id,
         )
         try:
             sid = uuid.UUID(str(session_id)) if session_id else None

@@ -8,13 +8,11 @@ route through app.services.llm.generate_json, which dispatches by provider.
 
 import unittest
 import uuid
-
-from app.config import settings
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-
+from app.config import settings
 from app.services import briefing_synthesis, llm
 from app.services.agents import strategic_signals
 from app.services.briefing_synthesis import (
@@ -30,10 +28,14 @@ OPENAI_MODEL = "gpt-5.6-luna"
 GOOGLE_MODEL = "gemini-3.5-flash"
 
 
-def _chat_response(content=None, status=200, message="You exceeded your current quota."):
+def _chat_response(
+    content=None, status=200, message="You exceeded your current quota."
+):
     request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
     if status != 200:
-        return httpx.Response(status, request=request, json={"error": {"message": message}})
+        return httpx.Response(
+            status, request=request, json={"error": {"message": message}}
+        )
     return httpx.Response(
         200,
         request=request,
@@ -95,14 +97,22 @@ def _context():
 def _briefing_configs(model_id):
     return {
         slug: SimpleNamespace(enabled=True, model_id=model_id, prompt="")
-        for slug in (BRIEF_MEETING_LENS_SLUG, BRIEF_DISCOVERY_LENS_SLUG, BRIEF_ARBITER_SLUG)
+        for slug in (
+            BRIEF_MEETING_LENS_SLUG,
+            BRIEF_DISCOVERY_LENS_SLUG,
+            BRIEF_ARBITER_SLUG,
+        )
     }
 
 
 class ProviderRoutingTestCase(unittest.IsolatedAsyncioTestCase):
     def setUp(self):
-        self.enterContext(patch.object(llm, "is_local_only", AsyncMock(return_value=False)))
-        self.enterContext(patch.object(llm, "_resolve_key", AsyncMock(return_value="k")))
+        self.enterContext(
+            patch.object(llm, "is_local_only", AsyncMock(return_value=False))
+        )
+        self.enterContext(
+            patch.object(llm, "_resolve_key", AsyncMock(return_value="k"))
+        )
         self.enterContext(patch.object(llm, "record_token_usage", AsyncMock()))
         # The negotiated response_format is cached per base URL for the process,
         # so clear it or an earlier test's outcome decides this one's payload.
@@ -117,7 +127,9 @@ class ProviderRoutingTestCase(unittest.IsolatedAsyncioTestCase):
 
     def _patch_google(self, fake_client):
         httpx_client = MagicMock()
-        self.enterContext(patch.object(llm.genai, "Client", MagicMock(return_value=fake_client)))
+        self.enterContext(
+            patch.object(llm.genai, "Client", MagicMock(return_value=fake_client))
+        )
         self.enterContext(patch.object(llm.httpx, "AsyncClient", httpx_client))
         return httpx_client
 
@@ -157,8 +169,12 @@ class LLMGenerateJsonDispatchTests(ProviderRoutingTestCase):
 
         self.assertEqual("ok", parsed.notes)
         self.assertEqual(2, len(fake.posts))
-        self.assertEqual("json_schema", fake.posts[0]["json"]["response_format"]["type"])
-        self.assertEqual({"type": "json_object"}, fake.posts[1]["json"]["response_format"])
+        self.assertEqual(
+            "json_schema", fake.posts[0]["json"]["response_format"]["type"]
+        )
+        self.assertEqual(
+            {"type": "json_object"}, fake.posts[1]["json"]["response_format"]
+        )
 
     async def test_a_rejected_shape_is_not_retried_on_the_next_call(self):
         rejection = httpx.Response(
@@ -167,7 +183,11 @@ class LLMGenerateJsonDispatchTests(ProviderRoutingTestCase):
             json={"error": "'response_format.type' must be 'json_object'"},
         )
         fake = FakeHTTPX(
-            [rejection, _chat_response('{"notes": "a"}'), _chat_response('{"notes": "b"}')]
+            [
+                rejection,
+                _chat_response('{"notes": "a"}'),
+                _chat_response('{"notes": "b"}'),
+            ]
         )
         self._patch_openai(fake)
 
@@ -176,7 +196,9 @@ class LLMGenerateJsonDispatchTests(ProviderRoutingTestCase):
 
         # Three posts, not four: the second call starts at the learned shape.
         self.assertEqual(3, len(fake.posts))
-        self.assertEqual({"type": "json_object"}, fake.posts[2]["json"]["response_format"])
+        self.assertEqual(
+            {"type": "json_object"}, fake.posts[2]["json"]["response_format"]
+        )
 
     async def test_an_unrelated_400_is_not_swallowed_by_negotiation(self):
         broken = httpx.Response(
@@ -205,7 +227,9 @@ class LLMGenerateJsonDispatchTests(ProviderRoutingTestCase):
         self.assertIs(BriefLensOutput, config.response_schema)
 
     async def test_openai_reply_failing_validation_gets_one_strict_reprompt(self):
-        fake = FakeHTTPX([_chat_response("not json"), _chat_response('{"notes": "ok"}')])
+        fake = FakeHTTPX(
+            [_chat_response("not json"), _chat_response('{"notes": "ok"}')]
+        )
         self._patch_openai(fake)
 
         parsed = await llm.generate_json(OPENAI_MODEL, "Prompt", BriefLensOutput)
@@ -222,12 +246,18 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
     def _patch_briefing(self):
         persist = AsyncMock(return_value=SimpleNamespace())
         self.enterContext(
-            patch("app.services.privacy.is_local_only", new=AsyncMock(return_value=False))
+            patch(
+                "app.services.privacy.is_local_only", new=AsyncMock(return_value=False)
+            )
         )
         self.enterContext(
-            patch.object(briefing_synthesis, "_build_context", AsyncMock(return_value=_context()))
+            patch.object(
+                briefing_synthesis, "_build_context", AsyncMock(return_value=_context())
+            )
         )
-        self.enterContext(patch.object(briefing_synthesis, "_persist_synthesis", persist))
+        self.enterContext(
+            patch.object(briefing_synthesis, "_persist_synthesis", persist)
+        )
         return persist
 
     async def test_unselected_enabled_role_persists_setup_block_before_privacy(self):
@@ -268,15 +298,19 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
     async def test_openai_lenses_and_arbiter_use_openai_path(self):
         persist = self._patch_briefing()
         lens_json = '{"notes": "lens ok"}'
-        fake = FakeHTTPX([
-            _chat_response(lens_json),
-            _chat_response(lens_json),
-            _chat_response('{"arbiter_notes": "settled"}'),
-        ])
+        fake = FakeHTTPX(
+            [
+                _chat_response(lens_json),
+                _chat_response(lens_json),
+                _chat_response('{"arbiter_notes": "settled"}'),
+            ]
+        )
         genai_client = self._patch_openai(fake)
 
         await run_session_synthesis(
-            uuid.uuid4(), mode="post_call", agent_configs=_briefing_configs(OPENAI_MODEL)
+            uuid.uuid4(),
+            mode="post_call",
+            agent_configs=_briefing_configs(OPENAI_MODEL),
         )
 
         genai_client.assert_not_called()
@@ -292,11 +326,13 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
 
     async def test_only_sol_arbiter_uses_high_reasoning_effort(self):
         persist = self._patch_briefing()
-        fake = FakeHTTPX([
-            _chat_response('{"notes": "lens"}'),
-            _chat_response('{"notes": "lens"}'),
-            _chat_response('{"arbiter_notes": "settled"}'),
-        ])
+        fake = FakeHTTPX(
+            [
+                _chat_response('{"notes": "lens"}'),
+                _chat_response('{"notes": "lens"}'),
+                _chat_response('{"arbiter_notes": "settled"}'),
+            ]
+        )
         self._patch_openai(fake)
         configs = _briefing_configs("gpt-5.6-terra")
         configs[BRIEF_ARBITER_SLUG].model_id = "gpt-5.6-sol"
@@ -313,10 +349,12 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
         # test is actually for survives: the arbiter is raised and the lenses
         # are not, and the two must still differ.
         self.assertEqual(
-            settings.LLM_JSON_REASONING_EFFORT, fake.posts[0]["json"]["reasoning_effort"]
+            settings.LLM_JSON_REASONING_EFFORT,
+            fake.posts[0]["json"]["reasoning_effort"],
         )
         self.assertEqual(
-            settings.LLM_JSON_REASONING_EFFORT, fake.posts[1]["json"]["reasoning_effort"]
+            settings.LLM_JSON_REASONING_EFFORT,
+            fake.posts[1]["json"]["reasoning_effort"],
         )
         self.assertEqual("high", fake.posts[2]["json"]["reasoning_effort"])
         self.assertNotEqual(
@@ -331,7 +369,9 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
         httpx_client = self._patch_google(client)
 
         await run_session_synthesis(
-            uuid.uuid4(), mode="post_call", agent_configs=_briefing_configs(GOOGLE_MODEL)
+            uuid.uuid4(),
+            mode="post_call",
+            agent_configs=_briefing_configs(GOOGLE_MODEL),
         )
 
         httpx_client.assert_not_called()
@@ -348,12 +388,16 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
     async def test_openai_provider_error_surfaces_actionable_briefing_status(self):
         success_persist = self._patch_briefing()
         persist = AsyncMock(return_value=SimpleNamespace(status="error"))
-        self.enterContext(patch.object(briefing_synthesis, "_persist_error_synthesis", persist))
+        self.enterContext(
+            patch.object(briefing_synthesis, "_persist_error_synthesis", persist)
+        )
         fake = FakeHTTPX([_chat_response(status=429), _chat_response(status=429)])
         self._patch_openai(fake)
 
         await run_session_synthesis(
-            uuid.uuid4(), mode="post_call", agent_configs=_briefing_configs(OPENAI_MODEL)
+            uuid.uuid4(),
+            mode="post_call",
+            agent_configs=_briefing_configs(OPENAI_MODEL),
         )
 
         persist.assert_awaited_once()
@@ -383,7 +427,7 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
             del model_id, prompt, schema
             if kwargs["source"] == BRIEF_ARBITER_SLUG:
                 return BriefArbiterOutput(arbiter_notes="settled")
-            return BriefLensOutput(notes=f'{kwargs["source"]}_OUTPUT_MARKER')
+            return BriefLensOutput(notes=f"{kwargs['source']}_OUTPUT_MARKER")
 
         with (
             patch(
@@ -417,7 +461,9 @@ class BriefingProviderRoutingTests(ProviderRoutingTestCase):
         # user turn (ALP-285). What matters here is what the lens can see and
         # what the arbiter must not, which is a property of the whole request.
         prompts = {
-            call.kwargs["source"]: (call.kwargs.get("system") or "") + "\n" + call.args[1]
+            call.kwargs["source"]: (call.kwargs.get("system") or "")
+            + "\n"
+            + call.args[1]
             for call in generate_json.await_args_list
         }
         for slug in (BRIEF_MEETING_LENS_SLUG, BRIEF_DISCOVERY_LENS_SLUG):
@@ -450,12 +496,18 @@ class StrategicSignalsProviderRoutingTests(ProviderRoutingTestCase):
     def _patch_signals(self):
         persist = AsyncMock(return_value=SimpleNamespace())
         self.enterContext(
-            patch.object(strategic_signals, "is_local_only", AsyncMock(return_value=False))
+            patch.object(
+                strategic_signals, "is_local_only", AsyncMock(return_value=False)
+            )
         )
         self.enterContext(
-            patch.object(strategic_signals, "_build_context", AsyncMock(return_value=_context()))
+            patch.object(
+                strategic_signals, "_build_context", AsyncMock(return_value=_context())
+            )
         )
-        self.enterContext(patch.object(strategic_signals, "_persist_synthesis", persist))
+        self.enterContext(
+            patch.object(strategic_signals, "_persist_synthesis", persist)
+        )
         return persist
 
     async def test_openai_model_uses_openai_path(self):
@@ -463,10 +515,14 @@ class StrategicSignalsProviderRoutingTests(ProviderRoutingTestCase):
         fake = FakeHTTPX([_chat_response('{"arbiter_notes": "live"}')])
         genai_client = self._patch_openai(fake)
         configs = {
-            "strategic_signals": SimpleNamespace(enabled=True, model_id=OPENAI_MODEL, prompt="")
+            "strategic_signals": SimpleNamespace(
+                enabled=True, model_id=OPENAI_MODEL, prompt=""
+            )
         }
 
-        await strategic_signals.run_strategic_signals_cycle(uuid.uuid4(), agent_configs=configs)
+        await strategic_signals.run_strategic_signals_cycle(
+            uuid.uuid4(), agent_configs=configs
+        )
 
         genai_client.assert_not_called()
         self.assertEqual(1, len(fake.posts))
@@ -474,17 +530,23 @@ class StrategicSignalsProviderRoutingTests(ProviderRoutingTestCase):
         self.assertIn("/chat/completions", post["url"])
         self.assertEqual(OPENAI_MODEL, post["json"]["model"])
         persist.assert_awaited_once()
-        self.assertEqual("live", persist.await_args.kwargs["arbiter_output"].arbiter_notes)
+        self.assertEqual(
+            "live", persist.await_args.kwargs["arbiter_output"].arbiter_notes
+        )
 
     async def test_gemini_model_uses_google_native_schema(self):
         persist = self._patch_signals()
         client = FakeGoogleJSONClient()
         httpx_client = self._patch_google(client)
         configs = {
-            "strategic_signals": SimpleNamespace(enabled=True, model_id=GOOGLE_MODEL, prompt="")
+            "strategic_signals": SimpleNamespace(
+                enabled=True, model_id=GOOGLE_MODEL, prompt=""
+            )
         }
 
-        await strategic_signals.run_strategic_signals_cycle(uuid.uuid4(), agent_configs=configs)
+        await strategic_signals.run_strategic_signals_cycle(
+            uuid.uuid4(), agent_configs=configs
+        )
 
         httpx_client.assert_not_called()
         self.assertEqual(1, len(client.calls))

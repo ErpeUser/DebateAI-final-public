@@ -7,14 +7,22 @@ const RECORDING_MIME_TYPES = [
 ];
 
 function getRecorderOptions(): MediaRecorderOptions {
-  const mimeType = RECORDING_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
+  const mimeType = RECORDING_MIME_TYPES.find((type) =>
+    MediaRecorder.isTypeSupported(type),
+  );
   return mimeType ? { mimeType } : {};
 }
 
-function createRecordedFile(chunks: BlobPart[], mimeType: string, baseName: string): File {
+function createRecordedFile(
+  chunks: BlobPart[],
+  mimeType: string,
+  baseName: string,
+): File {
   const type = mimeType || "audio/webm";
   const extension = type.includes("mp4") ? "m4a" : "webm";
-  return new File([new Blob(chunks, { type })], `${baseName}.${extension}`, { type });
+  return new File([new Blob(chunks, { type })], `${baseName}.${extension}`, {
+    type,
+  });
 }
 
 interface UseClipRecorderOptions {
@@ -29,7 +37,12 @@ interface UseClipRecorderOptions {
  * guard ignores late callbacks from a superseded recording, and everything is
  * torn down on unmount so a stopped recorder never keeps the mic open.
  */
-export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseClipRecorderOptions) {
+export function useClipRecorder({
+  maxSeconds,
+  baseName,
+  onClip,
+  onError,
+}: UseClipRecorderOptions) {
   const [recording, setRecording] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const recorderRef = useRef<MediaRecorder | null>(null);
@@ -56,17 +69,20 @@ export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseCl
     recorderRef.current = null;
   }, []);
 
-  useEffect(() => () => {
-    generationRef.current += 1;
-    const recorder = recorderRef.current;
-    if (recorder) {
-      recorder.ondataavailable = null;
-      recorder.onstop = null;
-      if (recorder.state === "recording") recorder.stop();
-    }
-    clearTimer();
-    stopTracks();
-  }, [clearTimer, stopTracks]);
+  useEffect(
+    () => () => {
+      generationRef.current += 1;
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        if (recorder.state === "recording") recorder.stop();
+      }
+      clearTimer();
+      stopTracks();
+    },
+    [clearTimer, stopTracks],
+  );
 
   const start = useCallback(async () => {
     if (!supported) {
@@ -91,7 +107,11 @@ export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseCl
       };
       recorder.onstop = () => {
         if (generation !== generationRef.current) return;
-        const file = createRecordedFile(chunksRef.current, recorder.mimeType, baseName);
+        const file = createRecordedFile(
+          chunksRef.current,
+          recorder.mimeType,
+          baseName,
+        );
         stopTracks();
         clearTimer();
         setRecording(false);
@@ -105,18 +125,31 @@ export function useClipRecorder({ maxSeconds, baseName, onClip, onError }: UseCl
       timerRef.current = window.setInterval(() => {
         setSeconds((prev) => {
           const next = prev + 1;
-          if (next >= maxSeconds && recorder.state === "recording") recorder.stop();
+          if (next >= maxSeconds && recorder.state === "recording")
+            recorder.stop();
           return next;
         });
       }, 1000);
     } catch (err) {
       if (generation !== generationRef.current) return;
-      onError?.(err instanceof Error ? err.message : "Mikrofonaufnahme konnte nicht gestartet werden.");
+      onError?.(
+        err instanceof Error
+          ? err.message
+          : "Mikrofonaufnahme konnte nicht gestartet werden.",
+      );
       stopTracks();
       clearTimer();
       setRecording(false);
     }
-  }, [supported, maxSeconds, baseName, onClip, onError, stopTracks, clearTimer]);
+  }, [
+    supported,
+    maxSeconds,
+    baseName,
+    onClip,
+    onError,
+    stopTracks,
+    clearTimer,
+  ]);
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current;

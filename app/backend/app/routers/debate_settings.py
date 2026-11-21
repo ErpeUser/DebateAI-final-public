@@ -4,23 +4,22 @@ from __future__ import annotations
 
 from dataclasses import replace
 
-from fastapi import APIRouter, Depends
-from pydantic import BaseModel, Field
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.services.debate_settings import (
     DebateMode,
-    PipelineMode,
     DebateSettings,
     PerformanceProfile,
+    PipelineMode,
     ResearchFrequency,
     StyleFocus,
+    debate_profiles,
     get_debate_settings,
     set_debate_settings,
     settings_payload,
-    debate_profiles,
 )
+from fastapi import APIRouter, Depends
+from pydantic import BaseModel, Field
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/debate-settings", tags=["debate-settings"])
 
@@ -55,11 +54,11 @@ async def update_debate_settings(
 ):
     current = await get_debate_settings(db)
     changes = {
-        name: value
-        for name, value in update.model_dump().items()
-        if value is not None
+        name: value for name, value in update.model_dump().items() if value is not None
     }
-    if set(changes).intersection({"mode", "style_focus", "research_frequency", "always_analogy"}):
+    if set(changes).intersection(
+        {"mode", "style_focus", "research_frequency", "always_analogy"}
+    ):
         changes.update({"profile_id": "", "profile_directive": ""})
     updated: DebateSettings = replace(current, **changes)
     await set_debate_settings(db, updated)
@@ -74,9 +73,12 @@ async def read_debate_profiles():
 
 @router.post("/profiles/{profile_id}")
 async def apply_debate_profile(profile_id: str, db: AsyncSession = Depends(get_db)):
-    profile = next((item for item in debate_profiles() if item["id"] == profile_id), None)
+    profile = next(
+        (item for item in debate_profiles() if item["id"] == profile_id), None
+    )
     if profile is None:
         from fastapi import HTTPException
+
         raise HTTPException(404, "Unknown debate profile")
     current = await get_debate_settings(db)
     updated = replace(

@@ -4,8 +4,6 @@ import unittest
 from unittest.mock import AsyncMock, Mock, patch
 
 import numpy as np
-from fastapi import HTTPException, UploadFile
-
 from app.routers.diagnostics import (
     MAX_BENCHMARK_SECONDS,
     MIN_BENCHMARK_SECONDS,
@@ -33,6 +31,7 @@ from app.services.voice_enrollment import (
     MAX_ENROLLMENT_UPLOAD_BYTES,
     VoiceEnrollmentError,
 )
+from fastapi import HTTPException, UploadFile
 
 
 class DiarizationDiagnosticsTests(unittest.TestCase):
@@ -41,7 +40,9 @@ class DiarizationDiagnosticsTests(unittest.TestCase):
 
     def test_trim_benchmark_pcm_caps_audio_length(self):
         cap_bytes = MAX_BENCHMARK_SECONDS * 16000 * 2
-        self.assertEqual(len(trim_benchmark_pcm(b"\x00" * (cap_bytes + 100))), cap_bytes)
+        self.assertEqual(
+            len(trim_benchmark_pcm(b"\x00" * (cap_bytes + 100))), cap_bytes
+        )
         self.assertEqual(trim_benchmark_pcm(b"\x00" * 10), b"\x00" * 10)
 
     def test_benchmark_rejects_audio_shorter_than_one_live_window(self):
@@ -159,17 +160,17 @@ class DiarizationDiagnosticsTests(unittest.TestCase):
             patch(
                 "app.services.diarization_diagnostics._resident_memory_bytes",
                 side_effect=[
-                    100 * 1024 ** 2,
-                    130 * 1024 ** 2,
-                    160 * 1024 ** 2,
-                    150 * 1024 ** 2,
-                    140 * 1024 ** 2,
+                    100 * 1024**2,
+                    130 * 1024**2,
+                    160 * 1024**2,
+                    150 * 1024**2,
+                    140 * 1024**2,
                 ],
                 create=True,
             ) as memory_probe,
             patch(
                 "app.services.diarization_diagnostics._sample_resident_memory",
-                side_effect=lambda _stop, samples: samples.append(160 * 1024 ** 2),
+                side_effect=lambda _stop, samples: samples.append(160 * 1024**2),
             ),
         ):
             result = benchmark_sortformer_audio("sample.wav")
@@ -199,7 +200,9 @@ class DiarizationDiagnosticsTests(unittest.TestCase):
         )
         sampler = Mock()
         sampler.start.side_effect = RuntimeError("can't start new thread")
-        sampler.join.side_effect = RuntimeError("can't join thread before it is started")
+        sampler.join.side_effect = RuntimeError(
+            "can't join thread before it is started"
+        )
         sampler.is_alive.return_value = False
 
         with (
@@ -253,7 +256,10 @@ class VoiceProfileEndpointTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch("app.routers.diagnostics.convert_to_pcm16", side_effect=convert),
-            patch("app.routers.diagnostics.extract_enrollment_embedding", side_effect=extract),
+            patch(
+                "app.routers.diagnostics.extract_enrollment_embedding",
+                side_effect=extract,
+            ),
             patch(
                 "app.routers.diagnostics.save_local_voice_embedding",
                 new=AsyncMock(),
@@ -270,7 +276,9 @@ class VoiceProfileEndpointTests(unittest.IsolatedAsyncioTestCase):
         embedding = np.array([1.0, 0.0], dtype=np.float32)
 
         with (
-            patch("app.routers.diagnostics.convert_to_pcm16", return_value=b"pcm") as convert,
+            patch(
+                "app.routers.diagnostics.convert_to_pcm16", return_value=b"pcm"
+            ) as convert,
             patch(
                 "app.routers.diagnostics.extract_enrollment_embedding",
                 return_value=embedding,
@@ -299,15 +307,17 @@ class VoiceProfileEndpointTests(unittest.IsolatedAsyncioTestCase):
             patch("app.routers.diagnostics.convert_to_pcm16", return_value=b"pcm"),
             patch(
                 "app.routers.diagnostics.extract_enrollment_embedding",
-                side_effect=VoiceEnrollmentError("Voice sample must contain audible speech."),
+                side_effect=VoiceEnrollmentError(
+                    "Voice sample must contain audible speech."
+                ),
             ),
             patch(
                 "app.routers.diagnostics.save_local_voice_embedding",
                 new=AsyncMock(),
             ) as save,
+            self.assertRaises(HTTPException) as raised,
         ):
-            with self.assertRaises(HTTPException) as raised:
-                await replace_voice_profile(file, db)
+            await replace_voice_profile(file, db)
 
         self.assertEqual(400, raised.exception.status_code)
         save.assert_not_awaited()
@@ -372,6 +382,7 @@ class VoiceProfileEndpointTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.to_dict(), response)
         self.assertEqual(2, len(worker_threads))
         self.assertTrue(all(thread != main_thread for thread in worker_threads))
+
 
 if __name__ == "__main__":
     unittest.main()

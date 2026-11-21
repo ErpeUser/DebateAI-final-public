@@ -53,7 +53,11 @@ TRACK_SYS = 1
 
 def _read_pcm(path: str) -> bytes:
     with wave.open(path) as w:
-        if w.getframerate() != SAMPLE_RATE or w.getnchannels() != 1 or w.getsampwidth() != 2:
+        if (
+            w.getframerate() != SAMPLE_RATE
+            or w.getnchannels() != 1
+            or w.getsampwidth() != 2
+        ):
             raise SystemExit(
                 f"{path}: expected 16 kHz mono PCM16, got {w.getframerate()} Hz "
                 f"{w.getnchannels()}ch {w.getsampwidth() * 8}-bit"
@@ -88,11 +92,18 @@ def load_tracks(audio_dir: str, segment: int) -> tuple[bytes, bytes]:
     raise SystemExit(f"no segment_{segment} audio found in {audio_dir}")
 
 
-async def create_session(base_url: str, name: str, meeting_type: str, context: str) -> str:
+async def create_session(
+    base_url: str, name: str, meeting_type: str, context: str
+) -> str:
     import urllib.request
 
     body = json.dumps(
-        {"name": name, "meeting_type": meeting_type, "meeting_context": context, "notes": ""}
+        {
+            "name": name,
+            "meeting_type": meeting_type,
+            "meeting_context": context,
+            "notes": "",
+        }
     ).encode()
     req = urllib.request.Request(
         f"{base_url}/api/sessions",
@@ -129,7 +140,10 @@ async def _drain_server_messages(ws, state: dict):
                     if stage and stage != state.get("last_stage"):
                         state["last_stage"] = stage
                         print(f"  [post] {stage}: {data.get('message', '')}")
-                elif s in OVERLOAD_STATUS_STATES | {"transcription_error", "audio_error"}:
+                elif s in OVERLOAD_STATUS_STATES | {
+                    "transcription_error",
+                    "audio_error",
+                }:
                     print(f"  [WARN] {s}: {data.get('message', '')}")
                 if s == "completed":
                     state["completed"] = True
@@ -157,13 +171,15 @@ async def stream(
         reader = asyncio.create_task(_drain_server_messages(ws, state))
 
         if system:
-            await ws.send(json.dumps({"type": "track_state", "track": 1, "active": True}))
+            await ws.send(
+                json.dumps({"type": "track_state", "track": 1, "active": True})
+            )
 
         started = time.monotonic()
         for index in range(chunks):
             offset = index * CHUNK_BYTES
-            mic_chunk = mic[offset:offset + CHUNK_BYTES]
-            sys_chunk = system[offset:offset + CHUNK_BYTES]
+            mic_chunk = mic[offset : offset + CHUNK_BYTES]
+            sys_chunk = system[offset : offset + CHUNK_BYTES]
 
             if mic_chunk:
                 await ws.send(bytes([TRACK_MIC]) + mic_chunk)
@@ -203,21 +219,38 @@ async def stream(
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument("--audio-dir", required=True, help="directory holding segment_N*.wav")
+    parser = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
+    parser.add_argument(
+        "--audio-dir", required=True, help="directory holding segment_N*.wav"
+    )
     parser.add_argument("--segment", type=int, default=1)
     parser.add_argument("--base-url", default="http://localhost:8001")
-    parser.add_argument("--ws-url", default=None, help="defaults to base-url with ws scheme")
-    parser.add_argument("--session-id", default=None, help="replay into an existing session instead of creating one")
+    parser.add_argument(
+        "--ws-url", default=None, help="defaults to base-url with ws scheme"
+    )
+    parser.add_argument(
+        "--session-id",
+        default=None,
+        help="replay into an existing session instead of creating one",
+    )
     parser.add_argument("--name", default=None)
     parser.add_argument("--meeting-type", default="general")
     parser.add_argument("--meeting-context", default="")
     parser.add_argument(
-        "--speed", type=float, default=1.0,
+        "--speed",
+        type=float,
+        default=1.0,
         help="playback multiplier. Leave at 1.0 for anything you intend to measure: "
-             "agent cadence is wall-clock, so faster replay changes token totals.",
+        "agent cadence is wall-clock, so faster replay changes token totals.",
     )
-    parser.add_argument("--minutes", type=float, default=None, help="stop after this much audio (smoke tests)")
+    parser.add_argument(
+        "--minutes",
+        type=float,
+        default=None,
+        help="stop after this much audio (smoke tests)",
+    )
     args = parser.parse_args()
 
     mic, system = load_tracks(args.audio_dir, args.segment)
@@ -242,13 +275,19 @@ def main() -> int:
         )
     )
 
-    ws_base = args.ws_url or args.base_url.replace("https://", "wss://").replace("http://", "ws://")
+    ws_base = args.ws_url or args.base_url.replace("https://", "wss://").replace(
+        "http://", "ws://"
+    )
     ws_url = f"{ws_base}/ws/{session_id}"
 
     print(f"session   : {session_id}")
-    print(f"audio     : {audio_seconds / 60:.1f} min"
-          f"  ({'split mic+sys' if system else 'mixed as mic-only'})")
-    print(f"pace      : {args.speed}x -> about {audio_seconds / 60 / args.speed:.1f} min of wall time")
+    print(
+        f"audio     : {audio_seconds / 60:.1f} min"
+        f"  ({'split mic+sys' if system else 'mixed as mic-only'})"
+    )
+    print(
+        f"pace      : {args.speed}x -> about {audio_seconds / 60 / args.speed:.1f} min of wall time"
+    )
     print(f"websocket : {ws_url}")
     print()
 
@@ -257,7 +296,9 @@ def main() -> int:
     print()
     print(f"transcripts emitted : {state['transcripts']}")
     print(f"insights emitted    : {state['insights']}")
-    print(f"post-processing     : {'completed' if state['completed'] else 'DID NOT COMPLETE'}")
+    print(
+        f"post-processing     : {'completed' if state['completed'] else 'DID NOT COMPLETE'}"
+    )
     print()
     print(f"token usage: {args.base_url}/api/sessions/{session_id}/token-usage")
     return 0 if state["completed"] else 1

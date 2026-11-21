@@ -39,18 +39,41 @@ test("reconnect snapshots expand into their sequenced events", () => {
       through_sequence: 4,
       full: true,
       events: [
-        { type: "status", data: { state: "ready" }, session_sequence: 1, event_id: 1 },
-        { type: "debate_update", data: { answer_now: "Antwort" }, session_sequence: 4, event_id: 4 },
+        {
+          type: "status",
+          data: { state: "ready" },
+          session_sequence: 1,
+          event_id: 1,
+        },
+        {
+          type: "debate_update",
+          data: { answer_now: "Antwort" },
+          session_sequence: 4,
+          event_id: 4,
+        },
       ],
     },
   });
 
-  assert.deepEqual(events.map((event) => event.session_sequence), [1, 4]);
+  assert.deepEqual(
+    events.map((event) => event.session_sequence),
+    [1, 4],
+  );
 });
 
 test("duplicates are ignored and stale interim revisions are coalesced", () => {
-  const first = { type: "interim_transcript", data: { segment_id: "a", text: "Alt" }, session_sequence: 1, event_id: 1 };
-  const newer = { type: "interim_transcript", data: { segment_id: "a", text: "Neu" }, session_sequence: 2, event_id: 2 };
+  const first = {
+    type: "interim_transcript",
+    data: { segment_id: "a", text: "Alt" },
+    session_sequence: 1,
+    event_id: 1,
+  };
+  const newer = {
+    type: "interim_transcript",
+    data: { segment_id: "a", text: "Neu" },
+    session_sequence: 2,
+    event_id: 2,
+  };
   const merged = mergeSocketEvents([first], [first, newer], 10);
 
   assert.equal(merged.length, 1);
@@ -59,13 +82,28 @@ test("duplicates are ignored and stale interim revisions are coalesced", () => {
 });
 
 test("unrendered append deltas are folded without losing earlier words", () => {
-  const first = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "Nicht " }, session_sequence: 1, event_id: 1 };
-  const second = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "zustimmen." }, session_sequence: 2, event_id: 2 };
+  const first = {
+    type: "interim_transcript",
+    data: { segment_id: "a", mode: "append", text: "Nicht " },
+    session_sequence: 1,
+    event_id: 1,
+  };
+  const second = {
+    type: "interim_transcript",
+    data: { segment_id: "a", mode: "append", text: "zustimmen." },
+    session_sequence: 2,
+    event_id: 2,
+  };
 
-  const staged = stageSocketPayload([], {
-    type: "session_snapshot",
-    data: { events: [first, second] },
-  }, 0, 10);
+  const staged = stageSocketPayload(
+    [],
+    {
+      type: "session_snapshot",
+      data: { events: [first, second] },
+    },
+    0,
+    10,
+  );
 
   assert.equal(staged.events.length, 1);
   assert.equal(staged.events[0].data.text, "Nicht zustimmen.");
@@ -73,18 +111,41 @@ test("unrendered append deltas are folded without losing earlier words", () => {
 });
 
 test("an unrendered replacement still replaces after an append is folded into it", () => {
-  const first = { type: "interim_transcript", data: { mode: "replace", text: "Hallo " }, session_sequence: 1 };
-  const next = { type: "interim_transcript", data: { mode: "append", text: "Welt" }, session_sequence: 2 };
+  const first = {
+    type: "interim_transcript",
+    data: { mode: "replace", text: "Hallo " },
+    session_sequence: 1,
+  };
+  const next = {
+    type: "interim_transcript",
+    data: { mode: "append", text: "Welt" },
+    session_sequence: 2,
+  };
 
   const staged = stageSocketPayload([first], next, 0);
 
-  assert.deepEqual(staged.events[0].data, { mode: "replace", text: "Hallo Welt" });
+  assert.deepEqual(staged.events[0].data, {
+    mode: "replace",
+    text: "Hallo Welt",
+  });
 });
 
 test("a final transcript clears the pending preview before the next append on the same track", () => {
-  const interim = { type: "interim_transcript", data: { mode: "append", text: "Alt" }, session_sequence: 1 };
-  const final = { type: "transcript", data: { id: "final", text: "Alt." }, session_sequence: 2 };
-  const next = { type: "interim_transcript", data: { mode: "append", text: "Neu" }, session_sequence: 3 };
+  const interim = {
+    type: "interim_transcript",
+    data: { mode: "append", text: "Alt" },
+    session_sequence: 1,
+  };
+  const final = {
+    type: "transcript",
+    data: { id: "final", text: "Alt." },
+    session_sequence: 2,
+  };
+  const next = {
+    type: "interim_transcript",
+    data: { mode: "append", text: "Neu" },
+    session_sequence: 3,
+  };
   const finalized = stageSocketPayload([interim], final, 0);
   const staged = stageSocketPayload(finalized.events, next, 0);
 
@@ -92,8 +153,18 @@ test("a final transcript clears the pending preview before the next append on th
 });
 
 test("append after an acknowledged delta keeps only the new text", () => {
-  const first = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "Nicht " }, session_sequence: 1, event_id: 1 };
-  const second = { type: "interim_transcript", data: { segment_id: "a", mode: "append", text: "zustimmen." }, session_sequence: 2, event_id: 2 };
+  const first = {
+    type: "interim_transcript",
+    data: { segment_id: "a", mode: "append", text: "Nicht " },
+    session_sequence: 1,
+    event_id: 1,
+  };
+  const second = {
+    type: "interim_transcript",
+    data: { segment_id: "a", mode: "append", text: "zustimmen." },
+    session_sequence: 2,
+    event_id: 2,
+  };
 
   const staged = stageSocketPayload([first], second, 1, 10);
 
@@ -102,14 +173,35 @@ test("append after an acknowledged delta keeps only the new text", () => {
 });
 
 test("native audio levels are coalesced per track without growing message history", () => {
-  const oldMic = { type: "audio_level", data: { track: 0, level: 0.2 }, session_sequence: 1, event_id: 1 };
-  const system = { type: "audio_level", data: { track: 1, level: 0.4 }, session_sequence: 2, event_id: 2 };
-  const newMic = { type: "audio_level", data: { track: 0, level: 0.8 }, session_sequence: 3, event_id: 3 };
+  const oldMic = {
+    type: "audio_level",
+    data: { track: 0, level: 0.2 },
+    session_sequence: 1,
+    event_id: 1,
+  };
+  const system = {
+    type: "audio_level",
+    data: { track: 1, level: 0.4 },
+    session_sequence: 2,
+    event_id: 2,
+  };
+  const newMic = {
+    type: "audio_level",
+    data: { track: 0, level: 0.8 },
+    session_sequence: 3,
+    event_id: 3,
+  };
 
   const merged = mergeSocketEvents([oldMic], [system, newMic], 10);
 
   assert.equal(merged.length, 2);
-  assert.deepEqual(merged.map((event) => [event.data.track, event.data.level]), [[1, 0.4], [0, 0.8]]);
+  assert.deepEqual(
+    merged.map((event) => [event.data.track, event.data.level]),
+    [
+      [1, 0.4],
+      [0, 0.8],
+    ],
+  );
 });
 
 test("events received while rendering is paused are retained before the resume cursor advances", () => {
@@ -137,7 +229,12 @@ test("a replay received before rendering is deduplicated without losing the fina
   };
 
   const firstDelivery = stageSocketPayload([], transcript, 0, 10);
-  const replayedDelivery = stageSocketPayload(firstDelivery.events, transcript, 0, 10);
+  const replayedDelivery = stageSocketPayload(
+    firstDelivery.events,
+    transcript,
+    0,
+    10,
+  );
 
   assert.deepEqual(replayedDelivery.events, [transcript]);
   assert.equal(replayedDelivery.needsResync, false);
@@ -152,10 +249,15 @@ test("more unrendered final events than the client bound request resynchronizati
     event_id: index + 1,
   }));
 
-  const staged = stageSocketPayload([], {
-    type: "session_snapshot",
-    data: { events: finals },
-  }, 0, 1000);
+  const staged = stageSocketPayload(
+    [],
+    {
+      type: "session_snapshot",
+      data: { events: finals },
+    },
+    0,
+    1000,
+  );
 
   assert.equal(staged.needsResync, true);
   assert.deepEqual(staged.events, []);
@@ -163,11 +265,29 @@ test("more unrendered final events than the client bound request resynchronizati
 });
 
 test("bounded client history discards interims before final state", () => {
-  const finalTranscript = { type: "transcript", data: { id: "t1", text: "Final" }, session_sequence: 1, event_id: 1 };
-  const status = { type: "status", data: { state: "ready" }, session_sequence: 2, event_id: 2 };
-  const interim = { type: "interim_transcript", data: { segment_id: "a", text: "Zwischenstand" }, session_sequence: 3, event_id: 3 };
+  const finalTranscript = {
+    type: "transcript",
+    data: { id: "t1", text: "Final" },
+    session_sequence: 1,
+    event_id: 1,
+  };
+  const status = {
+    type: "status",
+    data: { state: "ready" },
+    session_sequence: 2,
+    event_id: 2,
+  };
+  const interim = {
+    type: "interim_transcript",
+    data: { segment_id: "a", text: "Zwischenstand" },
+    session_sequence: 3,
+    event_id: 3,
+  };
 
   const merged = mergeSocketEvents([], [finalTranscript, status, interim], 2);
 
-  assert.deepEqual(merged.map((event) => event.type), ["transcript", "status"]);
+  assert.deepEqual(
+    merged.map((event) => event.type),
+    ["transcript", "status"],
+  );
 });

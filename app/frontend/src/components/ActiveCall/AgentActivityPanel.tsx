@@ -1,8 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import type {
-  AgentActivityRecord,
-  AgentActivitySnapshot,
-} from "../../types";
+import type { AgentActivityRecord, AgentActivitySnapshot } from "../../types";
 import { DE, germanAgent } from "../../i18n/de";
 
 export function isRunningLate(
@@ -10,14 +7,14 @@ export function isRunningLate(
   now = Date.now(),
 ): boolean {
   if (
-    agent.trigger !== "interval"
-    || agent.state !== "waiting"
-    || !agent.interval_seconds
-    || !agent.next_due_at
-  ) return false;
+    agent.trigger !== "interval" ||
+    agent.state !== "waiting" ||
+    !agent.interval_seconds ||
+    !agent.next_due_at
+  )
+    return false;
   const due = Date.parse(agent.next_due_at);
-  return Number.isFinite(due)
-    && now > due + agent.interval_seconds * 1000;
+  return Number.isFinite(due) && now > due + agent.interval_seconds * 1000;
 }
 
 function duration(seconds: number): string {
@@ -48,24 +45,29 @@ export function activityEmptyMessage(
   now = Date.now(),
 ): string | undefined {
   if (
-    !snapshot
-    || snapshot.call.degraded
-    || snapshot.agents.some((agent) =>
-      agent.state === "failing"
-      || (agent.state === "blocked" && agent.blocked_reason !== "meeting_type")
+    !snapshot ||
+    snapshot.call.degraded ||
+    snapshot.agents.some(
+      (agent) =>
+        agent.state === "failing" ||
+        (agent.state === "blocked" && agent.blocked_reason !== "meeting_type"),
     )
-  ) return undefined;
+  )
+    return undefined;
 
-  const candidates = snapshot.agents.filter((agent) =>
-    agent.enabled
-    && agent.trigger === "interval"
-    && agent.state === "waiting"
-    && agent.next_due_at
-    && agent.slug !== "strategic_signals"
+  const candidates = snapshot.agents.filter(
+    (agent) =>
+      agent.enabled &&
+      agent.trigger === "interval" &&
+      agent.state === "waiting" &&
+      agent.next_due_at &&
+      agent.slug !== "strategic_signals",
   );
-  const agent = candidates.find((item) => item.slug === "consolidated_analyst")
-    || candidates.sort(
-      (a, b) => Date.parse(a.next_due_at || "") - Date.parse(b.next_due_at || ""),
+  const agent =
+    candidates.find((item) => item.slug === "consolidated_analyst") ||
+    candidates.sort(
+      (a, b) =>
+        Date.parse(a.next_due_at || "") - Date.parse(b.next_due_at || ""),
     )[0];
   if (!agent?.interval_seconds || !agent.next_due_at) return undefined;
 
@@ -122,8 +124,9 @@ export function summarizeAgents(agents: AgentActivityRecord[], now: number) {
     ).length,
     anyRunning: agents.some((agent) => agent.state === "running"),
     lenses:
-      analyst && analyst.lens_count != null
-      && (analyst.state === "running" || analyst.state === "waiting")
+      analyst &&
+      analyst.lens_count != null &&
+      (analyst.state === "running" || analyst.state === "waiting")
         ? analyst.lens_count
         : null,
     runs: agents.reduce((sum, agent) => sum + agent.counts.runs, 0),
@@ -132,15 +135,16 @@ export function summarizeAgents(agents: AgentActivityRecord[], now: number) {
       0,
     ),
     needSetup: agents.filter(
-      (agent) => agent.state === "blocked" && agent.blocked_reason === "no_model",
+      (agent) =>
+        agent.state === "blocked" && agent.blocked_reason === "no_model",
     ).length,
     // Privacy First and missing-model states keep dedicated chips.
     blocked: agents.filter(
       (agent) =>
-        agent.state === "blocked"
-        && agent.blocked_reason !== "privacy_first"
-        && agent.blocked_reason !== "pii_shield"
-        && agent.blocked_reason !== "no_model",
+        agent.state === "blocked" &&
+        agent.blocked_reason !== "privacy_first" &&
+        agent.blocked_reason !== "pii_shield" &&
+        agent.blocked_reason !== "no_model",
     ).length,
     // Current state, not history: a transient error that the agent recovered
     // from must not read as an ongoing failure for the rest of the call.
@@ -166,12 +170,12 @@ export default function AgentActivityPanel({
     () => summarizeAgents(snapshot?.agents || [], now),
     [snapshot, now],
   );
-  const privacyBlocked = snapshot?.agents.filter(
-    (agent) => agent.blocked_reason === "privacy_first",
-  ).length || 0;
-  const shieldBlocked = snapshot?.agents.filter(
-    (agent) => agent.blocked_reason === "pii_shield",
-  ).length || 0;
+  const privacyBlocked =
+    snapshot?.agents.filter((agent) => agent.blocked_reason === "privacy_first")
+      .length || 0;
+  const shieldBlocked =
+    snapshot?.agents.filter((agent) => agent.blocked_reason === "pii_shield")
+      .length || 0;
 
   return (
     <section className="border-b border-brand-light-gray-1 bg-surface">
@@ -194,16 +198,26 @@ export default function AgentActivityPanel({
             <span className="flex flex-shrink-0 items-center gap-1.5 rounded-full bg-brand-light-gray-2 px-2 py-1 font-body text-xs text-brand-gray">
               <span
                 className={`h-2 w-2 rounded-full ${
-                  stats.anyRunning ? "animate-pulse bg-emerald-500" : "bg-brand-mid-gray"
+                  stats.anyRunning
+                    ? "animate-pulse bg-emerald-500"
+                    : "bg-brand-mid-gray"
                 }`}
               />
-              <span className="font-mono font-semibold tabular-nums">{stats.active}</span>
+              <span className="font-mono font-semibold tabular-nums">
+                {stats.active}
+              </span>
               Agenten
             </span>
-            {stats.lenses != null && <StatChip value={stats.lenses} label="Linsen" />}
+            {stats.lenses != null && (
+              <StatChip value={stats.lenses} label="Linsen" />
+            )}
             <StatChip value={stats.runs} label="Läufe" />
             <StatChip value={stats.productive} label="mit Ergebnissen" />
-            <StatChip value={stats.needSetup} label="Einrichtung fehlt" tone="warn" />
+            <StatChip
+              value={stats.needSetup}
+              label="Einrichtung fehlt"
+              tone="warn"
+            />
             <StatChip value={stats.blocked} label="blockiert" tone="warn" />
             <StatChip value={stats.late} label="verspätet" tone="warn" />
             <StatChip value={stats.failed} label="Fehler" tone="bad" />
@@ -211,7 +225,8 @@ export default function AgentActivityPanel({
         )}
         {privacyBlocked > 0 && (
           <span className="flex-shrink-0 rounded-full bg-amber-100 px-2 py-1 font-body text-xs font-medium text-amber-800">
-            {privacyBlocked} Agent{privacyBlocked === 1 ? "" : "en"} aus: Datenschutzmodus
+            {privacyBlocked} Agent{privacyBlocked === 1 ? "" : "en"} aus:
+            Datenschutzmodus
           </span>
         )}
         {shieldBlocked > 0 && (
@@ -219,13 +234,19 @@ export default function AgentActivityPanel({
             Live-Transkript aus: PII Shield
           </span>
         )}
-        <span className="ml-auto flex-shrink-0 text-brand-mid-gray" aria-hidden="true">
+        <span
+          className="ml-auto flex-shrink-0 text-brand-mid-gray"
+          aria-hidden="true"
+        >
           {open ? "-" : "+"}
         </span>
       </button>
 
       {open && snapshot && (
-        <div id="agent-activity-details" className="overflow-x-auto border-t border-brand-light-gray-1 px-4 py-3 md:px-6">
+        <div
+          id="agent-activity-details"
+          className="overflow-x-auto border-t border-brand-light-gray-1 px-4 py-3 md:px-6"
+        >
           <table className="w-full text-left font-body text-xs">
             <thead className="hidden text-[10px] uppercase tracking-wide text-brand-mid-gray md:table-header-group">
               <tr>
@@ -240,23 +261,57 @@ export default function AgentActivityPanel({
             </thead>
             <tbody className="divide-y divide-brand-light-gray-1 text-brand-gray">
               {snapshot.agents.map((agent) => (
-                <tr key={agent.slug} className="block border-b border-brand-light-gray-1 py-2 last:border-0 md:table-row md:border-0 md:py-0">
-                  <td data-label="Agent" className="block py-1 pr-3 font-semibold text-brand-dark-gray before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{germanAgent(agent.slug)?.name || agent.name}</td>
-                  <td data-label="Status" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{DE.live.activity.states[agent.state]}</td>
-                  <td data-label="Grund" className="block max-w-64 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
+                <tr
+                  key={agent.slug}
+                  className="block border-b border-brand-light-gray-1 py-2 last:border-0 md:table-row md:border-0 md:py-0"
+                >
+                  <td
+                    data-label="Agent"
+                    className="block py-1 pr-3 font-semibold text-brand-dark-gray before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
+                    {germanAgent(agent.slug)?.name || agent.name}
+                  </td>
+                  <td
+                    data-label="Status"
+                    className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
+                    {DE.live.activity.states[agent.state]}
+                  </td>
+                  <td
+                    data-label="Grund"
+                    className="block max-w-64 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
                     {agent.blocked_reason
-                      ? DE.live.activity.reasons[agent.blocked_reason as keyof typeof DE.live.activity.reasons] || "Einstellungen prüfen"
+                      ? DE.live.activity.reasons[
+                          agent.blocked_reason as keyof typeof DE.live.activity.reasons
+                        ] || "Einstellungen prüfen"
                       : "-"}
                   </td>
-                  <td data-label="Letzter Lauf" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
+                  <td
+                    data-label="Letzter Lauf"
+                    className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
                     {relativeTime(agent.last_run_started_at, now)}
-                    {agent.last_run_ms !== null ? ` (${agent.last_run_ms}ms)` : ""}
+                    {agent.last_run_ms !== null
+                      ? ` (${agent.last_run_ms}ms)`
+                      : ""}
                   </td>
-                  <td data-label="Nächster" className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">{nextLabel(agent, now)}</td>
-                  <td data-label="Letztes Ergebnis" className="block max-w-72 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
+                  <td
+                    data-label="Nächster"
+                    className="block py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
+                    {nextLabel(agent, now)}
+                  </td>
+                  <td
+                    data-label="Letztes Ergebnis"
+                    className="block max-w-72 py-1 pr-3 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
                     {agent.last_outcome ? "Ergebnis vorhanden" : "-"}
                   </td>
-                  <td data-label="Letzter Fehler" className="block max-w-72 py-1 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden">
+                  <td
+                    data-label="Letzter Fehler"
+                    className="block max-w-72 py-1 before:mr-2 before:font-normal before:text-brand-mid-gray before:content-[attr(data-label)] md:table-cell md:py-2 md:before:hidden"
+                  >
                     {agent.last_error ? "Fehler - Einstellungen prüfen" : "-"}
                   </td>
                 </tr>
@@ -265,8 +320,10 @@ export default function AgentActivityPanel({
           </table>
           <p className="mt-3 border-t border-brand-light-gray-1 pt-3 font-body text-xs text-brand-mid-gray">
             Audio: {snapshot.call.gateway.state}
-            {" | "}Transkription: {snapshot.call.transcription.jobs} Aufträge, {snapshot.call.transcription.failed} fehlgeschlagen
-            {" | "}Sprecher: {snapshot.call.diarization.queued} wartend, {snapshot.call.diarization.shed} abgewiesen
+            {" | "}Transkription: {snapshot.call.transcription.jobs} Aufträge,{" "}
+            {snapshot.call.transcription.failed} fehlgeschlagen
+            {" | "}Sprecher: {snapshot.call.diarization.queued} wartend,{" "}
+            {snapshot.call.diarization.shed} abgewiesen
           </p>
         </div>
       )}

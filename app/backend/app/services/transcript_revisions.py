@@ -4,12 +4,11 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.models import TranscriptEntry, TranscriptEntryRevision
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 UNCHANGED = object()
 
@@ -140,7 +139,7 @@ async def apply_manual_transcript_revision(
             entry.raw_text = entry.text
         entry.text = next_text
     entry.speaker_id = next_speaker
-    entry.manual_corrected_at = datetime.now(timezone.utc)
+    entry.manual_corrected_at = datetime.now(UTC)
     revision = TranscriptEntryRevision(
         session_id=session_id,
         transcript_id=transcript_id,

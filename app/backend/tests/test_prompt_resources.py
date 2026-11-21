@@ -100,9 +100,7 @@ class PromptResourceTests(unittest.TestCase):
                     sources=[],
                     prompt_name="background.gpt6",
                 )
-                stored = (Path(tmp) / "background.gpt6.txt").read_text(
-                    encoding="utf-8"
-                )
+                stored = (Path(tmp) / "background.gpt6.txt").read_text(encoding="utf-8")
 
         self.assertIn("Erster konkreter Claim.", first)
         self.assertIn("Zweiter neuer Claim.", second)
@@ -118,7 +116,9 @@ class PromptResourceTests(unittest.TestCase):
             path.write_text(original, encoding="utf-8")
             with patch.dict(os.environ, {"DEBATEAI_PROMPT_DIR": tmp}):
                 fallback = "Claim {claim}\nPosition {own_position}\nContext {relevant_context}\nEvidence {evidence}"
-                self.assertEqual(fallback, load_prompt_resource("debate_deep_v1", fallback))
+                self.assertEqual(
+                    fallback, load_prompt_resource("debate_deep_v1", fallback)
+                )
             self.assertEqual(original, path.read_text(encoding="utf-8"))
 
 

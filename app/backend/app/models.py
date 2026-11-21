@@ -1,7 +1,18 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
-from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, JSON, Text, String, UniqueConstraint, Uuid
+from sqlalchemy import (
+    JSON,
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Integer,
+    String,
+    Text,
+    UniqueConstraint,
+    Uuid,
+)
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -15,32 +26,67 @@ class Session(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
     state: Mapped[str] = mapped_column(String(20), default="pre_call")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
     meeting_type: Mapped[str] = mapped_column(String(50), default="general")
     meeting_context: Mapped[str] = mapped_column(Text, default="")
-    group_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), ForeignKey("session_groups.id", use_alter=True), nullable=True)
+    group_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("session_groups.id", use_alter=True), nullable=True
+    )
     speaker_context_dirty: Mapped[bool] = mapped_column(Boolean, default=False)
-    speaker_context_enhanced_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    speaker_context_enhanced_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     speaker_context_version: Mapped[int] = mapped_column(Integer, default=0)
     # JSON summary of the final drain: the counts plus any stage that failed.
     # Persisted so a user who was disconnected mid-drain can still find out
     # what degraded; the live completion message is lost with the socket.
     drain_summary: Mapped[str] = mapped_column(Text, default="")
 
-    documents = relationship("Document", back_populates="session", cascade="all, delete-orphan")
-    directives = relationship("Directive", back_populates="session", cascade="all, delete-orphan")
-    transcript_entries = relationship("TranscriptEntry", back_populates="session", cascade="all, delete-orphan")
-    questions = relationship("Question", back_populates="session", cascade="all, delete-orphan")
-    call_segments = relationship("CallSegment", back_populates="session", cascade="all, delete-orphan", order_by="CallSegment.segment_number")
-    speakers = relationship("Speaker", back_populates="session", cascade="all, delete-orphan")
-    agent_overrides = relationship("SessionAgentOverride", back_populates="session", cascade="all, delete-orphan")
-    syntheses = relationship("SessionSynthesis", back_populates="session", cascade="all, delete-orphan")
-    token_usage = relationship("TokenUsage", back_populates="session", cascade="all, delete-orphan")
-    speaker_mapping_revisions = relationship("SpeakerMappingRevision", cascade="all, delete-orphan")
-    speaker_revalidation_runs = relationship("SpeakerRevalidationRun", cascade="all, delete-orphan")
+    documents = relationship(
+        "Document", back_populates="session", cascade="all, delete-orphan"
+    )
+    directives = relationship(
+        "Directive", back_populates="session", cascade="all, delete-orphan"
+    )
+    transcript_entries = relationship(
+        "TranscriptEntry", back_populates="session", cascade="all, delete-orphan"
+    )
+    questions = relationship(
+        "Question", back_populates="session", cascade="all, delete-orphan"
+    )
+    call_segments = relationship(
+        "CallSegment",
+        back_populates="session",
+        cascade="all, delete-orphan",
+        order_by="CallSegment.segment_number",
+    )
+    speakers = relationship(
+        "Speaker", back_populates="session", cascade="all, delete-orphan"
+    )
+    agent_overrides = relationship(
+        "SessionAgentOverride", back_populates="session", cascade="all, delete-orphan"
+    )
+    syntheses = relationship(
+        "SessionSynthesis", back_populates="session", cascade="all, delete-orphan"
+    )
+    token_usage = relationship(
+        "TokenUsage", back_populates="session", cascade="all, delete-orphan"
+    )
+    speaker_mapping_revisions = relationship(
+        "SpeakerMappingRevision", cascade="all, delete-orphan"
+    )
+    speaker_revalidation_runs = relationship(
+        "SpeakerRevalidationRun", cascade="all, delete-orphan"
+    )
     pii_vault_entries = relationship("PiiVaultEntry", cascade="all, delete-orphan")
     group = relationship("SessionGroup", foreign_keys=[group_id])
 
@@ -67,7 +113,9 @@ class PiiVaultEntry(Base):
     token: Mapped[str] = mapped_column(String(40))
     value_hmac: Mapped[str] = mapped_column(String(64))
     value_encrypted: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class PiiRevealEvent(Base):
@@ -83,7 +131,9 @@ class PiiRevealEvent(Base):
     session_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), nullable=True)
     route: Mapped[str] = mapped_column(String(160), default="")
     token_count: Mapped[int] = mapped_column(Integer, default=0)
-    at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class SpeakerMappingRevision(Base):
@@ -104,7 +154,7 @@ class SpeakerMappingRevision(Base):
     mapping_hash: Mapped[str] = mapped_column(String(64))
     mapping_snapshot: Mapped[list] = mapped_column(JSON, default=list)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -130,7 +180,7 @@ class SpeakerRevalidationRun(Base):
     status: Mapped[str] = mapped_column(String(20), default="running")
     error_message: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
     started_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
@@ -188,7 +238,9 @@ class TokenUsage(Base):
     __tablename__ = "token_usage"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
-    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id", ondelete="CASCADE"), index=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("sessions.id", ondelete="CASCADE"), index=True
+    )
     source: Mapped[str] = mapped_column(String(100))
     # Wide enough for "endpoint:<slug>:<served model name>" ids (see
     # services/custom_endpoints.py), not just registry ids.
@@ -211,7 +263,9 @@ class TokenUsage(Base):
     cached_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     audio_input_tokens: Mapped[int] = mapped_column(Integer, default=0)
     audio_output_tokens: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     session = relationship("Session", back_populates="token_usage")
 
@@ -230,7 +284,9 @@ class Document(Base):
     summary: Mapped[str] = mapped_column(Text, default="")
     # "" (not yet summarized), "gemini", or "local_extract".
     summary_source: Mapped[str] = mapped_column(String(20), default="")
-    uploaded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    uploaded_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     session = relationship("Session", back_populates="documents")
 
@@ -242,7 +298,9 @@ class Directive(Base):
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
     text: Mapped[str] = mapped_column(Text)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     session = relationship("Session", back_populates="directives")
 
@@ -260,13 +318,19 @@ class TranscriptEntry(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
     text: Mapped[str] = mapped_column(Text)
-    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
     sequence: Mapped[int] = mapped_column(Integer, default=0)
-    speaker_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), ForeignKey("speakers.id"), nullable=True)
+    speaker_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("speakers.id"), nullable=True
+    )
     # Set once by the transcript refiner: the text as the transcriber wrote it
     # (already tokenized), kept so a refinement can be judged and undone.
     raw_text: Mapped[str | None] = mapped_column(Text, nullable=True)
-    refined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    refined_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     manual_corrected_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
@@ -275,7 +339,9 @@ class TranscriptEntry(Base):
     utterance_id: Mapped[str | None] = mapped_column(
         String(128), nullable=True, default=lambda: uuid.uuid4().hex
     )
-    producer_revision: Mapped[int | None] = mapped_column(Integer, nullable=True, default=1)
+    producer_revision: Mapped[int | None] = mapped_column(
+        Integer, nullable=True, default=1
+    )
 
     session = relationship("Session", back_populates="transcript_entries")
     speaker = relationship("Speaker")
@@ -286,26 +352,42 @@ class Question(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
-    item_type: Mapped[str] = mapped_column(String(50), default="question")  # built-ins (question, observation, opportunity, action_item, objection) or a custom lens type slug
-    lens_label: Mapped[str] = mapped_column(String(120), default="")  # display heading of the lens that produced this insight ("" for non-lens agents)
-    question: Mapped[str] = mapped_column(Text)  # the text content (question text, observation text, etc.)
+    item_type: Mapped[str] = mapped_column(
+        String(50), default="question"
+    )  # built-ins (question, observation, opportunity, action_item, objection) or a custom lens type slug
+    lens_label: Mapped[str] = mapped_column(
+        String(120), default=""
+    )  # display heading of the lens that produced this insight ("" for non-lens agents)
+    question: Mapped[str] = mapped_column(
+        Text
+    )  # the text content (question text, observation text, etc.)
     rationale: Mapped[str] = mapped_column(Text, default="")
     source_context: Mapped[str] = mapped_column(Text, default="")
-    speaker_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), ForeignKey("speakers.id"), nullable=True)
-    directive_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(), ForeignKey("directives.id"), nullable=True)
+    speaker_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("speakers.id"), nullable=True
+    )
+    directive_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(), ForeignKey("directives.id"), nullable=True
+    )
     starred: Mapped[bool] = mapped_column(Boolean, default=False)
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False)
     answered: Mapped[bool] = mapped_column(Boolean, default=False)
     answer_summary: Mapped[str] = mapped_column(Text, default="")
     needs_followup: Mapped[bool] = mapped_column(Boolean, default=False)
     followup_question: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     enrichment_notes: Mapped[str] = mapped_column(Text, default="")
     revision_count: Mapped[int] = mapped_column(Integer, default=0)
     agent_source: Mapped[str] = mapped_column(String(30), default="general")
     offering_match: Mapped[str] = mapped_column(Text, default="")
-    vote: Mapped[int] = mapped_column(Integer, default=0)  # -1 downvote, 0 neutral, 1 upvote
+    vote: Mapped[int] = mapped_column(
+        Integer, default=0
+    )  # -1 downvote, 0 neutral, 1 upvote
     enhanced: Mapped[bool] = mapped_column(Boolean, default=False)
     speaker_mapping_revision_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(),
@@ -345,7 +427,7 @@ class TranscriptEntryRevision(Base):
     source: Mapped[str] = mapped_column(String(32), default="manual")
     reason: Mapped[str] = mapped_column(Text, default="")
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -374,9 +456,11 @@ class ProvisionalTranscriptRevision(Base):
     audio_start_sample: Mapped[int | None] = mapped_column(Integer, nullable=True)
     audio_end_sample: Mapped[int | None] = mapped_column(Integer, nullable=True)
     sample_rate: Mapped[int] = mapped_column(Integer, default=16000)
-    finalized_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    finalized_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -405,7 +489,7 @@ class TranscriptDiscardAudit(Base):
     producer: Mapped[str] = mapped_column(String(80), default="")
     segment_revision: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
 
 
@@ -415,13 +499,17 @@ class DebateClaimRecord(Base):
     __tablename__ = "debate_claim_records"
     __table_args__ = (
         UniqueConstraint(
-            "session_id", "claim_id", "revision",
+            "session_id",
+            "claim_id",
+            "revision",
             name="uq_debate_claim_session_claim_revision",
         ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
-    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"), index=True)
+    session_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("sessions.id"), index=True
+    )
     claim_id: Mapped[str] = mapped_column(String(160), index=True)
     revision: Mapped[int] = mapped_column(Integer, default=0)
     speaker_id: Mapped[str] = mapped_column(String(80), default="")
@@ -431,21 +519,29 @@ class DebateClaimRecord(Base):
     relations: Mapped[list] = mapped_column(JSON, default=list)
     feedback: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
     )
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class SessionSynthesis(Base):
     __tablename__ = "session_syntheses"
     __table_args__ = (
-        UniqueConstraint("session_id", "mode", name="uq_session_syntheses_session_mode"),
+        UniqueConstraint(
+            "session_id", "mode", name="uq_session_syntheses_session_mode"
+        ),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
-    mode: Mapped[str] = mapped_column(String(20), default="post_call")  # live, post_call
-    status: Mapped[str] = mapped_column(String(20), default="pending")  # pending, partial, completed, error
+    mode: Mapped[str] = mapped_column(
+        String(20), default="post_call"
+    )  # live, post_call
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending"
+    )  # pending, partial, completed, error
     top_outcomes: Mapped[list] = mapped_column(JSON, default=list)
     client_objectives: Mapped[list] = mapped_column(JSON, default=list)
     top_opportunities: Mapped[list] = mapped_column(JSON, default=list)
@@ -460,8 +556,12 @@ class SessionSynthesis(Base):
     arbiter_notes: Mapped[str] = mapped_column(Text, default="")
     model_ids: Mapped[dict] = mapped_column(JSON, default=dict)
     error_message: Mapped[str] = mapped_column(Text, default="")
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     speaker_mapping_revision_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(),
         ForeignKey("speaker_mapping_revisions.id", ondelete="SET NULL"),
@@ -469,14 +569,21 @@ class SessionSynthesis(Base):
     )
 
     session = relationship("Session", back_populates="syntheses")
-    clusters = relationship("InsightCluster", back_populates="synthesis", cascade="all, delete-orphan", order_by="InsightCluster.priority")
+    clusters = relationship(
+        "InsightCluster",
+        back_populates="synthesis",
+        cascade="all, delete-orphan",
+        order_by="InsightCluster.priority",
+    )
 
 
 class InsightCluster(Base):
     __tablename__ = "insight_clusters"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
-    synthesis_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("session_syntheses.id"))
+    synthesis_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("session_syntheses.id")
+    )
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
     title: Mapped[str] = mapped_column(String(255))
     summary: Mapped[str] = mapped_column(Text, default="")
@@ -484,7 +591,9 @@ class InsightCluster(Base):
     confidence: Mapped[str] = mapped_column(String(20), default="medium")
     related_question_ids: Mapped[list] = mapped_column(JSON, default=list)
     evidence_refs: Mapped[list] = mapped_column(JSON, default=list)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     synthesis = relationship("SessionSynthesis", back_populates="clusters")
 
@@ -495,8 +604,12 @@ class CallSegment(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
     segment_number: Mapped[int] = mapped_column(Integer)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    ended_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     audio_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     mic_audio_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
     system_audio_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -510,15 +623,29 @@ class Offering(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     vendor: Mapped[str] = mapped_column(String(100))
     product_name: Mapped[str] = mapped_column(String(255))
-    category: Mapped[str] = mapped_column(String(100))  # Security, Cloud, Networking, etc.
-    subcategory: Mapped[str] = mapped_column(String(255), default="")  # sub-category within the category
+    category: Mapped[str] = mapped_column(
+        String(100)
+    )  # Security, Cloud, Networking, etc.
+    subcategory: Mapped[str] = mapped_column(
+        String(255), default=""
+    )  # sub-category within the category
     description: Mapped[str] = mapped_column(Text, default="")
-    use_cases: Mapped[str] = mapped_column(Text, default="")  # pain points / use cases it addresses
-    note: Mapped[str] = mapped_column(String(255), default="")  # free-form note (positioning, packaging, caveats)
-    tags: Mapped[str] = mapped_column(String(255), default="")  # tag(s), comma-separated if multiple
+    use_cases: Mapped[str] = mapped_column(
+        Text, default=""
+    )  # pain points / use cases it addresses
+    note: Mapped[str] = mapped_column(
+        String(255), default=""
+    )  # free-form note (positioning, packaging, caveats)
+    tags: Mapped[str] = mapped_column(
+        String(255), default=""
+    )  # tag(s), comma-separated if multiple
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class KnowledgeSource(Base):
@@ -526,25 +653,41 @@ class KnowledgeSource(Base):
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
-    source_type: Mapped[str] = mapped_column(String(30))  # offerings, collection, files (future: http_rag)
+    source_type: Mapped[str] = mapped_column(
+        String(30)
+    )  # offerings, collection, files (future: http_rag)
     description: Mapped[str] = mapped_column(Text, default="")
-    config: Mapped[str] = mapped_column(Text, default="{}")  # JSON text, e.g. {"char_budget": 60000}
+    config: Mapped[str] = mapped_column(
+        Text, default="{}"
+    )  # JSON text, e.g. {"char_budget": 60000}
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class KnowledgeRecord(Base):
     __tablename__ = "knowledge_records"
 
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
-    source_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("knowledge_sources.id"))
+    source_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(), ForeignKey("knowledge_sources.id")
+    )
     title: Mapped[str] = mapped_column(String(500), default="")
     body: Mapped[str] = mapped_column(Text, default="")
-    meta: Mapped[str] = mapped_column(Text, default="{}")  # JSON text (filename, import row extras)
+    meta: Mapped[str] = mapped_column(
+        Text, default="{}"
+    )  # JSON text (filename, import row extras)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class Speaker(Base):
@@ -553,13 +696,27 @@ class Speaker(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), ForeignKey("sessions.id"))
     name: Mapped[str] = mapped_column(String(255))
-    role: Mapped[str] = mapped_column(String(100), default="")  # e.g. "Sales Engineer", "Client", "Technical Lead"
-    color: Mapped[str] = mapped_column(String(20), default="#0d9488")  # hex color for UI
-    is_user: Mapped[bool] = mapped_column(Boolean, default=False)  # true if this is the app user
-    speaker_type: Mapped[str] = mapped_column(String(20), default="external")  # team or external
-    display_name: Mapped[str] = mapped_column(String(255), default="")  # mapped real name (e.g. "John Smith")
-    display_name_enabled: Mapped[bool] = mapped_column(Boolean, default=False)  # show display_name in UI/exports
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    role: Mapped[str] = mapped_column(
+        String(100), default=""
+    )  # e.g. "Sales Engineer", "Client", "Technical Lead"
+    color: Mapped[str] = mapped_column(
+        String(20), default="#0d9488"
+    )  # hex color for UI
+    is_user: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # true if this is the app user
+    speaker_type: Mapped[str] = mapped_column(
+        String(20), default="external"
+    )  # team or external
+    display_name: Mapped[str] = mapped_column(
+        String(255), default=""
+    )  # mapped real name (e.g. "John Smith")
+    display_name_enabled: Mapped[bool] = mapped_column(
+        Boolean, default=False
+    )  # show display_name in UI/exports
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
     session = relationship("Session", back_populates="speakers")
 
@@ -577,9 +734,15 @@ class AgentConfig(Base):
     model_id: Mapped[str] = mapped_column(String(160))
     prompt: Mapped[str] = mapped_column(Text, default="")
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
-    sub_types: Mapped[str] = mapped_column(String(200), default="")  # comma-separated item_types (legacy; superseded by lenses where present)
-    lenses: Mapped[str] = mapped_column(Text, default="")  # JSON array of {key,label,item_type,enabled,prompt} lens configs
-    interval_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)  # cycle interval for periodic agents
+    sub_types: Mapped[str] = mapped_column(
+        String(200), default=""
+    )  # comma-separated item_types (legacy; superseded by lenses where present)
+    lenses: Mapped[str] = mapped_column(
+        Text, default=""
+    )  # JSON array of {key,label,item_type,enabled,prompt} lens configs
+    interval_seconds: Mapped[int | None] = mapped_column(
+        Integer, nullable=True
+    )  # cycle interval for periodic agents
     # JSON dict {model_id: interval_seconds}: a per-model cycle budget that wins
     # over interval_seconds when the agent runs that model. Empty falls back to
     # interval_seconds, then the seeded default. Written from the fit test.
@@ -588,8 +751,12 @@ class AgentConfig(Base):
         Text, default=""
     )  # comma-separated knowledge source UUIDs for db-type agents; empty falls back to the offerings catalog
     display_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class SessionAgentOverride(Base):
@@ -609,7 +776,9 @@ class SessionGroup(Base):
     id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True, default=uuid.uuid4)
     name: Mapped[str] = mapped_column(String(255))
     display_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
 
 
 class AppSetting(Base):
@@ -617,7 +786,9 @@ class AppSetting(Base):
 
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     value: Mapped[str] = mapped_column(Text, default="")
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
 
 class CustomEndpoint(Base):
@@ -631,17 +802,33 @@ class CustomEndpoint(Base):
 
     __tablename__ = "custom_endpoints"
 
-    id: Mapped[str] = mapped_column(String(32), primary_key=True)  # slug used in model ids
+    id: Mapped[str] = mapped_column(
+        String(32), primary_key=True
+    )  # slug used in model ids
     name: Mapped[str] = mapped_column(String(80))
     base_url: Mapped[str] = mapped_column(String(255))
-    api_key: Mapped[str] = mapped_column(Text, default="")  # encrypted; "" means keyless
-    models: Mapped[list] = mapped_column(JSON, default=list)  # [{"id": ..., "label": ...}]
+    api_key: Mapped[str] = mapped_column(
+        Text, default=""
+    )  # encrypted; "" means keyless
+    models: Mapped[list] = mapped_column(
+        JSON, default=list
+    )  # [{"id": ..., "label": ...}]
     enabled: Mapped[bool] = mapped_column(Boolean, default=True)
     # Last connection-test outcome, so the UI can show reachability without probing on load.
-    last_status: Mapped[str] = mapped_column(String(20), default="")  # "ok", "error", or ""
+    last_status: Mapped[str] = mapped_column(
+        String(20), default=""
+    )  # "ok", "error", or ""
     last_error: Mapped[str] = mapped_column(Text, default="")
-    last_checked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_checked_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     display_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
-    updated_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+    updated_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

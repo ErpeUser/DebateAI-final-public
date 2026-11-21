@@ -2,13 +2,11 @@ import json
 import math
 from dataclasses import dataclass
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
 from app.services.app_settings import get_app_setting, set_app_setting
 from app.services.diarization_diagnostics import (
-    BenchmarkResult,
     SORTFORMER_RTF_THRESHOLD,
+    BenchmarkResult,
     SortformerEnvironment,
     describe_benchmark_headroom,
     probe_sortformer_environment,
@@ -27,6 +25,7 @@ from app.services.fit_staleness import (
     host_fingerprint,
     stamp_fit_record,
 )
+from sqlalchemy.ext.asyncio import AsyncSession
 
 SETTING_SELECTED_DIARIZER = "diarization.selected_live_diarizer"
 SETTING_SORTFORMER_BENCHMARK_STATUS = "diarization.sortformer.benchmark_status"
@@ -34,9 +33,7 @@ SETTING_SORTFORMER_BENCHMARK_RTF = "diarization.sortformer.real_time_factor"
 SETTING_SORTFORMER_BENCHMARK_CONTENTION_RTF = (
     "diarization.sortformer.contention_adjusted_real_time_factor"
 )
-SETTING_SORTFORMER_BENCHMARK_PEAK_MEMORY_MB = (
-    "diarization.sortformer.peak_memory_mb"
-)
+SETTING_SORTFORMER_BENCHMARK_PEAK_MEMORY_MB = "diarization.sortformer.peak_memory_mb"
 SETTING_SORTFORMER_LAST_RESULT = "diarization.sortformer.last_result"
 SETTING_SPEAKER_SIMILARITY_THRESHOLD = "diarization.speaker_similarity_threshold"
 MIN_SPEAKER_SIMILARITY_THRESHOLD = 0.5
@@ -107,7 +104,10 @@ async def get_diarizer_runtime_config(
     record = await _load_sortformer_record(db)
     validity = assess_fit_record(
         record,
-        current_subject={"model_id": environment.model_id, "endpoint_fingerprint": None},
+        current_subject={
+            "model_id": environment.model_id,
+            "endpoint_fingerprint": None,
+        },
         current_host=host_fingerprint(environment),
         required_fields=(
             "real_time_factor",
@@ -122,11 +122,16 @@ async def get_diarizer_runtime_config(
     benchmark_status = (
         "passed"
         if gradeable and rtf is not None and 0 < rtf <= SORTFORMER_RTF_THRESHOLD
-        else "failed" if gradeable and rtf is not None
+        else "failed"
+        if gradeable and rtf is not None
         else ""
     )
     threshold = _parse_threshold(
-        await get_app_setting(db, SETTING_SPEAKER_SIMILARITY_THRESHOLD, str(settings.SPEAKER_SIMILARITY_THRESHOLD))
+        await get_app_setting(
+            db,
+            SETTING_SPEAKER_SIMILARITY_THRESHOLD,
+            str(settings.SPEAKER_SIMILARITY_THRESHOLD),
+        )
     )
     selectable = sortformer_is_selectable(
         benchmark_status,
@@ -164,12 +169,16 @@ async def get_diarizer_runtime_config(
     )
 
 
-async def set_selected_diarizer(db: AsyncSession, selected_mode: str) -> DiarizerRuntimeConfig:
+async def set_selected_diarizer(
+    db: AsyncSession, selected_mode: str
+) -> DiarizerRuntimeConfig:
     selected = normalize_diarizer_mode(selected_mode)
     environment = probe_sortformer_environment()
     runtime = await get_diarizer_runtime_config(db, environment=environment)
     if selected == DIARIZER_SORTFORMER and not runtime.sortformer_selectable:
-        raise ValueError("Sortformer can be selected after a passing benchmark on this machine.")
+        raise ValueError(
+            "Sortformer can be selected after a passing benchmark on this machine."
+        )
 
     await set_app_setting(db, SETTING_SELECTED_DIARIZER, selected)
     await db.commit()
@@ -231,7 +240,11 @@ async def _load_sortformer_record(db: AsyncSession) -> dict:
             await get_app_setting(db, SETTING_SORTFORMER_BENCHMARK_PEAK_MEMORY_MB, "")
         ),
     }
-    return legacy if any(value is not None for value in legacy.values() if value != 0) else {}
+    return (
+        legacy
+        if any(value is not None for value in legacy.values() if value != 0)
+        else {}
+    )
 
 
 def _finite_number(value) -> float | None:
@@ -246,7 +259,10 @@ async def set_speaker_similarity_threshold(
     threshold: float,
     environment: SortformerEnvironment | None = None,
 ) -> DiarizerRuntimeConfig:
-    if threshold < MIN_SPEAKER_SIMILARITY_THRESHOLD or threshold > MAX_SPEAKER_SIMILARITY_THRESHOLD:
+    if (
+        threshold < MIN_SPEAKER_SIMILARITY_THRESHOLD
+        or threshold > MAX_SPEAKER_SIMILARITY_THRESHOLD
+    ):
         raise ValueError(
             "Speaker similarity threshold must be between "
             f"{MIN_SPEAKER_SIMILARITY_THRESHOLD:.2f} and {MAX_SPEAKER_SIMILARITY_THRESHOLD:.2f}."
@@ -285,10 +301,7 @@ def _selection_reason(
             f"{benchmark_reason}"
         )
     if selectable:
-        return (
-            "Enhanced Sortformer diarization is unlocked. "
-            f"{benchmark_reason}"
-        )
+        return f"Enhanced Sortformer diarization is unlocked. {benchmark_reason}"
     if selected == DIARIZER_SORTFORMER and not selectable:
         if benchmark_real_time_factor is not None:
             return (
@@ -314,6 +327,9 @@ def _parse_threshold(value: str) -> float:
     parsed = _parse_float(value)
     if parsed is None:
         return settings.SPEAKER_SIMILARITY_THRESHOLD
-    if parsed < MIN_SPEAKER_SIMILARITY_THRESHOLD or parsed > MAX_SPEAKER_SIMILARITY_THRESHOLD:
+    if (
+        parsed < MIN_SPEAKER_SIMILARITY_THRESHOLD
+        or parsed > MAX_SPEAKER_SIMILARITY_THRESHOLD
+    ):
         return settings.SPEAKER_SIMILARITY_THRESHOLD
     return parsed

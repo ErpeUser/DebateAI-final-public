@@ -8,18 +8,20 @@ or one or more user-created collection/files sources).
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
-
-from sqlalchemy import select
+from datetime import UTC, datetime
 
 from app.config import settings
-from app.services.llm import generate_text
 from app.database import async_session
 from app.models import KnowledgeSource, Question, Session
-from app.services.agents.prompts import OPPORTUNITY_SPECIALIST_PROMPT
 from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.agents.prompts import OPPORTUNITY_SPECIALIST_PROMPT
 from app.services.knowledge import get_adapter
-from app.services.meeting_context import build_meeting_context_text, format_prompt_layers
+from app.services.llm import generate_text
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    format_prompt_layers,
+)
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +87,7 @@ def _parse_mappings(raw: str) -> list | None:
     raw = raw.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
-    if raw.endswith("```"):
-        raw = raw[:-3]
+    raw = raw.removesuffix("```")
     raw = raw.strip()
 
     if not raw or raw == "[]":
@@ -100,7 +101,7 @@ def _parse_mappings(raw: str) -> list | None:
         if start == -1 or end == -1:
             return None
         try:
-            mappings = json.loads(raw[start:end + 1])
+            mappings = json.loads(raw[start : end + 1])
         except json.JSONDecodeError:
             return None
 
@@ -134,9 +135,15 @@ async def _fetch_knowledge_context(
             continue
         context = await adapter.fetch_context(db)
         if not context:
-            logger.warning(f"[opportunity_specialist] knowledge source '{source.name}' empty, skipping")
+            logger.warning(
+                f"[opportunity_specialist] knowledge source '{source.name}' empty, skipping"
+            )
             continue
-        contexts.append(f"## Source: {adapter.source_name}\n{context}" if len(sources) > 1 else context)
+        contexts.append(
+            f"## Source: {adapter.source_name}\n{context}"
+            if len(sources) > 1
+            else context
+        )
 
     if contexts:
         return "\n\n".join(contexts)
@@ -185,7 +192,9 @@ async def run_opportunity_specialist_cycle(
         knowledge_context = await _fetch_knowledge_context(db, knowledge_source_ids)
 
     if not knowledge_context:
-        logger.warning("[opportunity_specialist] knowledge sources empty, skipping cycle")
+        logger.warning(
+            "[opportunity_specialist] knowledge sources empty, skipping cycle"
+        )
         return []
 
     opportunities_json = _build_opportunities_json(unmapped)
@@ -224,7 +233,7 @@ async def run_opportunity_specialist_cycle(
     # Apply mappings to DB
     applied = []
     q_map = {str(q.id): q for q in unmapped}
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     async with async_session() as db:
         for mapping in mappings:
@@ -244,44 +253,56 @@ async def run_opportunity_specialist_cycle(
                 q.revision_count += 1
 
                 match_quality = mapping.get("match_quality", "")
-                note = f"Offering mapped ({match_quality})" if match_quality else "Offering mapped"
+                note = (
+                    f"Offering mapped ({match_quality})"
+                    if match_quality
+                    else "Offering mapped"
+                )
                 if q.enrichment_notes:
                     q.enrichment_notes += f"\n{note}"
                 else:
                     q.enrichment_notes = note
 
-                applied.append({
-                    "op": "offering_match",
-                    "id": target_id,
-                    "ws_type": "insight_updated",
-                    "ws_data": {
-                        "id": str(q.id),
-                        "item_type": q.item_type,
-                        "question": q.question,
-                        "rationale": q.rationale,
-                        "source_context": q.source_context,
-                        "directive_id": str(q.directive_id) if q.directive_id else None,
-                        "starred": q.starred,
-                        "dismissed": q.dismissed,
-                        "answered": q.answered,
-                        "answer_summary": q.answer_summary,
-                        "needs_followup": q.needs_followup,
-                        "followup_question": q.followup_question,
-                        "enrichment_notes": q.enrichment_notes or "",
-                        "revision_count": q.revision_count,
-                        "updated_at": q.updated_at.isoformat() if q.updated_at else None,
-                        "created_at": q.created_at.isoformat(),
-                        "is_followup": False,
-                        "timestamp": q.created_at.isoformat(),
-                        "agent_source": q.agent_source,
-                        "offering_match": q.offering_match,
-                        "enhanced": q.enhanced,
-                    },
-                })
+                applied.append(
+                    {
+                        "op": "offering_match",
+                        "id": target_id,
+                        "ws_type": "insight_updated",
+                        "ws_data": {
+                            "id": str(q.id),
+                            "item_type": q.item_type,
+                            "question": q.question,
+                            "rationale": q.rationale,
+                            "source_context": q.source_context,
+                            "directive_id": str(q.directive_id)
+                            if q.directive_id
+                            else None,
+                            "starred": q.starred,
+                            "dismissed": q.dismissed,
+                            "answered": q.answered,
+                            "answer_summary": q.answer_summary,
+                            "needs_followup": q.needs_followup,
+                            "followup_question": q.followup_question,
+                            "enrichment_notes": q.enrichment_notes or "",
+                            "revision_count": q.revision_count,
+                            "updated_at": q.updated_at.isoformat()
+                            if q.updated_at
+                            else None,
+                            "created_at": q.created_at.isoformat(),
+                            "is_followup": False,
+                            "timestamp": q.created_at.isoformat(),
+                            "agent_source": q.agent_source,
+                            "offering_match": q.offering_match,
+                            "enhanced": q.enhanced,
+                        },
+                    }
+                )
 
         await db.commit()
 
     if applied:
-        logger.info(f"[opportunity_specialist] mapped {len(applied)} opportunities to offerings")
+        logger.info(
+            f"[opportunity_specialist] mapped {len(applied)} opportunities to offerings"
+        )
 
     return applied

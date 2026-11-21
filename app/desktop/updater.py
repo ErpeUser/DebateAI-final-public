@@ -10,13 +10,12 @@ import subprocess
 import sys
 import time
 import urllib.request
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Callable
 
 from debateai_identity import INSTANCE_HEADER, canonical_launcher, canonical_root
-
 
 VERSION = re.compile(r"^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 TIMESTAMP = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
@@ -113,13 +112,16 @@ def _absent_path(value: object, parent: Path) -> Path:
 def _validate_identity(value: object) -> dict:
     if not isinstance(value, dict) or set(value) != PLAN_FIELDS:
         raise PlanError("invalid plan shape")
-    if value["schema"] != 1 or type(value["old_pid"]) is not int or value["old_pid"] <= 0:
+    if (
+        value["schema"] != 1
+        or type(value["old_pid"]) is not int
+        or value["old_pid"] <= 0
+    ):
         raise PlanError("invalid plan identity")
     if not isinstance(value["version"], str) or not VERSION.fullmatch(value["version"]):
         raise PlanError("invalid plan version")
-    if (
-        not isinstance(value["requested_at"], str)
-        or not TIMESTAMP.fullmatch(value["requested_at"])
+    if not isinstance(value["requested_at"], str) or not TIMESTAMP.fullmatch(
+        value["requested_at"]
     ):
         raise PlanError("invalid plan timestamp")
     try:
@@ -145,18 +147,17 @@ def _bundle_roots(value: dict, plan_path: Path):
     ):
         raise PlanError("invalid bundle roots")
     expected_stage_parents = {install.parent / f".debateai-stage-{value['version']}"}
-    if staged.parent not in expected_stage_parents or staged.parent.resolve(strict=True) != staged.parent:
+    if (
+        staged.parent not in expected_stage_parents
+        or staged.parent.resolve(strict=True) != staged.parent
+    ):
         raise PlanError("invalid staging root")
     return plan_path, app_data, updates, install, staged
 
 
 def _recovery_paths(value: dict, install: Path):
-    backup = _absent_path(
-        value["backup_dir"], install.parent
-    )
-    failed = _absent_path(
-        value["failed_dir"], install.parent
-    )
+    backup = _absent_path(value["backup_dir"], install.parent)
+    failed = _absent_path(value["failed_dir"], install.parent)
     if backup.name != f"{install.name}.backup-{value['version']}":
         raise PlanError("invalid backup path")
     if failed.name != f"{install.name}.failed-{value['version']}":
@@ -182,7 +183,9 @@ def _runtime_paths(
     install: Path,
     staged: Path,
 ):
-    lock_path = Path(value["lock_path"]) if isinstance(value["lock_path"], str) else Path()
+    lock_path = (
+        Path(value["lock_path"]) if isinstance(value["lock_path"], str) else Path()
+    )
     state_path = _existing_path(value["state_path"])
     if (
         not lock_path.is_absolute()
@@ -208,14 +211,10 @@ def _runtime_paths(
 
 def validate_plan(value: object, plan_path: Path) -> ApplyPlan:
     value = _validate_identity(value)
-    plan_path, app_data, updates, install, staged = _bundle_roots(
-        value, plan_path
-    )
+    plan_path, app_data, updates, install, staged = _bundle_roots(value, plan_path)
     backup, failed = _recovery_paths(value, install)
     launcher = _validate_launcher(value, install, staged)
-    lock_path, state_path = _runtime_paths(
-        value, app_data, updates, install, staged
-    )
+    lock_path, state_path = _runtime_paths(value, app_data, updates, install, staged)
 
     return ApplyPlan(
         version=value["version"],
@@ -427,6 +426,7 @@ def apply_update(
     except Exception:
         process = None
     if process is None:
+
         class FailedProcess:
             @staticmethod
             def poll():

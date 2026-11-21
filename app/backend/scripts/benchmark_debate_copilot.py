@@ -11,17 +11,18 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import hashlib
 import json
 import math
-import hashlib
 import statistics
 import sys
 import time
 import uuid
 from collections import deque
-from datetime import datetime, timezone
+from collections.abc import AsyncIterator, Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import AsyncIterator, Callable, Protocol
+from typing import Protocol
 from urllib.parse import urlparse
 
 import httpx
@@ -91,8 +92,10 @@ def endpoint_scope(endpoint: str) -> str:
         valid = (
             parsed.scheme in {"http", "https"}
             and parsed.hostname in {"localhost", "127.0.0.1", "::1"}
-            and parsed.username is None and parsed.password is None
-            and not parsed.query and not parsed.fragment
+            and parsed.username is None
+            and parsed.password is None
+            and not parsed.query
+            and not parsed.fragment
             and (port is None or port > 0)
         )
         return "loopback" if valid else "network"
@@ -109,11 +112,12 @@ async def verify_native_local_model(endpoint: str, model: str, *, client=None) -
     if endpoint_scope(endpoint) != "loopback":
         raise ValueError("Benchmark requires a loopback endpoint")
     if client is None:
-        async with httpx.AsyncClient(timeout=10, trust_env=False, follow_redirects=False) as owned:
+        async with httpx.AsyncClient(
+            timeout=10, trust_env=False, follow_redirects=False
+        ) as owned:
             return await verify_native_local_model(endpoint, model, client=owned)
     base = endpoint.rstrip("/")
-    if base.endswith("/v1"):
-        base = base[:-3]
+    base = base.removesuffix("/v1")
     async with client.stream("GET", f"{base}/api/tags") as response:
         if response.status_code != 200:
             raise ValueError("Native local model catalog unavailable")
@@ -127,11 +131,21 @@ async def verify_native_local_model(endpoint: str, model: str, *, client=None) -
     if not isinstance(models, list):
         raise ValueError("Native local model catalog is invalid")
     names = {model, model + ":latest"}
-    selected = next((m for m in models if isinstance(m, dict) and m.get("name") in names), None)
+    selected = next(
+        (m for m in models if isinstance(m, dict) and m.get("name") in names), None
+    )
     if selected is None:
-        raise ValueError("Selected native model is not installed; no download was started")
-    if selected.get("remote_host") or selected.get("remote_model") or model.endswith(("-cloud", ":cloud")):
-        raise ValueError("A remote/cloud model alias is not allowed in a local benchmark")
+        raise ValueError(
+            "Selected native model is not installed; no download was started"
+        )
+    if (
+        selected.get("remote_host")
+        or selected.get("remote_model")
+        or model.endswith(("-cloud", ":cloud"))
+    ):
+        raise ValueError(
+            "A remote/cloud model alias is not allowed in a local benchmark"
+        )
 
 
 class StreamingClient(Protocol):
@@ -379,11 +393,15 @@ def summarize(
         "stale_publishes": stale_publishes,
         "median_first_update_ms": round(statistics.median(first), 3) if first else None,
         "p95_first_update_ms": _percentile_nearest_rank(first, 0.95),
-        "median_current_update_ms": round(statistics.median(current), 3) if current else None,
+        "median_current_update_ms": round(statistics.median(current), 3)
+        if current
+        else None,
         "p95_current_update_ms": _percentile_nearest_rank(current, 0.95),
         "median_deep_revision_ms": round(statistics.median(deep), 3) if deep else None,
         "p95_deep_revision_ms": _percentile_nearest_rank(deep, 0.95),
-        "median_accepted_model_ms": round(statistics.median(accepted), 3) if accepted else None,
+        "median_accepted_model_ms": round(statistics.median(accepted), 3)
+        if accepted
+        else None,
         "p95_accepted_model_ms": _percentile_nearest_rank(accepted, 0.95),
         "accepted_model_count": len(accepted),
         "technical_quality_pass_count": sum(
@@ -424,7 +442,11 @@ class _CaptureWebSocket:
             return
         current_claim_id = str(head.get("claim_id") or "")
         published_claim_id = str(data.get("claim_id") or "")
-        if current_claim_id and published_claim_id and current_claim_id != published_claim_id:
+        if (
+            current_claim_id
+            and published_claim_id
+            and current_claim_id != published_claim_id
+        ):
             stale = True
         else:
             current_revision = int(head.get("transcript_revision") or 0)
@@ -440,11 +462,13 @@ class _CaptureWebSocket:
             )
         if stale:
             self.stale_publishes += 1
-            self.stale_publish_events.append({
-                "captured_at": captured_at,
-                "data": dict(data),
-                "head": dict(head),
-            })
+            self.stale_publish_events.append(
+                {
+                    "captured_at": captured_at,
+                    "data": dict(data),
+                    "head": dict(head),
+                }
+            )
 
     async def send_json(self, message: dict) -> None:
         if message.get("type") != "debate_update":
@@ -473,7 +497,8 @@ class _CaptureWebSocket:
             and message.get("type") == "debate_update"
             and data.get("claim_id") == claim_id
             and data.get("transcript_revision") == transcript_revision
-            and data.get("origin") in ({"model"} if final_only else {"model_stream", "model"})
+            and data.get("origin")
+            in ({"model"} if final_only else {"model_stream", "model"})
             and _has_visible_spoken_text(data)
         )
 
@@ -513,7 +538,9 @@ class _NoopEventBus:
 
 
 def _has_visible_spoken_text(data: dict) -> bool:
-    primary = "counter_question" if data.get("primary_move") == "question" else "answer_now"
+    primary = (
+        "counter_question" if data.get("primary_move") == "question" else "answer_now"
+    )
     value = data.get(primary)
     return isinstance(value, str) and bool(value.strip())
 
@@ -565,7 +592,9 @@ class ApplicationReplay:
         }
         try:
             if self._unavailable:
-                raise RuntimeError("Replay is quarantined after timeout or cancellation")
+                raise RuntimeError(
+                    "Replay is quarantined after timeout or cancellation"
+                )
             if not math.isfinite(timeout_seconds) or timeout_seconds <= 0:
                 raise ValueError("timeout_seconds must be finite and positive")
             deadline = asyncio.get_running_loop().time() + timeout_seconds
@@ -581,7 +610,7 @@ class ApplicationReplay:
             revision = self.orchestrator._debate_revision
             record["revision"] = revision  # Retain the worker counter for diagnostics.
             try:
-                captured_at, message = await self.websocket.wait_for_turn(
+                captured_at, _message = await self.websocket.wait_for_turn(
                     claim_id,
                     transcript_revision,
                     max(0.0, deadline - asyncio.get_running_loop().time()),
@@ -611,7 +640,9 @@ class ApplicationReplay:
             if accepted is None:
                 raise RuntimeError(
                     "model answer was not accepted/displayed: "
-                    + str(getattr(self.orchestrator.objection_agent, "last_outcome", None))[:300]
+                    + str(
+                        getattr(self.orchestrator.objection_agent, "last_outcome", None)
+                    )[:300]
                 )
             accepted_at, accepted_message = accepted
             data = accepted_message["data"]
@@ -635,24 +666,31 @@ class ApplicationReplay:
                 recommendation_revision=int(data.get("recommendation_revision") or 0),
             )
             if record["ui_acknowledged"] is not True:
-                raise RuntimeError("Current model event was not accepted by the headless acknowledgement contract")
+                raise RuntimeError(
+                    "Current model event was not accepted by the headless acknowledgement contract"
+                )
             record["current_update_ms"] = elapsed_ms(started, accepted_at)
             record["recommendation"] = {
                 key: data.get(key, "")
-                for key in ("answer_now", "counterargument", "counter_question", "analogy", "primary_move")
+                for key in (
+                    "answer_now",
+                    "counterargument",
+                    "counter_question",
+                    "analogy",
+                    "primary_move",
+                )
             }
             record["quality_preflight"] = evaluate_recommendation_contract(data)
             required = ["answer_now"]
             if data.get("primary_move") == "question":
                 required.append("counter_question")
             missing = [
-                key for key in required
+                key
+                for key in required
                 if not isinstance(data.get(key), str) or not data[key].strip()
             ]
             if missing:
-                raise ValueError(
-                    "debate_update is missing: " + ", ".join(missing)
-                )
+                raise ValueError("debate_update is missing: " + ", ".join(missing))
             record["status"] = "ok"
         except asyncio.CancelledError:
             self._quarantine()
@@ -672,9 +710,11 @@ class ApplicationReplay:
         task = self.orchestrator._objection_task
         if task is not None and not task.done():
             task.cancel()
+
             def consume(completed):
                 if not completed.cancelled():
                     completed.exception()
+
             task.add_done_callback(consume)
         # Cancellation is not physical thread termination. The benchmark
         # process owner supplies a final deadline; this replay is not reused.
@@ -693,10 +733,12 @@ class ApplicationReplay:
         cancellation_count = 0
         for index, turn in enumerate(turns):
             await self.orchestrator.feed_transcript(turn["text"], turn["speaker"])
-            evidence.append((
-                str(self.orchestrator._active_claim_id or ""),
-                self.orchestrator._transcript_revision,
-            ))
+            evidence.append(
+                (
+                    str(self.orchestrator._active_claim_id or ""),
+                    self.orchestrator._transcript_revision,
+                )
+            )
             # The coalescing worker increments the production revision when it
             # claims pending speech, not synchronously inside feed_transcript.
             # Yield once so a one-turn probe does not check revision zero.
@@ -705,7 +747,11 @@ class ApplicationReplay:
             if previous is not None:
                 try:
                     await previous
-                    status = "ok" if self.websocket.has_turn(*evidence[index - 1]) else "failed"
+                    status = (
+                        "ok"
+                        if self.websocket.has_turn(*evidence[index - 1])
+                        else "failed"
+                    )
                     statuses.append(status)
                     records.append({"turn_index": index - 1, "status": status})
                 except asyncio.CancelledError:
@@ -790,9 +836,8 @@ class ApplicationReplay:
         first = model_updates[0] if model_updates else None
         return {
             "delay_ms": round(delay_seconds * 1000.0, 3),
-            "same_claim": bool(model_updates) and all(
-                data.get("claim_id") == utterance_id for _, data in model_updates
-            ),
+            "same_claim": bool(model_updates)
+            and all(data.get("claim_id") == utterance_id for _, data in model_updates),
             "arrived_after_continuation": bool(first and first[0] > continued_at),
             "visible_model_updates": len(model_updates),
             "first_visible_ms": elapsed_ms(started, first[0]) if first else None,
@@ -895,7 +940,9 @@ def create_application_replay(
         lambda: {
             "claim_id": getattr(orchestrator, "_active_claim_id", None),
             "transcript_revision": getattr(orchestrator, "_transcript_revision", 0),
-            "claim_is_interim": getattr(orchestrator, "_active_claim_is_interim", False),
+            "claim_is_interim": getattr(
+                orchestrator, "_active_claim_is_interim", False
+            ),
         }
     )
     return ApplicationReplay(orchestrator, websocket, clock)
@@ -909,34 +956,41 @@ class OpenAIStreamingClient:
 
     async def stream(self, turns: list[dict[str, str]]) -> AsyncIterator[str]:
         payload = build_request_payload(turns, self.model)
-        async with httpx.AsyncClient(timeout=self.timeout, trust_env=False, follow_redirects=False) as session:
-            async with session.stream(
+        async with (
+            httpx.AsyncClient(
+                timeout=self.timeout, trust_env=False, follow_redirects=False
+            ) as session,
+            session.stream(
                 "POST", f"{self.endpoint}/chat/completions", json=payload
-            ) as response:
-                response.raise_for_status()
-                async for line in response.aiter_lines():
-                    if not line.startswith("data:"):
-                        continue
-                    data = line[5:].strip()
-                    if not data or data == "[DONE]":
-                        continue
-                    event = json.loads(data)
-                    choices = event.get("choices") or []
-                    if not choices:
-                        continue
-                    delta = choices[0].get("delta") or {}
-                    content = delta.get("content") or ""
-                    if content:
-                        yield content
+            ) as response,
+        ):
+            response.raise_for_status()
+            async for line in response.aiter_lines():
+                if not line.startswith("data:"):
+                    continue
+                data = line[5:].strip()
+                if not data or data == "[DONE]":
+                    continue
+                event = json.loads(data)
+                choices = event.get("choices") or []
+                if not choices:
+                    continue
+                delta = choices[0].get("delta") or {}
+                content = delta.get("content") or ""
+                if content:
+                    yield content
 
 
 def build_request_payload(turns: list[dict[str, str]], model: str) -> dict:
-    transcript = "\n".join(f'{turn["speaker"]}: {turn["text"]}' for turn in turns)
+    transcript = "\n".join(f"{turn['speaker']}: {turn['text']}" for turn in turns)
     return {
         "model": model,
         "messages": [
             {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Bisherige Debatte:\n{transcript}\n\n/no_think"},
+            {
+                "role": "user",
+                "content": f"Bisherige Debatte:\n{transcript}\n\n/no_think",
+            },
         ],
         # Ollama's OpenAI endpoint otherwise spends the short live budget in
         # Qwen's reasoning channel and can finish with empty visible content.
@@ -950,10 +1004,11 @@ def build_request_payload(turns: list[dict[str, str]], model: str) -> dict:
 
 async def _ollama_metadata(endpoint: str, model: str) -> dict:
     base = endpoint.rstrip("/")
-    if base.endswith("/v1"):
-        base = base[:-3]
+    base = base.removesuffix("/v1")
     try:
-        async with httpx.AsyncClient(timeout=10.0, trust_env=False, follow_redirects=False) as session:
+        async with httpx.AsyncClient(
+            timeout=10.0, trust_env=False, follow_redirects=False
+        ) as session:
             response = await session.post(f"{base}/api/show", json={"model": model})
             response.raise_for_status()
             payload = response.json()
@@ -974,17 +1029,25 @@ async def run_benchmark(args: argparse.Namespace) -> dict:
     mode = getattr(args, "mode", "persuasive")
     if mode not in {"persuasive", "forceful"}:
         raise ValueError("Unsupported debate mode")
-    if (not math.isfinite(args.timeout) or args.timeout <= 0
-            or not math.isfinite(args.cancellation_delay_ms) or args.cancellation_delay_ms < 0):
+    if (
+        not math.isfinite(args.timeout)
+        or args.timeout <= 0
+        or not math.isfinite(args.cancellation_delay_ms)
+        or args.cancellation_delay_ms < 0
+    ):
         raise ValueError("Benchmark timing limits must be finite and valid")
     if args.app_model_id and (
         not args.app_model_id.startswith("endpoint:")
-        or args.app_model_id.startswith(("endpoint:subscription-ai:", "endpoint:gemini-web:"))
+        or args.app_model_id.startswith(
+            ("endpoint:subscription-ai:", "endpoint:gemini-web:")
+        )
     ):
-        raise ValueError("Benchmark requires a local endpoint model, not a hosted bridge")
+        raise ValueError(
+            "Benchmark requires a local endpoint model, not a hosted bridge"
+        )
     await verify_native_local_model(args.endpoint, args.model)
-    from app.services.agents.objection_handler import ObjectionHandlerAgent
     from app.services import llm
+    from app.services.agents.objection_handler import ObjectionHandlerAgent
     from app.services.llm_endpoint import OpenAIEndpoint
 
     turns = load_turns(args.fixture)
@@ -1007,6 +1070,7 @@ async def run_benchmark(args: argparse.Namespace) -> dict:
     # benchmark runs on the Windows host, so resolve this one model to the
     # explicit CLI URL while retaining every production layer after routing.
     llm.resolve_endpoint = resolve_benchmark_endpoint
+
     # This standalone harness has no application database. The measured model
     # endpoint is explicitly required to be loopback above, so bypass only the
     # database-backed global privacy flag while retaining every generation and
@@ -1015,6 +1079,7 @@ async def run_benchmark(args: argparse.Namespace) -> dict:
         return False
 
     llm.is_local_only = benchmark_local_only
+
     async def ignore_benchmark_usage(*_args, **_kwargs) -> None:
         return None
 
@@ -1058,7 +1123,10 @@ async def run_benchmark(args: argparse.Namespace) -> dict:
                 "stale_publishes": 0,
             }
             interim_probe = {"status": "not_run_after_timeout", "stale_publishes": 0}
-            spoken_playbook_probe = {"status": "not_run_after_timeout", "stale_publishes": 0}
+            spoken_playbook_probe = {
+                "status": "not_run_after_timeout",
+                "stale_publishes": 0,
+            }
         else:
             probe_replay = create_application_replay(
                 ObjectionHandlerAgent(
@@ -1109,20 +1177,24 @@ async def run_benchmark(args: argparse.Namespace) -> dict:
         llm.pii_egress.protect_and_guard = original_protect_and_guard
     return {
         "schema_version": 2,
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "measurement_path": "transcript_ingest_to_debate_update",
         "mode": mode,
         "prompt_template_sha256": prompt_template_sha256,
         "prompt_fingerprint_scope": "resolved live template only; excludes dynamic inputs",
-        "fixture_sha256": hashlib.sha256(json.dumps(
-            turns, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8")).hexdigest(),
+        "fixture_sha256": hashlib.sha256(
+            json.dumps(
+                turns, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+            ).encode("utf-8")
+        ).hexdigest(),
         "acceptance_scope": "headless orchestrator callback; not real UI paint or human acceptance",
         "endpoint": args.endpoint,
         "model": args.model,
         "app_model_id": app_model_id,
         "model_metadata": await _ollama_metadata(args.endpoint, args.model),
-        "fixture": "built-in-german-debate" if args.fixture is None else str(args.fixture),
+        "fixture": "built-in-german-debate"
+        if args.fixture is None
+        else str(args.fixture),
         "research_egress": "disabled",
         "generation_egress": endpoint_scope(args.endpoint),
         "turns": records,
@@ -1147,7 +1219,9 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--endpoint", default="http://127.0.0.1:11434/v1")
     parser.add_argument("--model", default="qwen3:4b")
-    parser.add_argument("--mode", choices=("persuasive", "forceful"), default="persuasive")
+    parser.add_argument(
+        "--mode", choices=("persuasive", "forceful"), default="persuasive"
+    )
     parser.add_argument(
         "--api-key",
         default="",
@@ -1160,7 +1234,11 @@ def parse_args() -> argparse.Namespace:
             "created by setup_debate_assistant.ps1"
         ),
     )
-    parser.add_argument("--skip-probes", action="store_true", help="Only measure ordered turns for a paired export")
+    parser.add_argument(
+        "--skip-probes",
+        action="store_true",
+        help="Only measure ordered turns for a paired export",
+    )
     parser.add_argument("--fixture", type=Path)
     parser.add_argument("--output", type=Path)
     parser.add_argument("--timeout", type=float, default=120.0)

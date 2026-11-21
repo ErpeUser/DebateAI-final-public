@@ -4,7 +4,6 @@ import unittest
 from unittest import mock
 
 import numpy as np
-
 from app.services import openai_transcriber
 from app.services.batch_transcriber import BatchTranscriber, TranscriptionError
 from app.services.local_transcriber import LocalTranscriber, create_transcriber
@@ -57,8 +56,12 @@ class _FakeClient:
 
 class CreateTranscriberRoutingTests(unittest.TestCase):
     def test_local_id_routes_to_local_transcriber(self):
-        self.assertIsInstance(create_transcriber("local-whisper-base"), LocalTranscriber)
-        self.assertIsInstance(create_transcriber("local-parakeet-tdt-0.6b"), LocalTranscriber)
+        self.assertIsInstance(
+            create_transcriber("local-whisper-base"), LocalTranscriber
+        )
+        self.assertIsInstance(
+            create_transcriber("local-parakeet-tdt-0.6b"), LocalTranscriber
+        )
 
     def test_openai_transcribe_id_routes_to_openai_transcriber(self):
         for model_id in ("gpt-4o-transcribe", "gpt-4o-mini-transcribe"):
@@ -156,11 +159,15 @@ class OpenAITranscriberTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_key_raises_actionable_error_without_network(self):
         client = _FakeClient({"text": "ignored"})
         transcriber = OpenAITranscriber("gpt-4o-transcribe", client=client)
-        with mock.patch.object(
-            openai_transcriber, "resolve_provider_key", mock.AsyncMock(return_value="")
+        with (
+            mock.patch.object(
+                openai_transcriber,
+                "resolve_provider_key",
+                mock.AsyncMock(return_value=""),
+            ),
+            self.assertRaises(TranscriptionError) as ctx,
         ):
-            with self.assertRaises(TranscriptionError) as ctx:
-                await transcriber.transcribe_segment(_speech_pcm())
+            await transcriber.transcribe_segment(_speech_pcm())
 
         self.assertIn("OpenAI API key", str(ctx.exception))
         self.assertIn("Admin -> Connections", str(ctx.exception))
@@ -271,11 +278,15 @@ class OpenAIChatTranscriberTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_key_raises_actionable_error_without_network(self):
         client = _FakeClient(_chat_payload("ignored"))
         transcriber = OpenAIChatTranscriber("gpt-audio-1.5", client=client)
-        with mock.patch.object(
-            openai_transcriber, "resolve_provider_key", mock.AsyncMock(return_value="")
+        with (
+            mock.patch.object(
+                openai_transcriber,
+                "resolve_provider_key",
+                mock.AsyncMock(return_value=""),
+            ),
+            self.assertRaises(TranscriptionError) as ctx,
         ):
-            with self.assertRaises(TranscriptionError) as ctx:
-                await transcriber.transcribe_segment(_speech_pcm())
+            await transcriber.transcribe_segment(_speech_pcm())
 
         self.assertIn("OpenAI API key", str(ctx.exception))
         self.assertIn("Admin -> Connections", str(ctx.exception))

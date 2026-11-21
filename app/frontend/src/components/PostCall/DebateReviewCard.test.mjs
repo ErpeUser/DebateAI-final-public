@@ -2,8 +2,14 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
 
-const source = await readFile(new URL("./DebateReviewCard.tsx", import.meta.url), "utf8");
-const apiSource = await readFile(new URL("../../services/api.ts", import.meta.url), "utf8");
+const source = await readFile(
+  new URL("./DebateReviewCard.tsx", import.meta.url),
+  "utf8",
+);
+const apiSource = await readFile(
+  new URL("../../services/api.ts", import.meta.url),
+  "utf8",
+);
 
 test("post-debate review and applying settings both require manual confirmation", () => {
   assert.match(source, /window\.confirm/);

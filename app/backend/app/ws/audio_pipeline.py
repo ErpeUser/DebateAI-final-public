@@ -7,8 +7,6 @@ from dataclasses import dataclass, field
 from time import monotonic
 from typing import Any
 
-from fastapi import WebSocket
-
 from app.services.agents.activity import ActivityRegistry
 from app.services.agents.orchestrator import AgentOrchestrator
 from app.services.audio_store import SegmentAudioWriter
@@ -17,16 +15,15 @@ from app.services.native_audio_bridge import (
     unregister_native_audio_session,
 )
 from app.services.ordered_transcription import OrderedTranscriptionQueue
-from app.ws.streaming_provisional import StreamingProvisionalRelay
 from app.services.track_mixer import TrackMixer
 from app.services.windows_audio_capture import native_windows_audio
 from app.ws.audio_messages import _handle_audio_frame, _handle_text_message
 from app.ws.audio_persistence import _append_audio_frames
 from app.ws.audio_runtime import (
-    MAX_DIARIZATION_QUEUE_FRAMES,
     _PCM_BYTES_PER_SECOND,
-    _QueuedAudioFrame,
+    MAX_DIARIZATION_QUEUE_FRAMES,
     _queued_speaker_auto_id,
+    _QueuedAudioFrame,
     _receive_websocket_message,
     _reconnect_audio_gateway,
     _run_diarization_worker,
@@ -34,6 +31,8 @@ from app.ws.audio_runtime import (
     _send_status,
     _stop_diarization_worker,
 )
+from app.ws.streaming_provisional import StreamingProvisionalRelay
+from fastapi import WebSocket
 
 logger = logging.getLogger("app.ws.audio_handler")
 
@@ -230,7 +229,9 @@ async def _run_audio_pipeline(
     )
     pending_enqueued_at: deque[float] = deque()
 
-    async def _enqueue_diarization_flush(track: int, *, split_track_established: bool) -> None:
+    async def _enqueue_diarization_flush(
+        track: int, *, split_track_established: bool
+    ) -> None:
         queued_at = monotonic()
         pending_enqueued_at.append(queued_at)
         frame = _QueuedAudioFrame(
@@ -248,6 +249,7 @@ async def _run_audio_pipeline(
             except ValueError:
                 pass
             raise
+
     native_audio_queue = register_native_audio_session(session_id)
     # The live gateway is an optional interim path.  Keep its queue small so
     # a slow provider cannot grow memory or stall the durable batch path.
@@ -260,24 +262,33 @@ async def _run_audio_pipeline(
 
     provisional_relay = None
     if streaming_transcriber is not None:
-        capture_id = str(getattr(orchestrator, "capture_id", "") or uuid.uuid4().hex)[:96]
+        capture_id = str(getattr(orchestrator, "capture_id", "") or uuid.uuid4().hex)[
+            :96
+        ]
         provisional_relay = StreamingProvisionalRelay(
-            orchestrator.feed_interim_transcript, capture_id=capture_id,
+            orchestrator.feed_interim_transcript,
+            capture_id=capture_id,
         )
 
         async def _send_streaming_partial(track: int, text: str) -> None:
             if not text:
                 return
             segment_id, revision = provisional_relay.append(track, text)
-            await websocket.send_json({
-                "type": "interim_transcript",
-                "data": {
-                    "text": text, "track": track,
-                    "track_id": "mic" if track == 0 else "system",
-                    "segment_id": segment_id, "segment_revision": revision,
-                    "mode": "append", "source": "nemotron", "final": False,
-                },
-            })
+            await websocket.send_json(
+                {
+                    "type": "interim_transcript",
+                    "data": {
+                        "text": text,
+                        "track": track,
+                        "track_id": "mic" if track == 0 else "system",
+                        "segment_id": segment_id,
+                        "segment_revision": revision,
+                        "mode": "append",
+                        "source": "nemotron",
+                        "final": False,
+                    },
+                }
+            )
 
         streaming_transcriber._on_partial = _send_streaming_partial
 
@@ -286,9 +297,7 @@ async def _run_audio_pipeline(
 
     async def _on_diarized_segment(item: _QueuedAudioFrame, segment: Any):
         speaker_auto_id = (
-            f"sys_{segment.speaker_id}"
-            if item.track == 1
-            else segment.speaker_id
+            f"sys_{segment.speaker_id}" if item.track == 1 else segment.speaker_id
         )
         logger.info(
             "Diarized segment: speaker=%s bytes=%s",
@@ -322,8 +331,11 @@ async def _run_audio_pipeline(
                 provisional_id = await provisional_relay.finalize(item.track)
                 await orchestrator.retire_interim_transcript(provisional_id)
                 await transcription_queue.add_result(
-                    queued_speaker, segment.pcm_bytes, None,
-                    failed=True, provisional_segment_id=provisional_id,
+                    queued_speaker,
+                    segment.pcm_bytes,
+                    None,
+                    failed=True,
+                    provisional_segment_id=provisional_id,
                 )
                 raise
             provisional_id = await provisional_relay.finalize(item.track)
@@ -332,7 +344,9 @@ async def _run_audio_pipeline(
                 text = None
             try:
                 await transcription_queue.add_result(
-                    queued_speaker, segment.pcm_bytes, text,
+                    queued_speaker,
+                    segment.pcm_bytes,
+                    text,
                     provisional_segment_id=provisional_id,
                 )
             except Exception:
@@ -427,7 +441,9 @@ async def _run_audio_pipeline(
                 f"Listening (Privacy First: {names} paused, see Admin -> Agents)..."
             )
         else:
-            active_message = "Listening (Privacy First: everything running on your network)..."
+            active_message = (
+                "Listening (Privacy First: everything running on your network)..."
+            )
         await websocket.send_json(
             {
                 "type": "status",
@@ -612,7 +628,9 @@ async def _run_audio_pipeline(
                             split_track_established=state.split_track_established,
                         )
                     except TimeoutError:
-                        logger.warning("Track %s flush could not be queued before shutdown", track)
+                        logger.warning(
+                            "Track %s flush could not be queued before shutdown", track
+                        )
             sys_diarizer = await _stop_diarization_worker(
                 websocket,
                 diarization_queue,

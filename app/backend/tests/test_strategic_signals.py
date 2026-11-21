@@ -1,15 +1,13 @@
 import json
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
 
-from sqlalchemy.orm import attributes
-
+from app.models import SessionSynthesis
 from app.services.agents.prompts import STRATEGIC_SIGNALS_PROMPT
 from app.services.agents.strategic_signals import run_strategic_signals_cycle
-from app.models import SessionSynthesis
 from app.services.briefing_synthesis import (
     BriefArbiterOutput,
     BriefItem,
@@ -17,12 +15,13 @@ from app.services.briefing_synthesis import (
     _merge_signal_history,
     _persist_synthesis,
 )
+from sqlalchemy.orm import attributes
 
 
 class SignalHistoryMergeTests(unittest.TestCase):
     def test_merges_normalized_title_and_keeps_latest_body(self):
-        first_at = datetime(2026, 7, 30, 10, 0, tzinfo=timezone.utc)
-        last_at = datetime(2026, 7, 30, 10, 1, tzinfo=timezone.utc)
+        first_at = datetime(2026, 7, 30, 10, 0, tzinfo=UTC)
+        last_at = datetime(2026, 7, 30, 10, 1, tzinfo=UTC)
         first = BriefArbiterOutput(
             risks_blockers=[
                 BriefItem(
@@ -70,7 +69,7 @@ class SignalHistoryMergeTests(unittest.TestCase):
         self.assertEqual(2, item["count"])
 
     def test_changed_title_and_blank_title_fallback_remain_distinct(self):
-        captured_at = datetime(2026, 7, 30, 10, 0, tzinfo=timezone.utc)
+        captured_at = datetime(2026, 7, 30, 10, 0, tzinfo=UTC)
         output = BriefArbiterOutput(
             strategic_signals=[
                 BriefItem(title="Budget", summary="Budget is constrained"),
@@ -87,7 +86,7 @@ class SignalHistoryMergeTests(unittest.TestCase):
         self.assertEqual(2, merged[-1]["count"])
 
     def test_caps_history_at_newest_200_entries(self):
-        start = datetime(2026, 7, 30, 10, 0, tzinfo=timezone.utc)
+        start = datetime(2026, 7, 30, 10, 0, tzinfo=UTC)
         existing = [
             {
                 "section": "strategic_signals",
@@ -111,7 +110,7 @@ class SignalHistoryMergeTests(unittest.TestCase):
         merged = _merge_signal_history(
             existing,
             latest,
-            datetime(2026, 7, 31, 10, 0, tzinfo=timezone.utc),
+            datetime(2026, 7, 31, 10, 0, tzinfo=UTC),
             "model",
         )
 
@@ -259,8 +258,9 @@ class SignalHistoryPersistenceTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(2, synthesis.signal_history[0]["count"])
         self.assertEqual("Latest", synthesis.signal_history[0]["summary"])
         self.assertTrue(
-            attributes.instance_state(synthesis)
-            .attrs.signal_history.history.has_changes()
+            attributes.instance_state(
+                synthesis
+            ).attrs.signal_history.history.has_changes()
         )
 
     async def test_other_modes_and_statuses_do_not_change_history(self):
@@ -289,7 +289,9 @@ class SignalHistoryPersistenceTests(unittest.IsolatedAsyncioTestCase):
 
                 self.assertIs(original, synthesis.signal_history)
 
-    async def test_persistence_materializes_speakers_then_normalizes_the_detached_row(self):
+    async def test_persistence_materializes_speakers_then_normalizes_the_detached_row(
+        self,
+    ):
         session_id = uuid4()
         speaker_id = uuid4()
         db = _PersistenceSession(None)
@@ -335,9 +337,7 @@ class StrategicSignalsTests(unittest.IsolatedAsyncioTestCase):
             strategic_signals=[
                 BriefItem(
                     title="Budget is the gating signal",
-                    evidence_refs=[
-                        EvidenceRef(insight_id="insight-1", type="insight")
-                    ],
+                    evidence_refs=[EvidenceRef(insight_id="insight-1", type="insight")],
                 )
             ]
         )
@@ -378,9 +378,7 @@ class StrategicSignalsTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(return_value=persisted),
             ) as persist,
         ):
-            result = await run_strategic_signals_cycle(
-                uuid4(), agent_configs=configs
-            )
+            result = await run_strategic_signals_cycle(uuid4(), agent_configs=configs)
 
         generate.assert_awaited_once()
         self.assertEqual("test-model", generate.await_args.args[0])
@@ -401,9 +399,7 @@ class StrategicSignalsTests(unittest.IsolatedAsyncioTestCase):
         ):
             result = await run_strategic_signals_cycle(
                 uuid4(),
-                agent_configs={
-                    "strategic_signals": SimpleNamespace(enabled=False)
-                },
+                agent_configs={"strategic_signals": SimpleNamespace(enabled=False)},
             )
 
         self.assertIsNone(result)

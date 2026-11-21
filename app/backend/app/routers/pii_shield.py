@@ -13,17 +13,16 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Directive, Document, Question, Session, Speaker, TranscriptEntry
 from app.services import model_downloads
 from app.services.pii import egress, ner, shield, vault
-from app.services.pii.status import status as shield_status
 from app.services.pii.recognizers import CATEGORIES
+from app.services.pii.status import status as shield_status
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/pii-shield", tags=["pii-shield"])
 session_router = APIRouter(prefix="/api/sessions/{session_id}/pii", tags=["pii-shield"])
@@ -52,7 +51,9 @@ async def get_status(db: AsyncSession = Depends(get_db)):
     return await shield_status(db)
 
 
-def _merge_update(current: shield.ShieldSettings, update: ShieldUpdate) -> shield.ShieldSettings:
+def _merge_update(
+    current: shield.ShieldSettings, update: ShieldUpdate
+) -> shield.ShieldSettings:
     if update.enabled is not None:
         current.enabled = update.enabled
     if update.categories is not None:
@@ -65,7 +66,9 @@ def _merge_update(current: shield.ShieldSettings, update: ShieldUpdate) -> shiel
     if update.prompt_log is not None:
         current.prompt_log = update.prompt_log
     if update.protected_terms is not None:
-        current.protected_terms = [_valid_term(term) for term in update.protected_terms if term.value.strip()]
+        current.protected_terms = [
+            _valid_term(term) for term in update.protected_terms if term.value.strip()
+        ]
     return current
 
 
@@ -100,7 +103,10 @@ async def outbound_prompts(limit: int = 50):
     """
     limit = max(1, min(limit, 200))
     entries = egress.recent(limit)
-    return {"enabled": (await shield.get_settings_standalone()).prompt_log, "entries": entries}
+    return {
+        "enabled": (await shield.get_settings_standalone()).prompt_log,
+        "entries": entries,
+    }
 
 
 @router.delete("/egress", status_code=204)
@@ -155,12 +161,16 @@ async def session_ledger(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     values themselves are revealed explicitly and audited as one request.
     """
     rows = (
-        await db.execute(
-            select(vault.PiiVaultEntry)
-            .where(vault.PiiVaultEntry.session_id == session_id)
-            .order_by(vault.PiiVaultEntry.category, vault.PiiVaultEntry.ordinal)
+        (
+            await db.execute(
+                select(vault.PiiVaultEntry)
+                .where(vault.PiiVaultEntry.session_id == session_id)
+                .order_by(vault.PiiVaultEntry.category, vault.PiiVaultEntry.ordinal)
+            )
         )
-    ).scalars().all()
+        .scalars()
+        .all()
+    )
     entries = [
         {
             "category": row.category,
@@ -178,38 +188,58 @@ async def session_ledger(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
 
 
 _QUESTION_FIELDS = (
-    "question", "rationale", "source_context", "answer_summary",
-    "followup_question", "enrichment_notes", "offering_match",
+    "question",
+    "rationale",
+    "source_context",
+    "answer_summary",
+    "followup_question",
+    "enrichment_notes",
+    "offering_match",
 )
 
 
 class _Protector:
     """Runs the encode path over stored rows and counts what changed."""
 
-    def __init__(self, db: AsyncSession, session_id: uuid.UUID, settings: shield.ShieldSettings):
+    def __init__(
+        self, db: AsyncSession, session_id: uuid.UUID, settings: shield.ShieldSettings
+    ):
         self.db = db
         self.session_id = session_id
         self.settings = settings
-        self.changed = {"transcripts": 0, "insights": 0, "directives": 0, "documents": 0, "speakers": 0, "session": 0}
+        self.changed = {
+            "transcripts": 0,
+            "insights": 0,
+            "directives": 0,
+            "documents": 0,
+            "speakers": 0,
+            "session": 0,
+        }
 
     async def text_attr(self, obj, attr: str) -> bool:
         value = getattr(obj, attr, None)
         if not isinstance(value, str) or not value:
             return False
-        protected = await shield.protect_text(self.db, self.session_id, value, settings=self.settings)
+        protected = await shield.protect_text(
+            self.db, self.session_id, value, settings=self.settings
+        )
         if protected == value:
             return False
         setattr(obj, attr, protected)
         return True
 
     async def rows(self, model, attrs: tuple[str, ...], bucket: str) -> None:
-        result = await self.db.execute(select(model).where(model.session_id == self.session_id))
+        result = await self.db.execute(
+            select(model).where(model.session_id == self.session_id)
+        )
         for row in result.scalars().all():
             touched = [await self.text_attr(row, attr) for attr in attrs]
             self.changed[bucket] += int(any(touched))
 
     async def speakers(self) -> None:
-        result = await self.db.execute(select(Speaker).where(Speaker.session_id == self.session_id))
+        result = await self.db.execute(
+            select(Speaker).where(Speaker.session_id == self.session_id)
+        )
         for speaker in result.scalars().all():
             touched = False
             for attr in ("name", "display_name"):
@@ -236,7 +266,10 @@ async def protect_existing(session_id: uuid.UUID, db: AsyncSession = Depends(get
         raise HTTPException(404, "Session not found")
 
     protector = _Protector(db, session_id, settings)
-    touched = [await protector.text_attr(session, attr) for attr in ("name", "notes", "meeting_context")]
+    touched = [
+        await protector.text_attr(session, attr)
+        for attr in ("name", "notes", "meeting_context")
+    ]
     protector.changed["session"] = sum(touched)
     await protector.rows(TranscriptEntry, ("text",), "transcripts")
     await protector.rows(Question, _QUESTION_FIELDS, "insights")
@@ -246,4 +279,7 @@ async def protect_existing(session_id: uuid.UUID, db: AsyncSession = Depends(get
 
     await db.commit()
     shield.invalidate_roster(session_id)
-    return {"changed": protector.changed, "vault_entries": await vault.entry_count(db, session_id)}
+    return {
+        "changed": protector.changed,
+        "vault_entries": await vault.entry_count(db, session_id),
+    }

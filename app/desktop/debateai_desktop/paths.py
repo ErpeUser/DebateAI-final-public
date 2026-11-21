@@ -4,9 +4,10 @@ import socket
 import sys
 from pathlib import Path
 
-from debateai_identity import PRODUCT_NAME, app_data_dir as app_data_dir
+from debateai_identity import PRODUCT_NAME, app_data_dir
 
 APP_NAME = PRODUCT_NAME
+__all__ = ["APP_NAME", "app_data_dir", "free_port", "resource"]
 
 # Repo-checkout locations for each bundled resource (dev mode). In a
 # PyInstaller bundle every resource sits directly under sys._MEIPASS.

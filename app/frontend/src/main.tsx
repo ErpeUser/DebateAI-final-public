@@ -20,5 +20,5 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     <ConfirmProvider>
       <App />
     </ConfirmProvider>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

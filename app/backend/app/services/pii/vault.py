@@ -17,8 +17,8 @@ an outer transaction or caller savepoint invalidates its cached state.
 from __future__ import annotations
 
 import base64
-import hmac
 import hashlib
+import hmac
 import logging
 import re
 import threading
@@ -27,16 +27,15 @@ import uuid
 from collections import OrderedDict
 from dataclasses import dataclass, field
 
+from app.models import PiiVaultEntry
+from app.services.pii.recognizers import CATEGORIES, normalize_value
+from app.services.pii.transaction_cache import TransactionCache
+from app.services.redaction import register_secret
+from app.services.secrets import derive_subkey
 from cryptography.fernet import Fernet, InvalidToken
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import PiiVaultEntry
-from app.services.redaction import register_secret
-from app.services.pii.recognizers import CATEGORIES, normalize_value
-from app.services.pii.transaction_cache import TransactionCache
-from app.services.secrets import derive_subkey
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +45,9 @@ _LOOKUP_PURPOSE = b"debateai.pii.lookup.v2"
 _CATEGORY_ALTERNATION = "|".join(CATEGORIES)
 # The bracketed form is what the shield writes; the bare form is what a model
 # sometimes hands back after rewriting a sentence around the token.
-TOKEN_PATTERN = re.compile(rf"\[({_CATEGORY_ALTERNATION})_(\d+)\]|\b({_CATEGORY_ALTERNATION})_(\d+)\b")
+TOKEN_PATTERN = re.compile(
+    rf"\[({_CATEGORY_ALTERNATION})_(\d+)\]|\b({_CATEGORY_ALTERNATION})_(\d+)\b"
+)
 
 
 def make_token(category: str, ordinal: int) -> str:
@@ -59,8 +60,8 @@ def has_tokens(text: str | None) -> bool:
 
 @dataclass
 class _SessionVault:
-    by_hmac: dict[str, str] = field(default_factory=dict)      # value_hmac -> token
-    by_token: dict[str, str] = field(default_factory=dict)     # token -> ciphertext
+    by_hmac: dict[str, str] = field(default_factory=dict)  # value_hmac -> token
+    by_token: dict[str, str] = field(default_factory=dict)  # token -> ciphertext
     next_ordinal: dict[str, int] = field(default_factory=dict)  # category -> next free
     loaded: bool = False
 
@@ -87,7 +88,9 @@ def _get_lookup_key() -> bytes:
 
 def value_hmac(category: str, value: str) -> str:
     normalized = normalize_value(value, category)
-    return hmac.new(_get_lookup_key(), f"{category}\x00{normalized}".encode("utf-8"), hashlib.sha256).hexdigest()
+    return hmac.new(
+        _get_lookup_key(), f"{category}\x00{normalized}".encode(), hashlib.sha256
+    ).hexdigest()
 
 
 def encrypt(value: str) -> str:
@@ -109,7 +112,9 @@ _plaintext_seen: OrderedDict[str, tuple[str, float, set[uuid.UUID]]] = OrderedDi
 def _sweep_plaintext_index(*, now: float | None = None) -> None:
     now = time.monotonic() if now is None else now
     cutoff = now - PLAINTEXT_INDEX_TTL_SECONDS
-    expired = [value for value, (_, seen_at, _) in _plaintext_seen.items() if seen_at < cutoff]
+    expired = [
+        value for value, (_, seen_at, _) in _plaintext_seen.items() if seen_at < cutoff
+    ]
     for value in expired:
         _plaintext_seen.pop(value, None)
     while len(_plaintext_seen) > max(1, MAX_PLAINTEXT_INDEX_ENTRIES):
@@ -145,11 +150,13 @@ def known_plaintext_values(*, now: float | None = None) -> list[tuple[str, str]]
     """(value, category) for every vault value seen by this process."""
     with _lock:
         _sweep_plaintext_index(now=now)
-        return [(value, category) for value, (category, _, _) in _plaintext_seen.items()]
+        return [
+            (value, category) for value, (category, _, _) in _plaintext_seen.items()
+        ]
 
 
 def _category_of(token: str) -> str:
-    return token[1:token.index("_")] if token.startswith("[") and "_" in token else ""
+    return token[1 : token.index("_")] if token.startswith("[") and "_" in token else ""
 
 
 def _decrypt_with(fernet: Fernet, ciphertext: str) -> str | None:
@@ -186,7 +193,9 @@ async def _ensure_loaded(db: AsyncSession, session_id: uuid.UUID) -> _SessionVau
     vault = _vault(db, session_id)
     if vault.loaded:
         return vault
-    result = await db.execute(select(PiiVaultEntry).where(PiiVaultEntry.session_id == session_id))
+    result = await db.execute(
+        select(PiiVaultEntry).where(PiiVaultEntry.session_id == session_id)
+    )
     rows = list(result.scalars().all())
     # The first query may have autobegun the outer transaction.
     vault = _vault(db, session_id)
@@ -195,7 +204,9 @@ async def _ensure_loaded(db: AsyncSession, session_id: uuid.UUID) -> _SessionVau
             for row in rows:
                 vault.by_hmac[row.value_hmac] = row.token
                 vault.by_token[row.token] = row.value_encrypted
-                vault.next_ordinal[row.category] = max(vault.next_ordinal.get(row.category, 1), row.ordinal + 1)
+                vault.next_ordinal[row.category] = max(
+                    vault.next_ordinal.get(row.category, 1), row.ordinal + 1
+                )
             vault.loaded = True
     return vault
 
@@ -228,7 +239,7 @@ async def migrate_legacy_entries(db: AsyncSession) -> int:
             canonical_ciphertext = row.value_encrypted
         canonical_digest = hmac.new(
             _get_lookup_key(),
-            f"{row.category}\x00{normalize_value(plaintext, row.category)}".encode("utf-8"),
+            f"{row.category}\x00{normalize_value(plaintext, row.category)}".encode(),
             hashlib.sha256,
         ).hexdigest()
         key = (row.session_id, canonical_digest)
@@ -241,7 +252,10 @@ async def migrate_legacy_entries(db: AsyncSession) -> int:
 
     migrated = 0
     for row, canonical_digest, canonical_ciphertext, plaintext in rewrites:
-        if row.value_hmac != canonical_digest or row.value_encrypted != canonical_ciphertext:
+        if (
+            row.value_hmac != canonical_digest
+            or row.value_encrypted != canonical_ciphertext
+        ):
             row.value_hmac = canonical_digest
             row.value_encrypted = canonical_ciphertext
             migrated += 1
@@ -252,7 +266,9 @@ async def migrate_legacy_entries(db: AsyncSession) -> int:
     return migrated
 
 
-async def token_for(db: AsyncSession, session_id: uuid.UUID, category: str, value: str) -> str:
+async def token_for(
+    db: AsyncSession, session_id: uuid.UUID, category: str, value: str
+) -> str:
     """The session's token for this value, minting one on first sight.
 
     The new row is flushed, not committed: it belongs to the caller's

@@ -83,34 +83,38 @@ test("confirmed deletion uses the existing helper and refreshes both lists", asy
   const calls = [];
   let confirmation;
 
-  await deleteGroupWithConfirmation(group, dependencies({
-    confirm: async (options) => {
-      confirmation = options;
-      return true;
-    },
-    deleteGroup: async (id) => calls.push(["delete", id]),
-    refreshGroups: () => calls.push(["groups"]),
-    refreshSessions: () => calls.push(["sessions"]),
-    toast: (message) => calls.push(["toast", message]),
-  }));
+  await deleteGroupWithConfirmation(
+    group,
+    dependencies({
+      confirm: async (options) => {
+        confirmation = options;
+        return true;
+      },
+      deleteGroup: async (id) => calls.push(["delete", id]),
+      refreshGroups: () => calls.push(["groups"]),
+      refreshSessions: () => calls.push(["sessions"]),
+      toast: (message) => calls.push(["toast", message]),
+    }),
+  );
 
   assert.match(confirmation.message, /nicht gelöscht/i);
   assert.match(confirmation.message, /Gespräche.*verschoben/i);
   assert.equal(confirmation.confirmLabel, "Gruppe löschen");
-  assert.deepEqual(calls, [
-    ["delete", group.id],
-    ["groups"],
-    ["sessions"],
-  ]);
+  assert.deepEqual(calls, [["delete", group.id], ["groups"], ["sessions"]]);
 });
 
 test("cancelled deletion makes no request", async () => {
   let deleted = false;
 
-  await deleteGroupWithConfirmation(group, dependencies({
-    confirm: async () => false,
-    deleteGroup: async () => { deleted = true; },
-  }));
+  await deleteGroupWithConfirmation(
+    group,
+    dependencies({
+      confirm: async () => false,
+      deleteGroup: async () => {
+        deleted = true;
+      },
+    }),
+  );
 
   assert.equal(deleted, false);
 });
@@ -118,15 +122,20 @@ test("cancelled deletion makes no request", async () => {
 test("failed deletion stays retryable and does not refresh stale data", async () => {
   const calls = [];
 
-  await deleteGroupWithConfirmation(group, dependencies({
-    deleteGroup: async () => { throw new Error("offline"); },
-    refreshGroups: () => calls.push("groups"),
-    refreshSessions: () => calls.push("sessions"),
-    toast: (message) => calls.push(message),
-  }));
+  await deleteGroupWithConfirmation(
+    group,
+    dependencies({
+      deleteGroup: async () => {
+        throw new Error("offline");
+      },
+      refreshGroups: () => calls.push("groups"),
+      refreshSessions: () => calls.push("sessions"),
+      toast: (message) => calls.push(message),
+    }),
+  );
 
   assert.deepEqual(calls, [
-    '„Discovery“ konnte nicht gelöscht werden. Verbindung prüfen und erneut versuchen.',
+    "„Discovery“ konnte nicht gelöscht werden. Verbindung prüfen und erneut versuchen.",
   ]);
 });
 
@@ -182,7 +191,9 @@ test("the chevron reads as a control at rest, not only on hover", () => {
     onDelete: () => {},
     sessionCount: 0,
   });
-  const chevronChip = markup.match(/<span class="([^"]*rounded bg-brand-light-gray-2[^"]*)"/);
+  const chevronChip = markup.match(
+    /<span class="([^"]*rounded bg-brand-light-gray-2[^"]*)"/,
+  );
   assert.ok(chevronChip, "the chevron should sit in a visible chip");
   assert.doesNotMatch(chevronChip[1], /bc-reveal/);
   assert.doesNotMatch(chevronChip[1], /opacity-0/);
@@ -192,7 +203,11 @@ test("collapsed groups are remembered as the exception, so an unlisted group is 
   // The polarity is the fix: at first paint the groups prop is still empty, so
   // an expanded-id set was empty too and every group came up collapsed.
   const stored = new Set(["g2"]);
-  assert.equal(stored.has("g1"), false, "g1 was never collapsed, so it is open");
+  assert.equal(
+    stored.has("g1"),
+    false,
+    "g1 was never collapsed, so it is open",
+  );
   assert.equal(stored.has("g2"), true);
   // A group that arrives later needs no seeding at all.
   assert.equal(stored.has("g3-created-mid-session"), false);
@@ -265,14 +280,26 @@ test("filterSessions returns the list untouched for an empty or blank query", ()
 });
 
 test("filterSessions matches session names case-insensitively", () => {
-  assert.deepEqual(filterSessions(sessions, groups, "METLIFE").map((s) => s.id), ["c"]);
-  assert.deepEqual(filterSessions(sessions, groups, "aug 24").map((s) => s.id), ["a"]);
+  assert.deepEqual(
+    filterSessions(sessions, groups, "METLIFE").map((s) => s.id),
+    ["c"],
+  );
+  assert.deepEqual(
+    filterSessions(sessions, groups, "aug 24").map((s) => s.id),
+    ["a"],
+  );
 });
 
 test("filterSessions also matches on the session's group name", () => {
-  assert.deepEqual(filterSessions(sessions, groups, "digital").map((s) => s.id), ["a"]);
+  assert.deepEqual(
+    filterSessions(sessions, groups, "digital").map((s) => s.id),
+    ["a"],
+  );
   // "purdue" hits both the group and a session name; each session once.
-  assert.deepEqual(filterSessions(sessions, groups, "purdue").map((s) => s.id), ["b"]);
+  assert.deepEqual(
+    filterSessions(sessions, groups, "purdue").map((s) => s.id),
+    ["b"],
+  );
 });
 
 test("filterSessions returns nothing when nothing matches", () => {
@@ -282,14 +309,42 @@ test("filterSessions returns nothing when nothing matches", () => {
 // Noon UTC keeps the local calendar date stable in every time zone a test
 // machine is likely to sit in.
 const dated = [
-  session({ id: "oct8", name: "Renewal review", created_at: "2026-10-08T12:00:00Z" }),
-  session({ id: "oct18", name: "Board prep", created_at: "2026-10-18T12:00:00Z" }),
-  session({ id: "aug3", name: "Kickoff", created_at: "2026-07-30T12:00:00Z", started_at: "2026-08-03T12:00:00Z" }),
+  session({
+    id: "oct8",
+    name: "Renewal review",
+    created_at: "2026-10-08T12:00:00Z",
+  }),
+  session({
+    id: "oct18",
+    name: "Board prep",
+    created_at: "2026-10-18T12:00:00Z",
+  }),
+  session({
+    id: "aug3",
+    name: "Kickoff",
+    created_at: "2026-07-30T12:00:00Z",
+    started_at: "2026-08-03T12:00:00Z",
+  }),
 ];
 
 test("dateSearchTerms spells a date every way a person might type it", () => {
   const terms = dateSearchTerms("2026-10-08T12:00:00Z");
-  for (const expected of ["october", "oct", "8", "08", "10/8", "10/08", "10-8", "10-08", "2026-10-08", "oct 8", "october 8", "8-oct", "10/8/2026", "2026"]) {
+  for (const expected of [
+    "october",
+    "oct",
+    "8",
+    "08",
+    "10/8",
+    "10/08",
+    "10-8",
+    "10-08",
+    "2026-10-08",
+    "oct 8",
+    "october 8",
+    "8-oct",
+    "10/8/2026",
+    "2026",
+  ]) {
     assert.ok(terms.includes(expected), `missing ${expected}`);
   }
   assert.deepEqual(dateSearchTerms(null), []);
@@ -321,9 +376,15 @@ test("orderSessions puts live sessions first and otherwise keeps order", () => {
     session({ id: "3", state: "pre_call" }),
     session({ id: "4", state: "active" }),
   ];
-  assert.deepEqual(orderSessions(list).map((s) => s.id), ["2", "4", "1", "3"]);
+  assert.deepEqual(
+    orderSessions(list).map((s) => s.id),
+    ["2", "4", "1", "3"],
+  );
   // Pure: the input is not reordered.
-  assert.deepEqual(list.map((s) => s.id), ["1", "2", "3", "4"]);
+  assert.deepEqual(
+    list.map((s) => s.id),
+    ["1", "2", "3", "4"],
+  );
 });
 
 test("sessionStateLabel names every state in plain words", () => {
@@ -336,7 +397,10 @@ test("navigation controls expose German accessible labels", () => {
   assert.match(componentSource, /Aktionen für/);
   assert.match(componentSource, /Zum hellen Design wechseln/);
   assert.match(componentSource, /Seitenleiste einklappen/);
-  assert.doesNotMatch(componentSource, /Actions for|Switch to light theme|Collapse sidebar/);
+  assert.doesNotMatch(
+    componentSource,
+    /Actions for|Switch to light theme|Collapse sidebar/,
+  );
 });
 
 test("the find box threshold is a small handful", () => {

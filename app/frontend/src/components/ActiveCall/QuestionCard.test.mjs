@@ -4,9 +4,13 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
+import vm from "node:vm";
 import { build } from "esbuild";
 
-const src = readFileSync(new URL("./QuestionCard.tsx", import.meta.url), "utf8");
+const src = readFileSync(
+  new URL("./QuestionCard.tsx", import.meta.url),
+  "utf8",
+);
 
 const bundle = await build({
   stdin: {
@@ -46,7 +50,9 @@ const bundle = await build({
         questions: [useful], speakers: [],
       }));
     `,
-    resolveDir: dirname(fileURLToPath(new URL("./QuestionCard.tsx", import.meta.url))),
+    resolveDir: dirname(
+      fileURLToPath(new URL("./QuestionCard.tsx", import.meta.url)),
+    ),
     sourcefile: "alp-243-render.tsx",
     loader: "tsx",
   },
@@ -57,9 +63,18 @@ const bundle = await build({
 });
 
 const compiled = { exports: {} };
-new Function("require", "module", "exports", bundle.outputFiles[0].text)(
-  createRequire(import.meta.url), compiled, compiled.exports,
-);
+vm.runInNewContext(bundle.outputFiles[0].text, {
+  require: createRequire(import.meta.url),
+  module: compiled,
+  exports: compiled.exports,
+  process,
+  console,
+  Buffer,
+  setTimeout,
+  clearTimeout,
+  setInterval,
+  clearInterval,
+});
 const rendered = compiled.exports;
 
 test("live_chat has an operator-facing agent label", () => {
@@ -72,7 +87,10 @@ test("make directive is offered only on asked cards", () => {
 });
 
 test("asked slugs use the theme foreground at every card and section render point", () => {
-  for (const [surface, markup] of [["live", rendered.live], ["post-call", rendered.postCall]]) {
+  for (const [surface, markup] of [
+    ["live", rendered.live],
+    ["post-call", rendered.postCall],
+  ]) {
     const badge = markup.match(/<span[^>]*>Eigene Frage<\/span>/)?.[0];
     assert.ok(badge, `missing ${surface} asked badge`);
     assert.match(badge, /class="[^"]*\btext-brand-dark-gray\b[^"]*"/);
@@ -80,7 +98,9 @@ test("asked slugs use the theme foreground at every card and section render poin
     assert.doesNotMatch(badge, /(?:style="|;)color:/);
   }
 
-  const section = rendered.postCall.match(/<h3[^>]*>.*?Eigene Fragen.*?<\/h3>/)?.[0];
+  const section = rendered.postCall.match(
+    /<h3[^>]*>.*?Eigene Fragen.*?<\/h3>/,
+  )?.[0];
   assert.ok(section, "missing asked section heading");
   assert.match(section, /^<h3 class="[^"]*\btext-brand-dark-gray\b[^"]*">/);
   assert.doesNotMatch(section, /style="color:#475569"/);

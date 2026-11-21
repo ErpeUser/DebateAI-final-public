@@ -18,7 +18,9 @@ from app import main
 
 POSTGRES_URL = os.environ.get("DEBATEAI_TEST_POSTGRES_URL", "")
 RUN_ID = os.environ.get("DEBATEAI_TEST_POSTGRES_RUN_ID", "")
-ALLOW_SHARED_CI = os.environ.get("DEBATEAI_TEST_POSTGRES_ALLOW_SHARED", "").lower() == "true"
+ALLOW_SHARED_CI = (
+    os.environ.get("DEBATEAI_TEST_POSTGRES_ALLOW_SHARED", "").lower() == "true"
+)
 
 
 @unittest.skipUnless(
@@ -39,8 +41,9 @@ class SchemaMigrationPostgresTests(unittest.IsolatedAsyncioTestCase):
         self.expected_head = ScriptDirectory.from_config(config).get_current_head()
 
     async def test_parallel_schema_runners_reach_one_head(self):
-        with patch.object(main, "engine", self.engine), patch.object(
-            main.settings, "DATABASE_URL", POSTGRES_URL
+        with (
+            patch.object(main, "engine", self.engine),
+            patch.object(main.settings, "DATABASE_URL", POSTGRES_URL),
         ):
             await asyncio.gather(
                 main._run_schema_migrations(),

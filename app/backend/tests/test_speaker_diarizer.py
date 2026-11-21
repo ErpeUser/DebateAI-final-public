@@ -3,7 +3,6 @@ from unittest.mock import Mock, patch
 
 import numpy as np
 import onnxruntime as ort
-
 from app.config import Settings, _default_embed_threads, settings
 from app.services import speaker_diarizer
 from app.services.speaker_diarizer import (
@@ -45,7 +44,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
         extract.assert_not_called()
         self.assertEqual("track_remote", segments[0].speaker_id)
 
-    def test_fixed_track_mode_samples_sparsely_then_enables_diarization_with_hysteresis(self):
+    def test_fixed_track_mode_samples_sparsely_then_enables_diarization_with_hysteresis(
+        self,
+    ):
         diarizer = SpeakerDiarizer(fixed_speaker_id="track_remote")
         diarizer._min_segment_samples = 0
         diarizer._min_new_speaker_samples = 0
@@ -85,7 +86,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
         diarizer._adaptive_state = "multi_speaker"
         diarizer._adaptive_baseline = embedding(1.0, 0.0)
         diarizer.registry.enroll("track_remote", diarizer._adaptive_baseline)
-        diarizer._adaptive_sample_positions.extend(range(diarizer._adaptive_samples_per_minute))
+        diarizer._adaptive_sample_positions.extend(
+            range(diarizer._adaptive_samples_per_minute)
+        )
         diarizer._current_segment.extend(pcm(1.0))
 
         with patch(
@@ -204,7 +207,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
             [embedding(1.0, 1.0), embedding(1.0, 0.0), embedding(0.0, 1.0)],
         )
 
-        self.assertEqual(["auto_1", "auto_2"], [segment.speaker_id for segment in segments])
+        self.assertEqual(
+            ["auto_1", "auto_2"], [segment.speaker_id for segment in segments]
+        )
         self.assertEqual(audio, b"".join(segment.pcm_bytes for segment in segments))
         self.assertEqual(2, registry.profile_count)
 
@@ -240,7 +245,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
         for group in (windows[:2], windows[2:]):
             mean = np.mean(group, axis=0)
             expected.append(mean / np.linalg.norm(mean))
-        self.assertEqual(["auto_1", "auto_2"], [segment.speaker_id for segment in segments])
+        self.assertEqual(
+            ["auto_1", "auto_2"], [segment.speaker_id for segment in segments]
+        )
         self.assertEqual(2, len(registry.forced))
         np.testing.assert_allclose(expected, registry.forced, atol=1e-6)
 
@@ -256,7 +263,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
             return embedding(0.0, 1.0) if len(lengths) == 1 else embedding(1.0, 0.0)
 
         diarizer._current_segment.extend(pcm(6.5))
-        with patch("app.services.speaker_diarizer._extract_embedding", side_effect=extract):
+        with patch(
+            "app.services.speaker_diarizer._extract_embedding", side_effect=extract
+        ):
             diarizer._finalize_segment()
 
         self.assertEqual([104000, 48000, 56000], lengths)
@@ -286,7 +295,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
         cases[1][0].enroll("auto_1", embedding(1.0, 0.0))
 
         for registry, audio in cases:
-            with self.subTest(profile_count=registry.profile_count, seconds=len(audio) / 32000):
+            with self.subTest(
+                profile_count=registry.profile_count, seconds=len(audio) / 32000
+            ):
                 diarizer = SpeakerDiarizer(registry=registry)
                 segments, extract = finalize(diarizer, audio, [embedding(0.0, 1.0)])
                 self.assertEqual(1, len(segments))
@@ -350,7 +361,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
             [embedding(1.0, 1.0), first, third],
         )
         self.assertEqual(2, registry.profile_count)
-        self.assertEqual(["auto_1", "auto_2"], [segment.speaker_id for segment in mixed])
+        self.assertEqual(
+            ["auto_1", "auto_2"], [segment.speaker_id for segment in mixed]
+        )
 
         clean, _ = finalize(
             diarizer,
@@ -365,7 +378,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
             pcm(6.0),
             [embedding(-1.0, 1.0), second, third],
         )
-        self.assertEqual(["auto_2", "auto_3"], [segment.speaker_id for segment in later_mix])
+        self.assertEqual(
+            ["auto_2", "auto_3"], [segment.speaker_id for segment in later_mix]
+        )
         self.assertEqual(3, registry.profile_count)
 
     def test_feed_audio_extends_all_finalized_pieces(self):
@@ -375,7 +390,9 @@ class SpeakerDiarizerTests(unittest.TestCase):
         pieces = [DiarizedSegment("auto_1", b"a"), DiarizedSegment("auto_2", b"b")]
         diarizer._finalize_segment = Mock(return_value=pieces)
 
-        self.assertEqual(pieces, diarizer.feed_audio(bytes(VoiceActivityDetector.FRAME_SAMPLES * 2)))
+        self.assertEqual(
+            pieces, diarizer.feed_audio(bytes(VoiceActivityDetector.FRAME_SAMPLES * 2))
+        )
 
     def test_feed_audio_silence_gap_extends_all_finalized_pieces(self):
         diarizer = SpeakerDiarizer()
@@ -417,7 +434,9 @@ class DiarizerThreadPoolTests(unittest.TestCase):
     def test_embed_session_bounds_the_pool_and_parks_it_between_calls(self):
         options = _embed_session_options()
 
-        self.assertEqual(settings.DIARIZER_EMBED_ONNX_THREADS, options.intra_op_num_threads)
+        self.assertEqual(
+            settings.DIARIZER_EMBED_ONNX_THREADS, options.intra_op_num_threads
+        )
         self.assertEqual(
             "0",
             options.get_session_config_entry("session.intra_op.allow_spinning"),
@@ -476,12 +495,16 @@ class DiarizerSessionWiringTests(unittest.TestCase):
     def test_vad_session_is_built_with_the_single_threaded_options(self):
         options = self._construct(speaker_diarizer._get_vad_model, "_vad_session")
 
-        self.assertEqual(settings.DIARIZER_VAD_ONNX_THREADS, options.intra_op_num_threads)
+        self.assertEqual(
+            settings.DIARIZER_VAD_ONNX_THREADS, options.intra_op_num_threads
+        )
 
     def test_embed_session_is_built_with_the_bounded_pool_options(self):
         options = self._construct(speaker_diarizer._get_embed_model, "_embed_session")
 
-        self.assertEqual(settings.DIARIZER_EMBED_ONNX_THREADS, options.intra_op_num_threads)
+        self.assertEqual(
+            settings.DIARIZER_EMBED_ONNX_THREADS, options.intra_op_num_threads
+        )
         self.assertEqual(
             "0",
             options.get_session_config_entry("session.intra_op.allow_spinning"),
@@ -497,9 +520,13 @@ class FrameLoopTests(unittest.TestCase):
         buffer = diarizer._pending_audio
         values = [100, 200, 300, 400, 500]
         remainder = np.full(frame_samples // 2, 999, dtype=np.int16).tobytes()
-        audio = b"".join(
-            np.full(frame_samples, value, dtype=np.int16).tobytes() for value in values
-        ) + remainder
+        audio = (
+            b"".join(
+                np.full(frame_samples, value, dtype=np.int16).tobytes()
+                for value in values
+            )
+            + remainder
+        )
         seen: list[int] = []
 
         def record(frame_float):
@@ -513,7 +540,7 @@ class FrameLoopTests(unittest.TestCase):
         # Deliberately unaligned chunks: frames must still be carved on
         # 1024-byte boundaries no matter how the input is split.
         for start in range(0, len(audio), 777):
-            diarizer.feed_audio(audio[start:start + 777])
+            diarizer.feed_audio(audio[start : start + 777])
 
         self.assertEqual(values, seen)
         self.assertEqual(remainder, bytes(diarizer._pending_audio))
@@ -542,9 +569,12 @@ class FrameLoopTests(unittest.TestCase):
                 emitted.extend(diarizer._finalize_segment())
 
         self.assertEqual(
-            ["auto_unknown", "auto_unknown"], [segment.speaker_id for segment in emitted]
+            ["auto_unknown", "auto_unknown"],
+            [segment.speaker_id for segment in emitted],
         )
-        self.assertEqual(short + long, b"".join(segment.pcm_bytes for segment in emitted))
+        self.assertEqual(
+            short + long, b"".join(segment.pcm_bytes for segment in emitted)
+        )
         self.assertEqual(0, registry.profile_count)
 
     def test_diagnostic_counters_exist_before_any_audio_arrives(self):

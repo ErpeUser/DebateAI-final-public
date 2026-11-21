@@ -13,29 +13,45 @@ import time
 import unittest
 from unittest.mock import patch
 
-from app.services.agents.orchestrator import AgentOrchestrator, _DEDUP_WINDOW_SECONDS, _texts_similar
+from app.services.agents.orchestrator import (
+    _DEDUP_WINDOW_SECONDS,
+    AgentOrchestrator,
+    _texts_similar,
+)
 
 # (earlier text, later text, gap in seconds) drawn from the reference meeting.
 MERGED_PAIRS = [
     (
-        "Develop standardized AI governance enablement playbooks and reusable artifact"
-        " repositories to streamline project onboarding",
-        "Develop an internal AI Governance Enablement Playbook and reusable artifact"
-        " repository to streamline project onboarding",
+        (
+            "Develop standardized AI governance enablement playbooks and reusable artifact"
+            " repositories to streamline project onboarding"
+        ),
+        (
+            "Develop an internal AI Governance Enablement Playbook and reusable artifact"
+            " repository to streamline project onboarding"
+        ),
         54,
     ),
     (
-        "The organization uses a three-stage agile go-to-market model for AI topics,"
-        " funneling field patterns into bi-weekly 30-minute pitch sessions",
-        "The organization uses a multi-stage agile go-to-market model for AI topics,"
-        " funneling field patterns into bi-weekly 30-minute pitch sessions",
+        (
+            "The organization uses a three-stage agile go-to-market model for AI topics,"
+            " funneling field patterns into bi-weekly 30-minute pitch sessions"
+        ),
+        (
+            "The organization uses a multi-stage agile go-to-market model for AI topics,"
+            " funneling field patterns into bi-weekly 30-minute pitch sessions"
+        ),
         66,
     ),
     (
-        "Develop a standardized cross-practice enablement framework and pitch repository"
-        " for field CTOs covering Cyber, Total Experience",
-        "Develop a unified cross-practice enablement matrix and standard pitch/handoff"
-        " guide for Field CTOs covering Cyber, Total Experience",
+        (
+            "Develop a standardized cross-practice enablement framework and pitch repository"
+            " for field CTOs covering Cyber, Total Experience"
+        ),
+        (
+            "Develop a unified cross-practice enablement matrix and standard pitch/handoff"
+            " guide for Field CTOs covering Cyber, Total Experience"
+        ),
         60,
     ),
 ]
@@ -148,9 +164,17 @@ class EmissionLookupTests(unittest.TestCase):
         with patch("app.services.agents.orchestrator.time.time", return_value=1000.0):
             self.orchestrator._remember_committed_insight("Validate the rollout plan")
         with patch("app.services.agents.orchestrator.time.time", return_value=1301.0):
-            self.orchestrator._remember_committed_insight("Discuss the separate budget approval")
-            self.assertFalse(self.orchestrator._is_duplicate_insight("Validate the rollout plan"))
-            self.assertTrue(self.orchestrator._is_duplicate_insight("Discuss the separate budget approval"))
+            self.orchestrator._remember_committed_insight(
+                "Discuss the separate budget approval"
+            )
+            self.assertFalse(
+                self.orchestrator._is_duplicate_insight("Validate the rollout plan")
+            )
+            self.assertTrue(
+                self.orchestrator._is_duplicate_insight(
+                    "Discuss the separate budget approval"
+                )
+            )
         self.assertEqual(len(self.orchestrator._recent_insights), 1)
 
 

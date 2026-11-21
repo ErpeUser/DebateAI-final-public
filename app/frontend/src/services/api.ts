@@ -1,22 +1,74 @@
-import type { AgentConfig, AIConfiguration, AIPromptConfig, AppMeta, ArgumentGraph, AsrFitReport, CallSegment, CustomEndpoint, DebateRecommendation, DebateReview, DebateSettings, DiarizationBenchmarkResult, DiarizationDiagnostics, Directive, Document, EndpointProbeResult, EnhanceInsightsResult, KnowledgeRecord, KnowledgeSource, LocalFitReport, LocalFitSummary, MeetingType, ModelDownload, ModelDownloadsStatus, ModelInfo, ModelPricingResponse, Offering, PiiEgressEntry, PiiPreview, PiiSessionSummary, PiiShieldSettings, PiiShieldStatus, PrivacyConfig, Question, ReleaseNote, Session, SessionGroup, SessionSynthesis, Speaker, TokenUsageSummary, TranscriptionConfig, TranscriptionJob, TranscriptEntry } from "../types";
+import type {
+  AgentConfig,
+  AIConfiguration,
+  AIPromptConfig,
+  AppMeta,
+  ArgumentGraph,
+  AsrFitReport,
+  CallSegment,
+  CustomEndpoint,
+  DebateRecommendation,
+  DebateReview,
+  DebateSettings,
+  DiarizationBenchmarkResult,
+  DiarizationDiagnostics,
+  Directive,
+  Document,
+  EndpointProbeResult,
+  EnhanceInsightsResult,
+  KnowledgeRecord,
+  KnowledgeSource,
+  LocalFitReport,
+  LocalFitSummary,
+  MeetingType,
+  ModelDownload,
+  ModelDownloadsStatus,
+  ModelInfo,
+  ModelPricingResponse,
+  Offering,
+  PiiEgressEntry,
+  PiiPreview,
+  PiiSessionSummary,
+  PiiShieldSettings,
+  PiiShieldStatus,
+  PrivacyConfig,
+  Question,
+  ReleaseNote,
+  Session,
+  SessionGroup,
+  SessionSynthesis,
+  Speaker,
+  TokenUsageSummary,
+  TranscriptionConfig,
+  TranscriptionJob,
+  TranscriptEntry,
+} from "../types";
 
 const BASE = "/api";
 const INSTANCE_HEADER = "X-DebateAI-Instance";
 import { createDesktopSession } from "../../public/calibration/session.mjs";
 const desktopSession = createDesktopSession(
-  (input, init) => fetch(input, init), typeof window !== "undefined",
+  (input, init) => fetch(input, init),
+  typeof window !== "undefined",
 );
 
 export const getDesktopInstanceToken = () => desktopSession.getToken();
 
 function desktopHeaders(headers?: HeadersInit): Headers {
   const value = new Headers(headers);
-  if (desktopSession.getToken()) value.set(INSTANCE_HEADER, desktopSession.getToken());
+  if (desktopSession.getToken())
+    value.set(INSTANCE_HEADER, desktopSession.getToken());
   return value;
 }
 
-async function desktopFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
-  return desktopSession.fetch(input, { ...init, headers: desktopHeaders(init?.headers) });
+async function desktopFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  return desktopSession.fetch(input, {
+    ...init,
+    headers: desktopHeaders(init?.headers),
+  });
 }
 
 export interface NativeAudioStatus {
@@ -67,11 +119,15 @@ export const startGeminiWebLogin = () =>
 export const pollGeminiWebLogin = () =>
   request<GeminiWebStatus>("/gemini-web/login");
 
-export const importGeminiWebCookie = async (file: File): Promise<GeminiWebStatus> => {
+export const importGeminiWebCookie = async (
+  file: File,
+): Promise<GeminiWebStatus> => {
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/gemini-web/cookie`, {
-    method: "PUT", body: form, headers: desktopHeaders(),
+    method: "PUT",
+    body: form,
+    headers: desktopHeaders(),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -79,7 +135,8 @@ export const importGeminiWebCookie = async (file: File): Promise<GeminiWebStatus
       const parsed = JSON.parse(text);
       throw new Error(parsed.detail || `Import fehlgeschlagen (${res.status})`);
     } catch (error) {
-      if (error instanceof Error && !error.message.startsWith("Unexpected")) throw error;
+      if (error instanceof Error && !error.message.startsWith("Unexpected"))
+        throw error;
       throw new Error(`Import fehlgeschlagen (${res.status})`);
     }
   }
@@ -113,7 +170,9 @@ export const pollChatGPTWebLogin = (signal?: AbortSignal) =>
   request<ChatGPTWebStatus>("/chatgpt-web/login", { signal });
 
 export const disconnectChatGPTWeb = () =>
-  request<ChatGPTWebStatus>("/chatgpt-web/account/disconnect", { method: "POST" });
+  request<ChatGPTWebStatus>("/chatgpt-web/account/disconnect", {
+    method: "POST",
+  });
 
 export const switchChatGPTWebAccount = () =>
   request<ChatGPTWebStatus>("/chatgpt-web/account/switch", { method: "POST" });
@@ -145,18 +204,32 @@ export const getSubscriptionAccountsStatus = () =>
   request<SubscriptionAccountsStatus>("/subscription-accounts/status");
 
 export const startSubscriptionLogin = (provider: SubscriptionProvider) =>
-  request<SubscriptionAccountsStatus>(`/subscription-accounts/login/${provider}`, { method: "POST" });
+  request<SubscriptionAccountsStatus>(
+    `/subscription-accounts/login/${provider}`,
+    { method: "POST" },
+  );
 
-export const pollSubscriptionLogin = (provider: SubscriptionProvider, state: string) =>
-  request<SubscriptionAccountsStatus>(`/subscription-accounts/login/${provider}?state=${encodeURIComponent(state)}`);
+export const pollSubscriptionLogin = (
+  provider: SubscriptionProvider,
+  state: string,
+) =>
+  request<SubscriptionAccountsStatus>(
+    `/subscription-accounts/login/${provider}?state=${encodeURIComponent(state)}`,
+  );
 
 export const verifyGeminiCliHigh = () =>
-  request<SubscriptionAccountsStatus>("/subscription-accounts/verify/gemini-cli", { method: "POST" });
+  request<SubscriptionAccountsStatus>(
+    "/subscription-accounts/verify/gemini-cli",
+    { method: "POST" },
+  );
 
 export const getDebateOverlaySnapshot = () =>
   request<DebateOverlaySnapshot>("/sessions/live/debate-overlay");
 
-export async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function request<T>(
+  path: string,
+  options?: RequestInit,
+): Promise<T> {
   const headers = desktopHeaders(options?.headers);
   if (!headers.has("Content-Type") && !(options?.body instanceof FormData)) {
     headers.set("Content-Type", "application/json");
@@ -181,15 +254,24 @@ export async function request<T>(path: string, options?: RequestInit): Promise<T
 }
 
 // Sessions
-export const createSession = (name: string, data?: { meeting_type?: MeetingType; meeting_context?: string }) =>
-  request<Session>("/sessions", { method: "POST", body: JSON.stringify({ name, ...data }) });
+export const createSession = (
+  name: string,
+  data?: { meeting_type?: MeetingType; meeting_context?: string },
+) =>
+  request<Session>("/sessions", {
+    method: "POST",
+    body: JSON.stringify({ name, ...data }),
+  });
 
 export const listSessions = () => request<Session[]>("/sessions");
 
 export const getSession = (id: string) => request<Session>(`/sessions/${id}`);
 
 export const updateSession = (id: string, data: Partial<Session>) =>
-  request<Session>(`/sessions/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  request<Session>(`/sessions/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
 export const deleteSession = (id: string) =>
   request<void>(`/sessions/${id}`, { method: "DELETE" });
@@ -198,16 +280,27 @@ export const getNativeAudioStatus = () =>
   request<NativeAudioStatus>("/native-audio/status");
 
 export const getNativeAudioDevices = () =>
-  request<{ available: boolean; devices: NativeAudioDevice[] }>("/native-audio/devices");
+  request<{ available: boolean; devices: NativeAudioDevice[] }>(
+    "/native-audio/devices",
+  );
 
 export const startNativeAudio = (
   sessionId: string,
   systemAudio = true,
-  devices?: { microphone_id?: string; loopback_id?: string; microphone_mode?: "fixed" | "follow_default"; loopback_mode?: "fixed" | "follow_default" },
+  devices?: {
+    microphone_id?: string;
+    loopback_id?: string;
+    microphone_mode?: "fixed" | "follow_default";
+    loopback_mode?: "fixed" | "follow_default";
+  },
 ) =>
   request<NativeAudioStatus>("/native-audio/start", {
     method: "POST",
-    body: JSON.stringify({ session_id: sessionId, system_audio: systemAudio, ...devices }),
+    body: JSON.stringify({
+      session_id: sessionId,
+      system_audio: systemAudio,
+      ...devices,
+    }),
   });
 
 export const stopNativeAudio = () =>
@@ -220,17 +313,30 @@ export const probeNativeMicrophone = (microphoneIndex: number) =>
   });
 
 export const enhanceInsights = (id: string, signal?: AbortSignal) =>
-  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights`, { method: "POST", signal });
+  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights`, {
+    method: "POST",
+    signal,
+  });
 
-export const getEnhancementStatus = (id: string, runId: string, signal?: AbortSignal) =>
-  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights/${runId}`, { signal });
+export const getEnhancementStatus = (
+  id: string,
+  runId: string,
+  signal?: AbortSignal,
+) =>
+  request<EnhanceInsightsResult>(`/sessions/${id}/enhance-insights/${runId}`, {
+    signal,
+  });
 
 export const getLatestEnhancement = (id: string) =>
-  request<EnhanceInsightsResult | null>(`/sessions/${id}/enhance-insights/latest`);
+  request<EnhanceInsightsResult | null>(
+    `/sessions/${id}/enhance-insights/latest`,
+  );
 
 function abortReason(signal?: AbortSignal): Error {
   const reason = signal?.reason;
-  return reason instanceof Error ? reason : new DOMException("The operation was aborted", "AbortError");
+  return reason instanceof Error
+    ? reason
+    : new DOMException("The operation was aborted", "AbortError");
 }
 
 function throwIfAborted(signal?: AbortSignal): void {
@@ -272,16 +378,25 @@ export async function waitForEnhancement(
   return result;
 }
 
-export const getSynthesis = (id: string, mode = "post_call", includeHistory = false) =>
+export const getSynthesis = (
+  id: string,
+  mode = "post_call",
+  includeHistory = false,
+) =>
   request<SessionSynthesis | null>(
     `/sessions/${id}/synthesis?mode=${encodeURIComponent(mode)}&include_history=${includeHistory}`,
   );
 
 export const refreshSynthesis = (id: string, mode = "post_call") =>
-  request<SessionSynthesis>(`/sessions/${id}/synthesis/refresh?mode=${encodeURIComponent(mode)}`, { method: "POST" });
+  request<SessionSynthesis>(
+    `/sessions/${id}/synthesis/refresh?mode=${encodeURIComponent(mode)}`,
+    { method: "POST" },
+  );
 
 export const analyzeSession = (id: string) =>
-  request<{ analyzed: number; session_id: string }>(`/sessions/${id}/analyze`, { method: "POST" });
+  request<{ analyzed: number; session_id: string }>(`/sessions/${id}/analyze`, {
+    method: "POST",
+  });
 
 export const getTokenUsage = (id: string) =>
   request<TokenUsageSummary>(`/sessions/${id}/token-usage`);
@@ -296,17 +411,26 @@ export const createDirective = (sessionId: string, text: string) =>
 export const listDirectives = (sessionId: string) =>
   request<Directive[]>(`/sessions/${sessionId}/directives`);
 
-export const updateDirective = (sessionId: string, id: string, data: Partial<Directive>) =>
+export const updateDirective = (
+  sessionId: string,
+  id: string,
+  data: Partial<Directive>,
+) =>
   request<Directive>(`/sessions/${sessionId}/directives/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
   });
 
 export const deleteDirective = (sessionId: string, id: string) =>
-  request<void>(`/sessions/${sessionId}/directives/${id}`, { method: "DELETE" });
+  request<void>(`/sessions/${sessionId}/directives/${id}`, {
+    method: "DELETE",
+  });
 
 // Documents
-export const uploadDocument = async (sessionId: string, file: File): Promise<Document> => {
+export const uploadDocument = async (
+  sessionId: string,
+  file: File,
+): Promise<Document> => {
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/sessions/${sessionId}/documents`, {
@@ -342,26 +466,42 @@ export interface DossierEntry {
 }
 
 export const getDossier = (sessionId: string) =>
-  request<{ source_id: string; entries: DossierEntry[] }>(`/sessions/${sessionId}/dossier`);
+  request<{ source_id: string; entries: DossierEntry[] }>(
+    `/sessions/${sessionId}/dossier`,
+  );
 
-export const addDossierEntry = (sessionId: string, entry: Omit<DossierEntry, "id" | "independent_evidence">) =>
+export const addDossierEntry = (
+  sessionId: string,
+  entry: Omit<DossierEntry, "id" | "independent_evidence">,
+) =>
   request<DossierEntry>(`/sessions/${sessionId}/dossier/entries`, {
     method: "POST",
     body: JSON.stringify(entry),
   });
 
-export const uploadDossierFile = async (sessionId: string, file: File, pageReference = "") => {
+export const uploadDossierFile = async (
+  sessionId: string,
+  file: File,
+  pageReference = "",
+) => {
   const form = new FormData();
   form.append("file", file);
-  const response = await desktopFetch(`${BASE}/sessions/${sessionId}/dossier/files?page_reference=${encodeURIComponent(pageReference)}`, {
-    method: "POST", body: form,
-  });
-  if (!response.ok) throw new Error(`Dossier-Import fehlgeschlagen (${response.status})`);
+  const response = await desktopFetch(
+    `${BASE}/sessions/${sessionId}/dossier/files?page_reference=${encodeURIComponent(pageReference)}`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
+  if (!response.ok)
+    throw new Error(`Dossier-Import fehlgeschlagen (${response.status})`);
   return response.json() as Promise<DossierEntry>;
 };
 
 export const deleteDossierEntry = (sessionId: string, entryId: string) =>
-  request<void>(`/sessions/${sessionId}/dossier/entries/${entryId}`, { method: "DELETE" });
+  request<void>(`/sessions/${sessionId}/dossier/entries/${entryId}`, {
+    method: "DELETE",
+  });
 
 export const deleteDossier = (sessionId: string) =>
   request<void>(`/sessions/${sessionId}/dossier`, { method: "DELETE" });
@@ -370,7 +510,11 @@ export const deleteDossier = (sessionId: string) =>
 export const listQuestions = (sessionId: string) =>
   request<Question[]>(`/sessions/${sessionId}/questions`);
 
-export const updateQuestion = (sessionId: string, id: string, data: Partial<Question>) =>
+export const updateQuestion = (
+  sessionId: string,
+  id: string,
+  data: Partial<Question>,
+) =>
   request<Question>(`/sessions/${sessionId}/questions/${id}`, {
     method: "PATCH",
     body: JSON.stringify(data),
@@ -379,21 +523,46 @@ export const updateQuestion = (sessionId: string, id: string, data: Partial<Ques
 // Speakers
 export const createSpeaker = (
   sessionId: string,
-  data: { name: string; role?: string; color?: string; is_user?: boolean; speaker_type?: "team" | "external" },
+  data: {
+    name: string;
+    role?: string;
+    color?: string;
+    is_user?: boolean;
+    speaker_type?: "team" | "external";
+  },
 ) =>
-  request<Speaker>(`/sessions/${sessionId}/speakers`, { method: "POST", body: JSON.stringify(data) });
+  request<Speaker>(`/sessions/${sessionId}/speakers`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
 export const listSpeakers = (sessionId: string) =>
   request<Speaker[]>(`/sessions/${sessionId}/speakers`);
 
-export const updateSpeaker = (sessionId: string, id: string, data: Partial<Speaker>) =>
-  request<Speaker>(`/sessions/${sessionId}/speakers/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const updateSpeaker = (
+  sessionId: string,
+  id: string,
+  data: Partial<Speaker>,
+) =>
+  request<Speaker>(`/sessions/${sessionId}/speakers/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
-export const mergeSpeaker = (sessionId: string, sourceId: string, targetId: string) =>
-  request<{ source_speaker_id: string; target_speaker_id: string; transcript_entries_updated: number; questions_updated: number }>(
-    `/sessions/${sessionId}/speakers/${sourceId}/merge`,
-    { method: "POST", body: JSON.stringify({ target_speaker_id: targetId }) },
-  );
+export const mergeSpeaker = (
+  sessionId: string,
+  sourceId: string,
+  targetId: string,
+) =>
+  request<{
+    source_speaker_id: string;
+    target_speaker_id: string;
+    transcript_entries_updated: number;
+    questions_updated: number;
+  }>(`/sessions/${sessionId}/speakers/${sourceId}/merge`, {
+    method: "POST",
+    body: JSON.stringify({ target_speaker_id: targetId }),
+  });
 
 export const deleteSpeaker = (sessionId: string, id: string) =>
   request<void>(`/sessions/${sessionId}/speakers/${id}`, { method: "DELETE" });
@@ -403,10 +572,14 @@ export const updateTranscriptText = (
   transcriptId: string,
   text: string,
   correctionReason = "Manuelle Korrektur",
-) => request<TranscriptEntry>(`/sessions/${sessionId}/transcripts/${transcriptId}`, {
-  method: "PATCH",
-  body: JSON.stringify({ text, correction_reason: correctionReason }),
-});
+) =>
+  request<TranscriptEntry>(
+    `/sessions/${sessionId}/transcripts/${transcriptId}`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ text, correction_reason: correctionReason }),
+    },
+  );
 
 export const listTranscripts = (sessionId: string) =>
   request<TranscriptEntry[]>(`/sessions/${sessionId}/transcripts`);
@@ -416,18 +589,28 @@ export const listSegments = (sessionId: string) =>
   request<CallSegment[]>(`/sessions/${sessionId}/segments`);
 
 // Import transcript/audio
-export const importTranscript = async (sessionId: string, file: File): Promise<{ imported: number; filename: string }> => {
+export const importTranscript = async (
+  sessionId: string,
+  file: File,
+): Promise<{ imported: number; filename: string }> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/sessions/${sessionId}/import/transcript`, {
-    method: "POST",
-    body: form,
-  });
+  const res = await desktopFetch(
+    `${BASE}/sessions/${sessionId}/import/transcript`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
   if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
-export const importAudio = async (sessionId: string, file: File, signal?: AbortSignal): Promise<TranscriptionJob> => {
+export const importAudio = async (
+  sessionId: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<TranscriptionJob> => {
   const form = new FormData();
   form.append("file", file);
   const res = await desktopFetch(`${BASE}/sessions/${sessionId}/import/audio`, {
@@ -442,39 +625,59 @@ export const importAudio = async (sessionId: string, file: File, signal?: AbortS
 // Models
 export const listModels = () => request<ModelInfo[]>("/models");
 
-export const getModelPricing = () => request<ModelPricingResponse>("/models/pricing");
+export const getModelPricing = () =>
+  request<ModelPricingResponse>("/models/pricing");
 
 // App metadata (version + release notes)
 export const getAppMeta = () => request<AppMeta>("/meta");
 
-export const listReleaseNotes = () => request<ReleaseNote[]>("/meta/release-notes");
+export const listReleaseNotes = () =>
+  request<ReleaseNote[]>("/meta/release-notes");
 
 export const segmentAudioUrl = (sessionId: string, segmentNumber: number) =>
   `${BASE}/sessions/${sessionId}/segments/${segmentNumber}/audio`;
 
-export const retranscribeSession = (sessionId: string, modelId: string, signal?: AbortSignal) =>
+export const retranscribeSession = (
+  sessionId: string,
+  modelId: string,
+  signal?: AbortSignal,
+) =>
   request<TranscriptionJob>(`/sessions/${sessionId}/retranscribe`, {
     method: "POST",
     body: JSON.stringify({ model_id: modelId }),
     signal,
   });
 
-const transcriptionJobPath = (sessionId: string, kind: TranscriptionJob["kind"]) =>
+const transcriptionJobPath = (
+  sessionId: string,
+  kind: TranscriptionJob["kind"],
+) =>
   kind === "audio_import"
     ? `/sessions/${sessionId}/import/audio`
     : `/sessions/${sessionId}/retranscribe`;
 
 export const transcriptionJobActive = (job: TranscriptionJob) =>
-  job.status === "queued" || job.status === "running" || job.status === "canceling";
+  job.status === "queued" ||
+  job.status === "running" ||
+  job.status === "canceling";
 
-export const getTranscriptionJob = (sessionId: string, kind: TranscriptionJob["kind"], signal?: AbortSignal) =>
+export const getTranscriptionJob = (
+  sessionId: string,
+  kind: TranscriptionJob["kind"],
+  signal?: AbortSignal,
+) =>
   request<TranscriptionJob>(
     `${transcriptionJobPath(sessionId, kind)}${kind === "audio_import" ? "/status" : ""}`,
     { signal },
   );
 
-export const cancelTranscriptionJob = (sessionId: string, kind: TranscriptionJob["kind"]) =>
-  request<TranscriptionJob>(transcriptionJobPath(sessionId, kind), { method: "DELETE" });
+export const cancelTranscriptionJob = (
+  sessionId: string,
+  kind: TranscriptionJob["kind"],
+) =>
+  request<TranscriptionJob>(transcriptionJobPath(sessionId, kind), {
+    method: "DELETE",
+  });
 
 export async function waitForTranscriptionJob(
   sessionId: string,
@@ -495,10 +698,18 @@ export async function waitForTranscriptionJob(
   return job;
 }
 
-export const chat = (modelId: string, sessionIds: string[], messages: { role: string; content: string }[]) =>
+export const chat = (
+  modelId: string,
+  sessionIds: string[],
+  messages: { role: string; content: string }[],
+) =>
   request<{ reply: string }>("/chat", {
     method: "POST",
-    body: JSON.stringify({ model_id: modelId, session_ids: sessionIds, messages }),
+    body: JSON.stringify({
+      model_id: modelId,
+      session_ids: sessionIds,
+      messages,
+    }),
   });
 
 // A self-hosted endpoint can hang for LLM_SELF_HOSTED_TIMEOUT_SECONDS (900s)
@@ -508,7 +719,11 @@ export const chat = (modelId: string, sessionIds: string[], messages: { role: st
 // any RequestInit field, including signal, so no change there is needed.
 const ASK_TIMEOUT_MS = 60_000;
 
-export const askSession = (sessionId: string, modelId: string, question: string) =>
+export const askSession = (
+  sessionId: string,
+  modelId: string,
+  question: string,
+) =>
   request<Question>(`/sessions/${sessionId}/ask`, {
     method: "POST",
     body: JSON.stringify({ model_id: modelId, question }),
@@ -536,7 +751,9 @@ export const deleteCredential = (provider: string) =>
   request<void>(`/credentials/${provider}`, { method: "DELETE" });
 
 export const testCredential = (provider: string) =>
-  request<{ ok: boolean; message: string }>(`/credentials/${provider}/test`, { method: "POST" });
+  request<{ ok: boolean; message: string }>(`/credentials/${provider}/test`, {
+    method: "POST",
+  });
 
 // Self-hosted OpenAI-compatible endpoints (LM Studio, Ollama, vLLM, LiteLLM).
 // Each endpoint's models become named entries in the model list, so they are
@@ -556,18 +773,27 @@ export interface EndpointPayload {
 export const listEndpoints = () => request<CustomEndpoint[]>("/endpoints");
 
 export const createEndpoint = (data: EndpointPayload) =>
-  request<CustomEndpoint>("/endpoints", { method: "POST", body: JSON.stringify(data) });
+  request<CustomEndpoint>("/endpoints", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
 export const updateEndpoint = (id: string, data: EndpointPayload) =>
-  request<CustomEndpoint>(`/endpoints/${id}`, { method: "PUT", body: JSON.stringify(data) });
+  request<CustomEndpoint>(`/endpoints/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
 
 export const deleteEndpoint = (id: string) =>
   request<void>(`/endpoints/${id}`, { method: "DELETE" });
 
 export const testEndpoint = (id: string) =>
-  request<EndpointProbeResult & { endpoint: CustomEndpoint }>(`/endpoints/${id}/test`, {
-    method: "POST",
-  });
+  request<EndpointProbeResult & { endpoint: CustomEndpoint }>(
+    `/endpoints/${id}/test`,
+    {
+      method: "POST",
+    },
+  );
 
 /** Check a base URL before saving it, and list the models it serves. */
 export const probeEndpoint = (baseUrl: string, apiKey = "") =>
@@ -580,7 +806,10 @@ export const probeEndpoint = (baseUrl: string, apiKey = "") =>
 export const getDiarizationDiagnostics = () =>
   request<DiarizationDiagnostics>("/diagnostics/diarization");
 
-export const updateDiarizationConfig = (data: { selected_live_diarizer?: "lightweight" | "sortformer"; speaker_similarity_threshold?: number }) =>
+export const updateDiarizationConfig = (data: {
+  selected_live_diarizer?: "lightweight" | "sortformer";
+  speaker_similarity_threshold?: number;
+}) =>
   request<DiarizationDiagnostics>("/diagnostics/diarization/config", {
     method: "PATCH",
     body: JSON.stringify(data),
@@ -593,13 +822,18 @@ export interface VoiceProfileStatus {
 export const getVoiceProfileStatus = () =>
   request<VoiceProfileStatus>("/diagnostics/diarization/voice-profile");
 
-export const replaceVoiceProfile = async (file: File): Promise<VoiceProfileStatus> => {
+export const replaceVoiceProfile = async (
+  file: File,
+): Promise<VoiceProfileStatus> => {
   const form = new FormData();
   form.append("file", file);
-  const response = await desktopFetch(`${BASE}/diagnostics/diarization/voice-profile`, {
-    method: "PUT",
-    body: form,
-  });
+  const response = await desktopFetch(
+    `${BASE}/diagnostics/diarization/voice-profile`,
+    {
+      method: "PUT",
+      body: form,
+    },
+  );
   if (!response.ok) {
     throw new Error(await response.text());
   }
@@ -628,7 +862,10 @@ export const applyLocalFitIntervals = (
 export const runAsrFit = async (file: File): Promise<AsrFitReport> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/diagnostics/local-fit/asr`, { method: "POST", body: form });
+  const res = await desktopFetch(`${BASE}/diagnostics/local-fit/asr`, {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) {
     const text = await res.text();
     let detail = text;
@@ -651,20 +888,45 @@ export const updatePrivacyConfig = (localOnly: boolean) =>
     body: JSON.stringify({ local_only: localOnly }),
   });
 
-export const getDebateSettings = () => request<DebateSettings>("/debate-settings");
+export const getDebateSettings = () =>
+  request<DebateSettings>("/debate-settings");
 
 export const getDebateProfiles = () =>
   request<import("../types").DebateProfile[]>("/debate-settings/profiles");
 
 export const applyDebateProfile = (profileId: string) =>
-  request<DebateSettings>(`/debate-settings/profiles/${encodeURIComponent(profileId)}`, { method: "POST" });
+  request<DebateSettings>(
+    `/debate-settings/profiles/${encodeURIComponent(profileId)}`,
+    { method: "POST" },
+  );
 
 export const updateDebateSettings = (
-  update: Partial<Pick<DebateSettings, "mode" | "research_enabled" | "research_frequency" | "always_analogy" | "style_focus" | "voice_commands_enabled" | "argument_memory_enabled" | "transcript_retention_enabled" | "audio_archive_enabled" | "session_retrieval_enabled" | "learning_examples_enabled" | "graph_recording_enabled" | "memory_similarity_threshold" | "performance_profile" | "simple_1to1_audio_mode" | "pipeline_mode">>,
-) => request<DebateSettings>("/debate-settings", {
-  method: "PATCH",
-  body: JSON.stringify(update),
-});
+  update: Partial<
+    Pick<
+      DebateSettings,
+      | "mode"
+      | "research_enabled"
+      | "research_frequency"
+      | "always_analogy"
+      | "style_focus"
+      | "voice_commands_enabled"
+      | "argument_memory_enabled"
+      | "transcript_retention_enabled"
+      | "audio_archive_enabled"
+      | "session_retrieval_enabled"
+      | "learning_examples_enabled"
+      | "graph_recording_enabled"
+      | "memory_similarity_threshold"
+      | "performance_profile"
+      | "simple_1to1_audio_mode"
+      | "pipeline_mode"
+    >
+  >,
+) =>
+  request<DebateSettings>("/debate-settings", {
+    method: "PATCH",
+    body: JSON.stringify(update),
+  });
 
 export const getDebateReview = (sessionId: string) =>
   request<DebateReview | null>(`/sessions/${sessionId}/debate-review`);
@@ -692,15 +954,22 @@ export const correctDebateSource = (
     relation: "supports" | "contradicts" | "unclear";
     affected_claim_ids: string[];
   },
-) => request<import("../types").DebateSource>(`/sessions/${sessionId}/debate-review/source`, {
-  method: "PUT",
-  body: JSON.stringify(correction),
-});
+) =>
+  request<import("../types").DebateSource>(
+    `/sessions/${sessionId}/debate-review/source`,
+    {
+      method: "PUT",
+      body: JSON.stringify(correction),
+    },
+  );
 
 export const getPiiShield = () => request<PiiShieldStatus>("/pii-shield");
 
 export const updatePiiShield = (update: Partial<PiiShieldSettings>) =>
-  request<PiiShieldStatus>("/pii-shield", { method: "PUT", body: JSON.stringify(update) });
+  request<PiiShieldStatus>("/pii-shield", {
+    method: "PUT",
+    body: JSON.stringify(update),
+  });
 
 export const previewPiiShield = (text: string, sessionId?: string) =>
   request<PiiPreview>("/pii-shield/preview", {
@@ -709,21 +978,29 @@ export const previewPiiShield = (text: string, sessionId?: string) =>
   });
 
 export const getPiiEgress = (limit = 50) =>
-  request<{ enabled: boolean; entries: PiiEgressEntry[] }>(`/pii-shield/egress?limit=${limit}`);
+  request<{ enabled: boolean; entries: PiiEgressEntry[] }>(
+    `/pii-shield/egress?limit=${limit}`,
+  );
 
-export const clearPiiEgress = () => request<void>("/pii-shield/egress", { method: "DELETE" });
+export const clearPiiEgress = () =>
+  request<void>("/pii-shield/egress", { method: "DELETE" });
 
 export const installPiiNer = () =>
   request<ModelDownload>("/pii-shield/ner/install", { method: "POST" });
 
 // Model downloads
-export const getModelDownloads = () => request<ModelDownloadsStatus>("/model-downloads");
+export const getModelDownloads = () =>
+  request<ModelDownloadsStatus>("/model-downloads");
 
 export const retryModelDownload = (key: string) =>
-  request<ModelDownload>(`/model-downloads/${encodeURIComponent(key)}/retry`, { method: "POST" });
+  request<ModelDownload>(`/model-downloads/${encodeURIComponent(key)}/retry`, {
+    method: "POST",
+  });
 
 export const dismissModelDownload = (key: string) =>
-  request<void>(`/model-downloads/${encodeURIComponent(key)}`, { method: "DELETE" });
+  request<void>(`/model-downloads/${encodeURIComponent(key)}`, {
+    method: "DELETE",
+  });
 
 export const getSessionPiiSummary = (sessionId: string) =>
   request<PiiSessionSummary>(`/sessions/${sessionId}/pii/summary`);
@@ -751,13 +1028,18 @@ export const updateTranscriptionConfig = (data: {
     body: JSON.stringify(data),
   });
 
-export const runSortformerBenchmark = async (file: File): Promise<DiarizationBenchmarkResult> => {
+export const runSortformerBenchmark = async (
+  file: File,
+): Promise<DiarizationBenchmarkResult> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/diagnostics/diarization/sortformer/benchmark`, {
-    method: "POST",
-    body: form,
-  });
+  const res = await desktopFetch(
+    `${BASE}/diagnostics/diarization/sortformer/benchmark`,
+    {
+      method: "POST",
+      body: form,
+    },
+  );
   if (!res.ok) {
     const text = await res.text();
     throw new Error(`Benchmark fehlgeschlagen (${res.status}): ${text}`);
@@ -775,38 +1057,70 @@ export const listOfferings = (vendor?: string, category?: string) => {
   return request<Offering[]>(`/offerings${qs ? `?${qs}` : ""}`);
 };
 
-export const createOffering = (data: Omit<Offering, "id" | "created_at" | "updated_at">) =>
-  request<Offering>("/offerings", { method: "POST", body: JSON.stringify(data) });
+export const createOffering = (
+  data: Omit<Offering, "id" | "created_at" | "updated_at">,
+) =>
+  request<Offering>("/offerings", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
 export const updateOffering = (id: string, data: Partial<Offering>) =>
-  request<Offering>(`/offerings/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+  request<Offering>(`/offerings/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
 export const deleteOffering = (id: string) =>
   request<void>(`/offerings/${id}`, { method: "DELETE" });
 
-export const importOfferings = async (file: File): Promise<{ created: number; skipped: number; total_rows: number }> => {
+export const importOfferings = async (
+  file: File,
+): Promise<{ created: number; skipped: number; total_rows: number }> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/offerings/import`, { method: "POST", body: form });
+  const res = await desktopFetch(`${BASE}/offerings/import`, {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
 export const seedOfferings = (replace = false) =>
-  request<{ created?: number; replaced?: boolean; message?: string }>(`/offerings/seed${replace ? "?replace=true" : ""}`, { method: "POST" });
+  request<{ created?: number; replaced?: boolean; message?: string }>(
+    `/offerings/seed${replace ? "?replace=true" : ""}`,
+    { method: "POST" },
+  );
 
-export const listOfferingVendors = () => request<string[]>("/offerings/vendors");
-export const listOfferingCategories = () => request<string[]>("/offerings/categories");
+export const listOfferingVendors = () =>
+  request<string[]>("/offerings/vendors");
+export const listOfferingCategories = () =>
+  request<string[]>("/offerings/categories");
 export const listOfferingTags = () => request<string[]>("/offerings/tags");
 
 // Knowledge Sources
-export const listKnowledgeSources = () => request<KnowledgeSource[]>("/knowledge");
+export const listKnowledgeSources = () =>
+  request<KnowledgeSource[]>("/knowledge");
 
-export const createKnowledgeSource = (data: { name: string; source_type: string; description?: string }) =>
-  request<KnowledgeSource>("/knowledge", { method: "POST", body: JSON.stringify(data) });
+export const createKnowledgeSource = (data: {
+  name: string;
+  source_type: string;
+  description?: string;
+}) =>
+  request<KnowledgeSource>("/knowledge", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
-export const updateKnowledgeSource = (id: string, data: Partial<KnowledgeSource>) =>
-  request<KnowledgeSource>(`/knowledge/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+export const updateKnowledgeSource = (
+  id: string,
+  data: Partial<KnowledgeSource>,
+) =>
+  request<KnowledgeSource>(`/knowledge/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
 export const deleteKnowledgeSource = (id: string) =>
   request<{ ok: boolean }>(`/knowledge/${id}`, { method: "DELETE" });
@@ -814,27 +1128,53 @@ export const deleteKnowledgeSource = (id: string) =>
 export const listKnowledgeRecords = (sourceId: string) =>
   request<KnowledgeRecord[]>(`/knowledge/${sourceId}/records`);
 
-export const createKnowledgeRecord = (sourceId: string, data: { title: string; body: string }) =>
-  request<KnowledgeRecord>(`/knowledge/${sourceId}/records`, { method: "POST", body: JSON.stringify(data) });
+export const createKnowledgeRecord = (
+  sourceId: string,
+  data: { title: string; body: string },
+) =>
+  request<KnowledgeRecord>(`/knowledge/${sourceId}/records`, {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
 
-export const updateKnowledgeRecord = (recordId: string, data: Partial<KnowledgeRecord>) =>
-  request<KnowledgeRecord>(`/knowledge/records/${recordId}`, { method: "PATCH", body: JSON.stringify(data) });
+export const updateKnowledgeRecord = (
+  recordId: string,
+  data: Partial<KnowledgeRecord>,
+) =>
+  request<KnowledgeRecord>(`/knowledge/records/${recordId}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 
 export const deleteKnowledgeRecord = (recordId: string) =>
-  request<{ ok: boolean }>(`/knowledge/records/${recordId}`, { method: "DELETE" });
+  request<{ ok: boolean }>(`/knowledge/records/${recordId}`, {
+    method: "DELETE",
+  });
 
-export const importKnowledgeRecords = async (sourceId: string, file: File): Promise<{ created: number; skipped: number; total_rows: number }> => {
+export const importKnowledgeRecords = async (
+  sourceId: string,
+  file: File,
+): Promise<{ created: number; skipped: number; total_rows: number }> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/knowledge/${sourceId}/records/import`, { method: "POST", body: form });
+  const res = await desktopFetch(
+    `${BASE}/knowledge/${sourceId}/records/import`,
+    { method: "POST", body: form },
+  );
   if (!res.ok) throw new Error(`Import fehlgeschlagen: ${res.status}`);
   return res.json();
 };
 
-export const uploadKnowledgeFile = async (sourceId: string, file: File): Promise<{ record_id: string; title: string; chars: number }> => {
+export const uploadKnowledgeFile = async (
+  sourceId: string,
+  file: File,
+): Promise<{ record_id: string; title: string; chars: number }> => {
   const form = new FormData();
   form.append("file", file);
-  const res = await desktopFetch(`${BASE}/knowledge/${sourceId}/files`, { method: "POST", body: form });
+  const res = await desktopFetch(`${BASE}/knowledge/${sourceId}/files`, {
+    method: "POST",
+    body: form,
+  });
   if (!res.ok) throw new Error(`Hochladen fehlgeschlagen: ${res.status}`);
   return res.json();
 };
@@ -842,28 +1182,50 @@ export const uploadKnowledgeFile = async (sourceId: string, file: File): Promise
 // Agents
 export const listAgents = () => request<AgentConfig[]>("/agents");
 export const updateAgent = (slug: string, data: Partial<AgentConfig>) =>
-  request<AgentConfig>(`/agents/${slug}`, { method: "PATCH", body: JSON.stringify(data) });
+  request<AgentConfig>(`/agents/${slug}`, {
+    method: "PATCH",
+    body: JSON.stringify(data),
+  });
 export const resetAgentPrompt = (slug: string) =>
   request<AgentConfig>(`/agents/reset/${slug}`, { method: "POST" });
 
 export const getAIConfiguration = () => request<AIConfiguration>("/ai-config");
 export const updateAIProviders = (providers: AIConfiguration["providers"]) =>
-  request<AIConfiguration["providers"]>("/ai-config/providers", { method: "PUT", body: JSON.stringify(providers) });
+  request<AIConfiguration["providers"]>("/ai-config/providers", {
+    method: "PUT",
+    body: JSON.stringify(providers),
+  });
 export const resetAIProviders = () =>
-  request<AIConfiguration["providers"]>("/ai-config/providers/reset", { method: "POST" });
+  request<AIConfiguration["providers"]>("/ai-config/providers/reset", {
+    method: "POST",
+  });
 export const updateAIPrompt = (name: string, content: string) =>
-  request<AIPromptConfig>(`/ai-config/prompts/${encodeURIComponent(name)}`, { method: "PUT", body: JSON.stringify({ content }) });
+  request<AIPromptConfig>(`/ai-config/prompts/${encodeURIComponent(name)}`, {
+    method: "PUT",
+    body: JSON.stringify({ content }),
+  });
 export const resetAIPrompt = (name: string) =>
-  request<AIPromptConfig>(`/ai-config/prompts/${encodeURIComponent(name)}/reset`, { method: "POST" });
+  request<AIPromptConfig>(
+    `/ai-config/prompts/${encodeURIComponent(name)}/reset`,
+    { method: "POST" },
+  );
 export const restoreAIPrompt = (name: string, version: string) =>
-  request<AIPromptConfig>(`/ai-config/prompts/${encodeURIComponent(name)}/restore/${encodeURIComponent(version)}`, { method: "POST" });
+  request<AIPromptConfig>(
+    `/ai-config/prompts/${encodeURIComponent(name)}/restore/${encodeURIComponent(version)}`,
+    { method: "POST" },
+  );
 export const openAIConfigurationFolder = () =>
-  request<{ opened: boolean; directory: string }>("/ai-config/open-folder", { method: "POST" });
+  request<{ opened: boolean; directory: string }>("/ai-config/open-folder", {
+    method: "POST",
+  });
 
 // Session Groups
 export const listGroups = () => request<SessionGroup[]>("/groups");
 export const createGroup = (name: string) =>
-  request<SessionGroup>("/groups", { method: "POST", body: JSON.stringify({ name }) });
+  request<SessionGroup>("/groups", {
+    method: "POST",
+    body: JSON.stringify({ name }),
+  });
 export const deleteGroup = (id: string) =>
   request<void>(`/groups/${id}`, { method: "DELETE" });
 
@@ -903,24 +1265,47 @@ export interface QualityLabRunRequest {
 }
 
 export const runQualityLab = (payload: QualityLabRunRequest) =>
-  request<QualityLabRun>("/quality-lab/runs", { method: "POST", body: JSON.stringify(payload) });
-
-export const submitQualityLabRating = (runId: string, payload: Record<string, unknown>) =>
-  request<{ saved: boolean; agreement: number | null }>(`/quality-lab/runs/${encodeURIComponent(runId)}/ratings`, {
-    method: "POST", body: JSON.stringify(payload),
+  request<QualityLabRun>("/quality-lab/runs", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
+
+export const submitQualityLabRating = (
+  runId: string,
+  payload: Record<string, unknown>,
+) =>
+  request<{ saved: boolean; agreement: number | null }>(
+    `/quality-lab/runs/${encodeURIComponent(runId)}/ratings`,
+    {
+      method: "POST",
+      body: JSON.stringify(payload),
+    },
+  );
 
 export const applyQualityLabVariant = (runId: string, variantId: string) =>
-  request<{ applied: boolean; run_id: string; variant_id: string }>(`/quality-lab/runs/${encodeURIComponent(runId)}/apply`, {
-    method: "POST", body: JSON.stringify({ variant_id: variantId }),
-  });
+  request<{ applied: boolean; run_id: string; variant_id: string }>(
+    `/quality-lab/runs/${encodeURIComponent(runId)}/apply`,
+    {
+      method: "POST",
+      body: JSON.stringify({ variant_id: variantId }),
+    },
+  );
 
 export const rollbackQualityLab = (runId: string) =>
-  request<{ rolled_back: boolean; run_id: string }>(`/quality-lab/runs/${encodeURIComponent(runId)}/rollback`, { method: "POST" });
+  request<{ rolled_back: boolean; run_id: string }>(
+    `/quality-lab/runs/${encodeURIComponent(runId)}/rollback`,
+    { method: "POST" },
+  );
 
 // Video-evaluation UI contract. A backend can implement these routes without
 // coupling the desktop UI to its worker or evidence persistence details.
-export type VideoEvalJobStatus = "queued" | "processing" | "awaiting_consent" | "completed" | "failed" | "cancelled";
+export type VideoEvalJobStatus =
+  | "queued"
+  | "processing"
+  | "awaiting_consent"
+  | "completed"
+  | "failed"
+  | "cancelled";
 export interface VideoEvalJob {
   id: string;
   url: string;
@@ -934,12 +1319,22 @@ export interface VideoEvalJob {
 }
 
 export const createVideoEvalJob = (url: string) =>
-  request<VideoEvalJob>("/video-eval/jobs", { method: "POST", body: JSON.stringify({ url }) });
+  request<VideoEvalJob>("/video-eval/jobs", {
+    method: "POST",
+    body: JSON.stringify({ url }),
+  });
 export const getVideoEvalJob = (id: string) =>
   request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}`);
 export const consentVideoEvalJob = (id: string, approved: boolean) =>
-  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/consent`, { method: "POST", body: JSON.stringify({ approved }) });
+  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/consent`, {
+    method: "POST",
+    body: JSON.stringify({ approved }),
+  });
 export const cancelVideoEvalJob = (id: string) =>
-  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/cancel`, { method: "POST" });
+  request<VideoEvalJob>(`/video-eval/jobs/${encodeURIComponent(id)}/cancel`, {
+    method: "POST",
+  });
 export const getVideoEvalArtifact = (id: string) =>
-  request<Record<string, unknown>>(`/video-eval/jobs/${encodeURIComponent(id)}/artifact`);
+  request<Record<string, unknown>>(
+    `/video-eval/jobs/${encodeURIComponent(id)}/artifact`,
+  );

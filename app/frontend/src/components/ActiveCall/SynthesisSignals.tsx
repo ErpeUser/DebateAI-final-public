@@ -1,5 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
-import type { Session, SessionSynthesis, SynthesisSectionItem } from "../../types";
+import type {
+  Session,
+  SessionSynthesis,
+  SynthesisSectionItem,
+} from "../../types";
 import { DE } from "../../i18n/de";
 
 interface SynthesisSignalsProps {
@@ -25,8 +29,16 @@ export const LIVE_SIGNAL_CARD_LIMIT = 3;
 const SIGNAL_SECTIONS = [
   { section: "strategic_signals", key: "signal", label: DE.live.signal },
   { section: "risks_blockers", key: "risk", label: DE.live.risk },
-  { section: "unresolved_discovery_questions", key: "next-question", label: DE.live.nextQuestion },
-  { section: "top_opportunities", key: "opportunity", label: DE.live.opportunity },
+  {
+    section: "unresolved_discovery_questions",
+    key: "next-question",
+    label: DE.live.nextQuestion,
+  },
+  {
+    section: "top_opportunities",
+    key: "opportunity",
+    label: DE.live.opportunity,
+  },
   { section: "action_plan", key: "action-cue", label: DE.live.actionCue },
 ] as const;
 
@@ -70,14 +82,18 @@ export function getRankedSignalCards(
 
   const ranked: { card: LiveSignalCard; sort: [number, number, number] }[] = [];
   SIGNAL_SECTIONS.forEach(({ section, key, label }, sectionIndex) => {
-    const items = (synthesis[section] as SynthesisSectionItem[] | undefined) || [];
+    const items =
+      (synthesis[section] as SynthesisSectionItem[] | undefined) || [];
     items.forEach((item, itemIndex) => {
       if (!itemText(item)) return;
       const priority = item.priority ?? 0;
       ranked.push({
         card: {
           key: itemIndex === 0 ? key : `${key}-${itemIndex}`,
-          label: section === "top_opportunities" ? opportunityLabel(session?.meeting_type) : label,
+          label:
+            section === "top_opportunities"
+              ? opportunityLabel(session?.meeting_type)
+              : label,
           item,
         },
         sort: [priority > 0 ? priority : UNRANKED, sectionIndex, itemIndex],
@@ -85,7 +101,10 @@ export function getRankedSignalCards(
     });
   });
 
-  ranked.sort((a, b) => a.sort[0] - b.sort[0] || a.sort[1] - b.sort[1] || a.sort[2] - b.sort[2]);
+  ranked.sort(
+    (a, b) =>
+      a.sort[0] - b.sort[0] || a.sort[1] - b.sort[1] || a.sort[2] - b.sort[2],
+  );
 
   // Two sections can return the same observation; the higher-ranked one wins
   // rather than the panel spending two of its three slots saying it twice.
@@ -104,7 +123,11 @@ export function getRankedSignalCards(
 // signal merged into history and the same signal still on the current cycle
 // collapse to one entry here too.
 function signalIdentity(value: string | undefined): string {
-  return (value || "").replace(/\s+/g, " ").toLowerCase().trim().replace(/[ .,:;!?]+$/, "");
+  return (value || "")
+    .replace(/\s+/g, " ")
+    .toLowerCase()
+    .trim()
+    .replace(/[ .,:;!?]+$/, "");
 }
 
 function SignalItem({
@@ -138,7 +161,9 @@ function SignalItem({
       }`}
     >
       <div className="flex items-start justify-between gap-2">
-        <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">{label}</p>
+        <p className="font-body text-[10px] font-semibold uppercase tracking-wide text-brand-mid-gray">
+          {label}
+        </p>
         <svg
           className={`mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-brand-mid-gray transition-transform ${isSelected ? "rotate-180" : ""}`}
           fill="none"
@@ -150,22 +175,34 @@ function SignalItem({
           <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
         </svg>
       </div>
-      <p className={`mt-0.5 font-body text-sm font-semibold text-brand-dark-gray ${isSelected ? "whitespace-normal" : "truncate"}`} title={title}>
+      <p
+        className={`mt-0.5 font-body text-sm font-semibold text-brand-dark-gray ${isSelected ? "whitespace-normal" : "truncate"}`}
+        title={title}
+      >
         {title}
       </p>
       {hasDistinctSummary && (
-        <p className={`mt-0.5 font-body text-xs leading-relaxed text-brand-gray ${isSelected ? "whitespace-normal" : "line-clamp-2"}`}>
+        <p
+          className={`mt-0.5 font-body text-xs leading-relaxed text-brand-gray ${isSelected ? "whitespace-normal" : "line-clamp-2"}`}
+        >
           {summary}
         </p>
       )}
       {isSelected && (
         <div className="mt-2 space-y-1 border-t border-brand-light-gray-1 pt-2">
           {rationale && (
-            <p className="font-body text-xs leading-relaxed text-brand-gray">{rationale}</p>
+            <p className="font-body text-xs leading-relaxed text-brand-gray">
+              {rationale}
+            </p>
           )}
           {(owner || status) && (
             <p className="font-body text-[11px] text-brand-mid-gray">
-              {[owner ? `${DE.live.owner}: ${owner}` : "", status ? `${DE.live.status}: ${status}` : ""].filter(Boolean).join(" | ")}
+              {[
+                owner ? `${DE.live.owner}: ${owner}` : "",
+                status ? `${DE.live.status}: ${status}` : "",
+              ]
+                .filter(Boolean)
+                .join(" | ")}
             </p>
           )}
         </div>
@@ -174,10 +211,14 @@ function SignalItem({
   );
 }
 
-export default function SynthesisSignals({ session, synthesis }: SynthesisSignalsProps) {
+export default function SynthesisSignals({
+  session,
+  synthesis,
+}: SynthesisSignalsProps) {
   const [selectedKey, setSelectedKey] = useState<string | null>(null);
   const cards = useMemo(
-    () => getRankedSignalCards(synthesis, session).slice(0, LIVE_SIGNAL_CARD_LIMIT),
+    () =>
+      getRankedSignalCards(synthesis, session).slice(0, LIVE_SIGNAL_CARD_LIMIT),
     [synthesis, session],
   );
 
@@ -201,7 +242,11 @@ export default function SynthesisSignals({ session, synthesis }: SynthesisSignal
         </h2>
         {updated && (
           <span className="font-body text-[10px] text-brand-mid-gray">
-            {DE.live.updated} {new Date(updated).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" })}
+            {DE.live.updated}{" "}
+            {new Date(updated).toLocaleTimeString("de-DE", {
+              hour: "2-digit",
+              minute: "2-digit",
+            })}
           </span>
         )}
       </div>
@@ -211,12 +256,18 @@ export default function SynthesisSignals({ session, synthesis }: SynthesisSignal
             key={card.key}
             card={card}
             isSelected={selectedKey === card.key}
-            onSelect={() => setSelectedKey((current) => (current === card.key ? null : card.key))}
+            onSelect={() =>
+              setSelectedKey((current) =>
+                current === card.key ? null : card.key,
+              )
+            }
           />
         ))}
       </div>
       {synthesis?.status === "partial" && (
-        <p className="mt-2 font-body text-xs text-brand-amber">{DE.live.partial}</p>
+        <p className="mt-2 font-body text-xs text-brand-amber">
+          {DE.live.partial}
+        </p>
       )}
     </div>
   );

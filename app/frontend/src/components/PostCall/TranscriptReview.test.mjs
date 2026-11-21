@@ -8,7 +8,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./TranscriptReview.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./TranscriptReview.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "transcript-review-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -40,14 +42,16 @@ after(async () => {
 
 test("durable final text offers a revisioned manual correction", () => {
   const html = render({
-    transcripts: [{
-      id: "t1",
-      session_id: "s1",
-      text: "Fuenfzig Prozent.",
-      timestamp: "2026-11-07T12:00:00Z",
-      sequence: 1,
-      manual_corrected_at: "2026-11-07T12:01:00Z",
-    }],
+    transcripts: [
+      {
+        id: "t1",
+        session_id: "s1",
+        text: "Fuenfzig Prozent.",
+        timestamp: "2026-11-07T12:00:00Z",
+        sequence: 1,
+        manual_corrected_at: "2026-11-07T12:01:00Z",
+      },
+    ],
     speakers: [],
     onCorrectTranscript: () => {},
   });
@@ -59,14 +63,16 @@ test("durable final text offers a revisioned manual correction", () => {
 
 test("provisional text stays read-only until it has a durable final identity", () => {
   const html = render({
-    transcripts: [{
-      id: "p1",
-      session_id: "s1",
-      text: "Noch ein Entwurf.",
-      timestamp: "2026-11-07T12:00:00Z",
-      sequence: 1,
-      provisional: true,
-    }],
+    transcripts: [
+      {
+        id: "p1",
+        session_id: "s1",
+        text: "Noch ein Entwurf.",
+        timestamp: "2026-11-07T12:00:00Z",
+        sequence: 1,
+        provisional: true,
+      },
+    ],
     speakers: [],
     onCorrectTranscript: () => {},
   });
@@ -77,5 +83,5 @@ test("provisional text stays read-only until it has a durable final identity", (
 test("list keys use transcript identity instead of the array index", () => {
   const source = readFileSync(componentPath, "utf8");
   assert.doesNotMatch(source, /<li key=\{idx\}/);
-  assert.match(source, /entry\.id \?\? entry\.utterance_id/);
+  assert.match(source, /entry\.id\s*\?\?\s*entry\.utterance_id/);
 });

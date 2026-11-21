@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-
 SCRIPT = Path(__file__).parents[1] / "scripts" / "download_models.py"
 spec = importlib.util.spec_from_file_location("download_models_script", SCRIPT)
 download_models = importlib.util.module_from_spec(spec)
@@ -61,7 +60,10 @@ class DownloadModelsContractTests(unittest.TestCase):
                 "size_bytes": 8,
             }
             try:
-                with patch.object(download_models.urllib.request, "urlretrieve") as retrieve:
+                with patch.object(
+                    download_models.urllib.request, "urlretrieve"
+                ) as retrieve:
+
                     def fake_retrieve(_url, destination):
                         Path(destination).write_bytes(b"verified")
 

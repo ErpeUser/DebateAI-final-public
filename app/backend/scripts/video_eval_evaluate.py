@@ -25,7 +25,9 @@ def main() -> int:
     records = load_video_artifacts(artifact_paths)
     manifest = build_split_manifest(records, seed=args.seed)
     path = save_manifest(manifest, args.out)
-    print(f"saved {path} ({len(records)} cases, {len(manifest.blind_pairs)} blind pairs)")
+    print(
+        f"saved {path} ({len(records)} cases, {len(manifest.blind_pairs)} blind pairs)"
+    )
     return 0
 
 

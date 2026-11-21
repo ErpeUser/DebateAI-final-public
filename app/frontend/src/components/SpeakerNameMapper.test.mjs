@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./SpeakerNameMapper.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./SpeakerNameMapper.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "speaker-name-mapper-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -108,8 +110,14 @@ test("model binding and Briefing agent ownership are visible beside a fail-close
 
   assert.match(markup, /Erkenntnisverbesserung verwendet den Synthesizer/);
   assert.match(markup, /Verwaltung – Agenten öffnen/);
-  assert.match(markup, /Briefing-Neuerstellung verwendet die in der Verwaltung eingerichteten Modelle/);
-  assert.match(markup, /<button type="button" disabled=""[^>]*>Erkenntnisse verbessern<\/button>/);
+  assert.match(
+    markup,
+    /Briefing-Neuerstellung verwendet die in der Verwaltung eingerichteten Modelle/,
+  );
+  assert.match(
+    markup,
+    /<button type="button" disabled=""[^>]*>Erkenntnisse verbessern<\/button>/,
+  );
 });
 
 test("partial and error Briefing outcomes stay retryable and never use success copy", () => {
@@ -129,7 +137,10 @@ test("partial and error Briefing outcomes stay retryable and never use success c
 
     assert.equal(outcome.tone, "warning");
     assert.match(outcome.message, /Retry Enhance Insights/);
-    assert.doesNotMatch(outcome.message, /Revalidated the Briefing and all Insights/);
+    assert.doesNotMatch(
+      outcome.message,
+      /Revalidated the Briefing and all Insights/,
+    );
   }
 });
 
@@ -147,7 +158,11 @@ test("running revalidation reports observable batch progress", () => {
 test("finished runs never keep an in-progress banner", () => {
   for (const status of ["completed", "partial", "failed", "unchanged"]) {
     assert.equal(
-      enhancementProgressLabel({ status, completed_batches: 0, total_batches: 2 }),
+      enhancementProgressLabel({
+        status,
+        completed_batches: 0,
+        total_batches: 2,
+      }),
       "",
       `expected no progress label for status ${status}`,
     );
@@ -171,7 +186,8 @@ test("failure outcomes surface the persisted run reason", () => {
     speaker_context_dirty: true,
     speaker_context_enhanced_at: null,
     enhanced_insights: 0,
-    error: "1 revalidation batch failed. Gemini quota/spending cap exhausted - raise the cap in AI Studio or switch the model in Admin.",
+    error:
+      "1 revalidation batch failed. Gemini quota/spending cap exhausted - raise the cap in AI Studio or switch the model in Admin.",
   });
 
   assert.equal(outcome.tone, "warning");

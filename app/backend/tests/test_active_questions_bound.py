@@ -17,7 +17,9 @@ from app.services.briefing_synthesis import _format_insights
 
 
 def make_orchestrator():
-    with patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()):
+    with patch(
+        "app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()
+    ):
         return AgentOrchestrator(
             session_id=uuid4(),
             websocket=AsyncMock(),
@@ -35,12 +37,16 @@ class ActiveQuestionBoundTests(unittest.TestCase):
 
     def test_list_never_grows_past_the_cap(self):
         for index in range(_MAX_ACTIVE_QUESTIONS * 3):
-            self.orchestrator._remember_active_question(f"id-{index}", f"question {index}")
+            self.orchestrator._remember_active_question(
+                f"id-{index}", f"question {index}"
+            )
         self.assertEqual(_MAX_ACTIVE_QUESTIONS, len(self.orchestrator.active_questions))
 
     def test_the_oldest_questions_are_the_ones_dropped(self):
         for index in range(_MAX_ACTIVE_QUESTIONS + 3):
-            self.orchestrator._remember_active_question(f"id-{index}", f"question {index}")
+            self.orchestrator._remember_active_question(
+                f"id-{index}", f"question {index}"
+            )
         ids = [aq["id"] for aq in self.orchestrator.active_questions]
         self.assertNotIn("id-0", ids)
         self.assertIn(f"id-{_MAX_ACTIVE_QUESTIONS + 2}", ids)
@@ -53,7 +59,9 @@ class ActiveQuestionBoundTests(unittest.TestCase):
         self.orchestrator._remember_active_question("id-1", "first")
         self.orchestrator._remember_active_question("id-2", "second")
         self.orchestrator._forget_active_question("id-1")
-        self.assertEqual(["id-2"], [aq["id"] for aq in self.orchestrator.active_questions])
+        self.assertEqual(
+            ["id-2"], [aq["id"] for aq in self.orchestrator.active_questions]
+        )
 
     def test_forgetting_an_unknown_or_missing_id_is_harmless(self):
         self.orchestrator._remember_active_question("id-1", "first")
@@ -75,22 +83,39 @@ class InsightFormattingTests(unittest.TestCase):
 
     def test_identity_and_type_survive_the_render(self):
         [item] = self._items(
-            _format_insights([{"id": "abc", "question": "Who signs off?", "item_type": "question"}])
+            _format_insights(
+                [{"id": "abc", "question": "Who signs off?", "item_type": "question"}]
+            )
         )
         self.assertEqual("abc", item["id"])
         self.assertEqual("question", item["item_type"])
 
     def test_rationale_is_still_carried_when_present(self):
         [item] = self._items(
-            _format_insights([
-                {"id": "abc", "question": "Who signs off?", "item_type": "question", "rationale": "budget owner unclear"}
-            ])
+            _format_insights(
+                [
+                    {
+                        "id": "abc",
+                        "question": "Who signs off?",
+                        "item_type": "question",
+                        "rationale": "budget owner unclear",
+                    }
+                ]
+            )
         )
         self.assertEqual("budget owner unclear", item["rationale"])
 
     def test_a_non_question_entry_is_not_mislabelled(self):
         [item] = self._items(
-            _format_insights([{"id": "abc", "text": "They are consolidating vendors", "item_type": "observation"}])
+            _format_insights(
+                [
+                    {
+                        "id": "abc",
+                        "text": "They are consolidating vendors",
+                        "item_type": "observation",
+                    }
+                ]
+            )
         )
         self.assertEqual("observation", item["item_type"])
 
@@ -99,8 +124,12 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
     async def test_analyst_skips_a_cycle_when_nobody_spoke(self):
         orchestrator = make_orchestrator()
         orchestrator._get_interval = MagicMock(return_value=0.01)
-        orchestrator.consolidated_agent = MagicMock(run_cycle=AsyncMock(return_value=[]))
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="[S1]: same words")
+        orchestrator.consolidated_agent = MagicMock(
+            run_cycle=AsyncMock(return_value=[])
+        )
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="[S1]: same words"
+        )
 
         import asyncio
 
@@ -116,7 +145,6 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
         # Many ticks elapsed over an unchanging window; only the first runs.
         self.assertEqual(1, orchestrator.consolidated_agent.run_cycle.await_count)
 
-
     async def test_analyst_does_not_wait_an_interval_before_first_snapshot(self):
         """Existing transcript context must be analyzed immediately on start."""
         import asyncio
@@ -130,7 +158,9 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
             return []
 
         orchestrator.consolidated_agent.run_cycle = AsyncMock(side_effect=run_cycle)
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="[S1]: opening words")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="[S1]: opening words"
+        )
 
         task = asyncio.create_task(orchestrator._consolidated_agent_loop())
         try:
@@ -144,7 +174,6 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
                 pass
 
         orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
-
 
     async def test_empty_start_wakes_on_first_durable_transcript(self):
         import asyncio
@@ -168,7 +197,9 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
         task = asyncio.create_task(orchestrator._consolidated_agent_loop())
         try:
             await asyncio.wait_for(empty_seen.wait(), timeout=0.5)
-            await orchestrator.feed_transcript("A durable opening statement.", utterance_id="first")
+            await orchestrator.feed_transcript(
+                "A durable opening statement.", utterance_id="first"
+            )
             await asyncio.wait_for(analyzed.wait(), timeout=0.5)
             orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
         finally:
@@ -190,7 +221,9 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
             nonlocal calls
             calls += 1
             if calls == 1:
-                await orchestrator.feed_transcript("A statement arrived during the snapshot.", utterance_id="race")
+                await orchestrator.feed_transcript(
+                    "A statement arrived during the snapshot.", utterance_id="race"
+                )
                 return "(No recent transcript)"
             return await original_window(**kwargs)
 
@@ -232,8 +265,11 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
         try:
             await asyncio.wait_for(empty_seen.wait(), timeout=0.5)
             await orchestrator.apply_manual_transcript_correction(
-                text="Corrected first context.", speaker_name=None,
-                speaker_id=None, speaker_type=None, utterance_id="edited",
+                text="Corrected first context.",
+                speaker_name=None,
+                speaker_id=None,
+                speaker_type=None,
+                utterance_id="edited",
             )
             await asyncio.wait_for(analyzed.wait(), timeout=0.5)
             orchestrator.consolidated_agent.run_cycle.assert_awaited_once()
@@ -251,7 +287,9 @@ class IdleWindowSkipTests(unittest.IsolatedAsyncioTestCase):
             last_outcome={},
         )
         orchestrator.activity.cycle_error = AsyncMock()
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="[S1]: same words")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="[S1]: same words"
+        )
 
         import asyncio
 
@@ -282,7 +320,9 @@ class BoardStubTests(unittest.TestCase):
         from app.services.agents.orchestrator import _MAX_BOARD_STUBS
 
         for index in range(_MAX_BOARD_STUBS * 2):
-            self.orchestrator._remember_board_stub("observation", f"observation {index}")
+            self.orchestrator._remember_board_stub(
+                "observation", f"observation {index}"
+            )
         self.assertEqual(_MAX_BOARD_STUBS, len(self.orchestrator._board_stubs))
         # The newest survive; the oldest are the ones dropped.
         self.assertEqual(
@@ -309,7 +349,10 @@ class BoardStubTests(unittest.TestCase):
             {"item_type": "observation", "text": f"seed {index}"}
             for index in range(_MAX_BOARD_STUBS + 10)
         ]
-        with patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()):
+        with patch(
+            "app.services.agents.orchestrator.GeminiLiveSession",
+            return_value=AsyncMock(),
+        ):
             orchestrator = AgentOrchestrator(
                 session_id=uuid4(),
                 websocket=AsyncMock(),

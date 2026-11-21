@@ -8,9 +8,7 @@ from email.utils import parsedate_to_datetime
 from typing import Any, Literal
 
 import httpx
-
 from app.services.adapter_contracts import AdapterContract, validate_adapter_contract
-
 
 CostStatus = Literal["local", "subscription", "usage_billed", "unknown"]
 FailureKind = Literal[
@@ -73,7 +71,12 @@ def capabilities_for_route(route: dict[str, Any]) -> ProviderCapabilities:
     if adapter == "gemini_cli" or provider == "google-login":
         efforts, streaming, structured, cost = ("high",), True, True, "subscription"
     elif adapter == "cliproxyapi":
-        efforts, streaming, structured, cost = ("high", "xhigh"), True, True, "subscription"
+        efforts, streaming, structured, cost = (
+            ("high", "xhigh"),
+            True,
+            True,
+            "subscription",
+        )
     elif provider == "google-web":
         efforts, streaming, structured, cost = ("high",), False, True, "subscription"
     elif provider == "openai-web":
@@ -94,22 +97,27 @@ def capabilities_for_route(route: dict[str, Any]) -> ProviderCapabilities:
         timeout_seconds = max(1.0, float(route.get("timeout_seconds") or 120.0))
     except (TypeError, ValueError):
         timeout_seconds = 120.0
-    contract = validate_adapter_contract(AdapterContract(
-        adapter_id=f"provider.{adapter}",
-        kind="provider",
-        contract_version="1.0",
-        capabilities=tuple(
-            capability for capability, enabled in (
-                ("generate", True),
-                ("stream", streaming),
-                ("structured_output", structured),
-                ("cancel", True),
-            ) if enabled
+    contract = validate_adapter_contract(
+        AdapterContract(
+            adapter_id=f"provider.{adapter}",
+            kind="provider",
+            contract_version="1.0",
+            capabilities=tuple(
+                capability
+                for capability, enabled in (
+                    ("generate", True),
+                    ("stream", streaming),
+                    ("structured_output", structured),
+                    ("cancel", True),
+                )
+                if enabled
+            ),
+            permissions=tuple(permissions),  # type: ignore[arg-type]
+            timeout_seconds=timeout_seconds,
+            lifecycle="process" if lazy else "request",
         ),
-        permissions=tuple(permissions),  # type: ignore[arg-type]
-        timeout_seconds=timeout_seconds,
-        lifecycle="process" if lazy else "request",
-    ), expected_kind="provider")
+        expected_kind="provider",
+    )
 
     return ProviderCapabilities(
         adapter_id=adapter,
@@ -149,7 +157,9 @@ def effective_reasoning_effort(
     supported = capabilities.confirmed_reasoning_efforts
     if not supported:
         return None
-    desired = (requested or capabilities.requested_reasoning_effort or "high").casefold()
+    desired = (
+        requested or capabilities.requested_reasoning_effort or "high"
+    ).casefold()
     if desired == "xhigh" and (not complex_request or remaining_seconds < 60):
         desired = "high"
     if desired in supported:
@@ -182,9 +192,21 @@ def classify_provider_failure(exc: Exception) -> ProviderFailure:
         status = exc.response.status_code
         text = (exc.response.text or str(exc)).casefold()
         if status in {401, 403}:
-            kind: FailureKind = "subscription" if any(term in text for term in ("subscription", "usage_limit", "plan")) else "authentication"
+            kind: FailureKind = (
+                "subscription"
+                if any(term in text for term in ("subscription", "usage_limit", "plan"))
+                else "authentication"
+            )
             return ProviderFailure(kind, False)
-        if status == 404 or any(term in text for term in ("model_not_found", "model not found", "invalid model", "does not exist")):
+        if status == 404 or any(
+            term in text
+            for term in (
+                "model_not_found",
+                "model not found",
+                "invalid model",
+                "does not exist",
+            )
+        ):
             return ProviderFailure("model", False)
         if status == 429:
             return ProviderFailure("rate_limit", True, _retry_after(exc.response))
@@ -194,12 +216,27 @@ def classify_provider_failure(exc: Exception) -> ProviderFailure:
     if isinstance(exc, httpx.TransportError):
         return ProviderFailure("transport", True)
     text = str(exc).casefold()
-    if any(term in text for term in ("not logged", "not angemeldet", "oauth", "authentication")):
+    if any(
+        term in text
+        for term in ("not logged", "not angemeldet", "oauth", "authentication")
+    ):
         return ProviderFailure("authentication", False)
-    if any(term in text for term in ("subscription", "usage_limit", "abo", "plan limit")):
+    if any(
+        term in text for term in ("subscription", "usage_limit", "abo", "plan limit")
+    ):
         return ProviderFailure("subscription", False)
-    if any(term in text for term in ("model not found", "model_not_found", "invalid model", "does not exist")):
+    if any(
+        term in text
+        for term in (
+            "model not found",
+            "model_not_found",
+            "invalid model",
+            "does not exist",
+        )
+    ):
         return ProviderFailure("model", False)
-    if any(term in text for term in ("429", "rate limit", "resource_exhausted", "quota")):
+    if any(
+        term in text for term in ("429", "rate limit", "resource_exhausted", "quota")
+    ):
         return ProviderFailure("rate_limit", True)
     return ProviderFailure("unknown", False)

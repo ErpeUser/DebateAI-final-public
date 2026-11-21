@@ -26,16 +26,24 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 output.write_text("", encoding="utf-8")
                 session = root / "home" / "sessions" / "proof"
                 session.mkdir(parents=True, exist_ok=True)
-                (session / "meta.json").write_text(json.dumps({
-                    "browser": {
-                        "modelSelection": {"verified": True, "resolvedLabel": "GPT-6"},
-                        "thinkingSelection": {
-                            "verified": True,
-                            "requestedLevel": "extra-high",
-                            "resolvedLabel": "Extra High",
-                        },
-                    }
-                }), encoding="utf-8")
+                (session / "meta.json").write_text(
+                    json.dumps(
+                        {
+                            "browser": {
+                                "modelSelection": {
+                                    "verified": True,
+                                    "resolvedLabel": "GPT-6",
+                                },
+                                "thinkingSelection": {
+                                    "verified": True,
+                                    "requestedLevel": "extra-high",
+                                    "resolvedLabel": "Extra High",
+                                },
+                            }
+                        }
+                    ),
+                    encoding="utf-8",
+                )
                 return mock.Mock(returncode=0)
 
             env = {
@@ -45,8 +53,11 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
                 "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
             }
-            with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
-                chatgpt_web_login.subprocess, "run", side_effect=completed
+            with (
+                mock.patch.dict(os.environ, env, clear=False),
+                mock.patch.object(
+                    chatgpt_web_login.subprocess, "run", side_effect=completed
+                ),
             ):
                 code = chatgpt_web_login.run_chatgpt_web_login(result)
 
@@ -72,19 +83,24 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 output.write_text("OK", encoding="utf-8")
                 session = root / "home" / "sessions" / "proof"
                 session.mkdir(parents=True, exist_ok=True)
-                (session / "meta.json").write_text(json.dumps({
-                    "browser": {
-                        "modelSelection": {
-                            "verified": True,
-                            "resolvedLabel": "GPT-6",
-                        },
-                        "thinkingSelection": {
-                            "verified": True,
-                            "requestedLevel": "extra-high",
-                            "resolvedLabel": "Extra High",
-                        },
-                    }
-                }), encoding="utf-8")
+                (session / "meta.json").write_text(
+                    json.dumps(
+                        {
+                            "browser": {
+                                "modelSelection": {
+                                    "verified": True,
+                                    "resolvedLabel": "GPT-6",
+                                },
+                                "thinkingSelection": {
+                                    "verified": True,
+                                    "requestedLevel": "extra-high",
+                                    "resolvedLabel": "Extra High",
+                                },
+                            }
+                        }
+                    ),
+                    encoding="utf-8",
+                )
                 return mock.Mock(returncode=0)
 
             env = {
@@ -94,8 +110,11 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
                 "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
             }
-            with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
-                chatgpt_web_login.subprocess, "run", side_effect=completed
+            with (
+                mock.patch.dict(os.environ, env, clear=False),
+                mock.patch.object(
+                    chatgpt_web_login.subprocess, "run", side_effect=completed
+                ),
             ):
                 code = chatgpt_web_login.run_chatgpt_web_login(result)
 
@@ -148,8 +167,13 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 "DEBATEAI_CHATGPT_WEB_PROFILE": str(root / "profile"),
                 "DEBATEAI_CHATGPT_WEB_MARKER": str(marker),
             }
-            with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
-                chatgpt_web_login.subprocess, "run", return_value=mock.Mock(returncode=1)
+            with (
+                mock.patch.dict(os.environ, env, clear=False),
+                mock.patch.object(
+                    chatgpt_web_login.subprocess,
+                    "run",
+                    return_value=mock.Mock(returncode=1),
+                ),
             ):
                 code = chatgpt_web_login.run_chatgpt_web_login(root / "result.json")
             self.assertEqual(1, code)
@@ -175,8 +199,11 @@ class ChatGPTWebLoginTests(unittest.TestCase):
                 stderr="cookie=secret-provider-response",
                 stdout="account@example.com",
             )
-            with mock.patch.dict(os.environ, env, clear=False), mock.patch.object(
-                chatgpt_web_login.subprocess, "run", return_value=completed
+            with (
+                mock.patch.dict(os.environ, env, clear=False),
+                mock.patch.object(
+                    chatgpt_web_login.subprocess, "run", return_value=completed
+                ),
             ):
                 code = chatgpt_web_login.run_chatgpt_web_login(result)
             self.assertEqual(1, code)
@@ -184,7 +211,10 @@ class ChatGPTWebLoginTests(unittest.TestCase):
             serialized = json.dumps(payload)
             self.assertNotIn("secret-provider-response", serialized)
             self.assertNotIn("account@example.com", serialized)
-            self.assertEqual("Die ChatGPT-Web-Prüfung konnte nicht abgeschlossen werden.", payload["error"])
+            self.assertEqual(
+                "Die ChatGPT-Web-Prüfung konnte nicht abgeschlossen werden.",
+                payload["error"],
+            )
 
 
 if __name__ == "__main__":

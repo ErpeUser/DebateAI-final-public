@@ -1,6 +1,5 @@
-from fastapi import APIRouter
-
 from app.release_notes import APP_VERSION, RELEASE_NOTES
+from fastapi import APIRouter
 
 router = APIRouter(prefix="/api/meta", tags=["meta"])
 

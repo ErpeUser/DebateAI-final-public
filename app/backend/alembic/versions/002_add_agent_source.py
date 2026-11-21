@@ -6,7 +6,6 @@ Create Date: 2026-03-21
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "002"
@@ -18,7 +17,9 @@ depends_on = None
 def upgrade():
     op.add_column(
         "questions",
-        sa.Column("agent_source", sa.String(30), server_default="general", nullable=False),
+        sa.Column(
+            "agent_source", sa.String(30), server_default="general", nullable=False
+        ),
     )
 
 

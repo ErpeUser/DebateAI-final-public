@@ -14,9 +14,17 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./AudioIndicator.tsx", import.meta.url));
-const viewSource = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
-const appSource = readFileSync(new URL("../../App.tsx", import.meta.url), "utf8");
+const componentPath = fileURLToPath(
+  new URL("./AudioIndicator.tsx", import.meta.url),
+);
+const viewSource = readFileSync(
+  new URL("./ActiveCallView.tsx", import.meta.url),
+  "utf8",
+);
+const appSource = readFileSync(
+  new URL("../../App.tsx", import.meta.url),
+  "utf8",
+);
 const componentSource = readFileSync(componentPath, "utf8");
 
 const outputDir = await mkdtemp(join(tmpdir(), "audio-indicator-test-"));
@@ -46,7 +54,9 @@ await build({
 // Bundle 2: React replaced by a probe, so the animation frame effect can be
 // driven by hand and every re-render React would do is counted.
 const probePath = join(outputDir, "react-probe.mjs");
-await writeFile(probePath, `
+await writeFile(
+  probePath,
+  `
 export const hooks = { cells: [], index: 0, effects: [], setStateCalls: 0, useStateCalls: 0 };
 export function useRef(initial) {
   const i = hooks.index++;
@@ -71,7 +81,8 @@ export function jsx(type, props) {
 export const jsxs = jsx;
 export const jsxDEV = jsx;
 export const Fragment = Symbol("Fragment");
-`);
+`,
+);
 
 const framesPath = join(outputDir, "frames.cjs");
 await build({
@@ -123,16 +134,29 @@ function runFrames(count) {
 }
 
 function makeNode(className) {
-  const classes = new Set(String(className || "").split(/\s+/).filter(Boolean));
+  const classes = new Set(
+    String(className || "")
+      .split(/\s+/)
+      .filter(Boolean),
+  );
   return {
     classes,
     attrs: {},
     attrWrites: 0,
     classList: {
-      toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
-      add(name) { classes.add(name); },
-      remove(name) { classes.delete(name); },
-      contains(name) { return classes.has(name); },
+      toggle(name, on) {
+        if (on) classes.add(name);
+        else classes.delete(name);
+      },
+      add(name) {
+        classes.add(name);
+      },
+      remove(name) {
+        classes.delete(name);
+      },
+      contains(name) {
+        return classes.has(name);
+      },
     },
     setAttribute(name, value) {
       this.attrs[name] = value;
@@ -166,7 +190,8 @@ function mountMeter(props) {
   };
 
   const paint = (next) => {
-    for (const cleanup of cleanups) if (typeof cleanup === "function") cleanup();
+    for (const cleanup of cleanups)
+      if (typeof cleanup === "function") cleanup();
     hooks.index = 0;
     hooks.effects = [];
     renders += 1;
@@ -178,13 +203,21 @@ function mountMeter(props) {
   return {
     rerender: paint,
     unmount: () => {
-      for (const cleanup of cleanups) if (typeof cleanup === "function") cleanup();
+      for (const cleanup of cleanups)
+        if (typeof cleanup === "function") cleanup();
       cleanups = [];
     },
-    get meter() { return nodes[0]; },
-    get bars() { return nodes.slice(1); },
-    get renders() { return renders; },
-    litBars: () => nodes.slice(1).filter((bar) => bar.classes.has("bg-green-500")).length,
+    get meter() {
+      return nodes[0];
+    },
+    get bars() {
+      return nodes.slice(1);
+    },
+    get renders() {
+      return renders;
+    },
+    litBars: () =>
+      nodes.slice(1).filter((bar) => bar.classes.has("bg-green-500")).length,
   };
 }
 
@@ -203,8 +236,16 @@ test("the bar class is identical for every prop combination React can re-render 
   const variants = [
     { isCapturing: true, level: { current: 0 }, label: LABEL },
     { isCapturing: false, level: { current: 0 }, label: LABEL },
-    { isCapturing: true, level: { current: 1 }, label: "Meeting audio input level" },
-    { isCapturing: false, level: { current: 0.42 }, label: "Meeting audio input level" },
+    {
+      isCapturing: true,
+      level: { current: 1 },
+      label: "Meeting audio input level",
+    },
+    {
+      isCapturing: false,
+      level: { current: 0.42 },
+      label: "Meeting audio input level",
+    },
   ];
 
   const seen = new Set();
@@ -218,7 +259,11 @@ test("the bar class is identical for every prop combination React can re-render 
   assert.equal(seen.size, 1, "bar class must not depend on any prop");
   const barClass = [...seen][0];
   assert.match(barClass, /bg-brand-light-gray-1/, "bars render idle");
-  assert.doesNotMatch(barClass, /bg-green-500/, "lit state is never rendered by React");
+  assert.doesNotMatch(
+    barClass,
+    /bg-green-500/,
+    "lit state is never rendered by React",
+  );
 });
 
 test("the bar className is one constant, with no interpolation React could vary", () => {
@@ -232,8 +277,16 @@ test("the bar className is one constant, with no interpolation React could vary"
 });
 
 test("the level never reaches the render output", () => {
-  const quiet = renderMeter({ isCapturing: true, level: { current: 0 }, label: LABEL });
-  const loud = renderMeter({ isCapturing: true, level: { current: 1 }, label: LABEL });
+  const quiet = renderMeter({
+    isCapturing: true,
+    level: { current: 0 },
+    label: LABEL,
+  });
+  const loud = renderMeter({
+    isCapturing: true,
+    level: { current: 1 },
+    label: LABEL,
+  });
   assert.equal(quiet, loud, "markup must not encode the live level");
   assert.match(quiet, /role="meter"/);
   assert.match(quiet, /aria-valuemin="0"/);
@@ -242,15 +295,28 @@ test("the level never reaches the render output", () => {
 });
 
 test("each meter is named by its own prop", () => {
-  assert.match(renderMeter({ isCapturing: true, level: { current: 0 }, label: LABEL }), /aria-label="Microphone input level"/);
   assert.match(
-    renderMeter({ isCapturing: true, level: { current: 0 }, label: "Meeting audio input level" }),
+    renderMeter({ isCapturing: true, level: { current: 0 }, label: LABEL }),
+    /aria-label="Microphone input level"/,
+  );
+  assert.match(
+    renderMeter({
+      isCapturing: true,
+      level: { current: 0 },
+      label: "Meeting audio input level",
+    }),
     /aria-label="Meeting audio input level"/,
   );
-  assert.doesNotMatch(componentSource, /aria-label="/, "the name is never hardcoded");
+  assert.doesNotMatch(
+    componentSource,
+    /aria-label="/,
+    "the name is never hardcoded",
+  );
 
   // Two meters can be on screen at once; identical names are indistinguishable.
-  const labels = [...viewSource.matchAll(/\slabel="([^"]+)"/g)].map((m) => m[1]);
+  const labels = [...viewSource.matchAll(/\slabel="([^"]+)"/g)].map(
+    (m) => m[1],
+  );
   assert.equal(labels.length, 2, "both AudioIndicator call sites pass a name");
   assert.equal(new Set(labels).size, 2, "the two meters must not share a name");
 });
@@ -260,7 +326,10 @@ test("each meter is named by its own prop", () => {
 test("call sites pass a stable level object, never a fresh literal", () => {
   // A new object per render restarts the effect on every parent render and
   // strands the meter on a source nothing writes to.
-  for (const [name, source] of [["App.tsx", appSource], ["ActiveCallView.tsx", viewSource]]) {
+  for (const [name, source] of [
+    ["App.tsx", appSource],
+    ["ActiveCallView.tsx", viewSource],
+  ]) {
     assert.doesNotMatch(
       source,
       /(?:audioLevel|systemAudioLevel|level)=\{\{/,
@@ -268,11 +337,24 @@ test("call sites pass a stable level object, never a fresh literal", () => {
     );
   }
 
-  assert.match(appSource, /audioLevel=\{nativeAudioActive \? nativeMicLevelRef : audioLevelRef\}/);
-  assert.match(appSource, /systemAudioLevel=\{[^{}]*nativeSystemAudioLevelRef[^{}]*systemAudioLevelRef[^{}]*SILENT_AUDIO_LEVEL\}/);
+  assert.match(
+    appSource,
+    /audioLevel=\{nativeAudioActive \? nativeMicLevelRef : audioLevelRef\}/,
+  );
+  assert.match(
+    appSource,
+    /systemAudioLevel=\{[\s\S]*?nativeSystemAudioLevelRef[\s\S]*?systemAudioLevelRef[\s\S]*?SILENT_AUDIO_LEVEL[\s\S]*?\}/,
+  );
   assert.match(viewSource, /level=\{audioLevel\}/);
-  assert.match(viewSource, /level=\{systemAudioLevel \?\? SILENT_AUDIO_LEVEL\}/);
-  assert.match(componentSource, /\}, \[isCapturing, level\]\);/, "the frame effect keys off level identity");
+  assert.match(
+    viewSource,
+    /level=\{systemAudioLevel \?\? SILENT_AUDIO_LEVEL\}/,
+  );
+  assert.match(
+    componentSource,
+    /\}, \[isCapturing, level\]\);/,
+    "the frame effect keys off level identity",
+  );
 });
 
 test("the silent stand-in is one shared zero", async () => {
@@ -300,7 +382,11 @@ test("the meter animates without asking React to re-render", () => {
 
   assert.equal(meter.renders, 1, "300 frames caused no re-render");
   assert.equal(hooks.useStateCalls, 0, "the meter holds no React state");
-  assert.equal(hooks.setStateCalls, 0, "no state update escapes the frame loop");
+  assert.equal(
+    hooks.setStateCalls,
+    0,
+    "no state update escapes the frame loop",
+  );
   assert.ok(changes > 30, `meter should still animate, saw ${changes} changes`);
 
   level.current = 1;
@@ -324,8 +410,14 @@ test("aria-valuenow keeps a human update rate", () => {
   }
 
   const perSecond = (meter.meter.attrWrites - before) / (frameCount / 60);
-  assert.ok(perSecond >= 4, `announced value should stay live, saw ${perSecond}Hz`);
-  assert.ok(perSecond <= 10, `announced value should not flood at frame rate, saw ${perSecond}Hz`);
+  assert.ok(
+    perSecond >= 4,
+    `announced value should stay live, saw ${perSecond}Hz`,
+  );
+  assert.ok(
+    perSecond <= 10,
+    `announced value should not flood at frame rate, saw ${perSecond}Hz`,
+  );
   meter.unmount();
 });
 
@@ -337,7 +429,11 @@ test("stopping capture clears the bars and announces zero", () => {
 
   meter.rerender({ isCapturing: false, level, label: LABEL });
   assert.equal(meter.litBars(), 0, "no capture means no lit bars");
-  assert.equal(meter.meter.attrs["aria-valuenow"], "0", "no capture means no announced level");
+  assert.equal(
+    meter.meter.attrs["aria-valuenow"],
+    "0",
+    "no capture means no announced level",
+  );
   meter.unmount();
 });
 
@@ -360,6 +456,14 @@ test("every scheduled frame is cancelled when the effect tears down", () => {
   const litAtUnmount = meter.litBars();
   level.current = 1;
   runFrames(60);
-  assert.equal(meter.meter.attrWrites, quiet, "an unmounted meter writes nothing");
-  assert.equal(meter.litBars(), litAtUnmount, "an unmounted meter paints nothing");
+  assert.equal(
+    meter.meter.attrWrites,
+    quiet,
+    "an unmounted meter writes nothing",
+  );
+  assert.equal(
+    meter.litBars(),
+    litAtUnmount,
+    "an unmounted meter paints nothing",
+  );
 });

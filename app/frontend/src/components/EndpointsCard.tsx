@@ -24,27 +24,59 @@ interface FormState {
   models: string[];
 }
 
-const EMPTY_FORM: FormState = { name: "", baseUrl: "", apiKey: "", keyTouched: false, models: [] };
+const EMPTY_FORM: FormState = {
+  name: "",
+  baseUrl: "",
+  apiKey: "",
+  keyTouched: false,
+  models: [],
+};
 
 function StatusDot({ endpoint }: { endpoint: CustomEndpoint }) {
   const color =
-    endpoint.last_status === "ok" ? "#72d54a" : endpoint.last_status === "error" ? "#e5484d" : "#c9cdd3";
+    endpoint.last_status === "ok"
+      ? "#72d54a"
+      : endpoint.last_status === "error"
+        ? "#e5484d"
+        : "#c9cdd3";
   const label =
-    endpoint.last_status === "ok" ? "Erreichbar" : endpoint.last_status === "error" ? "Nicht erreichbar" : "Nicht geprüft";
+    endpoint.last_status === "ok"
+      ? "Erreichbar"
+      : endpoint.last_status === "error"
+        ? "Nicht erreichbar"
+        : "Nicht geprüft";
   return (
-    <span className="inline-flex items-center gap-1.5" title={endpoint.last_error || label}>
-      <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
+    <span
+      className="inline-flex items-center gap-1.5"
+      title={endpoint.last_error || label}
+    >
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
       <span className="font-body text-[11px] text-brand-gray">{label}</span>
     </span>
   );
 }
 
-function Pill({ children, tone = "neutral" }: { children: ReactNode; tone?: "neutral" | "teal" }) {
+function Pill({
+  children,
+  tone = "neutral",
+}: {
+  children: ReactNode;
+  tone?: "neutral" | "teal";
+}) {
   const styles =
     tone === "teal"
       ? "bg-brand-teal/10 text-brand-teal ring-1 ring-brand-teal/30"
       : "bg-brand-light-gray-1/70 text-brand-dark-gray";
-  return <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${styles}`}>{children}</span>;
+  return (
+    <span
+      className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium ${styles}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 /** Add or edit one endpoint: address first, then the models it serves. */
@@ -64,9 +96,12 @@ function EndpointForm({
   const [served, setServed] = useState<string[] | null>(null);
   const [manual, setManual] = useState("");
   const [busy, setBusy] = useState<"probe" | "save" | null>(null);
-  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(
+    null,
+  );
 
-  const set = (patch: Partial<FormState>) => setForm((prev) => ({ ...prev, ...patch }));
+  const set = (patch: Partial<FormState>) =>
+    setForm((prev) => ({ ...prev, ...patch }));
 
   const applyPreset = (preset: (typeof PRESETS)[number]) =>
     set({ name: form.name.trim() || preset.name, baseUrl: preset.base_url });
@@ -95,10 +130,14 @@ function EndpointForm({
     try {
       // Re-testing a saved endpoint at its saved address goes through the
       // stored key, so an authenticated proxy does not need it retyped.
-      const reuseStored = editing && !form.keyTouched && form.baseUrl.trim() === editing.base_url;
+      const reuseStored =
+        editing && !form.keyTouched && form.baseUrl.trim() === editing.base_url;
       const result = reuseStored
         ? await api.testEndpoint(editing.id)
-        : await api.probeEndpoint(form.baseUrl, form.keyTouched ? form.apiKey : "");
+        : await api.probeEndpoint(
+            form.baseUrl,
+            form.keyTouched ? form.apiKey : "",
+          );
       setServed(result.served_models);
       setMessage({ ok: result.ok, text: result.message });
       if (
@@ -110,7 +149,10 @@ function EndpointForm({
         set({ models: result.served_models });
       }
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "Verbindung fehlgeschlagen" });
+      setMessage({
+        ok: false,
+        text: err instanceof Error ? err.message : "Verbindung fehlgeschlagen",
+      });
     } finally {
       setBusy(null);
     }
@@ -130,7 +172,10 @@ function EndpointForm({
         try {
           await api.updateEndpoint(editing.id, payload);
         } catch (err) {
-          if (!(err instanceof Error) || !err.message.includes("confirm_off_prem=true")) {
+          if (
+            !(err instanceof Error) ||
+            !err.message.includes("confirm_off_prem=true")
+          ) {
             throw err;
           }
           const approved = await confirm({
@@ -140,22 +185,30 @@ function EndpointForm({
             tone: "danger",
           });
           if (!approved) return;
-          await api.updateEndpoint(editing.id, { ...payload, confirm_off_prem: true });
+          await api.updateEndpoint(editing.id, {
+            ...payload,
+            confirm_off_prem: true,
+          });
         }
       } else {
         await api.createEndpoint(payload);
       }
       onSaved();
     } catch (err) {
-      setMessage({ ok: false, text: err instanceof Error ? err.message : "Speichern fehlgeschlagen" });
+      setMessage({
+        ok: false,
+        text: err instanceof Error ? err.message : "Speichern fehlgeschlagen",
+      });
     } finally {
       setBusy(null);
     }
   };
 
   // Inside Docker, localhost is the container, not the machine running the model.
-  const dockerHint = message?.ok === false && LOOPBACK.test(form.baseUrl.trim());
-  const canSave = form.name.trim() && form.baseUrl.trim() && form.models.length > 0;
+  const dockerHint =
+    message?.ok === false && LOOPBACK.test(form.baseUrl.trim());
+  const canSave =
+    form.name.trim() && form.baseUrl.trim() && form.models.length > 0;
 
   return (
     <div className="rounded-lg border border-brand-teal/30 bg-brand-light-gray-2/40 p-4">
@@ -165,7 +218,9 @@ function EndpointForm({
         </h4>
         {!editing && (
           <div className="flex flex-wrap items-center gap-1.5">
-            <span className="font-body text-[10px] text-brand-mid-gray">Vorlagen</span>
+            <span className="font-body text-[10px] text-brand-mid-gray">
+              Vorlagen
+            </span>
             {PRESETS.map((preset) => (
               <button
                 key={preset.key}
@@ -206,14 +261,19 @@ function EndpointForm({
         </div>
         <div>
           <label className="mb-1 block font-body text-[10px] font-medium uppercase tracking-wide text-brand-mid-gray">
-            API-Schlüssel {editing?.has_api_key ? "(gespeichert)" : "(optional)"}
+            API-Schlüssel{" "}
+            {editing?.has_api_key ? "(gespeichert)" : "(optional)"}
           </label>
           <input
             type="password"
             autoComplete="new-password"
             spellCheck={false}
             value={form.apiKey}
-            placeholder={editing?.has_api_key ? "Gespeicherten Schlüssel ersetzen ..." : "Meist nicht erforderlich"}
+            placeholder={
+              editing?.has_api_key
+                ? "Gespeicherten Schlüssel ersetzen ..."
+                : "Meist nicht erforderlich"
+            }
             onChange={(e) => set({ apiKey: e.target.value, keyTouched: true })}
             className="w-full rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1.5 font-mono text-xs text-brand-dark-gray focus:border-brand-teal focus:outline-none"
           />
@@ -226,25 +286,35 @@ function EndpointForm({
           disabled={!form.baseUrl.trim() || busy !== null}
           className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-opacity hover:bg-brand-teal/5 disabled:opacity-40"
         >
-          {busy === "probe" ? "Verbindung wird hergestellt ..." : "Verbinden und Modelle laden"}
+          {busy === "probe"
+            ? "Verbindung wird hergestellt ..."
+            : "Verbinden und Modelle laden"}
         </button>
         {message && (
-          <span className={`font-body text-xs ${message.ok ? "text-brand-teal" : "text-red-600"}`}>{message.text}</span>
+          <span
+            className={`font-body text-xs ${message.ok ? "text-brand-teal" : "text-red-600"}`}
+          >
+            {message.text}
+          </span>
         )}
       </div>
 
       {dockerHint && (
         <p className="mt-2 rounded border border-amber-200 bg-amber-50 px-3 py-2 font-body text-[11px] leading-relaxed text-amber-900">
-            Debate AI läuft in Docker? Im Container bezeichnet <code className="font-mono">localhost</code> den
-          Container selbst. Verwende <code className="font-mono">http://host.docker.internal:</code>
+          Debate AI läuft in Docker? Im Container bezeichnet{" "}
+          <code className="font-mono">localhost</code> den Container selbst.
+          Verwende{" "}
+          <code className="font-mono">http://host.docker.internal:</code>
           {form.baseUrl.split(":")[2] || "1234"}
-          <code className="font-mono">/v1</code>, um einen Server auf diesem Rechner zu erreichen.
+          <code className="font-mono">/v1</code>, um einen Server auf diesem
+          Rechner zu erreichen.
         </p>
       )}
 
       <div className="mt-4">
         <p className="mb-1.5 font-body text-[10px] font-medium uppercase tracking-wide text-brand-mid-gray">
-            Bereitgestellte Modelle{form.models.length ? ` (${form.models.length} ausgewählt)` : ""}
+          Bereitgestellte Modelle
+          {form.models.length ? ` (${form.models.length} ausgewählt)` : ""}
         </p>
         {served !== null && served.length > 0 && (
           <div className="mb-2 flex flex-wrap gap-1.5">
@@ -277,7 +347,7 @@ function EndpointForm({
                 <button
                   key={name}
                   onClick={() => toggleModel(name)}
-                        title="Entfernen"
+                  title="Entfernen"
                   className="rounded-full bg-brand-teal px-2.5 py-1 font-mono text-[11px] text-white"
                 >
                   {name} &times;
@@ -304,7 +374,7 @@ function EndpointForm({
             disabled={!manual.trim()}
             className="rounded border border-brand-light-gray-1 px-3 py-1.5 font-body text-xs text-brand-dark-gray transition-colors hover:border-brand-teal hover:text-brand-teal disabled:opacity-40"
           >
-                  Hinzufügen
+            Hinzufügen
           </button>
         </div>
       </div>
@@ -315,13 +385,17 @@ function EndpointForm({
           disabled={!canSave || busy !== null}
           className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-opacity disabled:opacity-40"
         >
-              {busy === "save" ? "Wird gespeichert ..." : editing ? "Änderungen speichern" : "Endpunkt hinzufügen"}
+          {busy === "save"
+            ? "Wird gespeichert ..."
+            : editing
+              ? "Änderungen speichern"
+              : "Endpunkt hinzufügen"}
         </button>
         <button
           onClick={onCancel}
           className="rounded px-3 py-1.5 font-body text-xs text-brand-mid-gray transition-colors hover:text-brand-dark-gray"
         >
-              Abbrechen
+          Abbrechen
         </button>
         {!canSave && (
           <span className="font-body text-[11px] text-brand-mid-gray">
@@ -353,7 +427,9 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   const afterChange = async () => {
     setEditingId(null);
@@ -370,7 +446,8 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
     } catch (err) {
       setResults((prev) => ({
         ...prev,
-        [endpoint.id]: err instanceof Error ? err.message : "Verbindungstest fehlgeschlagen",
+        [endpoint.id]:
+          err instanceof Error ? err.message : "Verbindungstest fehlgeschlagen",
       }));
     } finally {
       setBusyId(null);
@@ -421,16 +498,19 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h3 className="font-display text-base font-bold text-brand-dark-gray">Eigene Modellserver</h3>
+            <h3 className="font-display text-base font-bold text-brand-dark-gray">
+              Eigene Modellserver
+            </h3>
             <span className="inline-flex rounded-full border border-slate-500 bg-slate-700 px-2 py-0.5 text-[10px] font-semibold text-slate-50">
               On-prem
             </span>
           </div>
           <p className="mt-1 max-w-2xl font-body text-xs leading-relaxed text-brand-gray">
-            Verbinde Debate AI mit einem OpenAI-kompatiblen Server auf deinem Rechner, im Heimnetz oder
-            im Firmennetz, etwa LM Studio, Ollama, vLLM oder LiteLLM. Jedes hier eingetragene Modell steht
-            anschließend in allen Modelllisten zur Auswahl; die Analyse kann dadurch vollständig im
-            eigenen Netzwerk bleiben.
+            Verbinde Debate AI mit einem OpenAI-kompatiblen Server auf deinem
+            Rechner, im Heimnetz oder im Firmennetz, etwa LM Studio, Ollama,
+            vLLM oder LiteLLM. Jedes hier eingetragene Modell steht anschließend
+            in allen Modelllisten zur Auswahl; die Analyse kann dadurch
+            vollständig im eigenen Netzwerk bleiben.
           </p>
         </div>
         {editingId !== "new" && (
@@ -438,7 +518,7 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
             onClick={() => setEditingId("new")}
             className="shrink-0 rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white"
           >
-          Endpunkt hinzufügen
+            Endpunkt hinzufügen
           </button>
         )}
       </div>
@@ -466,7 +546,9 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
             >
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
-                  <span className="font-display text-sm font-bold text-brand-dark-gray">{endpoint.name}</span>
+                  <span className="font-display text-sm font-bold text-brand-dark-gray">
+                    {endpoint.name}
+                  </span>
                   <StatusDot endpoint={endpoint} />
                   <Pill tone={endpoint.on_prem ? "teal" : "neutral"}>
                     {endpoint.on_prem ? "Im eigenen Netzwerk" : "Extern"}
@@ -486,7 +568,7 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
                     onClick={() => setEditingId(endpoint.id)}
                     className="rounded border border-brand-light-gray-1 bg-surface px-2.5 py-1 font-body text-[11px] text-brand-dark-gray transition-colors hover:border-brand-teal hover:text-brand-teal"
                   >
-                      Bearbeiten
+                    Bearbeiten
                   </button>
                   <button
                     onClick={() => void toggleEnabled(endpoint)}
@@ -500,11 +582,14 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
                     disabled={isBusy}
                     className="rounded px-2.5 py-1 font-body text-[11px] text-brand-mid-gray transition-colors hover:text-red-600 disabled:opacity-40"
                   >
-                      Entfernen
+                    Entfernen
                   </button>
                 </div>
               </div>
-              <p className="mt-1.5 truncate font-mono text-[11px] text-brand-mid-gray" title={endpoint.base_url}>
+              <p
+                className="mt-1.5 truncate font-mono text-[11px] text-brand-mid-gray"
+                title={endpoint.base_url}
+              >
                 {endpoint.base_url}
               </p>
               <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
@@ -522,14 +607,17 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
                 ))}
                 {!endpoint.models.length && (
                   <span className="font-body text-[11px] text-amber-700">
-                    Noch keine Modelle eingetragen. Diesen Endpunkt bearbeiten und mindestens ein Modell hinzufügen.
+                    Noch keine Modelle eingetragen. Diesen Endpunkt bearbeiten
+                    und mindestens ein Modell hinzufügen.
                   </span>
                 )}
               </div>
               {(results[endpoint.id] || endpoint.last_error) && (
                 <p
                   className={`mt-2 font-body text-[11px] ${
-                    endpoint.last_status === "ok" ? "text-brand-teal" : "text-red-600"
+                    endpoint.last_status === "ok"
+                      ? "text-brand-teal"
+                      : "text-red-600"
                   }`}
                 >
                   {results[endpoint.id] || endpoint.last_error}
@@ -550,10 +638,13 @@ export default function EndpointsCard({ onChanged }: EndpointsCardProps) {
 
         {!endpoints.length && editingId !== "new" && (
           <div className="rounded-lg border border-dashed border-brand-light-gray-1 px-4 py-6 text-center">
-            <p className="font-body text-sm text-brand-gray">Noch keine eigenen Modellserver eingerichtet.</p>
+            <p className="font-body text-sm text-brand-gray">
+              Noch keine eigenen Modellserver eingerichtet.
+            </p>
             <p className="mx-auto mt-1 max-w-md font-body text-xs leading-relaxed text-brand-mid-gray">
-              Mit einer geeigneten GPU kann ein selbst gehostetes Modell die Analyse-Agenten ohne API-Schlüssel
-              und Tokenkosten ausführen; Gesprächsdaten verlassen dabei nicht das eigene Netzwerk.
+              Mit einer geeigneten GPU kann ein selbst gehostetes Modell die
+              Analyse-Agenten ohne API-Schlüssel und Tokenkosten ausführen;
+              Gesprächsdaten verlassen dabei nicht das eigene Netzwerk.
             </p>
             <button
               onClick={() => setEditingId("new")}

@@ -10,7 +10,7 @@ import copy
 import unittest
 import uuid
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -82,15 +82,33 @@ class _Transaction:
 class _Store:
     def __init__(self):
         self.session_id = uuid.uuid4()
-        self.rows = [SimpleNamespace(
-            id=uuid.uuid4(), question="Synthetic original", item_type="observation",
-            rationale="", source_context="", speaker=None, speaker_id=None,
-            directive_id=None, answered=False, answer_summary="", starred=True,
-            dismissed=False, needs_followup=False, followup_question="",
-            enrichment_notes="", agent_source="observer", revision_count=0,
-            lens_label="", enhanced=False, offering_match="", vote=0,
-            created_at=datetime(2026, 11, 16, tzinfo=timezone.utc), updated_at=None,
-        )]
+        self.rows = [
+            SimpleNamespace(
+                id=uuid.uuid4(),
+                question="Synthetic original",
+                item_type="observation",
+                rationale="",
+                source_context="",
+                speaker=None,
+                speaker_id=None,
+                directive_id=None,
+                answered=False,
+                answer_summary="",
+                starred=True,
+                dismissed=False,
+                needs_followup=False,
+                followup_question="",
+                enrichment_notes="",
+                agent_source="observer",
+                revision_count=0,
+                lens_label="",
+                enhanced=False,
+                offering_match="",
+                vote=0,
+                created_at=datetime(2026, 11, 16, tzinfo=UTC),
+                updated_at=None,
+            )
+        ]
         self.commit_failure = None
         self.commit_attempts = 0
         self.commits = 0
@@ -108,24 +126,44 @@ class SynthesizerCommitRetryTests(unittest.IsolatedAsyncioTestCase):
         self.store = _Store()
         self.session_id = self.store.session_id
         self.addCleanup(synthesizer.clear_synthesizer_state, self.session_id)
-        self.output = synthesizer.SynthesizerOutput(items=[{
-            "op": "adjust", "id": str(self.store.rows[0].id),
-            "new_text": "Synthetic adjusted", "reason": "Synthetic correction",
-        }])
+        self.output = synthesizer.SynthesizerOutput(
+            items=[
+                {
+                    "op": "adjust",
+                    "id": str(self.store.rows[0].id),
+                    "new_text": "Synthetic adjusted",
+                    "reason": "Synthetic correction",
+                }
+            ]
+        )
         stack = self.enterContext(ExitStack())
-        stack.enter_context(patch.object(synthesizer, "async_session", self.store.read_session))
-        stack.enter_context(patch.object(insight_refiner, "async_session", self.store.transaction))
+        stack.enter_context(
+            patch.object(synthesizer, "async_session", self.store.read_session)
+        )
+        stack.enter_context(
+            patch.object(insight_refiner, "async_session", self.store.transaction)
+        )
         # The real loader may seed user-editable files. Use only the bundled
         # fallback text in this synthetic test; never consult runtime AI files.
-        stack.enter_context(patch.object(
-            synthesizer, "load_prompt_resource", side_effect=lambda _name, fallback: fallback,
-        ))
-        self.generate = stack.enter_context(patch.object(
-            synthesizer, "generate_json", new=AsyncMock(return_value=self.output),
-        ))
+        stack.enter_context(
+            patch.object(
+                synthesizer,
+                "load_prompt_resource",
+                side_effect=lambda _name, fallback: fallback,
+            )
+        )
+        self.generate = stack.enter_context(
+            patch.object(
+                synthesizer,
+                "generate_json",
+                new=AsyncMock(return_value=self.output),
+            )
+        )
 
     async def cycle(self):
-        return await synthesizer.run_synthesizer_cycle(self.session_id, model_override="synthetic")
+        return await synthesizer.run_synthesizer_cycle(
+            self.session_id, model_override="synthetic"
+        )
 
     async def test_failed_commit_retries_identical_snapshot(self):
         self.store.commit_failure = RuntimeError("synthetic commit failure")
@@ -135,7 +173,9 @@ class SynthesizerCommitRetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, self.store.commits)
 
         applied = await self.cycle()
-        self.assertEqual(1, len(applied), "identical retry must not be fingerprint-skipped")
+        self.assertEqual(
+            1, len(applied), "identical retry must not be fingerprint-skipped"
+        )
         self.assertEqual("Synthetic adjusted", applied[0]["ws_data"]["question"])
         self.assertEqual("Synthetic adjusted", self.store.rows[0].question)
         self.assertEqual(1, self.store.rows[0].revision_count)
@@ -166,10 +206,15 @@ class SynthesizerCommitRetryTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, self.store.rows[0].revision_count)
 
     async def test_successful_no_write_operation_consumes_snapshot(self):
-        self.generate.return_value = synthesizer.SynthesizerOutput(items=[{
-            "op": "adjust", "id": str(self.store.rows[0].id),
-            "new_text": "Synthetic original",
-        }])
+        self.generate.return_value = synthesizer.SynthesizerOutput(
+            items=[
+                {
+                    "op": "adjust",
+                    "id": str(self.store.rows[0].id),
+                    "new_text": "Synthetic original",
+                }
+            ]
+        )
         self.assertEqual([], await self.cycle())
         self.assertEqual([], await self.cycle())
         self.assertEqual(1, self.generate.await_count)
@@ -225,9 +270,11 @@ class SynthesizerCommitRetryTests(unittest.IsolatedAsyncioTestCase):
     async def test_corpus_query_preserves_private_and_strategic_ownership(self):
         self.generate.return_value = synthesizer.SynthesizerOutput(items=[])
         await self.cycle()
-        sql = str(self.store.question_queries[0].compile(
-            compile_kwargs={"literal_binds": True},
-        ))
+        sql = str(
+            self.store.question_queries[0].compile(
+                compile_kwargs={"literal_binds": True},
+            )
+        )
         self.assertIn("questions.item_type != 'asked'", sql)
         self.assertIn("questions.item_type NOT IN ('signal', 'signal_history')", sql)
         self.assertIn("questions.dismissed IS false", sql)

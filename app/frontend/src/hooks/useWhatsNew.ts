@@ -36,7 +36,8 @@ export function useWhatsNew() {
   const [bannerOpen, setBannerOpen] = useState(false);
 
   useEffect(() => {
-    api.getAppMeta()
+    api
+      .getAppMeta()
       .then((meta) => {
         const last = readLastSeen();
         if (!last) {

@@ -24,10 +24,17 @@ interface PostCallTabsProps<T extends string> {
 // The post-call review strip as a WAI-ARIA tablist with a roving tabindex:
 // arrows move between tabs and select as they go, Home and End jump to the
 // ends, and only the selected tab sits in the Tab order.
-export default function PostCallTabs<T extends string>({ tabs, activeTab, onSelect }: PostCallTabsProps<T>) {
+export default function PostCallTabs<T extends string>({
+  tabs,
+  activeTab,
+  onSelect,
+}: PostCallTabsProps<T>) {
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  const onKeyDown = (event: ReactKeyboardEvent<HTMLButtonElement>, index: number) => {
+  const onKeyDown = (
+    event: ReactKeyboardEvent<HTMLButtonElement>,
+    index: number,
+  ) => {
     const last = tabs.length - 1;
     let next: number | null = null;
     if (event.key === "ArrowRight") next = index === last ? 0 : index + 1;
@@ -41,13 +48,19 @@ export default function PostCallTabs<T extends string>({ tabs, activeTab, onSele
   };
 
   return (
-    <div role="tablist" aria-label="Nachbereitung" className="flex flex-wrap gap-1 rounded-lg bg-brand-light-gray-2 p-1">
+    <div
+      role="tablist"
+      aria-label="Nachbereitung"
+      className="flex flex-wrap gap-1 rounded-lg bg-brand-light-gray-2 p-1"
+    >
       {tabs.map((tab, index) => {
         const selected = activeTab === tab.key;
         return (
           <button
             key={tab.key}
-            ref={(element) => { tabRefs.current[index] = element; }}
+            ref={(element) => {
+              tabRefs.current[index] = element;
+            }}
             type="button"
             role="tab"
             id={tabId(tab.key)}
@@ -64,7 +77,9 @@ export default function PostCallTabs<T extends string>({ tabs, activeTab, onSele
           >
             {tab.label}
             {tab.count !== undefined && (
-              <span className="ml-1.5 text-xs text-brand-mid-gray">({tab.count})</span>
+              <span className="ml-1.5 text-xs text-brand-mid-gray">
+                ({tab.count})
+              </span>
             )}
           </button>
         );

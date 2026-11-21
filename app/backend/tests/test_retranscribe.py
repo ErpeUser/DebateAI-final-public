@@ -6,13 +6,12 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import ANY, AsyncMock, patch
 
-from fastapi import BackgroundTasks
-
 from app.models import CallSegment, Speaker, TranscriptEntry
 from app.routers import imports as import_router
 from app.routers import retranscribe
 from app.routers.imports import _transcribe_audio_diarized
 from app.services.speaker_diarizer import DiarizedSegment, SpeakerRegistry
+from fastapi import BackgroundTasks
 
 
 class FakeScalarResult:
@@ -101,7 +100,9 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                 "app.routers.imports.shield.protect_text",
                 new=AsyncMock(side_effect=lambda _db, _session_id, text: text),
             ),
-            patch("app.routers.imports.get_next_sequence", new=AsyncMock(return_value=1)),
+            patch(
+                "app.routers.imports.get_next_sequence", new=AsyncMock(return_value=1)
+            ),
         ):
             count = await import_router._persist_diarized_segments(
                 [(segment, False, {})],
@@ -118,7 +119,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
     async def test_mic_track_with_no_user_falls_back_to_external_mapping(self):
         session_id = uuid.uuid4()
         remote = Speaker(
-            id=uuid.uuid4(), session_id=session_id, name="Remote", is_user=False,
+            id=uuid.uuid4(),
+            session_id=session_id,
+            name="Remote",
+            is_user=False,
             speaker_type="external",
         )
         db = FakeSpeakerDB([remote])
@@ -130,10 +134,17 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
     async def test_mic_track_with_multiple_users_falls_back_to_external_mapping(self):
         session_id = uuid.uuid4()
         speakers = [
-            Speaker(id=uuid.uuid4(), session_id=session_id, name="User 1", is_user=True),
-            Speaker(id=uuid.uuid4(), session_id=session_id, name="User 2", is_user=True),
             Speaker(
-                id=uuid.uuid4(), session_id=session_id, name="Remote", is_user=False,
+                id=uuid.uuid4(), session_id=session_id, name="User 1", is_user=True
+            ),
+            Speaker(
+                id=uuid.uuid4(), session_id=session_id, name="User 2", is_user=True
+            ),
+            Speaker(
+                id=uuid.uuid4(),
+                session_id=session_id,
+                name="Remote",
+                is_user=False,
                 speaker_type="external",
             ),
         ]
@@ -154,7 +165,11 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             patch("app.routers.imports.flush_diarizer_segments", return_value=[]),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
@@ -162,12 +177,20 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                     transcribe_segment=AsyncMock(return_value="hello")
                 ),
             ),
-            patch("app.routers.imports.get_next_sequence", new=AsyncMock(return_value=1)),
+            patch(
+                "app.routers.imports.get_next_sequence", new=AsyncMock(return_value=1)
+            ),
         ):
             await _transcribe_audio_diarized(
-                b"mic", "wav", session_id, db, model_id="model",
-                registry=SpeakerRegistry(), auto_speaker_map={},
-                runtime_config=runtime_config, local_track=True,
+                b"mic",
+                "wav",
+                session_id,
+                db,
+                model_id="model",
+                registry=SpeakerRegistry(),
+                auto_speaker_map={},
+                runtime_config=runtime_config,
+                local_track=True,
             )
 
     async def test_orders_by_speech_start_when_earlier_turn_completes_later(self):
@@ -189,12 +212,22 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
         system_diarizer = LatencyDiarizer({2: ("later-short-system", 1600)})
 
         with (
-            patch("app.routers.imports.convert_to_pcm16", side_effect=[chunk * 3, chunk * 3]),
-            patch("app.routers.imports.create_diarizer", side_effect=[mic_diarizer, system_diarizer]),
+            patch(
+                "app.routers.imports.convert_to_pcm16",
+                side_effect=[chunk * 3, chunk * 3],
+            ),
+            patch(
+                "app.routers.imports.create_diarizer",
+                side_effect=[mic_diarizer, system_diarizer],
+            ),
             patch("app.routers.imports.flush_diarizer_segments", return_value=[]),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
@@ -202,7 +235,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                     transcribe_segment=AsyncMock(side_effect=lambda pcm: pcm.decode())
                 ),
             ),
-            patch("app.routers.imports.get_next_sequence", new=AsyncMock(side_effect=[1, 2])),
+            patch(
+                "app.routers.imports.get_next_sequence",
+                new=AsyncMock(side_effect=[1, 2]),
+            ),
         ):
             await import_router._transcribe_split_audio_diarized(
                 b"mic-wav",
@@ -246,14 +282,21 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
 
         with (
             patch("app.routers.imports.convert_to_pcm16", return_value=b"pcm"),
-            patch("app.routers.imports.create_diarizer", side_effect=[mic_diarizer, system_diarizer]),
+            patch(
+                "app.routers.imports.create_diarizer",
+                side_effect=[mic_diarizer, system_diarizer],
+            ),
             patch(
                 "app.routers.imports.flush_diarizer_segments",
                 side_effect=[[mic_tail], [system_tail]],
             ),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
@@ -261,7 +304,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                     transcribe_segment=AsyncMock(side_effect=lambda pcm: pcm.decode())
                 ),
             ),
-            patch("app.routers.imports.get_next_sequence", new=AsyncMock(side_effect=[1, 2])),
+            patch(
+                "app.routers.imports.get_next_sequence",
+                new=AsyncMock(side_effect=[1, 2]),
+            ),
         ):
             await import_router._transcribe_split_audio_diarized(
                 b"mic-wav",
@@ -320,14 +366,16 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             patch("app.routers.imports.flush_diarizer_segments", return_value=[]),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
                 return_value=SimpleNamespace(
-                    transcribe_segment=AsyncMock(
-                        side_effect=lambda pcm: pcm.decode()
-                    )
+                    transcribe_segment=AsyncMock(side_effect=lambda pcm: pcm.decode())
                 ),
             ),
             patch(
@@ -388,7 +436,11 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             patch("app.routers.imports.flush_diarizer_segments", return_value=[]),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
@@ -454,7 +506,11 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
             patch("app.routers.imports.flush_diarizer_segments", return_value=[]),
             patch(
                 "app.routers.imports.get_transcription_runtime_config",
-                new=AsyncMock(return_value=SimpleNamespace(batch_model_id="model", language="auto")),
+                new=AsyncMock(
+                    return_value=SimpleNamespace(
+                        batch_model_id="model", language="auto"
+                    )
+                ),
             ),
             patch(
                 "app.routers.imports.create_transcriber",
@@ -492,7 +548,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                 )
 
         entries = [value for value in db.added if isinstance(value, TranscriptEntry)]
-        self.assertEqual([remote.id, remote.id, remote.id, remote.id], [entry.speaker_id for entry in entries])
+        self.assertEqual(
+            [remote.id, remote.id, remote.id, remote.id],
+            [entry.speaker_id for entry in entries],
+        )
         self.assertEqual({"auto_1": str(remote.id)}, mic_map)
         self.assertEqual({"auto_1": str(remote.id)}, remote_map)
 
@@ -582,7 +641,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                         return_value=SimpleNamespace(speaker_similarity_threshold=0.68)
                     ),
                 ),
-                patch("app.routers.retranscribe._transcribe_audio_diarized", new=transcribe),
+                patch(
+                    "app.routers.retranscribe._transcribe_audio_diarized",
+                    new=transcribe,
+                ),
             ):
                 total = await retranscribe._transcribe_stored_segments(
                     [segment],
@@ -627,7 +689,10 @@ class SplitTrackRetranscriptionTests(unittest.IsolatedAsyncioTestCase):
                         return_value=SimpleNamespace(speaker_similarity_threshold=0.68)
                     ),
                 ),
-                patch("app.routers.retranscribe._transcribe_audio_diarized", new=transcribe),
+                patch(
+                    "app.routers.retranscribe._transcribe_audio_diarized",
+                    new=transcribe,
+                ),
             ):
                 total = await retranscribe._transcribe_stored_segments(
                     [segment],
@@ -663,7 +728,9 @@ class RetranscribeReadinessGuardTests(unittest.IsolatedAsyncioTestCase):
     def _db(self):
         db = SimpleNamespace()
         db.executed = []
-        db.get = AsyncMock(return_value=SimpleNamespace(id=uuid.uuid4(), state="completed"))
+        db.get = AsyncMock(
+            return_value=SimpleNamespace(id=uuid.uuid4(), state="completed")
+        )
 
         async def execute(statement):
             db.executed.append(statement)
@@ -681,14 +748,25 @@ class RetranscribeReadinessGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_refuses_and_deletes_nothing_when_the_runtime_is_unusable(self):
         db = self._db()
-        with patch.object(retranscribe, "registry_entry",
-                          return_value={"supports_batch_audio": True}), \
-                patch.object(retranscribe, "is_local_model", return_value=True), \
-                patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)), \
-                patch.object(retranscribe, "local_asr_status",
-                             return_value=(False, "the onnx-asr runtime is missing its data files (fbanks.npz)")):
-            with self.assertRaises(retranscribe.HTTPException) as caught:
-                await self._call(db)
+        with (
+            patch.object(
+                retranscribe,
+                "registry_entry",
+                return_value={"supports_batch_audio": True},
+            ),
+            patch.object(retranscribe, "is_local_model", return_value=True),
+            patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)),
+            patch.object(
+                retranscribe,
+                "local_asr_status",
+                return_value=(
+                    False,
+                    "the onnx-asr runtime is missing its data files (fbanks.npz)",
+                ),
+            ),
+            self.assertRaises(retranscribe.HTTPException) as caught,
+        ):
+            await self._call(db)
 
         self.assertEqual(503, caught.exception.status_code)
         self.assertIn("fbanks.npz", caught.exception.detail)
@@ -698,11 +776,16 @@ class RetranscribeReadinessGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_a_usable_runtime_is_not_blocked(self):
         db = self._db()
-        with patch.object(retranscribe, "registry_entry",
-                          return_value={"supports_batch_audio": True}), \
-                patch.object(retranscribe, "is_local_model", return_value=True), \
-                patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)), \
-                patch.object(retranscribe, "local_asr_status", return_value=(True, "")):
+        with (
+            patch.object(
+                retranscribe,
+                "registry_entry",
+                return_value={"supports_batch_audio": True},
+            ),
+            patch.object(retranscribe, "is_local_model", return_value=True),
+            patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)),
+            patch.object(retranscribe, "local_asr_status", return_value=(True, "")),
+        ):
             with self.assertRaises(retranscribe.HTTPException) as caught:
                 await self._call(db)
         # Falls through the guard to the real "no stored audio" check.
@@ -711,13 +794,18 @@ class RetranscribeReadinessGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_a_cloud_model_does_not_consult_the_local_probe(self):
         db = self._db()
         probe = patch.object(retranscribe, "local_asr_status")
-        with patch.object(retranscribe, "registry_entry",
-                          return_value={"supports_batch_audio": True}), \
-                patch.object(retranscribe, "is_local_model", return_value=False), \
-                patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)), \
-                probe as probed:
-            with self.assertRaises(retranscribe.HTTPException):
-                await self._call(db)
+        with (
+            patch.object(
+                retranscribe,
+                "registry_entry",
+                return_value={"supports_batch_audio": True},
+            ),
+            patch.object(retranscribe, "is_local_model", return_value=False),
+            patch.object(retranscribe, "get_local_only", AsyncMock(return_value=False)),
+            probe as probed,
+            self.assertRaises(retranscribe.HTTPException),
+        ):
+            await self._call(db)
         probed.assert_not_called()
 
 
@@ -726,7 +814,9 @@ class RetranscribeJobBoundaryTests(unittest.IsolatedAsyncioTestCase):
         session_id = uuid.uuid4()
         background_tasks = BackgroundTasks()
         db = SimpleNamespace(
-            get=AsyncMock(return_value=SimpleNamespace(id=session_id, state="completed")),
+            get=AsyncMock(
+                return_value=SimpleNamespace(id=session_id, state="completed")
+            ),
             execute=AsyncMock(),
             commit=AsyncMock(),
         )

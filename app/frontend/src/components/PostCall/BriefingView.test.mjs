@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./BriefingView.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./BriefingView.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "briefing-view-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -65,7 +67,12 @@ after(async () => {
   await rm(outputDir, { recursive: true, force: true });
 });
 
-const item = (title, extra = {}) => ({ title, summary: `${title} summary`, rationale: `${title} reason`, ...extra });
+const item = (title, extra = {}) => ({
+  title,
+  summary: `${title} summary`,
+  rationale: `${title} reason`,
+  ...extra,
+});
 
 function synthesis(overrides = {}) {
   return {
@@ -94,7 +101,10 @@ function synthesis(overrides = {}) {
   };
 }
 
-function renderBriefing(overrides = {}, session = { id: "session-1", meeting_type: "general" }) {
+function renderBriefing(
+  overrides = {},
+  session = { id: "session-1", meeting_type: "general" },
+) {
   return render({
     session,
     synthesis: synthesis(overrides),
@@ -122,9 +132,18 @@ test("only actionable statuses carry a mark", () => {
       item("Finished work", { status: "Completed", owner: "Cy" }),
     ],
   });
-  assert.equal(markup.match(/h-1\.5 w-1\.5 shrink-0 rounded-full bg-red-500/g)?.length, 1);
-  assert.equal(markup.match(/h-1\.5 w-1\.5 shrink-0 rounded-full bg-brand-amber/g)?.length, 1);
-  const finished = markup.slice(markup.indexOf("Finished work"), markup.indexOf("Cy"));
+  assert.equal(
+    markup.match(/h-1\.5 w-1\.5 shrink-0 rounded-full bg-red-500/g)?.length,
+    1,
+  );
+  assert.equal(
+    markup.match(/h-1\.5 w-1\.5 shrink-0 rounded-full bg-brand-amber/g)?.length,
+    1,
+  );
+  const finished = markup.slice(
+    markup.indexOf("Finished work"),
+    markup.indexOf("Cy"),
+  );
   assert.doesNotMatch(finished, /rounded-full/);
   assert.match(finished, /Completed/);
 });
@@ -150,7 +169,10 @@ test("a briefing with nothing in it says so in one line", () => {
 
 test("sections pair up only when both sides have content", () => {
   const pairCols = "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]";
-  const both = renderBriefing({ action_plan: [item("Do")], risks_blockers: [item("Risk")] });
+  const both = renderBriefing({
+    action_plan: [item("Do")],
+    risks_blockers: [item("Risk")],
+  });
   assert.ok(both.includes(pairCols));
   const lone = renderBriefing({ action_plan: [item("Do")] });
   assert.ok(!lone.includes(pairCols));
@@ -158,34 +180,59 @@ test("sections pair up only when both sides have content", () => {
 });
 
 test("top outcomes lead with hanging numerals and display type", () => {
-  const markup = renderBriefing({ top_outcomes: [item("First"), item("Second")] });
+  const markup = renderBriefing({
+    top_outcomes: [item("First"), item("Second")],
+  });
   assert.match(markup, /Wichtigste Ergebnisse<\/h3><span[^>]*>2<\/span>/);
-  assert.match(markup, /<ol[^>]*><li[^>]*><span class="bc-accent-text[^"]*">1<\/span>/);
+  assert.match(
+    markup,
+    /<ol[^>]*><li[^>]*><span class="bc-accent-text[^"]*">1<\/span>/,
+  );
   assert.doesNotMatch(markup, /text-brand-teal[^"]*">1<\/span>/);
-  assert.match(markup, /font-display text-lg font-semibold leading-snug tracking-tight[^>]*>First</);
+  assert.match(
+    markup,
+    /font-display text-lg font-semibold leading-snug tracking-tight[^>]*>First</,
+  );
 });
 
 test("the header names the meeting type and freshness, and the sections follow the meeting type", () => {
-  const markup = renderBriefing({}, { id: "session-1", meeting_type: "client_sales" });
+  const markup = renderBriefing(
+    {},
+    { id: "session-1", meeting_type: "client_sales" },
+  );
   assert.match(markup, /Kundenvertrieb/);
   assert.match(markup, /Aktualisiert /);
-  assert.equal(sectionLabels({ meeting_type: "client_sales" }).objectives, "Kundenziele");
+  assert.equal(
+    sectionLabels({ meeting_type: "client_sales" }).objectives,
+    "Kundenziele",
+  );
   assert.equal(meetingTypeLabel("internal_checkin"), "Interne Abstimmung");
   assert.equal(meetingTypeLabel("something_new"), "something new");
 });
 
 test("rationale is closed by default behind one affordance with a real hit area", () => {
   const markup = renderBriefing({ action_plan: [item("Follow up")] });
-  assert.match(markup, /Follow up summary<\/p><div class="mt-1\.5"><button[^>]*aria-expanded="false"/);
+  assert.match(
+    markup,
+    /Follow up summary<\/p><div class="mt-1\.5"><button[^>]*aria-expanded="false"/,
+  );
   assert.doesNotMatch(markup, /Follow up reason/);
-  const button = markup.slice(markup.indexOf("<button", markup.indexOf("Follow up summary")), markup.indexOf("Why this matters"));
+  const button = markup.slice(
+    markup.indexOf("<button", markup.indexOf("Follow up summary")),
+    markup.indexOf("Why this matters"),
+  );
   assert.match(button, /min-h-8/);
   assert.match(button, /\[@media\(hover:none\)\]:min-h-11/);
   assert.match(button, /-my-2/);
 });
 
 test("items with nothing to read are skipped and never counted", () => {
-  const blank = { title: "", summary: "  ", rationale: "orphaned reason", owner: "Nobody" };
+  const blank = {
+    title: "",
+    summary: "  ",
+    rationale: "orphaned reason",
+    owner: "Nobody",
+  };
   const markup = renderBriefing({
     action_plan: [item("Real work"), blank],
     risks_blockers: [blank],
@@ -195,7 +242,10 @@ test("items with nothing to read are skipped and never counted", () => {
   assert.doesNotMatch(markup, /Nobody/);
   assert.doesNotMatch(markup, /orphaned reason/);
   assert.doesNotMatch(markup, /Risiken und Hindernisse<\/h3>/);
-  assert.match(markup, /In diesem Briefing nicht erfasst: Risiken und Hindernisse/i);
+  assert.match(
+    markup,
+    /In diesem Briefing nicht erfasst: Risiken und Hindernisse/i,
+  );
   assert.match(markup, /Wichtigste Ergebnisse<\/h3><span[^>]*>1<\/span>/);
   assert.match(markup, /Summary only outcome/);
   assert.equal(presentItems([blank, { title: "x", summary: "" }]).length, 1);
@@ -203,13 +253,22 @@ test("items with nothing to read are skipped and never counted", () => {
 });
 
 test("the status and heading pieces the Overview reuses keep their shape", () => {
-  assert.match(renderStatus("Blocked"), /^<span class="inline-flex items-center gap-1\.5 [^"]*text-red-700[^"]*"><span aria-hidden="true" class="[^"]*bg-red-500"><\/span>Blocked<\/span>$/);
+  assert.match(
+    renderStatus("Blocked"),
+    /^<span class="inline-flex items-center gap-1\.5 [^"]*text-red-700[^"]*"><span aria-hidden="true" class="[^"]*bg-red-500"><\/span>Blocked<\/span>$/,
+  );
   assert.equal(renderStatus("Done"), "<span>Done</span>");
   const heading = renderHeading({ label: "Action plan", count: 4 });
-  assert.match(heading, /<h3 class="font-display text-\[11px\] font-semibold uppercase tracking-\[0\.12em\] text-brand-mid-gray">Action plan<\/h3>/);
+  assert.match(
+    heading,
+    /<h3 class="font-display text-\[11px\] font-semibold uppercase tracking-\[0\.12em\] text-brand-mid-gray">Action plan<\/h3>/,
+  );
   assert.match(heading, /tabular-nums[^>]*>4<\/span>/);
   assert.doesNotMatch(renderHeading({ label: "Empty", count: 0 }), /<span/);
-  assert.match(renderHeading({ label: "Named", id: "overview-named" }), /<h3 id="overview-named" class="/);
+  assert.match(
+    renderHeading({ label: "Named", id: "overview-named" }),
+    /<h3 id="overview-named" class="/,
+  );
   assert.equal(DIVIDED_LIST_CLASS, "divide-y divide-brand-light-gray-1/60");
 });
 
@@ -225,7 +284,10 @@ test("without a briefing the page offers to generate one and keeps the signal hi
   assert.match(markup, /bg-brand-teal font-semibold text-white/);
   assert.match(markup, /Noch kein Briefing erstellt/);
   assert.match(markup, /Für dieses Gespräch wurde noch kein Briefing erstellt/);
-  assert.match(markup, /Verlauf strategischer Signale<\/h3><span[^>]*>3<\/span>/);
+  assert.match(
+    markup,
+    /Verlauf strategischer Signale<\/h3><span[^>]*>3<\/span>/,
+  );
   assert.match(markup, /Verlauf \(3\)/);
   assert.doesNotMatch(markup, /Wichtigste Ergebnisse/);
 });
@@ -249,18 +311,41 @@ test("an existing briefing gets a quiet refresh control and surfaces errors", ()
 
 test("the layout helper pairs sections only when both have content and drops empties", () => {
   const session = { meeting_type: "general" };
-  const both = buildBriefingLayout(session, synthesis({ action_plan: [item("Do")], risks_blockers: [item("Risk")] }));
+  const both = buildBriefingLayout(
+    session,
+    synthesis({ action_plan: [item("Do")], risks_blockers: [item("Risk")] }),
+  );
   assert.deepEqual(
-    both.blocks.map((block) => [block.kind, block.kind === "pair" ? block.sections.map((s) => s.key) : block.section.key]),
+    both.blocks.map((block) => [
+      block.kind,
+      block.kind === "pair"
+        ? block.sections.map((s) => s.key)
+        : block.section.key,
+    ]),
     [["pair", ["actions", "risks"]]],
   );
-  assert.equal(both.blocks[0].cols, "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]");
-  assert.equal(both.missingNote, "In diesem Briefing nicht erfasst: wichtigste ergebnisse, ziele, wichtigste chancen und offene fragen.");
+  assert.equal(
+    both.blocks[0].cols,
+    "lg:grid-cols-[minmax(0,3fr)_minmax(0,2fr)]",
+  );
+  assert.equal(
+    both.missingNote,
+    "In diesem Briefing nicht erfasst: wichtigste ergebnisse, ziele, wichtigste chancen und offene fragen.",
+  );
 
-  const lone = buildBriefingLayout(session, synthesis({ risks_blockers: [item("Risk")], top_opportunities: [item("Win")] }));
+  const lone = buildBriefingLayout(
+    session,
+    synthesis({
+      risks_blockers: [item("Risk")],
+      top_opportunities: [item("Win")],
+    }),
+  );
   assert.deepEqual(
     lone.blocks.map((block) => [block.kind, block.section.key]),
-    [["single", "risks"], ["single", "opportunities"]],
+    [
+      ["single", "risks"],
+      ["single", "opportunities"],
+    ],
   );
 
   const full = buildBriefingLayout(
@@ -275,13 +360,22 @@ test("the layout helper pairs sections only when both have content and drops emp
       strategic_signals: [item("Signal")],
     }),
   );
-  assert.deepEqual(full.blocks.map((block) => block.kind), ["lead", "pair", "pair", "single", "single"]);
+  assert.deepEqual(
+    full.blocks.map((block) => block.kind),
+    ["lead", "pair", "pair", "single", "single"],
+  );
   assert.equal(full.blocks[2].cols, "lg:grid-cols-2");
   assert.equal(full.blocks[4].section.label, "Strategische Signale");
   assert.equal(full.missingNote, null);
 
-  assert.deepEqual(buildBriefingLayout(session, synthesis()), { blocks: [], missingNote: "In diesem Briefing wurde noch nichts erfasst." });
-  assert.deepEqual(buildBriefingLayout(session, null), { blocks: [], missingNote: null });
+  assert.deepEqual(buildBriefingLayout(session, synthesis()), {
+    blocks: [],
+    missingNote: "In diesem Briefing wurde noch nichts erfasst.",
+  });
+  assert.deepEqual(buildBriefingLayout(session, null), {
+    blocks: [],
+    missingNote: null,
+  });
 });
 
 test("the layout helper follows the meeting type and counts only readable items", () => {
@@ -292,13 +386,20 @@ test("the layout helper follows the meeting type and counts only readable items"
       unresolved_discovery_questions: [{ title: "", summary: "Budget owner?" }],
     }),
   );
-  const objectives = layout.blocks.find((block) => block.kind === "single" && block.section.key === "objectives").section;
+  const objectives = layout.blocks.find(
+    (block) => block.kind === "single" && block.section.key === "objectives",
+  ).section;
   assert.equal(objectives.label, "Kundenziele");
   assert.equal(objectives.items.length, 1);
-  const questions = layout.blocks.find((block) => block.kind === "single" && block.section.key === "questions").section;
+  const questions = layout.blocks.find(
+    (block) => block.kind === "single" && block.section.key === "questions",
+  ).section;
   assert.equal(questions.label, "Ungeklärte Analysefragen");
   assert.deepEqual(questions.items, [{ title: "", summary: "Budget owner?" }]);
-  assert.equal(layout.missingNote, "In diesem Briefing nicht erfasst: wichtigste ergebnisse, aktionsplan, risiken und hindernisse und wichtigste chancen.");
+  assert.equal(
+    layout.missingNote,
+    "In diesem Briefing nicht erfasst: wichtigste ergebnisse, aktionsplan, risiken und hindernisse und wichtigste chancen.",
+  );
 });
 
 test("formatList reads as prose", () => {

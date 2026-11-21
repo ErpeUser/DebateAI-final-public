@@ -1,7 +1,6 @@
 import unittest
 
 import numpy as np
-
 from app.services.speaker_diarizer import SpeakerRegistry
 from app.services.voice_enrollment import LOCAL_VOICE_PROFILE_ID
 

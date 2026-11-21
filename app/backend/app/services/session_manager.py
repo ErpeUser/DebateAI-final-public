@@ -2,12 +2,19 @@ import json
 import logging
 import uuid
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.models import DebateClaimRecord, Directive, Document, KnowledgeRecord, KnowledgeSource, Session, TranscriptEntry
+from app.models import (
+    DebateClaimRecord,
+    Directive,
+    Document,
+    KnowledgeRecord,
+    KnowledgeSource,
+    Session,
+    TranscriptEntry,
+)
 from app.services.gemini_files import summarize_document
 from app.services.knowledge_context import retrieve_knowledge_record_context
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 _LOCAL_DOSSIER_CONTEXT_BUDGET = 12_000
@@ -15,7 +22,9 @@ _LOCAL_DOSSIER_CONTEXT_BUDGET = 12_000
 
 async def get_active_directives(session_id: uuid.UUID, db: AsyncSession) -> list[str]:
     result = await db.execute(
-        select(Directive.text).where(Directive.session_id == session_id, Directive.active.is_(True))
+        select(Directive.text).where(
+            Directive.session_id == session_id, Directive.active.is_(True)
+        )
     )
     return list(result.scalars().all())
 
@@ -28,9 +37,7 @@ async def get_document_summaries(session_id: uuid.UUID, db: AsyncSession) -> str
     Gemini on first use and the result persisted (ALP-181); failures are not
     persisted, so a transient error retries on the next read.
     """
-    result = await db.execute(
-        select(Document).where(Document.session_id == session_id)
-    )
+    result = await db.execute(select(Document).where(Document.session_id == session_id))
     docs = result.scalars().all()
     if not docs:
         return ""
@@ -44,7 +51,9 @@ async def get_document_summaries(session_id: uuid.UUID, db: AsyncSession) -> str
         if not doc.gemini_file_uri:
             continue
         try:
-            summary = await summarize_document(doc.gemini_file_uri, session_id=session_id)
+            summary = await summarize_document(
+                doc.gemini_file_uri, session_id=session_id
+            )
         except Exception as e:
             logger.error(f"Failed to summarize {doc.filename}: {e}")
             summaries.append(f"### {doc.filename}\n(Summary unavailable)")
@@ -170,9 +179,7 @@ async def get_next_sequence(session_id: uuid.UUID, db: AsyncSession) -> int:
     # Without this row lock, an old draining socket and a new reconnect can
     # both observe N and commit N+1 under PostgreSQL READ COMMITTED.
     await db.execute(
-        select(Session.id)
-        .where(Session.id == session_id)
-        .with_for_update()
+        select(Session.id).where(Session.id == session_id).with_for_update()
     )
     result = await db.execute(
         select(TranscriptEntry.sequence)

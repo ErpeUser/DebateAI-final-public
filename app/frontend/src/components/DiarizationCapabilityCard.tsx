@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { DiarizationBenchmarkResult, DiarizationDiagnostics } from "../types";
+import type {
+  DiarizationBenchmarkResult,
+  DiarizationDiagnostics,
+} from "../types";
 import * as api from "../services/api";
 import { useConfirm } from "./ConfirmProvider";
 import { MIC_ONLY_AUDIO_CONSTRAINTS } from "../hooks/useAudioCapture";
@@ -17,11 +20,17 @@ const MAX_VOICE_RECORDING_SECONDS = 10;
 type RecordingMode = "benchmark" | "voice";
 
 export default function DiarizationCapabilityCard() {
-  const [diarization, setDiarization] = useState<DiarizationDiagnostics | null>(null);
-  const [benchmark, setBenchmark] = useState<DiarizationBenchmarkResult | null>(null);
+  const [diarization, setDiarization] = useState<DiarizationDiagnostics | null>(
+    null,
+  );
+  const [benchmark, setBenchmark] = useState<DiarizationBenchmarkResult | null>(
+    null,
+  );
   const [benchmarkFile, setBenchmarkFile] = useState<File | null>(null);
   const [benchmarking, setBenchmarking] = useState(false);
-  const [recordingMode, setRecordingMode] = useState<RecordingMode | null>(null);
+  const [recordingMode, setRecordingMode] = useState<RecordingMode | null>(
+    null,
+  );
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [voiceEnrolled, setVoiceEnrolled] = useState<boolean | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
@@ -50,19 +59,23 @@ export default function DiarizationCapabilityCard() {
       setDiagnosticError(null);
     } catch (err) {
       console.error("Failed to load diarization diagnostics", err);
-      setDiagnosticError("Diagnosedaten konnten nicht geladen werden. Das Backend startet möglicherweise noch.");
+      setDiagnosticError(
+        "Diagnosedaten konnten nicht geladen werden. Das Backend startet möglicherweise noch.",
+      );
     } finally {
       setLoadingDiagnostics(false);
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   useEffect(() => {
     if (diarization) {
       setThresholdDraft(diarization.speaker_similarity_threshold);
     }
-  }, [diarization?.speaker_similarity_threshold]);
+  }, [diarization]);
 
   useEffect(() => {
     if (!diagnosticError || diarization) {
@@ -89,17 +102,20 @@ export default function DiarizationCapabilityCard() {
     recorderRef.current = null;
   }, []);
 
-  useEffect(() => () => {
-    recordingGenerationRef.current += 1;
-    const recorder = recorderRef.current;
-    if (recorder) {
-      recorder.ondataavailable = null;
-      recorder.onstop = null;
-      if (recorder.state === "recording") recorder.stop();
-    }
-    clearRecordingTimer();
-    stopMediaTracks();
-  }, [clearRecordingTimer, stopMediaTracks]);
+  useEffect(
+    () => () => {
+      recordingGenerationRef.current += 1;
+      const recorder = recorderRef.current;
+      if (recorder) {
+        recorder.ondataavailable = null;
+        recorder.onstop = null;
+        if (recorder.state === "recording") recorder.stop();
+      }
+      clearRecordingTimer();
+      stopMediaTracks();
+    },
+    [clearRecordingTimer, stopMediaTracks],
+  );
 
   const runBenchmark = async (file: File) => {
     setBenchmarking(true);
@@ -110,7 +126,9 @@ export default function DiarizationCapabilityCard() {
       await load();
     } catch (err) {
       console.error("Benchmark failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.");
+      setDiagnosticError(
+        err instanceof Error ? err.message : "Leistungstest fehlgeschlagen.",
+      );
     } finally {
       setBenchmarking(false);
     }
@@ -130,7 +148,11 @@ export default function DiarizationCapabilityCard() {
       setVoiceEnrolled(result.enrolled);
     } catch (err) {
       console.error("Voice enrollment failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Stimmprofil konnte nicht gespeichert werden.");
+      setDiagnosticError(
+        err instanceof Error
+          ? err.message
+          : "Stimmprofil konnte nicht gespeichert werden.",
+      );
     } finally {
       setVoiceSaving(false);
     }
@@ -151,15 +173,24 @@ export default function DiarizationCapabilityCard() {
       setVoiceEnrolled(false);
     } catch (err) {
       console.error("Voice profile deletion failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Stimmprofil konnte nicht gelöscht werden.");
+      setDiagnosticError(
+        err instanceof Error
+          ? err.message
+          : "Stimmprofil konnte nicht gelöscht werden.",
+      );
     } finally {
       setVoiceSaving(false);
     }
   };
 
   const startMicRecording = async (mode: RecordingMode) => {
-    if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === "undefined") {
-      setDiagnosticError("Mikrofonaufnahme ist in diesem Browser nicht verfügbar.");
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setDiagnosticError(
+        "Mikrofonaufnahme ist in diesem Browser nicht verfügbar.",
+      );
       return;
     }
 
@@ -208,7 +239,10 @@ export default function DiarizationCapabilityCard() {
       timerRef.current = window.setInterval(() => {
         setRecordingSeconds((seconds) => {
           const next = seconds + 1;
-          const limit = mode === "voice" ? MAX_VOICE_RECORDING_SECONDS : MAX_RECORDING_SECONDS;
+          const limit =
+            mode === "voice"
+              ? MAX_VOICE_RECORDING_SECONDS
+              : MAX_RECORDING_SECONDS;
           if (next >= limit && recorder.state === "recording") {
             recorder.stop();
           }
@@ -218,7 +252,11 @@ export default function DiarizationCapabilityCard() {
     } catch (err) {
       if (generation !== recordingGenerationRef.current) return;
       console.error("Microphone recording failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Mikrofonaufnahme konnte nicht gestartet werden.");
+      setDiagnosticError(
+        err instanceof Error
+          ? err.message
+          : "Mikrofonaufnahme konnte nicht gestartet werden.",
+      );
       stopMediaTracks();
       clearRecordingTimer();
       setRecordingMode(null);
@@ -236,12 +274,18 @@ export default function DiarizationCapabilityCard() {
     setSavingSelection(true);
     setDiagnosticError(null);
     try {
-      const updated = await api.updateDiarizationConfig({ selected_live_diarizer: mode });
+      const updated = await api.updateDiarizationConfig({
+        selected_live_diarizer: mode,
+      });
       setDiarization(updated);
       setBenchmark(null);
     } catch (err) {
       console.error("Diarization selection failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Modus der Sprechertrennung konnte nicht aktualisiert werden.");
+      setDiagnosticError(
+        err instanceof Error
+          ? err.message
+          : "Modus der Sprechertrennung konnte nicht aktualisiert werden.",
+      );
     } finally {
       setSavingSelection(false);
     }
@@ -252,11 +296,17 @@ export default function DiarizationCapabilityCard() {
     setSavingThreshold(true);
     setDiagnosticError(null);
     try {
-      const updated = await api.updateDiarizationConfig({ speaker_similarity_threshold: next });
+      const updated = await api.updateDiarizationConfig({
+        speaker_similarity_threshold: next,
+      });
       setDiarization(updated);
     } catch (err) {
       console.error("Speaker matching threshold update failed", err);
-      setDiagnosticError(err instanceof Error ? err.message : "Empfindlichkeit der Sprecherzuordnung konnte nicht aktualisiert werden.");
+      setDiagnosticError(
+        err instanceof Error
+          ? err.message
+          : "Empfindlichkeit der Sprecherzuordnung konnte nicht aktualisiert werden.",
+      );
     } finally {
       setSavingThreshold(false);
     }
@@ -267,7 +317,12 @@ export default function DiarizationCapabilityCard() {
   const enhancedUnlocked = Boolean(diarization?.sortformer_selectable);
   const savedThreshold = diarization?.speaker_similarity_threshold ?? 0.72;
   const thresholdChanged = Math.abs(thresholdDraft - savedThreshold) >= 0.005;
-  const recommendation = benchmark?.recommended_live_diarizer ?? (enhancedUnlocked ? "sortformer" : diarization?.recommended_live_diarizer) ?? "lightweight";
+  const recommendation =
+    benchmark?.recommended_live_diarizer ??
+    (enhancedUnlocked
+      ? "sortformer"
+      : diarization?.recommended_live_diarizer) ??
+    "lightweight";
   const deviceLabel = diarization
     ? `${diarization.device.toUpperCase()}${diarization.gpu_name ? ` - ${diarization.gpu_name}` : ""}`
     : "Unbekannt";
@@ -283,9 +338,12 @@ export default function DiarizationCapabilityCard() {
     <div className="rounded-xl bg-surface p-5 shadow-sm">
       <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h3 className="font-display text-base font-bold text-brand-dark-gray">Sprechertrennung</h3>
+          <h3 className="font-display text-base font-bold text-brand-dark-gray">
+            Sprechertrennung
+          </h3>
           <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-            Prüft, ob dieser Rechner NeMo Sortformer schnell genug für die Live-Sprecherzuordnung ausführen kann.
+            Prüft, ob dieser Rechner NeMo Sortformer schnell genug für die
+            Live-Sprecherzuordnung ausführen kann.
           </p>
         </div>
         <button
@@ -300,9 +358,14 @@ export default function DiarizationCapabilityCard() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3 border-y border-brand-light-gray-1 py-3">
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <div>
-            <p className="font-body text-[10px] uppercase text-brand-mid-gray">Live-Sprechertrennung</p>
+            <p className="font-body text-[10px] uppercase text-brand-mid-gray">
+              Live-Sprechertrennung
+            </p>
             <p className="font-body text-xs text-brand-gray">
-              Für neue Live-Gespräche und Audioimporte aktiv: <span className="font-semibold capitalize text-brand-dark-gray">{effectiveMode}</span>
+              Für neue Live-Gespräche und Audioimporte aktiv:{" "}
+              <span className="font-semibold capitalize text-brand-dark-gray">
+                {effectiveMode}
+              </span>
             </p>
           </div>
           <InfoPopover open={infoOpen} onOpenChange={setInfoOpen} />
@@ -316,10 +379,14 @@ export default function DiarizationCapabilityCard() {
             onClick={() => void selectDiarizer("lightweight")}
           />
           <DiarizerModeButton
-                label="Erweitert"
+            label="Erweitert"
             active={selectedMode === "sortformer"}
             disabled={!enhancedUnlocked || savingSelection}
-            title={enhancedUnlocked ? "Sortformer verwenden" : "Bestandenen Leistungstest ausführen, um den erweiterten Modus freizuschalten"}
+            title={
+              enhancedUnlocked
+                ? "Sortformer verwenden"
+                : "Bestandenen Leistungstest ausführen, um den erweiterten Modus freizuschalten"
+            }
             onClick={() => void selectDiarizer("sortformer")}
           />
         </div>
@@ -342,11 +409,16 @@ export default function DiarizationCapabilityCard() {
       </div>
       {diarization?.benchmark_measured_at && (
         <p className="mb-4 font-body text-[11px] text-brand-mid-gray">
-          Gemessen am {new Date(diarization.benchmark_measured_at).toLocaleString()}
-          {diarization.benchmark_validity === "aged" ? ` - ${diarization.benchmark_validity_reason}` : ""}
+          Gemessen am{" "}
+          {new Date(diarization.benchmark_measured_at).toLocaleString()}
+          {diarization.benchmark_validity === "aged"
+            ? ` - ${diarization.benchmark_validity_reason}`
+            : ""}
         </p>
       )}
-      {["incompatible", "superseded"].includes(diarization?.benchmark_validity ?? "") && (
+      {["incompatible", "superseded"].includes(
+        diarization?.benchmark_validity ?? "",
+      ) && (
         <p className="mb-4 rounded border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-800">
           {diarization?.benchmark_validity_reason}
         </p>
@@ -355,22 +427,31 @@ export default function DiarizationCapabilityCard() {
       <div className="mb-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <div>
-            <p className="font-body text-[10px] uppercase text-brand-mid-gray">Sprecherzuordnung</p>
+            <p className="font-body text-[10px] uppercase text-brand-mid-gray">
+              Sprecherzuordnung
+            </p>
             <p className="font-body text-xs text-brand-gray">
-              Schwelle der Zuordnung: <span className="font-semibold text-brand-dark-gray">{thresholdDraft.toFixed(2)}</span>
+              Schwelle der Zuordnung:{" "}
+              <span className="font-semibold text-brand-dark-gray">
+                {thresholdDraft.toFixed(2)}
+              </span>
             </p>
           </div>
           <button
             type="button"
             onClick={() => void saveThreshold()}
-            disabled={!thresholdChanged || savingThreshold || loadingDiagnostics}
+            disabled={
+              !thresholdChanged || savingThreshold || loadingDiagnostics
+            }
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
           >
             {savingThreshold ? "Wird gespeichert ..." : "Übernehmen"}
           </button>
         </div>
         <div className="flex items-center gap-3">
-          <span className="font-body text-[10px] text-brand-mid-gray">Mehr zusammenführen</span>
+          <span className="font-body text-[10px] text-brand-mid-gray">
+            Mehr zusammenführen
+          </span>
           <input
             type="range"
             min={0.5}
@@ -380,7 +461,9 @@ export default function DiarizationCapabilityCard() {
             onChange={(e) => setThresholdDraft(Number(e.target.value))}
             className="min-w-0 flex-1 accent-brand-teal"
           />
-          <span className="font-body text-[10px] text-brand-mid-gray">Mehr trennen</span>
+          <span className="font-body text-[10px] text-brand-mid-gray">
+            Mehr trennen
+          </span>
           <input
             type="number"
             min={0.5}
@@ -401,7 +484,9 @@ export default function DiarizationCapabilityCard() {
       <div className="mb-4 rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 px-3 py-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-body text-[10px] uppercase text-brand-mid-gray">Mein Stimmprofil</p>
+            <p className="font-body text-[10px] uppercase text-brand-mid-gray">
+              Mein Stimmprofil
+            </p>
             <p className="mt-1 font-body text-xs text-brand-gray">
               {voiceEnrolled
                 ? "Dein verschlüsseltes Stimmprofil ist für die Sprecherzuordnung über das Mikrofon bereit."
@@ -411,13 +496,15 @@ export default function DiarizationCapabilityCard() {
           <div className="flex flex-wrap gap-2">
             <button
               type="button"
-              onClick={recordingMode === "voice"
-                ? stopMicRecording
-                : () => void startMicRecording("voice")}
+              onClick={
+                recordingMode === "voice"
+                  ? stopMicRecording
+                  : () => void startMicRecording("voice")
+              }
               disabled={
-                voiceSaving
-                || benchmarking
-                || (recordingMode !== null && recordingMode !== "voice")
+                voiceSaving ||
+                benchmarking ||
+                (recordingMode !== null && recordingMode !== "voice")
               }
               className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-colors hover:bg-brand-teal hover:text-white disabled:cursor-not-allowed disabled:border-brand-light-gray-1 disabled:text-brand-mid-gray"
             >
@@ -436,7 +523,7 @@ export default function DiarizationCapabilityCard() {
                 disabled={voiceSaving || recordingMode !== null}
                 className="rounded border border-brand-light-gray-1 px-3 py-1.5 font-body text-xs text-brand-gray transition-colors hover:border-red-300 hover:text-red-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                        Löschen
+                Löschen
               </button>
             )}
           </div>
@@ -447,12 +534,19 @@ export default function DiarizationCapabilityCard() {
         <p className="font-body text-xs text-brand-gray">
           {loadingDiagnostics
             ? "Sprechertrennungsfähigkeit wird geprüft ..."
-            : benchmark?.reason ?? diarization?.selection_reason ?? diarization?.reason ?? "Diagnosedaten wurden noch nicht geladen."}
+            : (benchmark?.reason ??
+              diarization?.selection_reason ??
+              diarization?.reason ??
+              "Diagnosedaten wurden noch nicht geladen.")}
         </p>
         {diarization?.gpu_memory_gb != null && (
-          <p className="mt-1 font-body text-[10px] text-brand-mid-gray">GPU-Speicher: {diarization.gpu_memory_gb} GB</p>
+          <p className="mt-1 font-body text-[10px] text-brand-mid-gray">
+            GPU-Speicher: {diarization.gpu_memory_gb} GB
+          </p>
         )}
-        <p className="mt-1 font-mono text-[10px] text-brand-mid-gray">{diarization?.model_id}</p>
+        <p className="mt-1 font-mono text-[10px] text-brand-mid-gray">
+          {diarization?.model_id}
+        </p>
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
@@ -467,16 +561,18 @@ export default function DiarizationCapabilityCard() {
           disabled={!benchmarkFile || benchmarking || recordingMode !== null}
           className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white transition-colors hover:bg-brand-teal-dark disabled:cursor-not-allowed disabled:bg-brand-light-gray-1"
         >
-            {benchmarking ? "Wird gemessen ..." : "Messung starten"}
+          {benchmarking ? "Wird gemessen ..." : "Messung starten"}
         </button>
         <button
-          onClick={recordingMode === "benchmark"
-            ? stopMicRecording
-            : () => void startMicRecording("benchmark")}
+          onClick={
+            recordingMode === "benchmark"
+              ? stopMicRecording
+              : () => void startMicRecording("benchmark")
+          }
           disabled={
-            voiceSaving
-            || (benchmarking && recordingMode !== "benchmark")
-            || (recordingMode !== null && recordingMode !== "benchmark")
+            voiceSaving ||
+            (benchmarking && recordingMode !== "benchmark") ||
+            (recordingMode !== null && recordingMode !== "benchmark")
           }
           className="rounded border border-brand-teal px-3 py-1.5 font-body text-xs font-medium text-brand-teal transition-colors hover:bg-brand-teal hover:text-white disabled:cursor-not-allowed disabled:border-brand-light-gray-1 disabled:text-brand-mid-gray"
         >
@@ -486,12 +582,16 @@ export default function DiarizationCapabilityCard() {
         </button>
         {benchmark ? (
           <span className="font-body text-xs text-brand-mid-gray">
-            {benchmark.audio_seconds.toFixed(1)}s benchmarked in {benchmark.processing_seconds.toFixed(1)}s processing
+            {benchmark.audio_seconds.toFixed(1)}s benchmarked in{" "}
+            {benchmark.processing_seconds.toFixed(1)}s processing
           </span>
-        ) : benchmarkFile && (
-          <span className="font-body text-[10px] text-brand-mid-gray">
-            Mindestens {MIN_BENCHMARK_SECONDS}s Audio erforderlich; gemessen werden nur die ersten {MAX_RECORDING_SECONDS}s.
-          </span>
+        ) : (
+          benchmarkFile && (
+            <span className="font-body text-[10px] text-brand-mid-gray">
+              Mindestens {MIN_BENCHMARK_SECONDS}s Audio erforderlich; gemessen
+              werden nur die ersten {MAX_RECORDING_SECONDS}s.
+            </span>
+          )
         )}
       </div>
 
@@ -534,7 +634,13 @@ function DiarizerModeButton({
   );
 }
 
-function InfoPopover({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+function InfoPopover({
+  open,
+  onOpenChange,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
   return (
     <div
       className="relative"
@@ -554,10 +660,21 @@ function InfoPopover({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
         <div className="absolute left-0 top-8 z-20 w-[min(22rem,calc(100vw-3rem))] rounded-lg border border-brand-light-gray-1 bg-surface p-4 shadow-xl shadow-brand-dark-gray/10">
           <div className="space-y-3 font-body text-xs leading-relaxed text-brand-gray">
             <p>
-              <span className="font-semibold text-brand-dark-gray">Rückfall</span> verwendet die lokale VAD- und Sprecher-Embedding-Strecke. Sie reagiert schnell, läuft auf der CPU und bleibt bei wechselnder Hardware- oder Modellverfügbarkeit die sichere Vorgabe.
+              <span className="font-semibold text-brand-dark-gray">
+                Rückfall
+              </span>{" "}
+              verwendet die lokale VAD- und Sprecher-Embedding-Strecke. Sie
+              reagiert schnell, läuft auf der CPU und bleibt bei wechselnder
+              Hardware- oder Modellverfügbarkeit die sichere Vorgabe.
             </p>
             <p>
-              <span className="font-semibold text-brand-dark-gray">Erweitert</span> verwendet NeMo Sortformer, nachdem dieser Rechner den Leistungstest bestanden hat. Sprecherwechsel in Gesprächen mit mehreren Personen werden genauer getrennt, benötigen aber mehr Ressourcen und werden in kurzen Blöcken verarbeitet.
+              <span className="font-semibold text-brand-dark-gray">
+                Erweitert
+              </span>{" "}
+              verwendet NeMo Sortformer, nachdem dieser Rechner den
+              Leistungstest bestanden hat. Sprecherwechsel in Gesprächen mit
+              mehreren Personen werden genauer getrennt, benötigen aber mehr
+              Ressourcen und werden in kurzen Blöcken verarbeitet.
             </p>
           </div>
         </div>
@@ -566,10 +683,22 @@ function InfoPopover({ open, onOpenChange }: { open: boolean; onOpenChange: (ope
   );
 }
 
-function Metric({ label, value, title, capitalize = false }: { label: string; value: string; title?: string; capitalize?: boolean }) {
+function Metric({
+  label,
+  value,
+  title,
+  capitalize = false,
+}: {
+  label: string;
+  value: string;
+  title?: string;
+  capitalize?: boolean;
+}) {
   return (
     <div className="rounded border border-brand-light-gray-1 bg-brand-light-gray-2/30 p-3">
-      <p className="font-body text-[10px] uppercase text-brand-mid-gray">{label}</p>
+      <p className="font-body text-[10px] uppercase text-brand-mid-gray">
+        {label}
+      </p>
       <p
         className={`mt-1 truncate font-display text-sm font-bold text-brand-dark-gray ${capitalize ? "capitalize" : ""}`}
         title={title ?? value}
@@ -581,12 +710,20 @@ function Metric({ label, value, title, capitalize = false }: { label: string; va
 }
 
 function getRecorderOptions(): MediaRecorderOptions {
-  const mimeType = RECORDING_MIME_TYPES.find((type) => MediaRecorder.isTypeSupported(type));
+  const mimeType = RECORDING_MIME_TYPES.find((type) =>
+    MediaRecorder.isTypeSupported(type),
+  );
   return mimeType ? { mimeType } : {};
 }
 
-function createRecordedFile(chunks: BlobPart[], mimeType: string, baseName: string): File {
+function createRecordedFile(
+  chunks: BlobPart[],
+  mimeType: string,
+  baseName: string,
+): File {
   const type = mimeType || "audio/webm";
   const extension = type.includes("mp4") ? "m4a" : "webm";
-  return new File([new Blob(chunks, { type })], `${baseName}.${extension}`, { type });
+  return new File([new Blob(chunks, { type })], `${baseName}.${extension}`, {
+    type,
+  });
 }

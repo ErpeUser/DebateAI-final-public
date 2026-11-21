@@ -1,13 +1,9 @@
 """Post-import transcript analysis using the configured analyst model."""
 
-import json
 import inspect
+import json
 import uuid
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.database import get_db
 from app.models import Directive, Question, Session, TranscriptEntry
@@ -16,6 +12,9 @@ from app.services.briefing_synthesis import agent_model_id, load_agent_configs
 from app.services.llm import generate_text
 from app.services.meeting_context import build_meeting_context_text
 from app.services.transcript_refiner import REFINER_SLUG, refine_session
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/analyze", tags=["analyze"])
 
@@ -23,7 +22,13 @@ MAX_ANALYZE_TRANSCRIPT_CHARS = 120_000
 MAX_ANALYZE_DIRECTIVES_CHARS = 16_000
 MAX_ANALYZE_RESPONSE_CHARS = 500_000
 MAX_ANALYZE_ITEMS = 256
-_ALLOWED_ITEM_TYPES = {"question", "observation", "opportunity", "action_item", "answered"}
+_ALLOWED_ITEM_TYPES = {
+    "question",
+    "observation",
+    "opportunity",
+    "action_item",
+    "answered",
+}
 
 ANALYZE_TRANSCRIPT_PROMPT = """Analysiere das Transkript auf Deutsch und leite nur kontextgestuetzte Erkenntnisse ab. Unterstelle kein Verkaufs- oder Kundengespraech, wenn Kontext und Transkript das nicht tragen.
 
@@ -64,8 +69,7 @@ def _parse_items(raw: str) -> list:
     value = raw.strip()
     if value.startswith("```"):
         value = value.split("\n", 1)[1] if "\n" in value else value[3:]
-    if value.endswith("```"):
-        value = value[:-3]
+    value = value.removesuffix("```")
     value = value.strip()
     try:
         parsed = json.loads(value)
@@ -76,7 +80,9 @@ def _parse_items(raw: str) -> list:
         try:
             parsed = json.loads(value[start : end + 1])
         except json.JSONDecodeError as exc:
-            raise HTTPException(500, "Analyseergebnis konnte nicht gelesen werden.") from exc
+            raise HTTPException(
+                500, "Analyseergebnis konnte nicht gelesen werden."
+            ) from exc
     if not isinstance(parsed, list):
         raise HTTPException(500, "Analyseergebnis ist keine Liste.")
     return parsed
@@ -118,7 +124,9 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
     prompt = load_prompt_resource(
         "analyze_transcript", ANALYZE_TRANSCRIPT_PROMPT
     ).format(
-        meeting_context_text=_clip_context(build_meeting_context_text(session), MAX_ANALYZE_DIRECTIVES_CHARS),
+        meeting_context_text=_clip_context(
+            build_meeting_context_text(session), MAX_ANALYZE_DIRECTIVES_CHARS
+        ),
         directives_text=_clip_context(
             "\n".join(f"- {item}" for item in directives) or "(Keine)",
             MAX_ANALYZE_DIRECTIVES_CHARS,
@@ -170,7 +178,9 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
             question.answered = True
             question.answer_summary = _bounded_field(item.get("answer_summary"), 8000)
             question.needs_followup = bool(item.get("needs_followup", False))
-            question.followup_question = _bounded_field(item.get("followup_question"), 4000)
+            question.followup_question = _bounded_field(
+                item.get("followup_question"), 4000
+            )
         db.add(question)
         count += 1
         if (
@@ -179,17 +189,19 @@ async def analyze_transcript(session_id: uuid.UUID, db: AsyncSession = Depends(g
             and item.get("needs_followup")
             and item.get("followup_question")
         ):
-            db.add(Question(
-                session_id=session_id,
-                question=_bounded_field(item.get("followup_question"), 4000),
-                rationale=f"Rueckfrage zu: {question_text}",
-                source_context=_bounded_field(item.get("answer_summary"), 8000),
-                needs_followup=True,
-            ))
+            db.add(
+                Question(
+                    session_id=session_id,
+                    question=_bounded_field(item.get("followup_question"), 4000),
+                    rationale=f"Rueckfrage zu: {question_text}",
+                    source_context=_bounded_field(item.get("answer_summary"), 8000),
+                    needs_followup=True,
+                )
+            )
             count += 1
 
     session.state = "completed"
-    session.ended_at = datetime.now(timezone.utc)
-    session.started_at = session.started_at or datetime.now(timezone.utc)
+    session.ended_at = datetime.now(UTC)
+    session.started_at = session.started_at or datetime.now(UTC)
     await db.commit()
     return {"analyzed": count, "session_id": str(session_id)}

@@ -42,7 +42,11 @@ function isNewerVersion(a: string, b: string): boolean {
 
 // Admin -> About tab: current version plus the in-app release-notes history
 // served by /api/meta/release-notes (newest first, newest expanded).
-export default function AboutCard({ version, desktopUpdate, highlightSince }: AboutCardProps) {
+export default function AboutCard({
+  version,
+  desktopUpdate,
+  highlightSince,
+}: AboutCardProps) {
   const [notes, setNotes] = useState<ReleaseNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
@@ -53,7 +57,8 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
   const [pricingFailed, setPricingFailed] = useState(false);
 
   useEffect(() => {
-    api.listReleaseNotes()
+    api
+      .listReleaseNotes()
       .then((n) => {
         setNotes(n);
         setExpandedVersion(n[0]?.version ?? null);
@@ -83,9 +88,12 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
       <div className="rounded-xl bg-surface p-5 shadow-sm ring-1 ring-brand-light-gray-1/60">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <div>
-            <h2 className="font-display text-base font-bold text-brand-dark-gray">Debate AI</h2>
+            <h2 className="font-display text-base font-bold text-brand-dark-gray">
+              Debate AI
+            </h2>
             <p className="mt-0.5 font-body text-xs text-brand-gray">
-              Echtzeit-Gesprächsanalyse mit Live-Transkription, Sprecherzuordnung und Analyse-Assistenten.
+              Echtzeit-Gesprächsanalyse mit Live-Transkription,
+              Sprecherzuordnung und Analyse-Assistenten.
             </p>
           </div>
           <span className="rounded-full bg-brand-teal/10 px-3 py-1 font-mono text-sm font-semibold text-brand-teal">
@@ -98,16 +106,23 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
 
       <section>
         <div className="mb-3">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">Änderungen</h2>
-          <p className="mt-0.5 font-body text-xs text-brand-mid-gray">Neuerungen je Version, neueste zuerst.</p>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">
+            Änderungen
+          </h2>
+          <p className="mt-0.5 font-body text-xs text-brand-mid-gray">
+            Neuerungen je Version, neueste zuerst.
+          </p>
         </div>
 
         {loading && (
-          <p className="font-body text-sm text-brand-mid-gray">Änderungen werden geladen ...</p>
+          <p className="font-body text-sm text-brand-mid-gray">
+            Änderungen werden geladen ...
+          </p>
         )}
         {failed && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900">
-            Die Versionshinweise konnten nicht geladen werden. Die übrige Anwendung funktioniert weiter.
+            Die Versionshinweise konnten nicht geladen werden. Die übrige
+            Anwendung funktioniert weiter.
           </p>
         )}
 
@@ -115,36 +130,63 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
           {notes.map((note) => {
             const expanded = expandedVersion === note.version;
             const isCurrent = version !== null && note.version === version;
-            const isUnread = !!highlightSince && isNewerVersion(note.version, highlightSince);
+            const isUnread =
+              !!highlightSince && isNewerVersion(note.version, highlightSince);
             return (
-              <div key={note.version} className="rounded-xl bg-surface shadow-sm ring-1 ring-brand-light-gray-1/60">
+              <div
+                key={note.version}
+                className="rounded-xl bg-surface shadow-sm ring-1 ring-brand-light-gray-1/60"
+              >
                 <button
                   type="button"
-                  onClick={() => setExpandedVersion(expanded ? null : note.version)}
+                  onClick={() =>
+                    setExpandedVersion(expanded ? null : note.version)
+                  }
                   aria-expanded={expanded}
                   className="flex w-full items-center gap-2.5 px-5 py-3 text-left transition-colors hover:bg-brand-light-gray-2/60"
                 >
-                  <svg className={`h-3 w-3 shrink-0 text-brand-mid-gray transition-transform ${expanded ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                  <svg
+                    className={`h-3 w-3 shrink-0 text-brand-mid-gray transition-transform ${expanded ? "rotate-90" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M9 5l7 7-7 7"
+                    />
                   </svg>
-                  <span className="font-mono text-xs font-semibold text-brand-dark-gray">v{note.version}</span>
+                  <span className="font-mono text-xs font-semibold text-brand-dark-gray">
+                    v{note.version}
+                  </span>
                   {isCurrent && (
                     <span className="rounded-full bg-brand-teal/10 px-2 py-0.5 font-body text-[10px] font-medium text-brand-teal">
                       Aktuell
                     </span>
                   )}
                   {isUnread && (
-                    <span className="rounded-full bg-brand-teal px-2 py-0.5 font-body text-[10px] font-semibold text-white" title={`Veröffentlicht seit v${highlightSince}`}>
+                    <span
+                      className="rounded-full bg-brand-teal px-2 py-0.5 font-body text-[10px] font-semibold text-white"
+                      title={`Veröffentlicht seit v${highlightSince}`}
+                    >
                       Neu
                     </span>
                   )}
-                  <span className="min-w-0 flex-1 truncate font-body text-sm text-brand-gray">{note.title}</span>
-                  <span className="shrink-0 font-body text-[11px] text-brand-mid-gray">{note.date}</span>
+                  <span className="min-w-0 flex-1 truncate font-body text-sm text-brand-gray">
+                    {note.title}
+                  </span>
+                  <span className="shrink-0 font-body text-[11px] text-brand-mid-gray">
+                    {note.date}
+                  </span>
                 </button>
                 {expanded && (
                   <div className="border-t border-brand-light-gray-1/70 px-5 py-4 font-body text-sm text-brand-dark-gray">
                     <div className="chat-markdown">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{note.body}</ReactMarkdown>
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {note.body}
+                      </ReactMarkdown>
                     </div>
                   </div>
                 )}
@@ -156,19 +198,25 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
 
       <section>
         <div className="mb-3">
-          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">Modelle &amp; Preise</h2>
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-brand-mid-gray">
+            Modelle &amp; Preise
+          </h2>
           <p className="mt-0.5 font-body text-xs text-brand-mid-gray">
-            Verfügbare Modelle mit veröffentlichten USD-Preisen je 1 Mio. Token. Aufschläge für lange
-            Kontexte und Cache-Speicherung sind nicht enthalten.
+            Verfügbare Modelle mit veröffentlichten USD-Preisen je 1 Mio. Token.
+            Aufschläge für lange Kontexte und Cache-Speicherung sind nicht
+            enthalten.
           </p>
         </div>
 
         {pricingLoading && (
-          <p className="font-body text-sm text-brand-mid-gray">Modellpreise werden geladen ...</p>
+          <p className="font-body text-sm text-brand-mid-gray">
+            Modellpreise werden geladen ...
+          </p>
         )}
         {pricingFailed && (
           <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 font-body text-xs text-amber-900">
-            Die Modellpreise konnten nicht geladen werden. Die übrige Anwendung funktioniert weiter.
+            Die Modellpreise konnten nicht geladen werden. Die übrige Anwendung
+            funktioniert weiter.
           </p>
         )}
 
@@ -178,44 +226,82 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
               <table className="min-w-full text-left font-body text-sm">
                 <thead className="text-xs uppercase tracking-wide text-brand-gray">
                   <tr className="border-b border-brand-light-gray-1/70">
-                    <th scope="col" className="px-5 py-3 font-semibold">Modell</th>
-                    <th scope="col" className="px-5 py-3 font-semibold">Anbieter</th>
-                    <th scope="col" className="px-5 py-3 font-semibold">Fähigkeiten</th>
-                    <th scope="col" className="px-5 py-3 text-right font-semibold">Eingabe / 1 Mio.</th>
-                    <th scope="col" className="px-5 py-3 text-right font-semibold">Ausgabe / 1 Mio.</th>
+                    <th scope="col" className="px-5 py-3 font-semibold">
+                      Modell
+                    </th>
+                    <th scope="col" className="px-5 py-3 font-semibold">
+                      Anbieter
+                    </th>
+                    <th scope="col" className="px-5 py-3 font-semibold">
+                      Fähigkeiten
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-5 py-3 text-right font-semibold"
+                    >
+                      Eingabe / 1 Mio.
+                    </th>
+                    <th
+                      scope="col"
+                      className="px-5 py-3 text-right font-semibold"
+                    >
+                      Ausgabe / 1 Mio.
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-brand-light-gray-1/70">
                   {models.map((model) => {
                     const rates = pricing?.models[model.id] ?? null;
-                    const isFree = rates !== null && rates.input_per_million === 0 && rates.output_per_million === 0;
+                    const isFree =
+                      rates !== null &&
+                      rates.input_per_million === 0 &&
+                      rates.output_per_million === 0;
                     // Billed by audio duration rather than tokens, so the two
                     // per-1M columns do not apply and a bare "-" would read as
                     // "no published price" when there is one.
                     const perMinute =
-                      rates !== null && rates.input_per_million === null && rates.per_minute !== null
+                      rates !== null &&
+                      rates.input_per_million === null &&
+                      rates.per_minute !== null
                         ? rates.per_minute
                         : null;
                     return (
                       <tr key={model.id}>
                         <td className="px-5 py-2.5">
-                          <span className="font-medium text-brand-dark-gray">{model.name}</span>
-                          <span className="ml-2 font-mono text-[11px] text-brand-mid-gray">{model.id}</span>
+                          <span className="font-medium text-brand-dark-gray">
+                            {model.name}
+                          </span>
+                          <span className="ml-2 font-mono text-[11px] text-brand-mid-gray">
+                            {model.id}
+                          </span>
                         </td>
-                        <td className="px-5 py-2.5 text-brand-gray">{model.provider}</td>
-                        <td className="px-5 py-2.5 text-xs text-brand-mid-gray">{capabilityLabel(model)}</td>
+                        <td className="px-5 py-2.5 text-brand-gray">
+                          {model.provider}
+                        </td>
+                        <td className="px-5 py-2.5 text-xs text-brand-mid-gray">
+                          {capabilityLabel(model)}
+                        </td>
                         {isFree ? (
                           <td colSpan={2} className="px-5 py-2.5 text-right">
-                            <span className="rounded-full bg-brand-teal/10 px-2 py-0.5 text-[11px] font-semibold text-brand-teal">Kostenlos</span>
+                            <span className="rounded-full bg-brand-teal/10 px-2 py-0.5 text-[11px] font-semibold text-brand-teal">
+                              Kostenlos
+                            </span>
                           </td>
                         ) : perMinute !== null ? (
-                          <td colSpan={2} className="px-5 py-2.5 text-right tabular-nums text-brand-gray">
+                          <td
+                            colSpan={2}
+                            className="px-5 py-2.5 text-right tabular-nums text-brand-gray"
+                          >
                             {formatPerMinuteRate(perMinute)}
                           </td>
                         ) : (
                           <>
-                            <td className="px-5 py-2.5 text-right tabular-nums text-brand-gray">{formatRate(rates?.input_per_million)}</td>
-                            <td className="px-5 py-2.5 text-right tabular-nums text-brand-gray">{formatRate(rates?.output_per_million)}</td>
+                            <td className="px-5 py-2.5 text-right tabular-nums text-brand-gray">
+                              {formatRate(rates?.input_per_million)}
+                            </td>
+                            <td className="px-5 py-2.5 text-right tabular-nums text-brand-gray">
+                              {formatRate(rates?.output_per_million)}
+                            </td>
                           </>
                         )}
                       </tr>
@@ -225,7 +311,8 @@ export default function AboutCard({ version, desktopUpdate, highlightSince }: Ab
               </table>
             </div>
             <p className="border-t border-brand-light-gray-1/70 px-5 py-3 font-body text-xs text-brand-mid-gray">
-              Preisstand: {pricing?.as_of ?? "unbekannt"}; Änderungen bitte auf den Preisseiten der Anbieter prüfen.
+              Preisstand: {pricing?.as_of ?? "unbekannt"}; Änderungen bitte auf
+              den Preisseiten der Anbieter prüfen.
             </p>
           </div>
         )}

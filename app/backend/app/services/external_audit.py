@@ -14,10 +14,10 @@ import json
 import re
 import threading
 import uuid
+from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Iterator
 
 from app.services.secrets import data_dir
 

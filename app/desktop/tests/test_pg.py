@@ -1,24 +1,34 @@
-import tempfile
 import sys
+import tempfile
 import types
 import unittest
 from pathlib import Path
 from unittest import mock
 
-from debateai_desktop.pg import EmbeddedPostgres, _postgres_data_root, _windows_creation_flags
+from debateai_desktop.pg import (
+    EmbeddedPostgres,
+    _postgres_data_root,
+    _windows_creation_flags,
+)
 
 
 class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_waits_for_cluster_ready_state_after_port_is_open(self):
         self.pg.pgdata.mkdir()
         pidfile = self.pg.pgdata / "postmaster.pid"
+
         def state(value):
             pidfile.write_text(f"1234\n{self.pg.pgdata}\n0\n54321\n\n\n0\n{value}\n")
+
         state("starting")
         process = mock.Mock(pid=1234)
         process.poll.return_value = None
-        with mock.patch("debateai_desktop.pg.socket.create_connection") as connect, \
-                mock.patch("debateai_desktop.pg.time.sleep", side_effect=lambda _: state("ready")) as sleep:
+        with (
+            mock.patch("debateai_desktop.pg.socket.create_connection") as connect,
+            mock.patch(
+                "debateai_desktop.pg.time.sleep", side_effect=lambda _: state("ready")
+            ) as sleep,
+        ):
             self.assertTrue(self.pg._wait_for_postgres(54321, process))
         self.assertEqual(1, sleep.call_count)
         connect.assert_called_once()
@@ -26,38 +36,32 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_accepts_postmaster_pid_different_from_launcher_pid(self):
         self.pg.pgdata.mkdir()
         pidfile = self.pg.pgdata / "postmaster.pid"
-        pidfile.write_text(
-            f"9876\n{self.pg.pgdata}\n1000\n54321\n\n\n0\nready \n"
-        )
+        pidfile.write_text(f"9876\n{self.pg.pgdata}\n1000\n54321\n\n\n0\nready \n")
         process = mock.Mock(pid=1234)
         process.poll.return_value = None
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch("debateai_desktop.pg.socket.create_connection"):
-            self.assertTrue(
-                self.pg._wait_for_postgres(
-                    54321, process, started_at=1000
-                )
-            )
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch("debateai_desktop.pg.socket.create_connection"),
+        ):
+            self.assertTrue(self.pg._wait_for_postgres(54321, process, started_at=1000))
         self.assertEqual(9876, self.pg.started_pid)
 
     def test_windows_rejects_stale_postmaster_pidfile(self):
         self.pg.pgdata.mkdir()
         pidfile = self.pg.pgdata / "postmaster.pid"
-        pidfile.write_text(
-            f"9876\n{self.pg.pgdata}\n900\n54321\n\n\n0\nready \n"
-        )
+        pidfile.write_text(f"9876\n{self.pg.pgdata}\n900\n54321\n\n\n0\nready \n")
         process = mock.Mock(pid=1234)
         process.poll.return_value = None
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch(
-                    "debateai_desktop.pg.time.monotonic",
-                    side_effect=[0.0, 31.0],
-                ), \
-                mock.patch("debateai_desktop.pg.socket.create_connection") as connect:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch(
+                "debateai_desktop.pg.time.monotonic",
+                side_effect=[0.0, 31.0],
+            ),
+            mock.patch("debateai_desktop.pg.socket.create_connection") as connect,
+        ):
             self.assertFalse(
-                self.pg._wait_for_postgres(
-                    54321, process, timeout=30, started_at=1000
-                )
+                self.pg._wait_for_postgres(54321, process, timeout=30, started_at=1000)
             )
         connect.assert_not_called()
 
@@ -72,12 +76,14 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_copies_runtime_when_install_path_has_no_ascii_alias(self):
         ascii_root = self.data_dir / "data"
         unicode_pg = Path("C:/Pruefung ä/pgsql")
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch(
-                    "debateai_desktop.pg._postgres_data_root",
-                    side_effect=[ascii_root, unicode_pg],
-                ), \
-                mock.patch("debateai_desktop.pg.shutil.copytree") as copytree:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch(
+                "debateai_desktop.pg._postgres_data_root",
+                side_effect=[ascii_root, unicode_pg],
+            ),
+            mock.patch("debateai_desktop.pg.shutil.copytree") as copytree,
+        ):
             pg = EmbeddedPostgres(unicode_pg, ascii_root)
 
         copytree.assert_called_once_with(unicode_pg, ascii_root / "pgsql-runtime")
@@ -111,9 +117,11 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("--no-locale", cmd)
 
     def test_initdb_grants_windows_acl_first(self):
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch.dict("os.environ", {"USERNAME": "tester"}), \
-                mock.patch("debateai_desktop.pg.subprocess.run") as run:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch.dict("os.environ", {"USERNAME": "tester"}),
+            mock.patch("debateai_desktop.pg.subprocess.run") as run,
+        ):
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
         first_cmd = run.call_args_list[0].args[0]
@@ -122,13 +130,13 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("initdb", str(last_cmd[0]))
 
     def test_initdb_skips_acl_grant_off_windows(self):
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run") as run:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run") as run,
+        ):
             run.return_value = mock.Mock(returncode=0)
             self.pg.ensure_initdb()
-        self.assertNotIn(
-            "icacls", [call.args[0][0] for call in run.call_args_list]
-        )
+        self.assertNotIn("icacls", [call.args[0][0] for call in run.call_args_list])
 
     def test_initdb_skipped_when_cluster_exists(self):
         (self.data_dir / "pgdata").mkdir(parents=True)
@@ -174,13 +182,16 @@ class EmbeddedPostgresTests(unittest.TestCase):
         connection = Connection()
         connect = mock.AsyncMock(side_effect=[RuntimeError("missing role"), connection])
         fake_asyncpg = types.SimpleNamespace(connect=connect)
-        with mock.patch.dict(sys.modules, {"asyncpg": fake_asyncpg}), mock.patch.object(
-            self.pg, "password", return_value="0" * 32
+        with (
+            mock.patch.dict(sys.modules, {"asyncpg": fake_asyncpg}),
+            mock.patch.object(self.pg, "password", return_value="0" * 32),
         ):
             self.pg.ensure_role(54321)
 
         self.assertEqual(
-            ['CREATE ROLE "debateai" LOGIN SUPERUSER PASSWORD \'00000000000000000000000000000000\''],
+            [
+                "CREATE ROLE \"debateai\" LOGIN SUPERUSER PASSWORD '00000000000000000000000000000000'"
+            ],
             connection.executed,
         )
         self.assertTrue(self.pg.role_marker.is_file())
@@ -190,16 +201,22 @@ class EmbeddedPostgresTests(unittest.TestCase):
         pgdata.mkdir(parents=True)
         sentinel = pgdata / "stray.txt"
         sentinel.write_text("retained data with missing cluster metadata")
-        with mock.patch("debateai_desktop.pg.subprocess.run") as run:
-            with self.assertRaisesRegex(RuntimeError, "explicit recovery"):
-                self.pg.ensure_initdb()
+        with (
+            mock.patch("debateai_desktop.pg.subprocess.run") as run,
+            self.assertRaisesRegex(RuntimeError, "explicit recovery"),
+        ):
+            self.pg.ensure_initdb()
         run.assert_not_called()
-        self.assertEqual("retained data with missing cluster metadata", sentinel.read_text())
+        self.assertEqual(
+            "retained data with missing cluster metadata", sentinel.read_text()
+        )
         self.assertFalse(self.pg.pwfile.exists())
 
     def test_start_binds_localhost_only_on_given_port(self):
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run") as run:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run") as run,
+        ):
             run.return_value = mock.Mock(returncode=0)
             self.pg.start(54321)
         cmd = run.call_args.args[0]
@@ -209,25 +226,29 @@ class EmbeddedPostgresTests(unittest.TestCase):
         self.assertIn("listen_addresses=127.0.0.1", opts)
 
     def test_windows_helpers_request_no_console_window(self):
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch.object(
-                    __import__("subprocess"),
-                    "CREATE_NO_WINDOW",
-                    0x08000000,
-                    create=True,
-                ):
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch.object(
+                __import__("subprocess"),
+                "CREATE_NO_WINDOW",
+                0x08000000,
+                create=True,
+            ),
+        ):
             self.assertEqual(0x08000000, _windows_creation_flags())
 
     def test_windows_start_hides_pg_ctl_console(self):
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch.object(
-                    __import__("subprocess"),
-                    "CREATE_NO_WINDOW",
-                    0x08000000,
-                    create=True,
-                ), \
-                mock.patch.object(self.pg, "_wait_for_postgres", return_value=True), \
-                mock.patch("debateai_desktop.pg.subprocess.Popen") as popen:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch.object(
+                __import__("subprocess"),
+                "CREATE_NO_WINDOW",
+                0x08000000,
+                create=True,
+            ),
+            mock.patch.object(self.pg, "_wait_for_postgres", return_value=True),
+            mock.patch("debateai_desktop.pg.subprocess.Popen") as popen,
+        ):
             popen.return_value = mock.Mock(pid=4321)
             self.pg.start(54321)
 
@@ -236,9 +257,13 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_windows_starts_postgres_directly_without_a_cmd_wrapper(self):
         process = mock.Mock(pid=4321)
         process.poll.return_value = None
-        with mock.patch("debateai_desktop.pg.sys.platform", "win32"), \
-                mock.patch.object(self.pg, "_wait_for_postgres", return_value=True), \
-                mock.patch("debateai_desktop.pg.subprocess.Popen", return_value=process) as popen:
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "win32"),
+            mock.patch.object(self.pg, "_wait_for_postgres", return_value=True),
+            mock.patch(
+                "debateai_desktop.pg.subprocess.Popen", return_value=process
+            ) as popen,
+        ):
             self.pg.start(54321)
 
         cmd = popen.call_args.args[0]
@@ -254,10 +279,12 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("FATAL: could not bind IPv4 address\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
-            with self.assertRaises(RuntimeError) as ctx:
-                self.pg.start(54321)
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run),
+            self.assertRaises(RuntimeError) as ctx,
+        ):
+            self.pg.start(54321)
         self.assertIn("pg_ctl", str(ctx.exception))
         self.assertIn("could not bind IPv4 address", str(ctx.exception))
 
@@ -303,8 +330,10 @@ class EmbeddedPostgresTests(unittest.TestCase):
             self._write_pidfile(4321)
             return mock.Mock(returncode=0)
 
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run),
+        ):
             self.pg.start(54321)
         self.assertEqual(4321, self.pg.started_pid)
 
@@ -316,10 +345,12 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("server did not start in time\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
-            with self.assertRaises(RuntimeError):
-                self.pg.start(54321)
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run),
+            self.assertRaises(RuntimeError),
+        ):
+            self.pg.start(54321)
         self.assertEqual(5555, self.pg.started_pid)
 
     def test_failed_start_never_claims_a_preexisting_postmaster(self):
@@ -329,10 +360,12 @@ class EmbeddedPostgresTests(unittest.TestCase):
             kwargs["stderr"].write("lock file exists\n")
             return mock.Mock(returncode=1)
 
-        with mock.patch("debateai_desktop.pg.sys.platform", "linux"), \
-                mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run):
-            with self.assertRaises(RuntimeError):
-                self.pg.start(54321)
+        with (
+            mock.patch("debateai_desktop.pg.sys.platform", "linux"),
+            mock.patch("debateai_desktop.pg.subprocess.run", side_effect=fake_run),
+            self.assertRaises(RuntimeError),
+        ):
+            self.pg.start(54321)
         self.assertIsNone(self.pg.started_pid)
 
     def test_recover_stale_removes_pidfile_when_not_running(self):
@@ -380,25 +413,19 @@ class EmbeddedPostgresTests(unittest.TestCase):
     def test_running_port_reads_live_port_from_postmaster_pid(self):
         pgdata = self.data_dir / "pgdata"
         pgdata.mkdir(parents=True)
-        (pgdata / "postmaster.pid").write_text(
-            f"4321\n{pgdata}\n123456\n10966\n"
-        )
+        (pgdata / "postmaster.pid").write_text(f"4321\n{pgdata}\n123456\n10966\n")
         with mock.patch.object(self.pg, "is_running", return_value=True):
             self.assertEqual(10966, self.pg.running_port())
 
     def test_running_port_rejects_unreachable_postmaster(self):
         pgdata = self.data_dir / "pgdata"
         pgdata.mkdir(parents=True)
-        (pgdata / "postmaster.pid").write_text(
-            f"4321\n{pgdata}\n123456\n10966\n"
-        )
+        (pgdata / "postmaster.pid").write_text(f"4321\n{pgdata}\n123456\n10966\n")
         with mock.patch.object(self.pg, "is_running", return_value=False):
             self.assertIsNone(self.pg.running_port())
 
     def test_adopt_running_claims_exact_live_postmaster_for_clean_shutdown(self):
-        self._write_pidfile(4321).write_text(
-            f"4321\n{self.pg.pgdata}\n123456\n10966\n"
-        )
+        self._write_pidfile(4321).write_text(f"4321\n{self.pg.pgdata}\n123456\n10966\n")
         with mock.patch.object(self.pg, "is_running", return_value=True):
             self.pg.adopt_running(10966)
         self.assertEqual(4321, self.pg.started_pid)

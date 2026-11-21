@@ -11,7 +11,6 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-
 ExperimentalMoveKind = Literal[
     "contradiction",
     "example",
@@ -75,13 +74,19 @@ def build_experimental_update(
         claim_revision=int(getattr(recommendation, "claim_revision", 0) or 0),
         transcript_revision=int(getattr(recommendation, "transcript_revision", 0) or 0),
         generation_id=str(getattr(recommendation, "generation_id", "") or ""),
-        options_revision=int(getattr(recommendation, "recommendation_revision", 0) or 0),
+        options_revision=int(
+            getattr(recommendation, "recommendation_revision", 0) or 0
+        ),
         options=options,
         selected_option_id=selected_id,
         selection_reason=str(getattr(recommendation, "selection_reason", "") or ""),
         external_insight_count=int(external_insight_count),
-        research_status=str(getattr(recommendation, "research_status", "idle") or "idle"),
-        analysis_status=str(getattr(recommendation, "analysis_status", "idle") or "idle"),
+        research_status=str(
+            getattr(recommendation, "research_status", "idle") or "idle"
+        ),
+        analysis_status=str(
+            getattr(recommendation, "analysis_status", "idle") or "idle"
+        ),
         created_at=created_at or datetime.now(UTC).isoformat(),
         recommendation=recommendation.model_dump(mode="json"),
     )

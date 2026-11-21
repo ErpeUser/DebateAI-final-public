@@ -12,9 +12,8 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.services import transcription_runtime  # noqa: E402
-from app.services.agents.orchestrator import AgentOrchestrator  # noqa: E402
-
+from app.services import transcription_runtime
+from app.services.agents.orchestrator import AgentOrchestrator
 
 CLOUD_BATCH = "gemini-3.5-flash"
 CLOUD_LIVE = "gemini-3.1-flash-live-preview"
@@ -25,33 +24,86 @@ CLOUD_TEXT = "gemini-3.5-flash"
 def _shield(enabled: bool):
     # transcription_runtime reads the flag through pii.state, not the shield
     # module, so the two never import each other.
-    return patch("app.services.transcription_runtime.shield_enabled", AsyncMock(return_value=enabled))
+    return patch(
+        "app.services.transcription_runtime.shield_enabled",
+        AsyncMock(return_value=enabled),
+    )
 
 
 class AudioLockTests(unittest.IsolatedAsyncioTestCase):
     async def test_shield_alone_locks_audio_and_names_itself(self):
-        with mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), _shield(True):
-            self.assertEqual(await transcription_runtime.audio_lock_reason(MagicMock()), "The PII Shield is on")
-        with mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), _shield(False):
-            self.assertEqual(await transcription_runtime.audio_lock_reason(MagicMock()), "")
-        with mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=True)), _shield(False):
-            self.assertEqual(await transcription_runtime.audio_lock_reason(MagicMock()), "Privacy First mode is on")
+        with (
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            _shield(True),
+        ):
+            self.assertEqual(
+                await transcription_runtime.audio_lock_reason(MagicMock()),
+                "The PII Shield is on",
+            )
+        with (
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            _shield(False),
+        ):
+            self.assertEqual(
+                await transcription_runtime.audio_lock_reason(MagicMock()), ""
+            )
+        with (
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=True)
+            ),
+            _shield(False),
+        ):
+            self.assertEqual(
+                await transcription_runtime.audio_lock_reason(MagicMock()),
+                "Privacy First mode is on",
+            )
 
     async def test_a_cloud_batch_transcriber_is_coerced_to_local_under_the_shield(self):
         gateway = MagicMock(model_id="")
-        with mock.patch.object(transcription_runtime, "get_app_setting", AsyncMock(return_value=CLOUD_BATCH)), \
-             mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), \
-             mock.patch.object(transcription_runtime, "_get_audio_gateway_config", AsyncMock(return_value=gateway)), \
-             _shield(True):
-            config = await transcription_runtime.get_transcription_runtime_config(MagicMock())
-        self.assertEqual(config.batch_model_id, transcription_runtime.DEFAULT_LOCAL_BATCH_MODEL)
+        with (
+            mock.patch.object(
+                transcription_runtime,
+                "get_app_setting",
+                AsyncMock(return_value=CLOUD_BATCH),
+            ),
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            mock.patch.object(
+                transcription_runtime,
+                "_get_audio_gateway_config",
+                AsyncMock(return_value=gateway),
+            ),
+            _shield(True),
+        ):
+            config = await transcription_runtime.get_transcription_runtime_config(
+                MagicMock()
+            )
+        self.assertEqual(
+            config.batch_model_id, transcription_runtime.DEFAULT_LOCAL_BATCH_MODEL
+        )
 
-    async def test_selecting_a_cloud_transcriber_or_gateway_is_refused_with_the_shield_named(self):
-        with mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), _shield(True):
+    async def test_selecting_a_cloud_transcriber_or_gateway_is_refused_with_the_shield_named(
+        self,
+    ):
+        with (
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            _shield(True),
+        ):
             with self.assertRaises(ValueError) as batch:
-                await transcription_runtime.set_batch_transcriber_model(MagicMock(), CLOUD_BATCH)
+                await transcription_runtime.set_batch_transcriber_model(
+                    MagicMock(), CLOUD_BATCH
+                )
             with self.assertRaises(ValueError) as live:
-                await transcription_runtime.set_live_preview_model(MagicMock(), CLOUD_LIVE)
+                await transcription_runtime.set_live_preview_model(
+                    MagicMock(), CLOUD_LIVE
+                )
         self.assertIn("PII Shield", str(batch.exception))
         self.assertIn("PII Shield", str(live.exception))
 
@@ -59,25 +111,54 @@ class AudioLockTests(unittest.IsolatedAsyncioTestCase):
         db = MagicMock()
         db.commit = AsyncMock()
         gateway = MagicMock(model_id="")
-        with mock.patch.object(transcription_runtime, "get_local_only", AsyncMock(return_value=False)), \
-             mock.patch.object(transcription_runtime, "set_app_setting", AsyncMock()), \
-             mock.patch.object(transcription_runtime, "get_app_setting", AsyncMock(return_value="local-whisper-base")), \
-             mock.patch.object(transcription_runtime, "_get_audio_gateway_config", AsyncMock(return_value=gateway)), \
-             _shield(True):
-            config = await transcription_runtime.set_batch_transcriber_model(db, "local-whisper-base")
+        with (
+            mock.patch.object(
+                transcription_runtime, "get_local_only", AsyncMock(return_value=False)
+            ),
+            mock.patch.object(transcription_runtime, "set_app_setting", AsyncMock()),
+            mock.patch.object(
+                transcription_runtime,
+                "get_app_setting",
+                AsyncMock(return_value="local-whisper-base"),
+            ),
+            mock.patch.object(
+                transcription_runtime,
+                "_get_audio_gateway_config",
+                AsyncMock(return_value=gateway),
+            ),
+            _shield(True),
+        ):
+            config = await transcription_runtime.set_batch_transcriber_model(
+                db, "local-whisper-base"
+            )
             self.assertEqual(config.batch_model_id, "local-whisper-base")
             await transcription_runtime.set_live_preview_model(db, LOCAL_LIVE)
         self.assertEqual(gateway.model_id, LOCAL_LIVE)
 
 
 def _config(model_id: str, enabled: bool = True) -> MagicMock:
-    return MagicMock(enabled=enabled, model_id=model_id, prompt="", interval_seconds=15, sub_types="", lenses="")
+    return MagicMock(
+        enabled=enabled,
+        model_id=model_id,
+        prompt="",
+        interval_seconds=15,
+        sub_types="",
+        lenses="",
+    )
 
 
-def _build(configs: dict, *, audio_local_only: bool, local_only: bool = False) -> AgentOrchestrator:
+def _build(
+    configs: dict, *, audio_local_only: bool, local_only: bool = False
+) -> AgentOrchestrator:
     with (
-        patch("app.services.agents.orchestrator.ConsolidatedAnalystAgent", return_value=MagicMock()),
-        patch("app.services.agents.orchestrator.ObjectionHandlerAgent", return_value=MagicMock()),
+        patch(
+            "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
+            return_value=MagicMock(),
+        ),
+        patch(
+            "app.services.agents.orchestrator.ObjectionHandlerAgent",
+            return_value=MagicMock(),
+        ),
     ):
         return AgentOrchestrator(
             session_id=uuid4(),
@@ -94,7 +175,9 @@ def _build(configs: dict, *, audio_local_only: bool, local_only: bool = False) -
 
 
 def _agent(orchestrator: AgentOrchestrator, slug: str) -> dict:
-    return next(a for a in orchestrator.activity.snapshot()["agents"] if a["slug"] == slug)
+    return next(
+        a for a in orchestrator.activity.snapshot()["agents"] if a["slug"] == slug
+    )
 
 
 class OrchestratorAudioPolicyTests(unittest.TestCase):
@@ -112,23 +195,37 @@ class OrchestratorAudioPolicyTests(unittest.TestCase):
         self.assertEqual(gateway["state"], "blocked")
         self.assertEqual(gateway["blocked_reason"], "pii_shield")
         self.assertIn("on-device captioner", gateway["remedy"])
-        self.assertNotEqual(_agent(orchestrator, "consolidated_analyst")["state"], "blocked")
-        self.assertNotEqual(_agent(orchestrator, "transcript_refiner")["state"], "blocked")
+        self.assertNotEqual(
+            _agent(orchestrator, "consolidated_analyst")["state"], "blocked"
+        )
+        self.assertNotEqual(
+            _agent(orchestrator, "transcript_refiner")["state"], "blocked"
+        )
         self.assertIn("transcript_refinement", orchestrator.drain_stages())
         self.assertEqual(orchestrator.drain_stages()[0], "transcript_refinement")
 
     def test_on_device_captioner_is_admitted_under_the_shield(self):
-        orchestrator = _build({"audio_gateway": _config(LOCAL_LIVE)}, audio_local_only=True)
+        orchestrator = _build(
+            {"audio_gateway": _config(LOCAL_LIVE)}, audio_local_only=True
+        )
         self.assertTrue(orchestrator._is_enabled("audio_gateway"))
 
     def test_without_the_shield_a_cloud_gateway_runs_as_before(self):
-        orchestrator = _build({"audio_gateway": _config(CLOUD_LIVE)}, audio_local_only=False)
+        orchestrator = _build(
+            {"audio_gateway": _config(CLOUD_LIVE)}, audio_local_only=False
+        )
         self.assertTrue(orchestrator._is_enabled("audio_gateway"))
         self.assertNotIn("transcript_refinement", orchestrator.drain_stages())
 
     def test_privacy_first_still_reports_its_own_reason(self):
-        with patch("app.services.agents.orchestrator.provider_for", return_value="google"):
-            orchestrator = _build({"audio_gateway": _config(CLOUD_LIVE)}, audio_local_only=False, local_only=True)
+        with patch(
+            "app.services.agents.orchestrator.provider_for", return_value="google"
+        ):
+            orchestrator = _build(
+                {"audio_gateway": _config(CLOUD_LIVE)},
+                audio_local_only=False,
+                local_only=True,
+            )
             orchestrator.admitted_models = set()
         # Rebuild the snapshot state through the same gate the constructor used.
         self.assertFalse(orchestrator._is_enabled("audio_gateway"))

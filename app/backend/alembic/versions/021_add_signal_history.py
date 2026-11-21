@@ -6,9 +6,7 @@ Create Date: 2026-07-30
 """
 
 import sqlalchemy as sa
-
 from alembic import op
-
 
 revision = "021_signal_history"
 down_revision = "020_endpoint_tombstones"

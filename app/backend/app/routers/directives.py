@@ -1,20 +1,23 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Directive, Question
 from app.schemas import DirectiveCreate, DirectiveOut, DirectiveUpdate
 from app.services.pii import shield
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/directives", tags=["directives"])
 
 
 @router.post("", response_model=DirectiveOut, status_code=201)
-async def create_directive(session_id: uuid.UUID, body: DirectiveCreate, db: AsyncSession = Depends(get_db)):
-    directive = Directive(session_id=session_id, text=await shield.protect_text(db, session_id, body.text))
+async def create_directive(
+    session_id: uuid.UUID, body: DirectiveCreate, db: AsyncSession = Depends(get_db)
+):
+    directive = Directive(
+        session_id=session_id, text=await shield.protect_text(db, session_id, body.text)
+    )
     db.add(directive)
     await db.commit()
     await db.refresh(directive)
@@ -38,7 +41,10 @@ async def list_directives(
 
 @router.patch("/{directive_id}", response_model=DirectiveOut)
 async def update_directive(
-    session_id: uuid.UUID, directive_id: uuid.UUID, body: DirectiveUpdate, db: AsyncSession = Depends(get_db)
+    session_id: uuid.UUID,
+    directive_id: uuid.UUID,
+    body: DirectiveUpdate,
+    db: AsyncSession = Depends(get_db),
 ):
     directive = await db.get(Directive, directive_id)
     if not directive or directive.session_id != session_id:
@@ -53,7 +59,9 @@ async def update_directive(
 
 
 @router.delete("/{directive_id}", status_code=204)
-async def delete_directive(session_id: uuid.UUID, directive_id: uuid.UUID, db: AsyncSession = Depends(get_db)):
+async def delete_directive(
+    session_id: uuid.UUID, directive_id: uuid.UUID, db: AsyncSession = Depends(get_db)
+):
     directive = await db.get(Directive, directive_id)
     if not directive or directive.session_id != session_id:
         raise HTTPException(404, "Directive not found")

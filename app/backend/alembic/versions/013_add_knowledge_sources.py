@@ -6,9 +6,8 @@ Create Date: 2026-07-03
 """
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "013"
 down_revision = "012"
@@ -25,19 +24,28 @@ def upgrade():
         sa.Column("description", sa.Text, server_default=""),
         sa.Column("config", sa.Text, server_default="{}"),
         sa.Column("active", sa.Boolean, server_default="true"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
 
     op.create_table(
         "knowledge_records",
         sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
-        sa.Column("source_id", postgresql.UUID(as_uuid=True), sa.ForeignKey("knowledge_sources.id"), nullable=False),
+        sa.Column(
+            "source_id",
+            postgresql.UUID(as_uuid=True),
+            sa.ForeignKey("knowledge_sources.id"),
+            nullable=False,
+        ),
         sa.Column("title", sa.String(500), server_default=""),
         sa.Column("body", sa.Text, server_default=""),
         sa.Column("meta", sa.Text, server_default="{}"),
         sa.Column("active", sa.Boolean, server_default="true"),
-        sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column(
+            "created_at", sa.DateTime(timezone=True), server_default=sa.func.now()
+        ),
         sa.Column("updated_at", sa.DateTime(timezone=True), nullable=True),
     )
 

@@ -1,6 +1,11 @@
 import { useState, type ReactNode } from "react";
 import { ChevronDown, RefreshCw } from "lucide-react";
-import type { InsightCluster, Session, SessionSynthesis, SynthesisSectionItem } from "../../types";
+import type {
+  InsightCluster,
+  Session,
+  SessionSynthesis,
+  SynthesisSectionItem,
+} from "../../types";
 import SignalHistory from "../SignalHistory";
 import { buildBriefingLayout } from "./briefingSections";
 
@@ -42,8 +47,10 @@ export type StatusTone = "blocked" | "open" | "quiet";
 
 export function statusTone(status: string): StatusTone {
   const s = status.toLowerCase();
-  if (/(block|stuck|stall|urgent|escalat|overdue|at risk|lost)/.test(s)) return "blocked";
-  if (/(open|pending|todo|to do|not started|unresolved|waiting|needs)/.test(s)) return "open";
+  if (/(block|stuck|stall|urgent|escalat|overdue|at risk|lost)/.test(s))
+    return "blocked";
+  if (/(open|pending|todo|to do|not started|unresolved|waiting|needs)/.test(s))
+    return "open";
   return "quiet";
 }
 
@@ -70,10 +77,16 @@ export function StatusText({ status }: { status: string }) {
   const tone = statusTone(status);
   if (tone === "quiet") return <span>{status}</span>;
   const mark = tone === "blocked" ? "bg-red-500" : "bg-brand-amber";
-  const text = tone === "blocked" ? "font-medium text-red-700 dark:text-red-400" : "font-medium text-brand-gray";
+  const text =
+    tone === "blocked"
+      ? "font-medium text-red-700 dark:text-red-400"
+      : "font-medium text-brand-gray";
   return (
     <span className={`inline-flex items-center gap-1.5 ${text}`}>
-      <span aria-hidden="true" className={`h-1.5 w-1.5 shrink-0 rounded-full ${mark}`} />
+      <span
+        aria-hidden="true"
+        className={`h-1.5 w-1.5 shrink-0 rounded-full ${mark}`}
+      />
       {status}
     </span>
   );
@@ -116,7 +129,9 @@ function Disclosure({ text }: { text?: string }) {
         Why this matters
       </button>
       {open && (
-        <p className="mt-1.5 max-w-prose font-body text-sm leading-relaxed text-brand-gray">{text}</p>
+        <p className="mt-1.5 max-w-prose font-body text-sm leading-relaxed text-brand-gray">
+          {text}
+        </p>
       )}
     </div>
   );
@@ -128,14 +143,27 @@ export const DIVIDED_LIST_CLASS = "divide-y divide-brand-light-gray-1/60";
 
 // The optional id lands on the h3 so a caller's section can point at it
 // with aria-labelledby.
-export function SectionHeading({ label, count, id }: { label: string; count?: number; id?: string }) {
+export function SectionHeading({
+  label,
+  count,
+  id,
+}: {
+  label: string;
+  count?: number;
+  id?: string;
+}) {
   return (
     <div className="flex items-baseline justify-between gap-3 border-b border-brand-light-gray-1 pb-2">
-      <h3 id={id} className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-mid-gray">
+      <h3
+        id={id}
+        className="font-display text-[11px] font-semibold uppercase tracking-[0.12em] text-brand-mid-gray"
+      >
         {label}
       </h3>
       {count !== undefined && count > 0 && (
-        <span className="font-body text-[11px] font-medium tabular-nums text-brand-mid-gray">{count}</span>
+        <span className="font-body text-[11px] font-medium tabular-nums text-brand-mid-gray">
+          {count}
+        </span>
       )}
     </div>
   );
@@ -143,13 +171,23 @@ export function SectionHeading({ label, count, id }: { label: string; count?: nu
 
 // The lead list (top outcomes) uses display type and a hanging numeral; every
 // other section uses the same row at body size.
-function Item({ item, lead = false, index = 0 }: { item: SynthesisSectionItem; lead?: boolean; index?: number }) {
+function Item({
+  item,
+  lead = false,
+  index = 0,
+}: {
+  item: SynthesisSectionItem;
+  lead?: boolean;
+  index?: number;
+}) {
   const heading = (item.title || "").trim();
   const body = (item.summary || "").trim();
   const title = heading || body;
   const summary = heading && body ? body : "";
   return (
-    <li className={`flex items-baseline gap-4 ${lead ? "py-4" : "py-3"} first:pt-0 last:pb-0`}>
+    <li
+      className={`flex items-baseline gap-4 ${lead ? "py-4" : "py-3"} first:pt-0 last:pb-0`}
+    >
       {lead && (
         <span className="bc-accent-text w-5 shrink-0 font-display text-sm font-semibold tabular-nums">
           {index + 1}
@@ -169,7 +207,9 @@ function Item({ item, lead = false, index = 0 }: { item: SynthesisSectionItem; l
           <ItemMeta status={item.status} owner={item.owner} />
         </div>
         {summary && (
-          <p className="mt-1 max-w-prose font-body text-sm leading-relaxed text-brand-gray">{summary}</p>
+          <p className="mt-1 max-w-prose font-body text-sm leading-relaxed text-brand-gray">
+            {summary}
+          </p>
         )}
         <Disclosure text={item.rationale} />
       </div>
@@ -178,10 +218,23 @@ function Item({ item, lead = false, index = 0 }: { item: SynthesisSectionItem; l
 }
 
 // Items arrive already filtered to readable ones by buildBriefingLayout.
-function ItemSection({ label, items, lead = false }: { label: string; items: SynthesisSectionItem[]; lead?: boolean }) {
+function ItemSection({
+  label,
+  items,
+  lead = false,
+}: {
+  label: string;
+  items: SynthesisSectionItem[];
+  lead?: boolean;
+}) {
   if (items.length === 0) return null;
   const rows = items.map((item, index) => (
-    <Item key={`${item.title}-${index}`} item={item} lead={lead} index={index} />
+    <Item
+      key={`${item.title}-${index}`}
+      item={item}
+      lead={lead}
+      index={index}
+    />
   ));
   return (
     <section>
@@ -208,11 +261,15 @@ function ClustersSection({ clusters }: { clusters: InsightCluster[] }) {
                 {cluster.title}
               </p>
               {cluster.confidence && (
-                <span className="shrink-0 font-body text-xs text-brand-mid-gray">Confidence: {cluster.confidence}</span>
+                <span className="shrink-0 font-body text-xs text-brand-mid-gray">
+                  Confidence: {cluster.confidence}
+                </span>
               )}
             </div>
             {cluster.summary && (
-              <p className="mt-1 max-w-prose font-body text-sm leading-relaxed text-brand-gray">{cluster.summary}</p>
+              <p className="mt-1 max-w-prose font-body text-sm leading-relaxed text-brand-gray">
+                {cluster.summary}
+              </p>
             )}
           </li>
         ))}
@@ -234,7 +291,10 @@ function ErrorNote({ text }: { text: string }) {
 
 // The context line under the title: meeting type, freshness, and the
 // briefing's state only when it is something other than complete.
-function contextParts(session: Pick<Session, "meeting_type">, synthesis: SessionSynthesis | null): ReactNode[] {
+function contextParts(
+  session: Pick<Session, "meeting_type">,
+  synthesis: SessionSynthesis | null,
+): ReactNode[] {
   const parts: ReactNode[] = [];
   const typeLabel = meetingTypeLabel(session.meeting_type);
   if (typeLabel) parts.push(<span key="type">{typeLabel}</span>);
@@ -245,16 +305,34 @@ function contextParts(session: Pick<Session, "meeting_type">, synthesis: Session
   const updated = formatUpdated(synthesis.updated_at || synthesis.created_at);
   if (updated) parts.push(<span key="updated">Aktualisiert {updated}</span>);
   if (synthesis.status === "partial") {
-    parts.push(<span key="status" className="font-medium text-amber-700 dark:text-amber-400">Teilweises Briefing</span>);
+    parts.push(
+      <span
+        key="status"
+        className="font-medium text-amber-700 dark:text-amber-400"
+      >
+        Teilweises Briefing
+      </span>,
+    );
   } else if (synthesis.status === "error") {
-    parts.push(<span key="status" className="font-medium text-red-700 dark:text-red-400">Briefing fehlgeschlagen</span>);
+    parts.push(
+      <span key="status" className="font-medium text-red-700 dark:text-red-400">
+        Briefing fehlgeschlagen
+      </span>,
+    );
   } else if (synthesis.status === "pending") {
     parts.push(<span key="status">Briefing wird erstellt</span>);
   }
   return parts;
 }
 
-export default function BriefingView({ session, synthesis, signalHistoryCount, onRefresh, refreshing, error }: BriefingViewProps) {
+export default function BriefingView({
+  session,
+  synthesis,
+  signalHistoryCount,
+  onRefresh,
+  refreshing,
+  error,
+}: BriefingViewProps) {
   const actionLabel = refreshing
     ? synthesis
       ? "Wird aktualisiert..."
@@ -307,13 +385,16 @@ export default function BriefingView({ session, synthesis, signalHistoryCount, o
         </header>
 
         {error && <ErrorNote text={error} />}
-        {synthesis?.status === "error" && synthesis.error_message && <ErrorNote text={synthesis.error_message} />}
+        {synthesis?.status === "error" && synthesis.error_message && (
+          <ErrorNote text={synthesis.error_message} />
+        )}
 
         {!synthesis && (
           <p className="max-w-prose font-body text-sm leading-relaxed text-brand-gray">
-            Für dieses Gespräch wurde noch kein Briefing erstellt, etwa nach „Ohne Briefing beenden“
-            oder einer unterbrochenen Verbindung. „Briefing erstellen“ wertet jetzt das gespeicherte
-            Transkript und die Erkenntnisse aus.
+            Für dieses Gespräch wurde noch kein Briefing erstellt, etwa nach
+            „Ohne Briefing beenden“ oder einer unterbrochenen Verbindung.
+            „Briefing erstellen“ wertet jetzt das gespeicherte Transkript und
+            die Erkenntnisse aus.
           </p>
         )}
 
@@ -321,9 +402,16 @@ export default function BriefingView({ session, synthesis, signalHistoryCount, o
           <>
             {layout.blocks.map((block) =>
               block.kind === "pair" ? (
-                <div key={`${block.sections[0].key}+${block.sections[1].key}`} className={`grid gap-8 ${block.cols}`}>
+                <div
+                  key={`${block.sections[0].key}+${block.sections[1].key}`}
+                  className={`grid gap-8 ${block.cols}`}
+                >
                   {block.sections.map((section) => (
-                    <ItemSection key={section.key} label={section.label} items={section.items} />
+                    <ItemSection
+                      key={section.key}
+                      label={section.label}
+                      items={section.items}
+                    />
                   ))}
                 </div>
               ) : (
@@ -342,9 +430,13 @@ export default function BriefingView({ session, synthesis, signalHistoryCount, o
 
         {signalHistoryCount > 0 && (
           <section>
-            <SectionHeading label="Verlauf strategischer Signale" count={signalHistoryCount} />
+            <SectionHeading
+              label="Verlauf strategischer Signale"
+              count={signalHistoryCount}
+            />
             <p className="mt-2 max-w-prose font-body text-xs text-brand-mid-gray">
-              Dauerhafte Signale aus dem Gespräch. Sie bleiben auch nach einer Briefing-Aktualisierung erhalten.
+              Dauerhafte Signale aus dem Gespräch. Sie bleiben auch nach einer
+              Briefing-Aktualisierung erhalten.
             </p>
             <SignalHistory sessionId={session.id} count={signalHistoryCount} />
           </section>
@@ -354,12 +446,16 @@ export default function BriefingView({ session, synthesis, signalHistoryCount, o
           <footer className="space-y-3 border-t border-brand-light-gray-1 pt-6">
             {arbiterNotes && (
               <p className="max-w-prose font-body text-sm italic leading-relaxed text-brand-mid-gray">
-                <span className="font-semibold not-italic text-brand-gray">Abgleichshinweise: </span>
+                <span className="font-semibold not-italic text-brand-gray">
+                  Abgleichshinweise:{" "}
+                </span>
                 {arbiterNotes}
               </p>
             )}
             {layout.missingNote && (
-              <p className="max-w-prose font-body text-xs text-brand-mid-gray">{layout.missingNote}</p>
+              <p className="max-w-prose font-body text-xs text-brand-mid-gray">
+                {layout.missingNote}
+              </p>
             )}
           </footer>
         )}

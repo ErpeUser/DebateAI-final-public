@@ -46,7 +46,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
             mock.patch.object(
                 subscription_bridge,
                 "probe",
-                mock.AsyncMock(return_value=(True, "Connected", ["gpt-test", "gemini-test"])),
+                mock.AsyncMock(
+                    return_value=(True, "Connected", ["gpt-test", "gemini-test"])
+                ),
             ),
             mock.patch.object(
                 subscription_bridge,
@@ -73,7 +75,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
         from app.services import subscription_bridge
 
         with mock.patch.dict(os.environ, {}, clear=True):
-            self.assertIsNone(await subscription_bridge.sync_subscription_bridge(object()))
+            self.assertIsNone(
+                await subscription_bridge.sync_subscription_bridge(object())
+            )
 
     async def test_startup_uses_the_desktop_verified_bridge_models(self):
         from app.services import subscription_bridge
@@ -194,7 +198,9 @@ class SubscriptionBridgeRegistrationTests(unittest.IsolatedAsyncioTestCase):
                     "update_endpoint",
                     mock.AsyncMock(return_value=endpoint),
                 ) as update,
-                mock.patch.object(subscription_bridge.asyncio, "sleep", mock.AsyncMock()),
+                mock.patch.object(
+                    subscription_bridge.asyncio, "sleep", mock.AsyncMock()
+                ),
             ):
                 await subscription_bridge.sync_gemini_web_bridge(object())
 

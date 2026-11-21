@@ -10,7 +10,6 @@ import time
 import urllib.request
 from pathlib import Path
 
-
 PROVIDER_ENVIRONMENT = {
     "ANTHROPIC_API_KEY",
     "DEBATEAI_API_KEY",
@@ -25,7 +24,11 @@ PROVIDER_ENVIRONMENT = {
 
 
 def isolated_environment(data_dir: str) -> dict[str, str]:
-    env = {key: value for key, value in os.environ.items() if key not in PROVIDER_ENVIRONMENT}
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key not in PROVIDER_ENVIRONMENT
+    }
     env.update(
         DEBATEAI_HEADLESS="1",
         DEBATEAI_DATA_DIR=data_dir,
@@ -59,9 +62,7 @@ def bundle_exe(bundle: Path | None = None) -> Path:
     return exe
 
 
-def wait_for_health(
-    proc: subprocess.Popen, lock: Path, deadline: float
-) -> int | None:
+def wait_for_health(proc: subprocess.Popen, lock: Path, deadline: float) -> int | None:
     while time.monotonic() < deadline:
         if proc.poll() is not None:
             return None
@@ -75,9 +76,7 @@ def wait_for_health(
                 if (
                     resp.status == 200
                     and "ok" in body
-                    and (
-                        resp.headers.get("X-DebateAI-Instance") == token
-                    )
+                    and (resp.headers.get("X-DebateAI-Instance") == token)
                 ):
                     return port
         except (OSError, ValueError, KeyError):
@@ -124,11 +123,15 @@ def check_local_asr(port: int, token: str) -> str:
 def check_testlab(port: int, token: str) -> None:
     """Exercise browser-loaded lab assets and the protected catalog in the EXE."""
     for path in (
-        "/calibration.html", "/calibration/launcher.mjs",
-        "/calibration/launcher.css", "/calibration/lab.mjs",
+        "/calibration.html",
+        "/calibration/launcher.mjs",
+        "/calibration/launcher.css",
+        "/calibration/lab.mjs",
         "/calibration/session.mjs",
     ):
-        with urllib.request.urlopen(f"http://localhost:{port}{path}", timeout=10) as response:
+        with urllib.request.urlopen(
+            f"http://localhost:{port}{path}", timeout=10
+        ) as response:
             if response.status != 200 or not response.read():
                 raise RuntimeError(f"Testlabor asset unavailable: {path}")
     request = urllib.request.Request(
@@ -137,7 +140,7 @@ def check_testlab(port: int, token: str) -> None:
     )
     with urllib.request.urlopen(request, timeout=30) as response:
         if not isinstance(json.loads(response.read()).get("models"), list):
-            raise RuntimeError("Testlabor model catalog unavailable")
+            raise TypeError("Testlabor model catalog unavailable")
 
 
 def main() -> int:
@@ -148,6 +151,7 @@ def main() -> int:
         env = isolated_environment(tmp)
         proc = subprocess.Popen([str(bundle_exe(args.bundle))], env=env, cwd=tmp)
         lock = Path(tmp) / "launcher.json"
+        shutdown_failed = False
         try:
             deadline = time.monotonic() + 300  # first run does initdb
             port = wait_for_health(proc, lock, deadline)
@@ -166,25 +170,33 @@ def main() -> int:
             try:
                 instance = json.loads(lock.read_text())
                 reason = check_local_asr(port, str(instance["token"]))
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 reason = f"probe failed ({type(exc).__name__}: {exc})"
             if reason:
-                print(f"FAIL: bundled local ASR runtime unusable: {reason}", file=sys.stderr)
+                print(
+                    f"FAIL: bundled local ASR runtime unusable: {reason}",
+                    file=sys.stderr,
+                )
                 dump_logs(Path(tmp))
                 return 1
             print("OK: bundled local ASR runtime usable")
             try:
                 check_testlab(port, str(instance["token"]))
             except Exception as exc:
-                print(f"FAIL: testlab bootstrap ({type(exc).__name__}: {exc})", file=sys.stderr)
+                print(
+                    f"FAIL: testlab bootstrap ({type(exc).__name__}: {exc})",
+                    file=sys.stderr,
+                )
                 return 1
             print("OK: testlab assets and authenticated catalog usable")
         finally:
-            if not stop_process(proc, Path(tmp) / "stop", timeout=90):
+            shutdown_failed = not stop_process(proc, Path(tmp) / "stop", timeout=90)
+            if shutdown_failed:
                 proc.kill()
                 print("FAIL: launcher did not shut down cleanly", file=sys.stderr)
                 dump_logs(Path(tmp))
-                return 1
+        if shutdown_failed:
+            return 1
         if proc.returncode != 0:
             print(f"FAIL: exit code {proc.returncode}", file=sys.stderr)
             dump_logs(Path(tmp))

@@ -1,4 +1,5 @@
 from pathlib import Path
+
 """A stored provider key never comes back out of the API or the logs.
 
 Drives the real routers through the real app (Host guard included) with the
@@ -11,13 +12,12 @@ and its Fernet ciphertext appear in none of them.
 import os
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest import mock
 
 import httpx
-from fastapi.testclient import TestClient
-
 from app.models import CustomEndpoint
+from fastapi.testclient import TestClient
 
 SECRET = "AI" + "za" + ("x" * 32)  # Synthetic test value, never a credential
 ENDPOINT_SECRET = "endpoint-proxy-token-0a1b2c3d4e5f6789"
@@ -108,7 +108,9 @@ class CredentialExposureTests(unittest.TestCase):
 
     def test_saved_key_is_never_returned(self):
         with mock.patch.object(
-            self.credentials_router, "run_connection_test", mock.AsyncMock(return_value=(True, "Connection successful"))
+            self.credentials_router,
+            "run_connection_test",
+            mock.AsyncMock(return_value=(True, "Connection successful")),
         ):
             saved = self.client.put("/api/credentials/google", json={"api_key": SECRET})
         self.assertEqual(200, saved.status_code, saved.text)
@@ -138,7 +140,9 @@ class CredentialExposureTests(unittest.TestCase):
         self.addCleanup(patch.stop)
         return key_file
 
-    def test_saving_a_key_with_an_unusable_master_key_is_a_503_with_recovery_steps(self):
+    def test_saving_a_key_with_an_unusable_master_key_is_a_503_with_recovery_steps(
+        self,
+    ):
         key_file = self._make_master_key_unusable()
         response = self.client.put("/api/credentials/google", json={"api_key": SECRET})
         self.assertEqual(503, response.status_code, response.text)
@@ -152,7 +156,11 @@ class CredentialExposureTests(unittest.TestCase):
         # Reads still answer, reporting the provider as unconfigured.
         listed = self.client.get("/api/credentials")
         self.assertEqual(200, listed.status_code, listed.text)
-        self.assertFalse(next(row for row in listed.json() if row["provider"] == "google")["configured"])
+        self.assertFalse(
+            next(row for row in listed.json() if row["provider"] == "google")[
+                "configured"
+            ]
+        )
 
     def test_saving_an_endpoint_key_with_an_unusable_master_key_is_a_503(self):
         from app.services import custom_endpoints
@@ -162,20 +170,30 @@ class CredentialExposureTests(unittest.TestCase):
         async def no_endpoints(db):
             return []
 
-        with mock.patch.object(custom_endpoints, "list_endpoints", no_endpoints), \
-             mock.patch.object(self.endpoints_router, "list_endpoints", no_endpoints):
+        with (
+            mock.patch.object(custom_endpoints, "list_endpoints", no_endpoints),
+            mock.patch.object(self.endpoints_router, "list_endpoints", no_endpoints),
+        ):
             response = self.client.post(
                 "/api/endpoints",
-                json={"name": "Proxy", "base_url": "https://proxy.example/v1", "api_key": ENDPOINT_SECRET},
+                json={
+                    "name": "Proxy",
+                    "base_url": "https://proxy.example/v1",
+                    "api_key": ENDPOINT_SECRET,
+                },
             )
         self.assertEqual(503, response.status_code, response.text)
         self.assertIn(key_file, response.json()["detail"])
         self._assert_clean(response.text, ENDPOINT_SECRET)
 
     def test_connection_test_failure_message_is_scrubbed(self):
-        self.settings_store["credentials.google.api_key"] = self.secrets.encrypt_value(SECRET)
+        self.settings_store["credentials.google.api_key"] = self.secrets.encrypt_value(
+            SECRET
+        )
         # Simulate an SDK failure that quotes the request it made.
-        boom = RuntimeError(f"401 for url https://generativelanguage.googleapis.com/v1beta/models?key={SECRET}")
+        boom = RuntimeError(
+            f"401 for url https://generativelanguage.googleapis.com/v1beta/models?key={SECRET}"
+        )
         with mock.patch("google.genai.Client", side_effect=boom):
             response = self.client.post("/api/credentials/google/test")
         self.assertEqual(200, response.status_code, response.text)
@@ -195,8 +213,8 @@ class CredentialExposureTests(unittest.TestCase):
             last_status="",
             last_error="",
             last_checked_at=None,
-            created_at=datetime.now(timezone.utc),
-            updated_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
+            updated_at=datetime.now(UTC),
             deleted_at=None,
         )
         self.db.rows["proxy"] = endpoint
@@ -205,10 +223,16 @@ class CredentialExposureTests(unittest.TestCase):
             return [endpoint]
 
         failed_probe = mock.AsyncMock(
-            return_value=(False, f"HTTP 401 for https://proxy.example/v1/models with Bearer {ENDPOINT_SECRET}", [])
+            return_value=(
+                False,
+                f"HTTP 401 for https://proxy.example/v1/models with Bearer {ENDPOINT_SECRET}",
+                [],
+            )
         )
-        with mock.patch.object(self.endpoints_router, "list_endpoints", fake_list), \
-             mock.patch.object(self.endpoints_router, "probe", failed_probe):
+        with (
+            mock.patch.object(self.endpoints_router, "list_endpoints", fake_list),
+            mock.patch.object(self.endpoints_router, "probe", failed_probe),
+        ):
             listed = self.client.get("/api/endpoints")
             self.assertEqual(200, listed.status_code, listed.text)
             self._assert_clean(listed.text, ENDPOINT_SECRET)
@@ -232,7 +256,9 @@ class CredentialExposureTests(unittest.TestCase):
         boom = httpx.HTTPStatusError(
             f"Client error '401' for url 'https://proxy.example/v1/models?api_key={ENDPOINT_SECRET}'",
             request=httpx.Request("GET", "https://proxy.example/v1/models"),
-            response=httpx.Response(401, request=httpx.Request("GET", "https://proxy.example/v1/models")),
+            response=httpx.Response(
+                401, request=httpx.Request("GET", "https://proxy.example/v1/models")
+            ),
         )
 
         class FailingClient:
@@ -246,12 +272,17 @@ class CredentialExposureTests(unittest.TestCase):
                 return False
 
             async def get(self, *args, **kwargs):
-                raise RuntimeError(f"transport failure while sending Bearer {ENDPOINT_SECRET}")
+                raise RuntimeError(
+                    f"transport failure while sending Bearer {ENDPOINT_SECRET}"
+                )
 
         with mock.patch.object(custom_endpoints.httpx, "AsyncClient", FailingClient):
             response = self.client.post(
                 "/api/endpoints/probe",
-                json={"base_url": "https://proxy.example/v1", "api_key": ENDPOINT_SECRET},
+                json={
+                    "base_url": "https://proxy.example/v1",
+                    "api_key": ENDPOINT_SECRET,
+                },
             )
         self.assertEqual(200, response.status_code, response.text)
         self._assert_clean(response.text, ENDPOINT_SECRET)
@@ -261,13 +292,17 @@ class CredentialExposureTests(unittest.TestCase):
         from app.services import provider_errors
 
         self.redaction.register_secret(SECRET)
-        request = httpx.Request("POST", f"https://api.openai.com/v1/chat/completions?key={SECRET}")
+        request = httpx.Request(
+            "POST", f"https://api.openai.com/v1/chat/completions?key={SECRET}"
+        )
         exc = httpx.HTTPStatusError(
             f"Client error '401 Unauthorized' for url '{request.url}'",
             request=request,
             response=httpx.Response(401, request=request, text="{}"),
         )
-        with self.assertLogs("app.services.provider_errors", level="WARNING") as captured:
+        with self.assertLogs(
+            "app.services.provider_errors", level="WARNING"
+        ) as captured:
             http_exc = provider_errors.provider_error_to_http("openai", exc)
         self.assertNotIn(SECRET, http_exc.detail)
         self.assertNotIn(SECRET, "\n".join(captured.output))

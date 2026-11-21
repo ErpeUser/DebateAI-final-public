@@ -20,7 +20,10 @@ test("OpenAI login reserves the browser from the click and navigates it later", 
   });
 
   assert.equal(reserved, popup);
-  assert.equal(navigateOAuthWindow(reserved, "https://auth.example/authorize"), true);
+  assert.equal(
+    navigateOAuthWindow(reserved, "https://auth.example/authorize"),
+    true,
+  );
   assert.equal(popup.opener, null);
   assert.deepEqual(calls, [
     ["open", "about:blank", "_blank", "popup,width=760,height=820"],
@@ -30,19 +33,32 @@ test("OpenAI login reserves the browser from the click and navigates it later", 
 });
 
 test("blocked or failed OAuth windows retain the manual fallback safely", () => {
-  assert.equal(reserveOAuthWindow(() => null), null);
-  assert.equal(navigateOAuthWindow(null, "https://auth.example/authorize"), false);
+  assert.equal(
+    reserveOAuthWindow(() => null),
+    null,
+  );
+  assert.equal(
+    navigateOAuthWindow(null, "https://auth.example/authorize"),
+    false,
+  );
 
   let closed = false;
   closeOAuthWindow({
     opener: null,
     location: { replace: () => {} },
     focus: () => {},
-    close: () => { closed = true; },
+    close: () => {
+      closed = true;
+    },
   });
   assert.equal(closed, true);
 });
 
 test("a browser opener exception keeps the manual OAuth fallback available", () => {
-  assert.equal(reserveOAuthWindow(() => { throw new Error("blocked"); }), null);
+  assert.equal(
+    reserveOAuthWindow(() => {
+      throw new Error("blocked");
+    }),
+    null,
+  );
 });

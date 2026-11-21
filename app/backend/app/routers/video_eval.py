@@ -9,11 +9,9 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.services.video_eval_jobs import VideoJobError, VideoJobStore
 from fastapi import APIRouter, Header, HTTPException
 from pydantic import BaseModel, ConfigDict, Field, HttpUrl
-
-from app.services.video_eval_jobs import VideoJobError, VideoJobStore
-
 
 router = APIRouter(prefix="/api/video-eval", tags=["video-eval"])
 _store = VideoJobStore()
@@ -39,7 +37,9 @@ def _raise(exc: VideoJobError) -> None:
         "invalid_state": 409,
         "provider_not_allowed": 400,
     }.get(exc.code, 400)
-    raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message}) from exc
+    raise HTTPException(
+        status_code=status, detail={"code": exc.code, "message": exc.message}
+    ) from exc
 
 
 def _token_matches(job_id: str, token: str) -> bool:
@@ -62,9 +62,18 @@ async def get_video_eval_job(
 ) -> dict[str, Any]:
     payload = _store.get(job_id)
     if payload is None:
-        raise HTTPException(status_code=404, detail={"code": "not_found", "message": "Videojob nicht gefunden."})
+        raise HTTPException(
+            status_code=404,
+            detail={"code": "not_found", "message": "Videojob nicht gefunden."},
+        )
     if not _token_matches(job_id, x_debateai_job_token):
-        raise HTTPException(status_code=403, detail={"code": "forbidden", "message": "Der Zugriff auf diesen Job ist nicht erlaubt."})
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": "Der Zugriff auf diesen Job ist nicht erlaubt.",
+            },
+        )
     return payload
 
 
@@ -75,9 +84,17 @@ async def consent_video_eval_job(
     x_debateai_job_token: str = Header(default=""),
 ) -> dict[str, Any]:
     if not _token_matches(job_id, x_debateai_job_token):
-        raise HTTPException(status_code=403, detail={"code": "forbidden", "message": "Der Zugriff auf diesen Job ist nicht erlaubt."})
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": "Der Zugriff auf diesen Job ist nicht erlaubt.",
+            },
+        )
     try:
-        return await _store.consent(job_id, provider=request.provider, approved=request.approved)
+        return await _store.consent(
+            job_id, provider=request.provider, approved=request.approved
+        )
     except VideoJobError as exc:
         _raise(exc)
     raise AssertionError("unreachable")
@@ -89,7 +106,13 @@ async def cancel_video_eval_job(
     x_debateai_job_token: str = Header(default=""),
 ) -> dict[str, Any]:
     if not _token_matches(job_id, x_debateai_job_token):
-        raise HTTPException(status_code=403, detail={"code": "forbidden", "message": "Der Zugriff auf diesen Job ist nicht erlaubt."})
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "forbidden",
+                "message": "Der Zugriff auf diesen Job ist nicht erlaubt.",
+            },
+        )
     try:
         return await _store.cancel(job_id)
     except VideoJobError as exc:

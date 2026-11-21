@@ -17,11 +17,6 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from unittest.mock import patch
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from fastapi import FastAPI
-from fastapi.testclient import TestClient
-
 from app.database import get_db
 from app.routers import updates
 from app.services import runtime_activity
@@ -31,10 +26,13 @@ from app.services.update_service import (
     UpdateService,
     _update_origin,
     _zip_extraction_root,
+    get_update_service,
 )
-from app.services.update_service import get_update_service
 from app.services.update_signing import public_update_descriptor, sign_platform_manifest
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
 
 PRIVATE_KEY = bytes(range(32))
 KEY_ID = "test-key"
@@ -76,7 +74,9 @@ def descriptor(archive: bytes, version="v0.4.0", published_at="2026-07-26T18:00:
             "content_type": "application/zip",
         },
     }
-    return public_update_descriptor(sign_platform_manifest(manifest, KEY_ID, PRIVATE_KEY))
+    return public_update_descriptor(
+        sign_platform_manifest(manifest, KEY_ID, PRIVATE_KEY)
+    )
 
 
 class UpdateFixture:
@@ -189,27 +189,39 @@ class UpdateServiceTests(unittest.TestCase):
         self.install_root = self.root / "DebateAI"
         self.install_root.mkdir()
         (self.install_root / "DebateAI.exe").write_bytes(b"old")
-        public = Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY).public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw,
+        public = (
+            Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY)
+            .public_key()
+            .public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
         )
         self.keys_path = self.root / "keys.json"
-        self.keys_path.write_text(json.dumps({
-            "active": KEY_ID,
-            "keys": {
-                KEY_ID: base64.urlsafe_b64encode(public).rstrip(b"=").decode(),
-            },
-        }))
+        self.keys_path.write_text(
+            json.dumps(
+                {
+                    "active": KEY_ID,
+                    "keys": {
+                        KEY_ID: base64.urlsafe_b64encode(public).rstrip(b"=").decode(),
+                    },
+                }
+            )
+        )
 
     def tearDown(self):
         self.temp.cleanup()
 
     def service(self, fixture=None, **overrides):
         descriptor_url = (
-            f"{fixture.origin}/latest/{{platform_id}}" if fixture else "http://127.0.0.1:1/latest/{platform_id}"
+            f"{fixture.origin}/latest/{{platform_id}}"
+            if fixture
+            else "http://127.0.0.1:1/latest/{platform_id}"
         )
         asset_url = (
-            f"{fixture.origin}/assets/{{version}}/{{platform_id}}" if fixture else "http://127.0.0.1:1/assets/{version}/{platform_id}"
+            f"{fixture.origin}/assets/{{version}}/{{platform_id}}"
+            if fixture
+            else "http://127.0.0.1:1/assets/{version}/{platform_id}"
         )
         options = {
             "enabled": True,
@@ -226,36 +238,56 @@ class UpdateServiceTests(unittest.TestCase):
 
     def test_cross_origin_asset_redirect_never_receives_authorization(self):
         archive = zip_bundle()
-        with UpdateFixture(descriptor(archive), archive) as origin, UpdateFixture(descriptor(archive), archive) as other:
+        with (
+            UpdateFixture(descriptor(archive), archive) as origin,
+            UpdateFixture(descriptor(archive), archive) as other,
+        ):
             service = self.service(origin)
-            self.assertEqual('available', service.check(force=True)['state'])
-            origin.redirects['/assets/v0.4.0/windows-x64'] = other.origin + '/capture'
+            self.assertEqual("available", service.check(force=True)["state"])
+            origin.redirects["/assets/v0.4.0/windows-x64"] = other.origin + "/capture"
             with self.assertRaises(InvalidUpdate):
                 service._asset_request(GRANT, None)
-            self.assertEqual([], other.asset_requests, 'Grant reached another origin before rejection')
+            self.assertEqual(
+                [],
+                other.asset_requests,
+                "Grant reached another origin before rejection",
+            )
 
     def test_cross_origin_descriptor_redirect_is_rejected_before_contact(self):
         archive = zip_bundle()
-        with UpdateFixture(descriptor(archive), archive) as origin, UpdateFixture(descriptor(archive), archive) as other:
-            origin.redirects['/latest/windows-x64'] = other.origin + '/latest/windows-x64'
-            self.assertEqual('error', self.service(origin).check(force=True)['state'])
+        with (
+            UpdateFixture(descriptor(archive), archive) as origin,
+            UpdateFixture(descriptor(archive), archive) as other,
+        ):
+            origin.redirects["/latest/windows-x64"] = (
+                other.origin + "/latest/windows-x64"
+            )
+            self.assertEqual("error", self.service(origin).check(force=True)["state"])
             self.assertEqual(0, other.descriptor_requests)
 
     def test_same_origin_redirect_keeps_resumable_authenticated_download(self):
         archive = zip_bundle()
         with UpdateFixture(descriptor(archive), archive) as origin:
             service = self.service(origin)
-            self.assertEqual('available', service.check(force=True)['state'])
-            origin.redirects['/assets/v0.4.0/windows-x64'] = origin.origin + '/stored-archive'
+            self.assertEqual("available", service.check(force=True)["state"])
+            origin.redirects["/assets/v0.4.0/windows-x64"] = (
+                origin.origin + "/stored-archive"
+            )
             with service._asset_request(GRANT, 3) as response:
                 self.assertEqual(archive[3:], response.read())
-            self.assertEqual('Bearer ' + GRANT, origin.asset_requests[-1]['Authorization'])
-            self.assertEqual('bytes=3-', origin.asset_requests[-1]['Range'])
+            self.assertEqual(
+                "Bearer " + GRANT, origin.asset_requests[-1]["Authorization"]
+            )
+            self.assertEqual("bytes=3-", origin.asset_requests[-1]["Range"])
 
     def test_ambiguous_update_sources_are_rejected_without_normalization(self):
-        for url in ('https://updates.example:0/path', 'https://updates.example/path#fragment',
-                    ' https://updates.example/path', 'https://updates.example/\npath',
-                    'https://updates.example\\@other.example/path'):
+        for url in (
+            "https://updates.example:0/path",
+            "https://updates.example/path#fragment",
+            " https://updates.example/path",
+            "https://updates.example/\npath",
+            "https://updates.example\\@other.example/path",
+        ):
             with self.subTest(url=url), self.assertRaises(ValueError):
                 _update_origin(url)
 
@@ -283,8 +315,14 @@ class UpdateServiceTests(unittest.TestCase):
         self.assertEqual(service.platform_id, "windows-x64")
 
     def test_update_origin_normalizes_default_ports(self):
-        self.assertEqual(_update_origin("https://updates.example/path"), _update_origin("https://updates.example:443/path"))
-        self.assertEqual(_update_origin("http://127.0.0.1/path"), _update_origin("http://127.0.0.1:80/path"))
+        self.assertEqual(
+            _update_origin("https://updates.example/path"),
+            _update_origin("https://updates.example:443/path"),
+        )
+        self.assertEqual(
+            _update_origin("http://127.0.0.1/path"),
+            _update_origin("http://127.0.0.1:80/path"),
+        )
 
     def test_check_verifies_caches_and_persists_without_blocking_status(self):
         archive = zip_bundle()
@@ -293,7 +331,9 @@ class UpdateServiceTests(unittest.TestCase):
             service = self.service(fixture)
             results = []
             threads = [
-                threading.Thread(target=lambda: results.append(service.check(force=True)))
+                threading.Thread(
+                    target=lambda: results.append(service.check(force=True))
+                )
                 for _ in range(2)
             ]
             for thread in threads:
@@ -306,7 +346,9 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertEqual(fixture.descriptor_requests, 1)
             self.assertEqual(results[0]["state"], "available")
             self.assertEqual(results[0]["available_version"], "v0.4.0")
-            self.assertEqual(results[0]["available_notes"], "Security and reliability fixes.")
+            self.assertEqual(
+                results[0]["available_notes"], "Security and reliability fixes."
+            )
             self.assertEqual(service.check()["state"], "available")
             self.assertEqual(fixture.descriptor_requests, 1)
             self.assertFalse((service.state_path.with_suffix(".tmp")).exists())
@@ -376,7 +418,9 @@ class UpdateServiceTests(unittest.TestCase):
 
             self.assertEqual(service.status()["state"], "ready")
             self.assertEqual(fixture.asset_requests[0]["Range"], "bytes=7-")
-            self.assertEqual(fixture.asset_requests[0]["Authorization"], f"Bearer {GRANT}")
+            self.assertEqual(
+                fixture.asset_requests[0]["Authorization"], f"Bearer {GRANT}"
+            )
             self.assertEqual(fixture.asset_requests[0]["User-Agent"], "DebateAI/v0.3.8")
             self.assertTrue((service.staged_root / "DebateAI.exe").is_file())
             persisted = service.state_path.read_text()
@@ -399,9 +443,7 @@ class UpdateServiceTests(unittest.TestCase):
 
             self.assertEqual(service.status()["state"], "ready")
             self.assertNotIn("Authorization", fixture.asset_requests[0])
-            self.assertEqual(
-                fixture.asset_requests[0]["User-Agent"], "DebateAI/v0.3.8"
-            )
+            self.assertEqual(fixture.asset_requests[0]["User-Agent"], "DebateAI/v0.3.8")
             self.assertTrue((service.staged_root / "DebateAI.exe").is_file())
 
     def test_a_grant_from_an_older_build_still_starts_a_download(self):
@@ -521,7 +563,9 @@ class UpdateServiceTests(unittest.TestCase):
 
         for body in (archive[:-1], b"x" * len(archive)):
             with UpdateFixture(descriptor(archive), body) as fixture:
-                service = self.service(fixture, data_root=self.data_root / str(len(body)))
+                service = self.service(
+                    fixture, data_root=self.data_root / str(len(body))
+                )
                 service.check(force=True)
                 service.start_download(GRANT)
                 service.wait_for_download()
@@ -570,11 +614,13 @@ class UpdateServiceTests(unittest.TestCase):
         )
         self.assertEqual(mac._zip_size(safe_link), 0)
         with self.assertRaises(InvalidUpdate):
-            mac._zip_size(write_zip(
-                "DebateAI.app/current",
-                body=b"../../outside",
-                mode=stat.S_IFLNK | 0o777,
-            ))
+            mac._zip_size(
+                write_zip(
+                    "DebateAI.app/current",
+                    body=b"../../outside",
+                    mode=stat.S_IFLNK | 0o777,
+                )
+            )
 
         expanded = write_zip("DebateAI/payload", body=b"xx")
         with patch("app.services.update_service.MAX_EXPANDED_BYTES", 1):
@@ -622,10 +668,12 @@ class UpdateServiceTests(unittest.TestCase):
             install_root=install,
             data_root=self.root / "mac-data",
         )
-        service._state.update({
-            "available_version": "v0.4.0",
-            "filename": "DebateAI-macos-arm64.zip",
-        })
+        service._state.update(
+            {
+                "available_version": "v0.4.0",
+                "filename": "DebateAI-macos-arm64.zip",
+            }
+        )
         service._stage_archive(archive, {"asset": {"size": archive.stat().st_size}})
         staged = service.staged_root / "Contents" / "MacOS"
         self.assertTrue((staged / "DebateAI").stat().st_mode & stat.S_IXUSR)
@@ -673,20 +721,23 @@ class UpdateServiceTests(unittest.TestCase):
             self.assertEqual(result["state"], "applying")
             plan_path = service.update_root / "apply.json"
             plan = json.loads(plan_path.read_text())
-            self.assertEqual(set(plan), {
-                "schema",
-                "version",
-                "requested_at",
-                "old_pid",
-                "app_data_dir",
-                "install_dir",
-                "staged_dir",
-                "backup_dir",
-                "failed_dir",
-                "launcher",
-                "lock_path",
-                "state_path",
-            })
+            self.assertEqual(
+                set(plan),
+                {
+                    "schema",
+                    "version",
+                    "requested_at",
+                    "old_pid",
+                    "app_data_dir",
+                    "install_dir",
+                    "staged_dir",
+                    "backup_dir",
+                    "failed_dir",
+                    "launcher",
+                    "lock_path",
+                    "state_path",
+                },
+            )
             self.assertEqual(plan["launcher"], "DebateAI.exe")
             self.assertEqual(Path(plan["staged_dir"]), service.staged_root)
             self.assertNotIn(GRANT, plan_path.read_text())

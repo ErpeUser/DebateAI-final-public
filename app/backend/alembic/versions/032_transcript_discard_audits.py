@@ -5,7 +5,6 @@ Revises: 031_transcript_entry_revisions
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "032_transcript_discard_audits"
@@ -26,7 +25,9 @@ def upgrade():
         sa.Column("speaker_id", sa.Uuid(), nullable=True),
         sa.Column("audio_start_sample", sa.Integer(), nullable=True),
         sa.Column("audio_end_sample", sa.Integer(), nullable=True),
-        sa.Column("discard_reason", sa.String(length=160), nullable=False, server_default=""),
+        sa.Column(
+            "discard_reason", sa.String(length=160), nullable=False, server_default=""
+        ),
         sa.Column("producer", sa.String(length=80), nullable=False, server_default=""),
         sa.Column("segment_revision", sa.Integer(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),

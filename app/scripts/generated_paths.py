@@ -4,6 +4,7 @@
 The source tree is public and reproducible. Build products, test evidence,
 acceptance runs and local reports belong below ``DebateAI_Generated``.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

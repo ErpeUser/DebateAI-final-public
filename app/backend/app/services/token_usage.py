@@ -18,7 +18,8 @@ audio gateway, whose input is almost entirely audio, at the text rate.
 
 import logging
 import uuid
-from typing import Any, Iterable, NamedTuple
+from collections.abc import Iterable
+from typing import Any, NamedTuple
 
 from app.database import async_session
 from app.models import TokenUsage
@@ -51,13 +52,24 @@ _CACHED_DETAIL_FIELDS = ("cached_tokens",)
 # OpenAI-shaped per-slice detail containers. Gemini reuses the name
 # prompt_tokens_details for something else: a LIST of per-modality counts, so
 # the readers below check the shape rather than trusting the name.
-_INPUT_DETAIL_FIELDS = ("prompt_tokens_details", "input_tokens_details", "input_token_details")
-_OUTPUT_DETAIL_FIELDS = ("completion_tokens_details", "output_tokens_details", "output_token_details")
+_INPUT_DETAIL_FIELDS = (
+    "prompt_tokens_details",
+    "input_tokens_details",
+    "input_token_details",
+)
+_OUTPUT_DETAIL_FIELDS = (
+    "completion_tokens_details",
+    "output_tokens_details",
+    "output_token_details",
+)
 _AUDIO_DETAIL_FIELDS = ("audio_tokens",)
 # Gemini per-modality breakdowns: generate_content reports
 # candidates_tokens_details, the Live API response_tokens_details.
 _GEMINI_INPUT_MODALITY_FIELDS = ("prompt_tokens_details",)
-_GEMINI_OUTPUT_MODALITY_FIELDS = ("candidates_tokens_details", "response_tokens_details")
+_GEMINI_OUTPUT_MODALITY_FIELDS = (
+    "candidates_tokens_details",
+    "response_tokens_details",
+)
 _AUDIO_MODALITY = "AUDIO"
 _warned_usage_sources: set[str] = set()
 
@@ -83,7 +95,9 @@ class UsageCounts(NamedTuple):
 
 def _value(usage: Any, *names: str) -> int | None:
     for name in names:
-        value = usage.get(name) if isinstance(usage, dict) else getattr(usage, name, None)
+        value = (
+            usage.get(name) if isinstance(usage, dict) else getattr(usage, name, None)
+        )
         if value is not None:
             return max(0, int(value))
     return None
@@ -147,7 +161,9 @@ def _modality_name(entry: Any) -> str:
     return str(label).upper().rsplit(".", 1)[-1]
 
 
-def _modality_tokens(usage: Any, containers: tuple[str, ...], modality: str) -> int | None:
+def _modality_tokens(
+    usage: Any, containers: tuple[str, ...], modality: str
+) -> int | None:
     """Tokens of one modality from a Gemini per-modality breakdown list."""
     total: int | None = None
     for container in containers:
@@ -172,21 +188,31 @@ def _cached_input_value(usage: Any) -> int | None:
 
 
 def _audio_input_value(usage: Any) -> int | None:
-    by_modality = _modality_tokens(usage, _GEMINI_INPUT_MODALITY_FIELDS, _AUDIO_MODALITY)
+    by_modality = _modality_tokens(
+        usage, _GEMINI_INPUT_MODALITY_FIELDS, _AUDIO_MODALITY
+    )
     if by_modality is not None:
         return by_modality
     return _detail_value(usage, _INPUT_DETAIL_FIELDS, *_AUDIO_DETAIL_FIELDS)
 
 
 def _audio_output_value(usage: Any) -> int | None:
-    by_modality = _modality_tokens(usage, _GEMINI_OUTPUT_MODALITY_FIELDS, _AUDIO_MODALITY)
+    by_modality = _modality_tokens(
+        usage, _GEMINI_OUTPUT_MODALITY_FIELDS, _AUDIO_MODALITY
+    )
     if by_modality is not None:
         return by_modality
     return _detail_value(usage, _OUTPUT_DETAIL_FIELDS, *_AUDIO_DETAIL_FIELDS)
 
 
 def _has_known_field(usage: Any) -> bool:
-    fields = _INPUT_FIELDS + _OUTPUT_FIELDS + _TOTAL_FIELDS + _THINKING_FIELDS + _DURATION_FIELDS
+    fields = (
+        _INPUT_FIELDS
+        + _OUTPUT_FIELDS
+        + _TOTAL_FIELDS
+        + _THINKING_FIELDS
+        + _DURATION_FIELDS
+    )
     if isinstance(usage, dict):
         if any(field in usage for field in fields):
             return True
@@ -215,8 +241,15 @@ def normalize_usage(usage: Any, source: str = "") -> UsageCounts | None:
     # A reported total already counts thinking; only a synthesized one has to add it.
     if total_tokens is None:
         total_tokens = input_tokens + output_tokens + thinking_tokens
-    if input_tokens == output_tokens == thinking_tokens == total_tokens == 0 and audio_seconds == 0.0:
-        if source and not _has_known_field(usage) and source not in _warned_usage_sources:
+    if (
+        input_tokens == output_tokens == thinking_tokens == total_tokens == 0
+        and audio_seconds == 0.0
+    ):
+        if (
+            source
+            and not _has_known_field(usage)
+            and source not in _warned_usage_sources
+        ):
             _warned_usage_sources.add(source)
             logger.warning(
                 "Dropped unrecognized token usage for source %s (%s)",
@@ -254,19 +287,21 @@ async def record_token_usage(
         if session_id is None or normalized is None:
             return
         async with async_session() as db:
-            db.add(TokenUsage(
-                session_id=uuid.UUID(str(session_id)),
-                source=source,
-                model_id=model_id,
-                input_tokens=normalized.input_tokens,
-                output_tokens=normalized.output_tokens,
-                thinking_tokens=normalized.thinking_tokens,
-                total_tokens=normalized.total_tokens,
-                audio_seconds=normalized.audio_seconds,
-                cached_input_tokens=normalized.cached_input_tokens,
-                audio_input_tokens=normalized.audio_input_tokens,
-                audio_output_tokens=normalized.audio_output_tokens,
-            ))
+            db.add(
+                TokenUsage(
+                    session_id=uuid.UUID(str(session_id)),
+                    source=source,
+                    model_id=model_id,
+                    input_tokens=normalized.input_tokens,
+                    output_tokens=normalized.output_tokens,
+                    thinking_tokens=normalized.thinking_tokens,
+                    total_tokens=normalized.total_tokens,
+                    audio_seconds=normalized.audio_seconds,
+                    cached_input_tokens=normalized.cached_input_tokens,
+                    audio_input_tokens=normalized.audio_input_tokens,
+                    audio_output_tokens=normalized.audio_output_tokens,
+                )
+            )
             await db.commit()
     except Exception:
         logger.exception("Failed to record token usage for %s", source)
@@ -306,7 +341,9 @@ def summarize_usage(rows: Iterable[TokenUsage]) -> dict:
             (row.source, row.model_id),
             {"source": row.source, "model_id": row.model_id, **_ZERO_USAGE},
         )
-        model = models.setdefault(row.model_id, {"model_id": row.model_id, **_ZERO_USAGE})
+        model = models.setdefault(
+            row.model_id, {"model_id": row.model_id, **_ZERO_USAGE}
+        )
         for key, value in values.items():
             source[key] += value
             model[key] += value
@@ -316,6 +353,10 @@ def summarize_usage(rows: Iterable[TokenUsage]) -> dict:
     # is applied at display time. The UI re-sorts by estimated cost.
     return {
         **total,
-        "by_source": sorted(sources.values(), key=lambda item: (-item["total_tokens"], item["source"])),
-        "by_model": sorted(models.values(), key=lambda item: (-item["total_tokens"], item["model_id"])),
+        "by_source": sorted(
+            sources.values(), key=lambda item: (-item["total_tokens"], item["source"])
+        ),
+        "by_model": sorted(
+            models.values(), key=lambda item: (-item["total_tokens"], item["model_id"])
+        ),
     }

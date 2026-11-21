@@ -16,7 +16,6 @@ Create Date: 2026-09-01
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "025_token_usage_modalities"

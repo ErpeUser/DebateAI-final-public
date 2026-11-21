@@ -5,9 +5,9 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
 from app.services.agents.activity import ActivityRegistry, classify_error, saved_outcome
-from app.services.llm import LLMReplyTruncated
 from app.services.agents.orchestrator import AgentOrchestrator
 from app.services.agents.prompts import DEFAULT_ANALYST_LENSES
+from app.services.llm import LLMReplyTruncated
 from app.ws.audio_pipeline import (
     _AudioPipelineState,
     _cancel_gateway_reconnect,
@@ -112,10 +112,14 @@ class ActivityRegistryTests(unittest.IsolatedAsyncioTestCase):
         reasons = registry.snapshot()["call"]["degraded_reasons"]
         self.assertEqual(
             [
-                "2 Gesprächsteile konnten nicht transkribiert werden. "
-                "Das Transkript kann unvollständig sein.",
-                "Die Live-Verarbeitung fällt zurück. Transkripttext oder "
-                "Sprecherzuordnungen können fehlen.",
+                (
+                    "2 Gesprächsteile konnten nicht transkribiert werden. "
+                    "Das Transkript kann unvollständig sein."
+                ),
+                (
+                    "Die Live-Verarbeitung fällt zurück. Transkripttext oder "
+                    "Sprecherzuordnungen können fehlen."
+                ),
                 "Die Live-Untertitel verbinden sich neu und können verspätet erscheinen.",
             ],
             reasons,
@@ -160,9 +164,7 @@ class ActivityRegistryTests(unittest.IsolatedAsyncioTestCase):
             speakers=[],
             agent_configs={
                 "audio_gateway": config("audio_gateway", "local-live", False),
-                "consolidated_analyst": config(
-                    "consolidated_analyst", "cloud-model"
-                ),
+                "consolidated_analyst": config("consolidated_analyst", "cloud-model"),
                 "objection_handler": config(
                     "objection_handler",
                     "local-model",
@@ -205,7 +207,8 @@ class ActivityRegistryTests(unittest.IsolatedAsyncioTestCase):
         # just above -- so the analyst drops its opportunity lens rather than
         # scouting for matches nothing downstream can enrich (ALP-286).
         suppressed = {
-            lens["item_type"] for lens in DEFAULT_ANALYST_LENSES
+            lens["item_type"]
+            for lens in DEFAULT_ANALYST_LENSES
             if lens["item_type"] == "opportunity"
         }
         self.assertEqual(
@@ -388,7 +391,9 @@ class ActivityRegistryTests(unittest.IsolatedAsyncioTestCase):
         await _cancel_gateway_reconnect(state)
         self.assertEqual("failing", record["state"])
         self.assertIn("stopped responding", record["last_error"]["detail"])
-        self.assertEqual("reconnecting", registry.snapshot()["call"]["gateway"]["state"])
+        self.assertEqual(
+            "reconnecting", registry.snapshot()["call"]["gateway"]["state"]
+        )
 
 
 if __name__ == "__main__":

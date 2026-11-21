@@ -9,19 +9,20 @@ No automatic prompt/model change is applied from an artifact.
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import re
 import subprocess
 import tempfile
+from collections.abc import Iterable
 from dataclasses import asdict, dataclass, field
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Iterable
+from typing import Any
 from urllib.parse import urlsplit
 
 _URL_RE = re.compile(r'https?://[^\s<>"\']+')
-_DOI_RE = re.compile(r'\b10\.\d{4,9}/[-._;()/:A-Z0-9]+\b', re.IGNORECASE)
+_DOI_RE = re.compile(r"\b10\.\d{4,9}/[-._;()/:A-Z0-9]+\b", re.IGNORECASE)
 _STUDY_RE = re.compile(
     r"\b(?:studie|paper|bericht|metaanalyse|meta-analyse|untersuchung)"
     r"[^.]{0,160}\b(?:19|20)\d{2}\b",
@@ -81,12 +82,14 @@ class VideoEvalArtifact:
     argument_evidence: dict[str, Any] = field(default_factory=dict)
     provenance: dict[str, Any] = field(default_factory=dict)
     improvement_notes: list[str] = field(default_factory=list)
-    privacy: dict[str, Any] = field(default_factory=lambda: {
-        "audio_uploaded_to_google_cloud": True,
-        "raw_audio_retained": False,
-        "raw_transcript_retained": True,
-        "review_required_before_learning": True,
-    })
+    privacy: dict[str, Any] = field(
+        default_factory=lambda: {
+            "audio_uploaded_to_google_cloud": True,
+            "raw_audio_retained": False,
+            "raw_transcript_retained": True,
+            "review_required_before_learning": True,
+        }
+    )
 
 
 def _clean(value: str) -> str:
@@ -105,11 +108,15 @@ def extract_source_candidates(
     seen: set[tuple[str, str]] = set()
     matches: list[tuple[int, int, str, str]] = []
     for match in _URL_RE.finditer(value):
-        matches.append((match.start(), match.end(), match.group(0).rstrip(".,;:)]}"), "url"))
+        matches.append(
+            (match.start(), match.end(), match.group(0).rstrip(".,;:)]}"), "url")
+        )
     for match in _DOI_RE.finditer(value):
         matches.append((match.start(), match.end(), match.group(0), "doi"))
     for match in _STUDY_RE.finditer(value):
-        matches.append((match.start(), match.end(), _clean(match.group(0)), "study_reference"))
+        matches.append(
+            (match.start(), match.end(), _clean(match.group(0)), "study_reference")
+        )
     for match in _CITATION_RE.finditer(value):
         matches.append((match.start(), match.end(), _clean(match.group(0)), "citation"))
     for start, end, candidate, kind in sorted(matches):
@@ -117,7 +124,9 @@ def extract_source_candidates(
         if key in seen:
             continue
         seen.add(key)
-        context = _clean(value[max(0, start - context_chars): min(len(value), end + context_chars)])
+        context = _clean(
+            value[max(0, start - context_chars) : min(len(value), end + context_chars)]
+        )
         found.append(SourceCandidate(candidate, kind, context, segment_index))
     return found
 
@@ -159,8 +168,24 @@ def build_rhetorical_profile(
     words = [len(text.split()) for text in texts]
     joined = " ".join(texts)
     questions = sum(text.endswith("?") or "?" in text for text in texts)
-    rebuttals = sum(bool(re.search(r"\b(aber|jedoch|stimmt nicht|falsch|trotzdem|widerleg)\b", text, re.I)) for text in texts)
-    analogies = sum(bool(re.search(r"\b(wie|als ob|beispiel|vergleich|analogie)\b", text, re.I)) for text in texts)
+    rebuttals = sum(
+        bool(
+            re.search(
+                r"\b(aber|jedoch|stimmt nicht|falsch|trotzdem|widerleg)\b",
+                text,
+                re.IGNORECASE,
+            )
+        )
+        for text in texts
+    )
+    analogies = sum(
+        bool(
+            re.search(
+                r"\b(wie|als ob|beispiel|vergleich|analogie)\b", text, re.IGNORECASE
+            )
+        )
+        for text in texts
+    )
     interruptions = sum(text.count("…") + text.count("--") for text in texts)
     return {
         "segment_count": len(rows),
@@ -173,12 +198,17 @@ def build_rhetorical_profile(
         "interruption_signal_rate": round(interruptions / len(rows), 3) if rows else 0,
         "source_reference_count": len(list(source_candidates)),
         "style_traits": [
-            trait for trait, enabled in (
+            trait
+            for trait, enabled in (
                 ("fragt häufig nach", questions >= max(1, len(rows) // 8)),
                 ("widerlegt direkt", rebuttals >= max(1, len(rows) // 8)),
                 ("arbeitet mit Beispielen", analogies >= max(1, len(rows) // 8)),
-                ("spricht in kurzen Zügen", bool(words) and sum(words) / len(words) <= 18),
-            ) if enabled
+                (
+                    "spricht in kurzen Zügen",
+                    bool(words) and sum(words) / len(words) <= 18,
+                ),
+            )
+            if enabled
         ],
         "sample": joined[:1200],
     }
@@ -201,31 +231,32 @@ def build_eval_cases(
     cases: list[dict[str, Any]] = []
     for index, segment in enumerate(rows):
         text = _clean(segment.text)
-        context = " ".join(_clean(item.text) for item in rows[max(0, index-context_segments):index])
-        refs = [
-            item.value for item in candidates
-            if item.segment_index == index
-        ]
-        cases.append({
-            "case_id": f"segment-{index + 1:04d}",
-            "start_seconds": segment.start_seconds,
-            "end_seconds": segment.end_seconds,
-            "speaker": segment.speaker,
-            "context_before": context[-1800:],
-            "original_statement": text,
-            "claim": text,
-            "source_candidates": refs,
-            "expected_response": "",
-            "difficulty": "source_check" if refs else "rhetorical",
-            "scoring": {
-                "directness": None,
-                "example_or_analogy": None,
-                "counter_question": None,
-                "rebuttal_quality": None,
-                "source_accuracy": None,
-                "latency_ms": None,
-            },
-        })
+        context = " ".join(
+            _clean(item.text) for item in rows[max(0, index - context_segments) : index]
+        )
+        refs = [item.value for item in candidates if item.segment_index == index]
+        cases.append(
+            {
+                "case_id": f"segment-{index + 1:04d}",
+                "start_seconds": segment.start_seconds,
+                "end_seconds": segment.end_seconds,
+                "speaker": segment.speaker,
+                "context_before": context[-1800:],
+                "original_statement": text,
+                "claim": text,
+                "source_candidates": refs,
+                "expected_response": "",
+                "difficulty": "source_check" if refs else "rhetorical",
+                "scoring": {
+                    "directness": None,
+                    "example_or_analogy": None,
+                    "counter_question": None,
+                    "rebuttal_quality": None,
+                    "source_accuracy": None,
+                    "latency_ms": None,
+                },
+            }
+        )
     return cases
 
 
@@ -236,15 +267,32 @@ def _audio_bytes(path: Path) -> bytes:
     try:
         completed = subprocess.run(
             [
-                "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
-                "-ac", "1", "-ar", "16000", "-f", "wav", "pipe:1",
+                "ffmpeg",
+                "-nostdin",
+                "-v",
+                "error",
+                "-i",
+                str(path),
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-f",
+                "wav",
+                "pipe:1",
             ],
             check=True,
             capture_output=True,
             timeout=900,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-        raise RuntimeError("ffmpeg is required to extract audio from video files") from exc
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ) as exc:
+        raise RuntimeError(
+            "ffmpeg is required to extract audio from video files"
+        ) from exc
     return completed.stdout
 
 
@@ -285,20 +333,24 @@ def _recognize_google_chunk(
         words = list(getattr(alternative, "words", []) or [])
         start = (
             float(words[0].start_time.total_seconds()) + offset_seconds
-            if words else offset_seconds
+            if words
+            else offset_seconds
         )
         end = (
             float(words[-1].end_time.total_seconds()) + offset_seconds
-            if words else start
+            if words
+            else start
         )
         speaker = str(getattr(words[0], "speaker_tag", "") or "") if words else ""
-        segments.append(TranscriptSegment(
-            start_seconds=start,
-            end_seconds=end,
-            text=_clean(alternative.transcript),
-            speaker=speaker,
-            confidence=float(alternative.confidence or 0) or None,
-        ))
+        segments.append(
+            TranscriptSegment(
+                start_seconds=start,
+                end_seconds=end,
+                text=_clean(alternative.transcript),
+                speaker=speaker,
+                confidence=float(alternative.confidence or 0) or None,
+            )
+        )
     return segments
 
 
@@ -308,16 +360,35 @@ def _chunk_media(path: Path, directory: Path, *, seconds: int = 45) -> list[Path
     try:
         subprocess.run(
             [
-                "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
-                "-f", "segment", "-segment_time", str(seconds),
-                "-reset_timestamps", "1", "-ac", "1", "-ar", "16000",
-                "-c:a", "pcm_s16le", str(prefix),
+                "ffmpeg",
+                "-nostdin",
+                "-v",
+                "error",
+                "-i",
+                str(path),
+                "-f",
+                "segment",
+                "-segment_time",
+                str(seconds),
+                "-reset_timestamps",
+                "1",
+                "-ac",
+                "1",
+                "-ar",
+                "16000",
+                "-c:a",
+                "pcm_s16le",
+                str(prefix),
             ],
             check=True,
             capture_output=True,
             timeout=1800,
         )
-    except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+    except (
+        FileNotFoundError,
+        subprocess.CalledProcessError,
+        subprocess.TimeoutExpired,
+    ) as exc:
         raise RuntimeError("ffmpeg is required to split long media files") from exc
     chunks = sorted(directory.glob("chunk-*.wav"))
     if not chunks:
@@ -346,13 +417,17 @@ def transcribe_with_google_cloud(
     try:
         from google.cloud import speech
     except ImportError as exc:
-        raise RuntimeError("google-cloud-speech is required for video transcription") from exc
+        raise RuntimeError(
+            "google-cloud-speech is required for video transcription"
+        ) from exc
     path = Path(audio_path)
     if not path.is_file():
         raise FileNotFoundError(path)
     client = speech.SpeechClient()
     media_suffixes = {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
-    needs_chunks = path.suffix.casefold() in media_suffixes or path.stat().st_size > 8_000_000
+    needs_chunks = (
+        path.suffix.casefold() in media_suffixes or path.stat().st_size > 8_000_000
+    )
     if not needs_chunks:
         return _recognize_google_chunk(
             client,
@@ -365,14 +440,16 @@ def transcribe_with_google_cloud(
         chunks = _chunk_media(path, Path(temp_dir))
         segments: list[TranscriptSegment] = []
         for index, chunk in enumerate(chunks):
-            segments.extend(_recognize_google_chunk(
-                client,
-                speech,
-                chunk.read_bytes(),
-                language_code=language_code,
-                speaker_diarization=speaker_diarization,
-                offset_seconds=index * 45.0,
-            ))
+            segments.extend(
+                _recognize_google_chunk(
+                    client,
+                    speech,
+                    chunk.read_bytes(),
+                    language_code=language_code,
+                    speaker_diarization=speaker_diarization,
+                    offset_seconds=index * 45.0,
+                )
+            )
         return segments
 
 
@@ -388,11 +465,17 @@ def _rhetoric_review_excerpt(
         speaker = _clean(str(case.get("speaker") or ""))
         context = _clean(str(case.get("context_before") or ""))
         if claim:
-            rows.append(" ".join(part for part in (
-                f"Sprecher: {speaker}" if speaker else "",
-                f"Behauptung: {claim}",
-                f"Kontext: {context}" if context else "",
-            ) if part))
+            rows.append(
+                " ".join(
+                    part
+                    for part in (
+                        f"Sprecher: {speaker}" if speaker else "",
+                        f"Behauptung: {claim}",
+                        f"Kontext: {context}" if context else "",
+                    )
+                    if part
+                )
+            )
     if not rows:
         rows = [
             _clean(str(item.get("text") or ""))
@@ -438,7 +521,7 @@ async def extract_source_candidates_with_ai(
     else:
         clean_transcript = _relevant_source_excerpt(transcript)
         chunks = [
-            clean_transcript[offset:offset + chunk_limit]
+            clean_transcript[offset : offset + chunk_limit]
             for offset in range(0, len(clean_transcript), chunk_limit)
         ]
     if not chunks:
@@ -464,6 +547,7 @@ async def extract_source_candidates_with_ai(
         answer = ""
         try:
             from app.services.chatgpt_web import configured, generate, runtime_available
+
             if configured() and runtime_available():
                 answer = await generate(
                     prompt,
@@ -477,17 +561,24 @@ async def extract_source_candidates_with_ai(
             try:
                 from app.services.ai_config import research_settings
                 from app.services.llm import generate_text
+
                 providers = set(research_settings().get("providers") or [])
-                fallback = next((
-                    model for provider, model in (
-                        ("gemini_web", "endpoint:gemini-web:gemini-3.1-pro"),
-                        ("gemini_api", "gemini-3.1-pro-preview"),
-                        ("cliproxyapi", "endpoint:subscription-ai:gpt-6-sol"),
-                    ) if provider in providers
-                ), "")
+                fallback = next(
+                    (
+                        model
+                        for provider, model in (
+                            ("gemini_web", "endpoint:gemini-web:gemini-3.1-pro"),
+                            ("gemini_api", "gemini-3.1-pro-preview"),
+                            ("cliproxyapi", "endpoint:subscription-ai:gpt-6-sol"),
+                        )
+                        if provider in providers
+                    ),
+                    "",
+                )
                 if fallback:
                     answer = await generate_text(
-                        fallback, prompt,
+                        fallback,
+                        prompt,
                         system="Return only JSON source candidates; exclude Wikipedia and DuckDuckGo.",
                         source="video_source_extraction",
                     )
@@ -525,19 +616,27 @@ async def extract_source_candidates_with_ai(
             if not value or value.casefold() in seen:
                 continue
             seen.add(value.casefold())
-            segment_index = next((
-                index for index, segment in enumerate(rows)
-                if value.casefold() in _clean(segment.text).casefold()
-            ), 0)
-            found.append(SourceCandidate(
-                value=value[:500],
-                kind=_clean(item.get("kind") or "ai_reference")[:80] or "ai_reference",
-                context=_clean(item.get("context") or value)[:420],
-                segment_index=segment_index,
-            ))
+            segment_index = next(
+                (
+                    index
+                    for index, segment in enumerate(rows)
+                    if value.casefold() in _clean(segment.text).casefold()
+                ),
+                0,
+            )
+            found.append(
+                SourceCandidate(
+                    value=value[:500],
+                    kind=_clean(item.get("kind") or "ai_reference")[:80]
+                    or "ai_reference",
+                    context=_clean(item.get("context") or value)[:420],
+                    segment_index=segment_index,
+                )
+            )
             if len(found) >= max(1, max_candidates):
                 return found
     return found
+
 
 def build_video_artifact(
     *,
@@ -589,8 +688,19 @@ def attach_media_metadata(
                 extracted = Path(temp_dir) / "audio.wav"
                 subprocess.run(
                     [
-                        "ffmpeg", "-nostdin", "-v", "error", "-i", str(path),
-                        "-ac", "1", "-ar", "16000", "-f", "wav", str(extracted),
+                        "ffmpeg",
+                        "-nostdin",
+                        "-v",
+                        "error",
+                        "-i",
+                        str(path),
+                        "-ac",
+                        "1",
+                        "-ar",
+                        "16000",
+                        "-f",
+                        "wav",
+                        str(extracted),
                     ],
                     check=True,
                     capture_output=True,
@@ -602,7 +712,11 @@ def attach_media_metadata(
                         audio_digest.update(chunk)
                 artifact.audio_hash = audio_digest.hexdigest()
                 audio_hash_kind = "decoded_audio"
-        except (FileNotFoundError, subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+        except (
+            FileNotFoundError,
+            subprocess.CalledProcessError,
+            subprocess.TimeoutExpired,
+        ) as exc:
             # Keep a non-empty deterministic identity even for a synthetic
             # fixture or a host without ffmpeg; mark the weaker fallback.
             artifact.audio_hash = digest.hexdigest()
@@ -621,15 +735,23 @@ def attach_media_metadata(
     artifact.original_url = artifact.source_url
     artifact.source_platform = urlsplit(artifact.source_url).netloc or "local_file"
     artifact.retrieval_timestamp = datetime.now(UTC).isoformat()
-    artifact.duration_seconds = max((
-        float(item.get("end_seconds") or 0.0) for item in artifact.transcript_segments
-    ), default=0.0)
-    artifact.ingestion_checks = {
-        "has_timestamps": all(
-            float(item.get("end_seconds") or 0.0) >= float(item.get("start_seconds") or 0.0)
+    artifact.duration_seconds = max(
+        (
+            float(item.get("end_seconds") or 0.0)
             for item in artifact.transcript_segments
         ),
-        "has_speakers": any(str(item.get("speaker") or "").strip() for item in artifact.transcript_segments),
+        default=0.0,
+    )
+    artifact.ingestion_checks = {
+        "has_timestamps": all(
+            float(item.get("end_seconds") or 0.0)
+            >= float(item.get("start_seconds") or 0.0)
+            for item in artifact.transcript_segments
+        ),
+        "has_speakers": any(
+            str(item.get("speaker") or "").strip()
+            for item in artifact.transcript_segments
+        ),
         "has_chapters": False,
         "transcript_segments": len(artifact.transcript_segments),
         "source_candidates": len(artifact.source_candidates),
@@ -638,6 +760,7 @@ def attach_media_metadata(
         **({"audio_hash_error": audio_hash_error} if audio_hash_error else {}),
     }
     return artifact
+
 
 async def research_source_candidates(
     artifact: VideoEvalArtifact,
@@ -675,7 +798,11 @@ async def research_source_candidates(
                 if candidate.value not in refs:
                     refs.append(candidate.value)
                 case["source_candidates"] = refs
-    candidates = artifact.source_candidates if max_candidates is None else artifact.source_candidates[:max_candidates]
+    candidates = (
+        artifact.source_candidates
+        if max_candidates is None
+        else artifact.source_candidates[:max_candidates]
+    )
     verified: list[dict[str, Any]] = []
     for candidate in candidates:
         value = str(candidate.get("value") or "")
@@ -685,19 +812,25 @@ async def research_source_candidates(
         try:
             result = await research_claim(context, value)
         except Exception as exc:
-            verified.append({
-                "candidate": value,
-                "status": "unavailable",
-                "error": str(exc),
-                "sources": [],
-            })
+            verified.append(
+                {
+                    "candidate": value,
+                    "status": "unavailable",
+                    "error": str(exc),
+                    "sources": [],
+                }
+            )
             continue
-        verified.append({
-            "candidate": value,
-            "status": result.status,
-            "error": result.error,
-            "sources": [source.model_dump(mode="json") for source in result.sources],
-        })
+        verified.append(
+            {
+                "candidate": value,
+                "status": result.status,
+                "error": result.error,
+                "sources": [
+                    source.model_dump(mode="json") for source in result.sources
+                ],
+            }
+        )
     artifact.verified_sources = verified
     artifact.improvement_notes.append(
         "Quellenkandidaten wurden pro Claim an die KI-Recherche übergeben; "
@@ -785,12 +918,17 @@ def update_style_profile(
     merged["profile_revision"] = len(history)
     merged["review_required_before_prompt_change"] = True
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(merged, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
     return path
 
 
 def save_artifact(artifact: VideoEvalArtifact, output_path: str | Path) -> Path:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(asdict(artifact), ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    path.write_text(
+        json.dumps(asdict(artifact), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
     return path

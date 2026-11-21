@@ -4,21 +4,38 @@ This module is independent of the live orchestrator and database. It validates
 lineage, timing and failure states at replay/laboratory boundaries without
 pretending to prove semantic truth.
 """
+
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from math import isfinite
-from typing import Any, Mapping
+from typing import Any
 
 SCHEMA_VERSION = 1
 STATUSES = frozenset({"ok", "timeout", "empty", "stale", "error", "abstent"})
-FAILURE_CLASSES = frozenset({
-    "none", "timeout", "empty", "stale", "error", "provider", "parse", "privacy",
-    "cancelled", "resource", "unknown", "abstent",
-})
+FAILURE_CLASSES = frozenset(
+    {
+        "none",
+        "timeout",
+        "empty",
+        "stale",
+        "error",
+        "provider",
+        "parse",
+        "privacy",
+        "cancelled",
+        "resource",
+        "unknown",
+        "abstent",
+    }
+)
 LATENCY_FIELDS = (
-    "first_speakable_ms", "first_update_ms", "final_update_ms",
-    "deep_revision_ms", "accepted_model_ms",
+    "first_speakable_ms",
+    "first_update_ms",
+    "final_update_ms",
+    "deep_revision_ms",
+    "accepted_model_ms",
 )
 
 
@@ -54,10 +71,14 @@ class ResponseEvent:
     queue_depth: int | None = None
 
     def to_dict(self) -> dict[str, Any]:
-        return {field.name: getattr(self, field.name) for field in fields(self) if getattr(self, field.name) is not None}
+        return {
+            field.name: getattr(self, field.name)
+            for field in fields(self)
+            if getattr(self, field.name) is not None
+        }
 
     @classmethod
-    def from_mapping(cls, value: Mapping[str, Any]) -> "ResponseEvent":
+    def from_mapping(cls, value: Mapping[str, Any]) -> ResponseEvent:
         normalized = normalize_response_event(value)
         names = {field.name for field in fields(cls)}
         return cls(**{name: normalized.get(name) for name in names})
@@ -113,25 +134,41 @@ def normalize_response_event(value: Mapping[str, Any]) -> dict[str, Any]:
         failure_class = status
     transcript_revision = value.get("transcript_revision")
     if transcript_revision is not None and (
-        isinstance(transcript_revision, bool) or not isinstance(transcript_revision, int) or transcript_revision < 0
+        isinstance(transcript_revision, bool)
+        or not isinstance(transcript_revision, int)
+        or transcript_revision < 0
     ):
-        raise ResponseContractError("transcript_revision must be a non-negative integer")
+        raise ResponseContractError(
+            "transcript_revision must be a non-negative integer"
+        )
     queue_depth = value.get("queue_depth")
     if queue_depth is not None and (
-        isinstance(queue_depth, bool) or not isinstance(queue_depth, int) or queue_depth < 0
+        isinstance(queue_depth, bool)
+        or not isinstance(queue_depth, int)
+        or queue_depth < 0
     ):
         raise ResponseContractError("queue_depth must be a non-negative integer")
     result = dict(value)
-    result.update({
-        "schema_version": SCHEMA_VERSION, "case_id": case_id, "turn_id": turn_id,
-        "status": status, "failure_class": failure_class, "claim_id": claim_id,
-        "revision_of": revision_of, "transcript_revision": transcript_revision,
-        "queue_depth": queue_depth,
-    })
+    result.update(
+        {
+            "schema_version": SCHEMA_VERSION,
+            "case_id": case_id,
+            "turn_id": turn_id,
+            "status": status,
+            "failure_class": failure_class,
+            "claim_id": claim_id,
+            "revision_of": revision_of,
+            "transcript_revision": transcript_revision,
+            "queue_depth": queue_depth,
+        }
+    )
     for field in LATENCY_FIELDS:
         result[field] = _latency(value.get(field), field)
-    if (result["first_update_ms"] is not None and result["final_update_ms"] is not None
-            and result["final_update_ms"] < result["first_update_ms"]):
+    if (
+        result["first_update_ms"] is not None
+        and result["final_update_ms"] is not None
+        and result["final_update_ms"] < result["first_update_ms"]
+    ):
         raise ResponseContractError("final_update_ms cannot precede first_update_ms")
     return result
 

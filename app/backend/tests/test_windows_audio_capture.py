@@ -3,7 +3,6 @@ import unittest
 from unittest.mock import AsyncMock, patch
 
 import numpy as np
-
 from app.services.native_audio_bridge import (
     enqueue_native_message,
     register_native_audio_session,
@@ -98,7 +97,9 @@ class WindowsAudioCaptureTests(unittest.TestCase):
         mic_second = mic.convert(source[4_000:])
         system_second = system.convert(source[4_000:])
 
-        self.assertNotEqual(len(mic_first + mic_second), len(system_first + system_second))
+        self.assertNotEqual(
+            len(mic_first + mic_second), len(system_first + system_second)
+        )
         self.assertEqual(0, len(mic_first + mic_second) % 2)
         self.assertEqual(0, len(system_first + system_second) % 2)
 
@@ -115,7 +116,9 @@ class WindowsAudioCaptureTests(unittest.TestCase):
             self.assertIs(first, queue.get_nowait())
             self.assertIs(second, queue.get_nowait())
             marker = queue.get_nowait()
-            self.assertEqual("native_audio_overflow", marker["native_overflow"]["state"])
+            self.assertEqual(
+                "native_audio_overflow", marker["native_overflow"]["state"]
+            )
             self.assertIn('"type": "stop"', marker["text"])
         finally:
             unregister_native_audio_session("overflow-contract", queue)
@@ -128,7 +131,9 @@ class WindowsAudioCaptureTests(unittest.TestCase):
         capture._devices = {0: microphone, 1: loopback}
         capture._last_callback_at = {0: 10.0, 1: 19.0}
 
-        with patch("app.services.windows_audio_capture.time.monotonic", return_value=20.0):
+        with patch(
+            "app.services.windows_audio_capture.time.monotonic", return_value=20.0
+        ):
             restart, reason = capture._restart_needed_sync()
 
         self.assertTrue(restart)
@@ -149,7 +154,9 @@ class WindowsAudioCaptureTests(unittest.TestCase):
                 return info
 
         capture._audio = ChangedRateAudio()
-        with patch("app.services.windows_audio_capture.time.monotonic", return_value=20.1):
+        with patch(
+            "app.services.windows_audio_capture.time.monotonic", return_value=20.1
+        ):
             restart, reason = capture._restart_needed_sync()
 
         self.assertTrue(restart)
@@ -175,7 +182,9 @@ class WindowsAudioCaptureTests(unittest.TestCase):
                 return info
 
         capture._audio = ChangedEndpointAudio()
-        with patch("app.services.windows_audio_capture.time.monotonic", return_value=20.1):
+        with patch(
+            "app.services.windows_audio_capture.time.monotonic", return_value=20.1
+        ):
             restart, reason = capture._restart_needed_sync()
 
         self.assertTrue(restart)

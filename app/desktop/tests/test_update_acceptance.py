@@ -13,7 +13,6 @@ from pathlib import Path
 from threading import Thread
 from unittest.mock import Mock
 
-
 ROOT = Path(__file__).resolve().parents[2]
 for source in (ROOT, ROOT / "backend", ROOT / "desktop"):
     if str(source) not in sys.path:
@@ -30,8 +29,8 @@ from backend.tests.test_update_service import (
 )
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from updater import INSTANCE_HEADER, apply_update
 from desktop.scripts.smoke_update_archive import GracefulProcess
+from updater import INSTANCE_HEADER, apply_update
 
 
 class NativeSmokeHarnessTests(unittest.TestCase):
@@ -104,17 +103,25 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
         self.helper = self.root / "DebateAIUpdater.exe"
         self.helper.write_bytes(b"helper")
 
-        public = Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY).public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw,
+        public = (
+            Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY)
+            .public_key()
+            .public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
         )
         self.keys = self.root / "keys.json"
-        self.keys.write_text(json.dumps({
-            "active": KEY_ID,
-            "keys": {
-                KEY_ID: base64.urlsafe_b64encode(public).rstrip(b"=").decode(),
-            },
-        }))
+        self.keys.write_text(
+            json.dumps(
+                {
+                    "active": KEY_ID,
+                    "keys": {
+                        KEY_ID: base64.urlsafe_b64encode(public).rstrip(b"=").decode(),
+                    },
+                }
+            )
+        )
 
     def tearDown(self):
         self.temp.cleanup()
@@ -145,10 +152,12 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
 
     def test_signed_update_resumes_swaps_and_rolls_back_with_bounded_memory(self):
         payload = random.Random(150).randbytes(3 * CHUNK_SIZE)
-        archive = zip_bundle({
-            "DebateAI/DebateAI.exe": b"new-launcher",
-            "DebateAI/payload.bin": payload,
-        })
+        archive = zip_bundle(
+            {
+                "DebateAI/DebateAI.exe": b"new-launcher",
+                "DebateAI/payload.bin": payload,
+            }
+        )
         self.assertGreater(len(archive), 3 * CHUNK_SIZE)
 
         with UpdateFixture(descriptor(archive), archive) as fixture:
@@ -190,13 +199,18 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
             process = Mock()
             process.poll.return_value = None
             with HealthFixture() as health:
+
                 def launch(_args, cwd=None):
                     self.assertEqual(Path(cwd), self.install)
-                    (self.data / "launcher.json").write_text(json.dumps({
-                        "port": health.server.server_port,
-                        "pid": 123,
-                        "token": health.token,
-                    }))
+                    (self.data / "launcher.json").write_text(
+                        json.dumps(
+                            {
+                                "port": health.server.server_port,
+                                "pid": 123,
+                                "token": health.token,
+                            }
+                        )
+                    )
                     return process
 
                 result = apply_update(
@@ -206,7 +220,9 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
                     sleep=lambda _seconds: None,
                 )
             self.assertEqual(result, 0)
-            self.assertEqual((self.install / "DebateAI.exe").read_bytes(), b"new-launcher")
+            self.assertEqual(
+                (self.install / "DebateAI.exe").read_bytes(), b"new-launcher"
+            )
 
             # Repeat the same verified download, then reject the new health and
             # prove the known-good install is relaunched.
@@ -234,7 +250,9 @@ class DesktopUpdateAcceptanceTests(unittest.TestCase):
                 sleep=lambda _seconds: None,
             )
             self.assertEqual(result, 1)
-            self.assertEqual((self.install / "DebateAI.exe").read_bytes(), b"known-good")
+            self.assertEqual(
+                (self.install / "DebateAI.exe").read_bytes(), b"known-good"
+            )
             self.assertEqual(
                 (self.root / "DebateAI.failed-v0.4.0" / "DebateAI.exe").read_bytes(),
                 b"new-launcher",

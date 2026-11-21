@@ -1,31 +1,34 @@
-import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { DatabaseSync } from 'node:sqlite';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { DatabaseSync } from "node:sqlite";
+import test from "node:test";
 
-import worker, { handleInterest } from './worker.js';
-import * as workerModule from './worker.js';
-import { createSessionToken } from './release-access.js';
+import worker, { handleInterest } from "./worker.js";
+import * as workerModule from "./worker.js";
+import { createSessionToken } from "./release-access.js";
 
 const HOST_ENV = {
-  DEBATEAI_PUBLIC_HOST: 'debateai.test',
-  DEBATEAI_WWW_HOST: 'www.debateai.test',
-  DEBATEAI_ADMIN_HOST: 'admin.debateai.test',
-  DEBATEAI_DOWNLOAD_HOST: 'downloads.debateai.test',
+  DEBATEAI_PUBLIC_HOST: "debateai.test",
+  DEBATEAI_WWW_HOST: "www.debateai.test",
+  DEBATEAI_ADMIN_HOST: "admin.debateai.test",
+  DEBATEAI_DOWNLOAD_HOST: "downloads.debateai.test",
 };
 
 const validVerification = {
   success: true,
-  hostname: 'debateai.test',
-  action: 'interest',
+  hostname: "debateai.test",
+  action: "interest",
 };
 
-function request(body = { email: 'Person@Example.com', token: 'token' }, init = {}) {
-  return new Request('https://debateai.test/api/interest', {
-    method: 'POST',
+function request(
+  body = { email: "Person@Example.com", token: "token" },
+  init = {},
+) {
+  return new Request("https://debateai.test/api/interest", {
+    method: "POST",
     headers: {
-      'content-type': 'application/json',
-      origin: 'https://debateai.test',
+      "content-type": "application/json",
+      origin: "https://debateai.test",
       ...init.headers,
     },
     body: JSON.stringify(body),
@@ -37,12 +40,13 @@ function bindings({ run = async () => ({ success: true }) } = {}) {
   const calls = [];
   return {
     calls,
-    env: { ...HOST_ENV,
-      TURNSTILE_SECRET_KEY: 'worker-secret',
-      DEBATEAI_PUBLIC_HOST: 'debateai.test',
-      DEBATEAI_WWW_HOST: 'www.debateai.test',
-      DEBATEAI_ADMIN_HOST: 'admin.debateai.test',
-      DEBATEAI_DOWNLOAD_HOST: 'downloads.debateai.test',
+    env: {
+      ...HOST_ENV,
+      TURNSTILE_SECRET_KEY: "worker-secret",
+      DEBATEAI_PUBLIC_HOST: "debateai.test",
+      DEBATEAI_WWW_HOST: "www.debateai.test",
+      DEBATEAI_ADMIN_HOST: "admin.debateai.test",
+      DEBATEAI_DOWNLOAD_HOST: "downloads.debateai.test",
       INTEREST_DB: {
         prepare(sql) {
           return {
@@ -53,44 +57,48 @@ function bindings({ run = async () => ({ success: true }) } = {}) {
           };
         },
       },
-      ASSETS: { fetch: async () => new Response('asset') },
+      ASSETS: { fetch: async () => new Response("asset") },
     },
   };
 }
 
 function verifier(payload = validVerification, status = 200) {
-  return async () => new Response(JSON.stringify(payload), {
-    status,
-    headers: { 'content-type': 'application/json' },
-  });
+  return async () =>
+    new Response(JSON.stringify(payload), {
+      status,
+      headers: { "content-type": "application/json" },
+    });
 }
 
 const interestRecord = {
-  email: 'new@example.com',
-  status: 'interested',
-  source: 'homepage',
-  consent_version: '2026-07-11',
-  consent_at: '2026-07-11 12:00:00',
-  created_at: '2026-07-11 12:00:00',
+  email: "new@example.com",
+  status: "interested",
+  source: "homepage",
+  consent_version: "2026-07-11",
+  consent_at: "2026-07-11 12:00:00",
+  created_at: "2026-07-11 12:00:00",
   invited_at: null,
   last_contacted_at: null,
-  release_decision: 'pending',
+  release_decision: "pending",
   release_reviewed_at: null,
 };
 
 const interestMigration = readFileSync(
-  new URL('./migrations/0001_interest_subscribers.sql', import.meta.url), 'utf8',
+  new URL("./migrations/0001_interest_subscribers.sql", import.meta.url),
+  "utf8",
 );
 const releaseMigration = readFileSync(
-  new URL('./migrations/0002_release_access.sql', import.meta.url), 'utf8',
+  new URL("./migrations/0002_release_access.sql", import.meta.url),
+  "utf8",
 );
 const policyMigration = readFileSync(
-  new URL('./migrations/0003_release_access_policies.sql', import.meta.url), 'utf8',
+  new URL("./migrations/0003_release_access_policies.sql", import.meta.url),
+  "utf8",
 );
 
 function sqliteD1() {
-  const database = new DatabaseSync(':memory:');
-  database.exec('PRAGMA foreign_keys = ON');
+  const database = new DatabaseSync(":memory:");
+  database.exec("PRAGMA foreign_keys = ON");
   database.exec(interestMigration);
   database.exec(releaseMigration);
   database.exec(policyMigration);
@@ -99,9 +107,16 @@ function sqliteD1() {
       const prepared = database.prepare(sql);
       let values = [];
       const statementValue = {
-        bind(...bound) { values = bound; return statementValue; },
-        all() { return { results: prepared.all(...values) }; },
-        first() { return prepared.get(...values); },
+        bind(...bound) {
+          values = bound;
+          return statementValue;
+        },
+        all() {
+          return { results: prepared.all(...values) };
+        },
+        first() {
+          return prepared.get(...values);
+        },
         run() {
           const result = prepared.run(...values);
           return { success: true, meta: { changes: Number(result.changes) } };
@@ -110,13 +125,15 @@ function sqliteD1() {
       return statementValue;
     },
     batch(statements) {
-      database.exec('BEGIN IMMEDIATE');
+      database.exec("BEGIN IMMEDIATE");
       try {
-        const results = statements.map((statementValue) => statementValue.run());
-        database.exec('COMMIT');
+        const results = statements.map((statementValue) =>
+          statementValue.run(),
+        );
+        database.exec("COMMIT");
         return results;
       } catch (error) {
-        database.exec('ROLLBACK');
+        database.exec("ROLLBACK");
         throw error;
       }
     },
@@ -128,95 +145,120 @@ function sqliteReleaseBindings() {
   const { database, binding } = sqliteD1();
   return {
     db: database,
-    env: { ...HOST_ENV,
-      ADMIN_EMAIL: 'owner@example.com',
-      ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
-      ACCESS_AUD: 'admin-audience',
+    env: {
+      ...HOST_ENV,
+      ADMIN_EMAIL: "owner@example.com",
+      ACCESS_TEAM_DOMAIN: "debateai.cloudflareaccess.test",
+      ACCESS_AUD: "admin-audience",
       INTEREST_DB: binding,
       RELEASES: adminCatalogBucket(),
-      ASSETS: { fetch: async () => new Response('private asset') },
+      ASSETS: { fetch: async () => new Response("private asset") },
     },
   };
 }
 
-function seedApprovedReleaseAccount(db, {
-  email,
-  includeLatest = 1,
-  version,
-  sessionExpiresAt,
-}) {
-  db.prepare(`
+function seedApprovedReleaseAccount(
+  db,
+  { email, includeLatest = 1, version, sessionExpiresAt },
+) {
+  db.prepare(
+    `
     INSERT INTO interest_subscribers
       (email, consent_version, release_decision, release_reviewed_at)
     VALUES (?, '2026-07-12', 'approved', '2026-07-12T12:00:00.000Z')
-  `).run(email);
-  db.prepare(`
+  `,
+  ).run(email);
+  db.prepare(
+    `
     INSERT INTO release_accounts
       (email, state, password_hash, password_salt, must_change_password,
        password_expires_at, approved_at)
     VALUES (?, 'active', 'hash', 'salt', 1,
       '2026-07-15T12:00:00.000Z', '2026-07-12T12:00:00.000Z')
-  `).run(email);
-  db.prepare(`
+  `,
+  ).run(email);
+  db.prepare(
+    `
     INSERT INTO release_access_policies (email, include_latest, updated_at)
     VALUES (?, ?, '2026-07-12T12:00:00.000Z')
-  `).run(email, includeLatest);
-  if (version) db.prepare(`
+  `,
+  ).run(email, includeLatest);
+  if (version)
+    db.prepare(
+      `
     INSERT INTO release_account_versions (email, version) VALUES (?, ?)
-  `).run(email, version);
-  if (sessionExpiresAt) db.prepare(`
+  `,
+    ).run(email, version);
+  if (sessionExpiresAt)
+    db.prepare(
+      `
     INSERT INTO release_sessions
       (token_hash, email, password_change_only, created_at, expires_at)
     VALUES ('seed-token', ?, 0, '2026-07-12T12:00:00.000Z', ?)
-  `).run(email, sessionExpiresAt);
+  `,
+    ).run(email, sessionExpiresAt);
 }
 
 function adminReleaseManifest(version) {
   return {
     version,
-    published_at: '2026-07-12T12:00:00Z',
-    commit: 'a'.repeat(40),
-    assets: [{
-      id: 'windows-x64', platform: 'Windows x64', filename: 'DebateAI-windows-x64.zip',
-      key: `releases/${version}/DebateAI-windows-x64.zip`, size: 1,
-      sha256: 'b'.repeat(64), content_type: 'application/zip',
-    }],
+    published_at: "2026-07-12T12:00:00Z",
+    commit: "a".repeat(40),
+    assets: [
+      {
+        id: "windows-x64",
+        platform: "Windows x64",
+        filename: "DebateAI-windows-x64.zip",
+        key: `releases/${version}/DebateAI-windows-x64.zip`,
+        size: 1,
+        sha256: "b".repeat(64),
+        content_type: "application/zip",
+      },
+    ],
   };
 }
 
 function adminCatalogBucket(
-  versions = ['v0.1.1', 'v0.2.0', 'v1.2.3'], latest = 'v1.2.3',
+  versions = ["v0.1.1", "v0.2.0", "v1.2.3"],
+  latest = "v1.2.3",
 ) {
   return {
     async list() {
       return {
-        objects: versions.map((version) => ({ key: `releases/${version}/manifest.json` })),
+        objects: versions.map((version) => ({
+          key: `releases/${version}/manifest.json`,
+        })),
       };
     },
     async get(key) {
-      if (key === 'releases/latest.json') return { json: async () => ({ version: latest }) };
-      const version = key.split('/')[1];
-      return versions.includes(version) ? { json: async () => adminReleaseManifest(version) } : null;
+      if (key === "releases/latest.json")
+        return { json: async () => ({ version: latest }) };
+      const version = key.split("/")[1];
+      return versions.includes(version)
+        ? { json: async () => adminReleaseManifest(version) }
+        : null;
     },
   };
 }
 
-function adminRequest(path = '/api/admin/interests', init = {}) {
+function adminRequest(path = "/api/admin/interests", init = {}) {
   return new Request(`https://admin.debateai.test${path}`, {
-    method: 'GET',
-    headers: { 'cf-access-jwt-assertion': 'access-token', ...init.headers },
+    method: "GET",
+    headers: { "cf-access-jwt-assertion": "access-token", ...init.headers },
     ...init,
   });
 }
 
 function adminBindings({
   all = async () => ({ results: [interestRecord] }),
-  first = async () => ({ state: 'active', release_decision: 'approved' }),
-  batch = async (statements) => statements.map(() => ({ success: true, meta: { changes: 1 } })),
+  first = async () => ({ state: "active", release_decision: "approved" }),
+  batch = async (statements) =>
+    statements.map(() => ({ success: true, meta: { changes: 1 } })),
   releases = adminCatalogBucket(),
-  asset = async () => new Response('private asset', {
-    headers: { 'content-type': 'text/html; charset=utf-8' },
-  }),
+  asset = async () =>
+    new Response("private asset", {
+      headers: { "content-type": "text/html; charset=utf-8" },
+    }),
 } = {}) {
   const calls = [];
   const batchCalls = [];
@@ -224,10 +266,11 @@ function adminBindings({
   return {
     calls,
     assetRequests,
-    env: { ...HOST_ENV,
-      ADMIN_EMAIL: 'owner@example.com',
-      ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
-      ACCESS_AUD: 'admin-audience',
+    env: {
+      ...HOST_ENV,
+      ADMIN_EMAIL: "owner@example.com",
+      ACCESS_TEAM_DOMAIN: "debateai.cloudflareaccess.test",
+      ACCESS_AUD: "admin-audience",
       INTEREST_DB: {
         prepare(sql) {
           const call = { sql, values: [] };
@@ -259,63 +302,90 @@ function adminBindings({
   };
 }
 
-const allowOwner = async () => ({ email: 'owner@example.com' });
+const allowOwner = async () => ({ email: "owner@example.com" });
 
-test('exports an injectable request router', () => {
-  assert.equal(typeof workerModule.route, 'function');
+test("exports an injectable request router", () => {
+  assert.equal(typeof workerModule.route, "function");
 });
 
-test('keeps the Worker execution context out of verifier injection', () => {
+test("keeps the Worker execution context out of verifier injection", () => {
   assert.notEqual(worker.fetch, workerModule.route);
 });
 
-test('rejects methods other than POST', async () => {
+test("rejects methods other than POST", async () => {
   const { env, calls } = bindings();
-  const response = await handleInterest(new Request(
-    'https://debateai.test/api/interest',
-    { method: 'GET', headers: { origin: 'https://debateai.test' } },
-  ), env, verifier());
+  const response = await handleInterest(
+    new Request("https://debateai.test/api/interest", {
+      method: "GET",
+      headers: { origin: "https://debateai.test" },
+    }),
+    env,
+    verifier(),
+  );
   assert.equal(response.status, 405);
-  assert.equal(response.headers.get('allow'), 'POST');
+  assert.equal(response.headers.get("allow"), "POST");
   assert.equal(calls.length, 0);
 });
 
-test('rejects cross-origin submissions', async () => {
+test("rejects cross-origin submissions", async () => {
   const { env, calls } = bindings();
-  const response = await handleInterest(request(undefined, {
-    headers: { origin: 'https://attacker.example' },
-  }), env, verifier());
+  const response = await handleInterest(
+    request(undefined, {
+      headers: { origin: "https://attacker.example" },
+    }),
+    env,
+    verifier(),
+  );
   assert.equal(response.status, 403);
   assert.equal(calls.length, 0);
 });
 
-test('rejects invalid email before Turnstile or D1', async () => {
+test("rejects invalid email before Turnstile or D1", async () => {
   const { env, calls } = bindings();
   let verifies = 0;
   const response = await handleInterest(
-    request({ email: 'not-an-email', token: 'token' }),
+    request({ email: "not-an-email", token: "token" }),
     env,
-    async () => { verifies += 1; return verifier()(); },
+    async () => {
+      verifies += 1;
+      return verifier()();
+    },
   );
   assert.equal(response.status, 400);
   assert.equal(verifies, 0);
   assert.equal(calls.length, 0);
 });
 
-test('rejects malformed and oversized bodies before Turnstile or D1', async () => {
+test("rejects malformed and oversized bodies before Turnstile or D1", async () => {
   const { env, calls } = bindings();
   let verifies = 0;
-  const fetcher = async () => { verifies += 1; return verifier()(); };
-  const headers = { 'content-type': 'application/json', origin: 'https://debateai.test' };
+  const fetcher = async () => {
+    verifies += 1;
+    return verifier()();
+  };
+  const headers = {
+    "content-type": "application/json",
+    origin: "https://debateai.test",
+  };
 
-  const malformed = await handleInterest(new Request(
-    'https://debateai.test/api/interest',
-    { method: 'POST', headers, body: '{' },
-  ), env, fetcher);
-  const oversized = await handleInterest(new Request(
-    'https://debateai.test/api/interest',
-    { method: 'POST', headers, body: 'x'.repeat(4097) },
-  ), env, fetcher);
+  const malformed = await handleInterest(
+    new Request("https://debateai.test/api/interest", {
+      method: "POST",
+      headers,
+      body: "{",
+    }),
+    env,
+    fetcher,
+  );
+  const oversized = await handleInterest(
+    new Request("https://debateai.test/api/interest", {
+      method: "POST",
+      headers,
+      body: "x".repeat(4097),
+    }),
+    env,
+    fetcher,
+  );
 
   assert.equal(malformed.status, 400);
   assert.equal(oversized.status, 413);
@@ -323,11 +393,11 @@ test('rejects malformed and oversized bodies before Turnstile or D1', async () =
   assert.equal(calls.length, 0);
 });
 
-test('rejects failed, wrong-host, and wrong-action Turnstile results', async () => {
+test("rejects failed, wrong-host, and wrong-action Turnstile results", async () => {
   for (const payload of [
     { success: false },
-    { ...validVerification, hostname: 'example.com' },
-    { ...validVerification, action: 'login' },
+    { ...validVerification, hostname: "example.com" },
+    { ...validVerification, action: "login" },
   ]) {
     const { env, calls } = bindings();
     const response = await handleInterest(request(), env, verifier(payload));
@@ -336,103 +406,128 @@ test('rejects failed, wrong-host, and wrong-action Turnstile results', async () 
   }
 });
 
-test('normalizes email and writes only consent metadata', async () => {
+test("normalizes email and writes only consent metadata", async () => {
   const { env, calls } = bindings();
   const response = await handleInterest(request(), env, verifier());
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
-  assert.deepEqual(calls[0].values, ['person@example.com', '2026-07-11']);
+  assert.equal(response.headers.get("cache-control"), "no-store");
+  assert.deepEqual(calls[0].values, ["person@example.com", "2026-07-11"]);
   assert.match(calls[0].sql, /ON CONFLICT\(email\) DO NOTHING/);
   assert.deepEqual(await response.json(), {
     ok: true,
-    message: 'Thanks - you are on the release updates list.',
+    message: "Thanks - you are on the release updates list.",
   });
 });
 
-test('returns the same success response when D1 reports a duplicate', async () => {
-  const first = bindings({ run: async () => ({ success: true, meta: { changes: 1 } }) });
-  const duplicate = bindings({ run: async () => ({ success: true, meta: { changes: 0 } }) });
+test("returns the same success response when D1 reports a duplicate", async () => {
+  const first = bindings({
+    run: async () => ({ success: true, meta: { changes: 1 } }),
+  });
+  const duplicate = bindings({
+    run: async () => ({ success: true, meta: { changes: 0 } }),
+  });
   const firstResponse = await handleInterest(request(), first.env, verifier());
-  const duplicateResponse = await handleInterest(request(), duplicate.env, verifier());
+  const duplicateResponse = await handleInterest(
+    request(),
+    duplicate.env,
+    verifier(),
+  );
   assert.equal(await firstResponse.text(), await duplicateResponse.text());
 });
 
-test('returns retryable service errors without leaking details', async () => {
+test("returns retryable service errors without leaking details", async () => {
   const verifyFailure = await handleInterest(
-    request(), bindings().env, async () => { throw new Error('upstream secret'); },
+    request(),
+    bindings().env,
+    async () => {
+      throw new Error("upstream secret");
+    },
   );
   assert.equal(verifyFailure.status, 503);
   assert.doesNotMatch(await verifyFailure.text(), /secret/);
 
-  const dbFailure = bindings({ run: async () => { throw new Error('database detail'); } });
+  const dbFailure = bindings({
+    run: async () => {
+      throw new Error("database detail");
+    },
+  });
   const dbResponse = await handleInterest(request(), dbFailure.env, verifier());
   assert.equal(dbResponse.status, 503);
   assert.doesNotMatch(await dbResponse.text(), /database detail/);
 });
 
-test('routes unknown API paths to JSON 404 instead of static assets', async () => {
+test("routes unknown API paths to JSON 404 instead of static assets", async () => {
   const response = await worker.fetch(
-    new Request('https://debateai.test/api/unknown'),
+    new Request("https://debateai.test/api/unknown"),
     bindings().env,
   );
   assert.equal(response.status, 404);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
-test('validates Access JWTs against the configured Cloudflare issuer and audience', async () => {
-  assert.equal(typeof workerModule.verifyAccessToken, 'function');
+test("validates Access JWTs against the configured Cloudflare issuer and audience", async () => {
+  assert.equal(typeof workerModule.verifyAccessToken, "function");
   const calls = {};
   const payload = await workerModule.verifyAccessToken(
-    'signed-token',
+    "signed-token",
     {
-      ACCESS_TEAM_DOMAIN: 'DebateAI.CloudflareAccess.com ',
-      ACCESS_AUD: 'admin-audience',
+      ACCESS_TEAM_DOMAIN: "DebateAI.CloudflareAccess.com ",
+      ACCESS_AUD: "admin-audience",
     },
     {
       createRemoteJWKSet(url) {
         calls.jwks = url.toString();
-        return 'remote-keys';
+        return "remote-keys";
       },
       async jwtVerify(token, keys, options) {
         calls.verify = { token, keys, options };
-        return { payload: { email: 'owner@example.com' } };
+        return { payload: { email: "owner@example.com" } };
       },
     },
   );
 
-  assert.deepEqual(payload, { email: 'owner@example.com' });
+  assert.deepEqual(payload, { email: "owner@example.com" });
   assert.equal(
     calls.jwks,
-    'https://debateai.cloudflareaccess.com/cdn-cgi/access/certs',
+    "https://debateai.cloudflareaccess.com/cdn-cgi/access/certs",
   );
   assert.deepEqual(calls.verify, {
-    token: 'signed-token',
-    keys: 'remote-keys',
+    token: "signed-token",
+    keys: "remote-keys",
     options: {
-      issuer: 'https://debateai.cloudflareaccess.com',
-      audience: 'admin-audience',
+      issuer: "https://debateai.cloudflareaccess.com",
+      audience: "admin-audience",
     },
   });
 });
 
-test('rejects a non-Cloudflare Access issuer before fetching keys', async () => {
-  assert.equal(typeof workerModule.verifyAccessToken, 'function');
+test("rejects a non-Cloudflare Access issuer before fetching keys", async () => {
+  assert.equal(typeof workerModule.verifyAccessToken, "function");
   let fetched = false;
-  await assert.rejects(() => workerModule.verifyAccessToken(
-    'signed-token',
-    { ACCESS_TEAM_DOMAIN: 'attacker.example', ACCESS_AUD: 'admin-audience' },
-    {
-      createRemoteJWKSet() { fetched = true; },
-      async jwtVerify() { return { payload: {} }; },
-    },
-  ));
+  await assert.rejects(() =>
+    workerModule.verifyAccessToken(
+      "signed-token",
+      { ACCESS_TEAM_DOMAIN: "attacker.example", ACCESS_AUD: "admin-audience" },
+      {
+        createRemoteJWKSet() {
+          fetched = true;
+        },
+        async jwtVerify() {
+          return { payload: {} };
+        },
+      },
+    ),
+  );
   assert.equal(fetched, false);
 });
 
-test('admin routes fail closed when Access configuration or assertion is missing', async () => {
+test("admin routes fail closed when Access configuration or assertion is missing", async () => {
   const { env } = adminBindings();
   let verified = false;
-  const verify = async () => { verified = true; return { email: 'owner@example.com' }; };
+  const verify = async () => {
+    verified = true;
+    return { email: "owner@example.com" };
+  };
 
   const unconfigured = await workerModule.route(
     adminRequest(),
@@ -447,30 +542,28 @@ test('admin routes fail closed when Access configuration or assertion is missing
 
   assert.equal(unconfigured.status, 503);
   assert.equal(noAssertion.status, 401);
-  assert.equal(unconfigured.headers.get('cache-control'), 'no-store');
-  assert.equal(noAssertion.headers.get('cache-control'), 'no-store');
+  assert.equal(unconfigured.headers.get("cache-control"), "no-store");
+  assert.equal(noAssertion.headers.get("cache-control"), "no-store");
   assert.equal(verified, false);
 });
 
-test('admin routes reject invalid assertions without leaking verifier details', async () => {
+test("admin routes reject invalid assertions without leaking verifier details", async () => {
   const { env, calls } = adminBindings();
-  const response = await workerModule.route(
-    adminRequest(),
-    env,
-    async () => { throw new Error('token detail'); },
-  );
+  const response = await workerModule.route(adminRequest(), env, async () => {
+    throw new Error("token detail");
+  });
 
   assert.equal(response.status, 401);
   assert.doesNotMatch(await response.text(), /token detail/);
   assert.equal(calls.length, 0);
 });
 
-test('admin routes allow only the normalized configured email', async () => {
+test("admin routes allow only the normalized configured email", async () => {
   const deniedBindings = adminBindings();
   const denied = await workerModule.route(
     adminRequest(),
     deniedBindings.env,
-    async () => ({ email: 'other@example.com' }),
+    async () => ({ email: "other@example.com" }),
   );
   assert.equal(denied.status, 403);
   assert.equal(deniedBindings.calls.length, 0);
@@ -479,43 +572,53 @@ test('admin routes allow only the normalized configured email', async () => {
   const allowed = await workerModule.route(
     adminRequest(),
     allowedBindings.env,
-    async () => ({ email: ' OWNER@EXAMPLE.COM ' }),
+    async () => ({ email: " OWNER@EXAMPLE.COM " }),
   );
   assert.equal(allowed.status, 200);
   assert.deepEqual(await allowed.json(), { items: [interestRecord] });
 });
 
-test('admin API selects only consent records in newest-first order', async () => {
+test("admin API selects only consent records in newest-first order", async () => {
   const { env, calls } = adminBindings();
   const response = await workerModule.route(adminRequest(), env, allowOwner);
 
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'no-store');
+  assert.equal(response.headers.get("cache-control"), "no-store");
   assert.equal(calls.length, 1);
   assert.doesNotMatch(calls[0].sql, /SELECT\s+\*/i);
-  for (const field of Object.keys(interestRecord)) assert.match(calls[0].sql, new RegExp(field));
+  for (const field of Object.keys(interestRecord))
+    assert.match(calls[0].sql, new RegExp(field));
   assert.match(calls[0].sql, /ORDER BY (?:i\.)?created_at DESC/);
 });
 
-test('separated admin read endpoints return disjoint route-specific records', async (context) => {
+test("separated admin read endpoints return disjoint route-specific records", async (context) => {
   const env = sqliteReleaseBindings();
   context.after(() => env.db.close());
   seedApprovedReleaseAccount(env.db, {
-    email: 'person@example.com',
+    email: "person@example.com",
     includeLatest: 1,
-    version: 'v0.2.1',
-    sessionExpiresAt: '2026-07-20T12:00:00.000Z',
+    version: "v0.2.1",
+    sessionExpiresAt: "2026-07-20T12:00:00.000Z",
   });
-  const dependencies = { now: () => new Date('2026-07-13T12:00:00.000Z') };
+  const dependencies = { now: () => new Date("2026-07-13T12:00:00.000Z") };
 
   const interests = await workerModule.route(
-    adminRequest('/api/admin/interests'), env.env, allowOwner, dependencies,
+    adminRequest("/api/admin/interests"),
+    env.env,
+    allowOwner,
+    dependencies,
   );
   const users = await workerModule.route(
-    adminRequest('/api/admin/users'), env.env, allowOwner, dependencies,
+    adminRequest("/api/admin/users"),
+    env.env,
+    allowOwner,
+    dependencies,
   );
   const authorization = await workerModule.route(
-    adminRequest('/api/admin/authorization'), env.env, allowOwner, dependencies,
+    adminRequest("/api/admin/authorization"),
+    env.env,
+    allowOwner,
+    dependencies,
   );
 
   const interestItem = (await interests.json()).items[0];
@@ -523,69 +626,101 @@ test('separated admin read endpoints return disjoint route-specific records', as
   const authorizationItem = (await authorization.json()).items[0];
 
   assert.deepEqual(Object.keys(interestItem).sort(), [
-    'consent_at', 'consent_version', 'created_at', 'email', 'invited_at',
-    'last_contacted_at', 'release_decision', 'release_reviewed_at', 'source', 'status',
+    "consent_at",
+    "consent_version",
+    "created_at",
+    "email",
+    "invited_at",
+    "last_contacted_at",
+    "release_decision",
+    "release_reviewed_at",
+    "source",
+    "status",
   ]);
   assert.deepEqual(Object.keys(userItem).sort(), [
-    'active_session_count', 'approved_at', 'email', 'latest_session_expires_at',
-    'must_change_password', 'password_changed_at', 'password_expires_at',
-    'requested_at', 'revoked_at', 'source', 'state',
+    "active_session_count",
+    "approved_at",
+    "email",
+    "latest_session_expires_at",
+    "must_change_password",
+    "password_changed_at",
+    "password_expires_at",
+    "requested_at",
+    "revoked_at",
+    "source",
+    "state",
   ]);
   assert.equal(userItem.must_change_password, true);
   assert.deepEqual(Object.keys(authorizationItem).sort(), [
-    'account_state', 'email', 'include_latest', 'updated_at', 'versions',
+    "account_state",
+    "email",
+    "include_latest",
+    "updated_at",
+    "versions",
   ]);
   assert.equal(authorizationItem.include_latest, true);
-  assert.deepEqual(authorizationItem.versions, ['v0.2.1']);
+  assert.deepEqual(authorizationItem.versions, ["v0.2.1"]);
 });
 
-test('admin authorization rejects malformed versions rows generically', async () => {
+test("admin authorization rejects malformed versions rows generically", async () => {
   const { env } = adminBindings({
-    all: async () => ({ results: [{
-      email: 'person@example.com',
-      account_state: 'active',
-      include_latest: 1,
-      updated_at: '2026-07-12T12:00:00.000Z',
-      versions: ['v0.2.1'],
-    }] }),
+    all: async () => ({
+      results: [
+        {
+          email: "person@example.com",
+          account_state: "active",
+          include_latest: 1,
+          updated_at: "2026-07-12T12:00:00.000Z",
+          versions: ["v0.2.1"],
+        },
+      ],
+    }),
   });
 
   const response = await workerModule.route(
-    adminRequest('/api/admin/authorization'), env, allowOwner,
+    adminRequest("/api/admin/authorization"),
+    env,
+    allowOwner,
   );
 
   assert.equal(response.status, 503);
   assert.deepEqual(await response.json(), {
     ok: false,
-    message: 'Request could not be completed.',
+    message: "Request could not be completed.",
   });
 });
 
-test('worker has no active release_accounts Latest references', () => {
-  const source = readFileSync(new URL('./worker.js', import.meta.url), 'utf8');
+test("worker has no active release_accounts Latest references", () => {
+  const source = readFileSync(new URL("./worker.js", import.meta.url), "utf8");
   for (const forbidden of [
     /a\.include_latest/,
     /account\.include_latest/,
     /UPDATE release_accounts SET include_latest/i,
     /INSERT INTO release_accounts\s*\([^)]*\binclude_latest\b/i,
-  ]) assert.doesNotMatch(source, forbidden);
+  ])
+    assert.doesNotMatch(source, forbidden);
 });
 
-test('admin read endpoints authorize before D1 reads', async () => {
+test("admin read endpoints authorize before D1 reads", async () => {
   let d1Calls = 0;
-  const env = { ...HOST_ENV,
+  const env = {
+    ...HOST_ENV,
     ...adminBindings().env,
     INTEREST_DB: {
       prepare() {
         d1Calls += 1;
-        throw new Error('D1 must not be reached');
+        throw new Error("D1 must not be reached");
       },
     },
   };
-  const denyOwner = async () => ({ email: 'other@example.com' });
+  const denyOwner = async () => ({ email: "other@example.com" });
 
-  for (const path of ['/api/admin/users', '/api/admin/authorization']) {
-    const response = await workerModule.route(adminRequest(path), env, denyOwner);
+  for (const path of ["/api/admin/users", "/api/admin/authorization"]) {
+    const response = await workerModule.route(
+      adminRequest(path),
+      env,
+      denyOwner,
+    );
     assert.equal(response.status, 403);
   }
   assert.equal(d1Calls, 0);
@@ -593,64 +728,105 @@ test('admin read endpoints authorize before D1 reads', async () => {
 
 function adminJson(path, body, init = {}) {
   return adminRequest(path, {
-    method: init.method || 'POST',
+    method: init.method || "POST",
     headers: {
-      'cf-access-jwt-assertion': 'access-token',
-      origin: 'https://admin.debateai.test',
-      'content-type': 'application/json; charset=utf-8',
+      "cf-access-jwt-assertion": "access-token",
+      origin: "https://admin.debateai.test",
+      "content-type": "application/json; charset=utf-8",
       ...init.headers,
     },
-    body: typeof body === 'string' ? body : JSON.stringify(body),
+    body: typeof body === "string" ? body : JSON.stringify(body),
   });
 }
 
 const fixedDependencies = {
-  now: () => new Date('2026-07-12T12:00:00.000Z'),
+  now: () => new Date("2026-07-12T12:00:00.000Z"),
   randomBytes: (length) => new Uint8Array(length),
 };
 
-test('approval creates identity and default Latest policy without grant input', async (context) => {
+test("approval creates identity and default Latest policy without grant input", async (context) => {
   const bindings = sqliteReleaseBindings();
-  bindings.env.DEBATEAI_DOWNLOAD_HOST = 'downloads.operator.example';
+  bindings.env.DEBATEAI_DOWNLOAD_HOST = "downloads.operator.example";
   context.after(() => bindings.db.close());
-  bindings.db.prepare(`
+  bindings.db
+    .prepare(
+      `
     INSERT INTO interest_subscribers (email, consent_version)
     VALUES ('person@example.com', '2026-07-12')
-  `).run();
+  `,
+    )
+    .run();
   const response = await workerModule.route(
-    adminJson('/api/admin/interests/approve', { email: ' Person@Example.com ' }),
+    adminJson("/api/admin/interests/approve", {
+      email: " Person@Example.com ",
+    }),
     bindings.env,
     allowOwner,
     fixedDependencies,
   );
   const body = await response.json();
   assert.equal(response.status, 201);
-  assert.equal(body.credential.login_url, 'https://downloads.operator.example/');
+  assert.equal(
+    body.credential.login_url,
+    "https://downloads.operator.example/",
+  );
   assert.deepEqual(Object.keys(body.credential).sort(), [
-    'email', 'login_url', 'password', 'password_expires_at',
+    "email",
+    "login_url",
+    "password",
+    "password_expires_at",
   ]);
-  assert.deepEqual({ ...bindings.db.prepare(`
+  assert.deepEqual(
+    {
+      ...bindings.db
+        .prepare(
+          `
     SELECT state, must_change_password FROM release_accounts WHERE email = ?
-  `).get('person@example.com') }, { state: 'active', must_change_password: 1 });
-  assert.equal(bindings.db.prepare(`
+  `,
+        )
+        .get("person@example.com"),
+    },
+    { state: "active", must_change_password: 1 },
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT include_latest FROM release_access_policies WHERE email = ?
-  `).get('person@example.com').include_latest, 1);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").include_latest,
+    1,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_account_versions WHERE email = ?
-  `).get('person@example.com').count, 0);
+  `,
+      )
+      .get("person@example.com").count,
+    0,
+  );
 });
 
-test('approval accepts exactly an email body', async () => {
+test("approval accepts exactly an email body", async () => {
   let r2Calls = 0;
   const bindings = adminBindings({
     releases: {
-      async list() { r2Calls += 1; throw new Error('R2 must not be reached'); },
-      async get() { r2Calls += 1; throw new Error('R2 must not be reached'); },
+      async list() {
+        r2Calls += 1;
+        throw new Error("R2 must not be reached");
+      },
+      async get() {
+        r2Calls += 1;
+        throw new Error("R2 must not be reached");
+      },
     },
   });
   const response = await workerModule.route(
-    adminJson('/api/admin/interests/approve', {
-      email: 'person@example.com',
+    adminJson("/api/admin/interests/approve", {
+      email: "person@example.com",
       include_latest: true,
       versions: [],
     }),
@@ -660,23 +836,32 @@ test('approval accepts exactly an email body', async () => {
   );
 
   assert.equal(response.status, 400);
-  assert.deepEqual(await response.json(), { ok: false, message: 'Request is invalid.' });
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    message: "Request is invalid.",
+  });
   assert.equal(bindings.calls.length, 0);
   assert.equal(bindings.batchCalls.length, 0);
   assert.equal(r2Calls, 0);
 });
 
-test('approval rejects null and primitive bodies before D1 or R2', async () => {
+test("approval rejects null and primitive bodies before D1 or R2", async () => {
   let r2Calls = 0;
   const releases = {
-    async list() { r2Calls += 1; throw new Error('R2 must not be reached'); },
-    async get() { r2Calls += 1; throw new Error('R2 must not be reached'); },
+    async list() {
+      r2Calls += 1;
+      throw new Error("R2 must not be reached");
+    },
+    async get() {
+      r2Calls += 1;
+      throw new Error("R2 must not be reached");
+    },
   };
 
-  for (const body of ['null', '42', '"person@example.com"']) {
+  for (const body of ["null", "42", '"person@example.com"']) {
     const bindings = adminBindings({ releases });
     const response = await workerModule.route(
-      adminJson('/api/admin/interests/approve', body),
+      adminJson("/api/admin/interests/approve", body),
       bindings.env,
       allowOwner,
       fixedDependencies,
@@ -685,7 +870,7 @@ test('approval rejects null and primitive bodies before D1 or R2', async () => {
     assert.equal(response.status, 400);
     assert.deepEqual(await response.json(), {
       ok: false,
-      message: 'Request is not valid JSON.',
+      message: "Request is not valid JSON.",
     });
     assert.equal(bindings.calls.length, 0);
     assert.equal(bindings.batchCalls.length, 0);
@@ -693,7 +878,7 @@ test('approval rejects null and primitive bodies before D1 or R2', async () => {
   assert.equal(r2Calls, 0);
 });
 
-test('failed approval cannot backfill policy or emit an event', async (context) => {
+test("failed approval cannot backfill policy or emit an event", async (context) => {
   const bindings = sqliteReleaseBindings();
   context.after(() => bindings.db.close());
   bindings.db.exec(`
@@ -708,38 +893,60 @@ test('failed approval cannot backfill policy or emit an event', async (context) 
   `);
 
   const response = await workerModule.route(
-    adminJson('/api/admin/interests/approve', { email: 'person@example.com' }),
+    adminJson("/api/admin/interests/approve", { email: "person@example.com" }),
     bindings.env,
     allowOwner,
     fixedDependencies,
   );
 
   assert.equal(response.status, 409);
-  assert.equal(bindings.db.prepare(`
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_policies WHERE email = ?
-  `).get('person@example.com').count, 0);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").count,
+    0,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_events WHERE email = ?
-  `).get('person@example.com').count, 0);
+  `,
+      )
+      .get("person@example.com").count,
+    0,
+  );
 });
 
-test('sign-out deletes sessions without changing identity or authorization', async (context) => {
+test("sign-out deletes sessions without changing identity or authorization", async (context) => {
   const bindings = sqliteReleaseBindings();
   context.after(() => bindings.db.close());
   seedApprovedReleaseAccount(bindings.db, {
-    email: 'person@example.com',
+    email: "person@example.com",
     includeLatest: 0,
-    version: 'v0.2.1',
-    sessionExpiresAt: '2026-07-20T12:00:00.000Z',
+    version: "v0.2.1",
+    sessionExpiresAt: "2026-07-20T12:00:00.000Z",
   });
-  const accountBefore = bindings.db.prepare(`
+  const accountBefore = bindings.db
+    .prepare(
+      `
     SELECT state, password_hash, password_salt FROM release_accounts WHERE email = ?
-  `).get('person@example.com');
-  const policyBefore = bindings.db.prepare(`
+  `,
+    )
+    .get("person@example.com");
+  const policyBefore = bindings.db
+    .prepare(
+      `
     SELECT include_latest FROM release_access_policies WHERE email = ?
-  `).get('person@example.com');
+  `,
+    )
+    .get("person@example.com");
   const response = await workerModule.route(
-    adminJson('/api/admin/users/sign-out', { email: 'person@example.com' }),
+    adminJson("/api/admin/users/sign-out", { email: "person@example.com" }),
     bindings.env,
     allowOwner,
     fixedDependencies,
@@ -748,44 +955,91 @@ test('sign-out deletes sessions without changing identity or authorization', asy
   const body = await response.json();
   assert.equal(body.ok, true);
   assert.deepEqual(Object.keys(body.item).sort(), [
-    'active_session_count', 'approved_at', 'email', 'latest_session_expires_at',
-    'must_change_password', 'password_changed_at', 'password_expires_at',
-    'requested_at', 'revoked_at', 'source', 'state',
+    "active_session_count",
+    "approved_at",
+    "email",
+    "latest_session_expires_at",
+    "must_change_password",
+    "password_changed_at",
+    "password_expires_at",
+    "requested_at",
+    "revoked_at",
+    "source",
+    "state",
   ]);
   assert.equal(body.item.active_session_count, 0);
-  assert.equal(bindings.db.prepare(`
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_sessions WHERE email = ?
-  `).get('person@example.com').count, 0);
-  assert.deepEqual(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").count,
+    0,
+  );
+  assert.deepEqual(
+    bindings.db
+      .prepare(
+        `
     SELECT state, password_hash, password_salt FROM release_accounts WHERE email = ?
-  `).get('person@example.com'), accountBefore);
-  assert.deepEqual(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com"),
+    accountBefore,
+  );
+  assert.deepEqual(
+    bindings.db
+      .prepare(
+        `
     SELECT include_latest FROM release_access_policies WHERE email = ?
-  `).get('person@example.com'), policyBefore);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com"),
+    policyBefore,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_account_versions WHERE email = ?
-  `).get('person@example.com').count, 1);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").count,
+    1,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_events
     WHERE email = ? AND action = 'session_sign_out'
-  `).get('person@example.com').count, 1);
+  `,
+      )
+      .get("person@example.com").count,
+    1,
+  );
 });
 
-test('reactivation restores a revoked account without changing credentials or authorization', async (context) => {
+test("reactivation restores a revoked account without changing credentials or authorization", async (context) => {
   const bindings = sqliteReleaseBindings();
   context.after(() => bindings.db.close());
   seedApprovedReleaseAccount(bindings.db, {
-    email: 'person@example.com',
+    email: "person@example.com",
     includeLatest: 0,
-    version: 'v0.2.1',
+    version: "v0.2.1",
   });
-  const accountBefore = bindings.db.prepare(`
+  const accountBefore = bindings.db
+    .prepare(
+      `
     SELECT password_hash, password_salt, password_iterations,
            must_change_password, password_expires_at
     FROM release_accounts WHERE email = ?
-  `).get('person@example.com');
+  `,
+    )
+    .get("person@example.com");
   const revokeResponse = await workerModule.route(
-    adminJson('/api/admin/users/revoke', { email: 'person@example.com' }),
+    adminJson("/api/admin/users/revoke", { email: "person@example.com" }),
     bindings.env,
     allowOwner,
     fixedDependencies,
@@ -793,110 +1047,198 @@ test('reactivation restores a revoked account without changing credentials or au
   assert.equal(revokeResponse.status, 200);
 
   const response = await workerModule.route(
-    adminJson('/api/admin/users/reactivate', { email: 'person@example.com' }),
+    adminJson("/api/admin/users/reactivate", { email: "person@example.com" }),
     bindings.env,
     allowOwner,
     fixedDependencies,
   );
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.item.state, 'active');
+  assert.equal(body.item.state, "active");
   assert.equal(body.item.revoked_at, null);
-  assert.deepEqual(bindings.db.prepare(`
+  assert.deepEqual(
+    bindings.db
+      .prepare(
+        `
     SELECT password_hash, password_salt, password_iterations,
            must_change_password, password_expires_at
     FROM release_accounts WHERE email = ?
-  `).get('person@example.com'), accountBefore);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com"),
+    accountBefore,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT include_latest FROM release_access_policies WHERE email = ?
-  `).get('person@example.com').include_latest, 0);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").include_latest,
+    0,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_account_versions WHERE email = ?
-  `).get('person@example.com').count, 1);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .get("person@example.com").count,
+    1,
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_events
     WHERE email = ? AND action = 'reactivation'
-  `).get('person@example.com').count, 1);
+  `,
+      )
+      .get("person@example.com").count,
+    1,
+  );
 });
 
-test('admin authorization runs before mutation body parsing', async () => {
+test("admin authorization runs before mutation body parsing", async () => {
   const { env, calls } = adminBindings();
   const response = await workerModule.route(
-    adminJson('/api/admin/interests/approve', '{'),
+    adminJson("/api/admin/interests/approve", "{"),
     env,
-    async () => ({ email: 'other@example.com' }),
+    async () => ({ email: "other@example.com" }),
     fixedDependencies,
   );
   assert.equal(response.status, 403);
   assert.equal(calls.length, 0);
 });
 
-test('admin mutations enforce exact origin, JSON media type, and bounded bodies', async () => {
+test("admin mutations enforce exact origin, JSON media type, and bounded bodies", async () => {
   const cases = [
-    [adminJson('/api/admin/interests/reject', { email: 'person@example.com' }, {
-      headers: { origin: 'https://attacker.example' },
-    }), 403],
-    [adminJson('/api/admin/interests/reject', { email: 'person@example.com' }, {
-      headers: { 'content-type': 'text/plain' },
-    }), 415],
-    [adminJson('/api/admin/interests/reject', 'x'.repeat(8193)), 413],
+    [
+      adminJson(
+        "/api/admin/interests/reject",
+        { email: "person@example.com" },
+        {
+          headers: { origin: "https://attacker.example" },
+        },
+      ),
+      403,
+    ],
+    [
+      adminJson(
+        "/api/admin/interests/reject",
+        { email: "person@example.com" },
+        {
+          headers: { "content-type": "text/plain" },
+        },
+      ),
+      415,
+    ],
+    [adminJson("/api/admin/interests/reject", "x".repeat(8193)), 413],
   ];
   for (const [requestValue, expected] of cases) {
     const { env, calls } = adminBindings();
-    const response = await workerModule.route(requestValue, env, allowOwner, fixedDependencies);
+    const response = await workerModule.route(
+      requestValue,
+      env,
+      allowOwner,
+      fixedDependencies,
+    );
     assert.equal(response.status, expected);
     assert.equal(calls.length, 0);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get("cache-control"), "no-store");
   }
 });
 
-test('approval normalizes input and creates a one-time credential without binding plaintext', async () => {
+test("approval normalizes input and creates a one-time credential without binding plaintext", async () => {
   const { env, calls, batchCalls } = adminBindings();
-  const response = await workerModule.route(adminJson('/api/admin/interests/approve', {
-    email: ' Person@Example.com ',
-  }), env, allowOwner, fixedDependencies);
+  const response = await workerModule.route(
+    adminJson("/api/admin/interests/approve", {
+      email: " Person@Example.com ",
+    }),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
 
   assert.equal(response.status, 201);
   const { credential } = await response.json();
-  assert.deepEqual({ ...credential, password: undefined }, {
-    email: 'person@example.com',
-    login_url: 'https://downloads.debateai.test/',
-    password: undefined,
-    password_expires_at: '2026-07-15T12:00:00.000Z',
-  });
+  assert.deepEqual(
+    { ...credential, password: undefined },
+    {
+      email: "person@example.com",
+      login_url: "https://downloads.debateai.test/",
+      password: undefined,
+      password_expires_at: "2026-07-15T12:00:00.000Z",
+    },
+  );
   assert.equal(credential.password.length, 20);
   assert.equal(batchCalls.length, 1);
   const batchSql = calls.map(({ sql }) => sql);
-  assert.match(batchSql[0], /INSERT INTO release_accounts[\s\S]+SELECT[\s\S]+WHERE EXISTS/i);
+  assert.match(
+    batchSql[0],
+    /INSERT INTO release_accounts[\s\S]+SELECT[\s\S]+WHERE EXISTS/i,
+  );
   assert.doesNotMatch(batchSql[0], /include_latest|release_account_versions/i);
-  assert.match(batchSql[1], /UPDATE interest_subscribers[\s\S]+changes\(\)\s*=\s*1/i);
-  assert.match(batchSql[2], /INSERT INTO release_access_policies[\s\S]+changes\(\)\s*=\s*1/i);
-  assert.match(batchSql[3], /INSERT INTO release_access_events[\s\S]+changes\(\)\s*=\s*1/i);
-  assert.equal(JSON.stringify(calls.map(({ values }) => values)).includes(credential.password), false);
-  assert.ok(calls.flatMap(({ values }) => values).includes('person@example.com'));
+  assert.match(
+    batchSql[1],
+    /UPDATE interest_subscribers[\s\S]+changes\(\)\s*=\s*1/i,
+  );
+  assert.match(
+    batchSql[2],
+    /INSERT INTO release_access_policies[\s\S]+changes\(\)\s*=\s*1/i,
+  );
+  assert.match(
+    batchSql[3],
+    /INSERT INTO release_access_events[\s\S]+changes\(\)\s*=\s*1/i,
+  );
+  assert.equal(
+    JSON.stringify(calls.map(({ values }) => values)).includes(
+      credential.password,
+    ),
+    false,
+  );
+  assert.ok(
+    calls.flatMap(({ values }) => values).includes("person@example.com"),
+  );
 });
 
-test('approval fails generically when a concurrent account wins', async () => {
+test("approval fails generically when a concurrent account wins", async () => {
   const duplicate = adminBindings({
-    batch: async () => { throw new Error('UNIQUE release_accounts.email'); },
+    batch: async () => {
+      throw new Error("UNIQUE release_accounts.email");
+    },
   });
-  const duplicateResponse = await workerModule.route(adminJson('/api/admin/interests/approve', {
-    email: 'person@example.com',
-  }), duplicate.env, allowOwner, fixedDependencies);
+  const duplicateResponse = await workerModule.route(
+    adminJson("/api/admin/interests/approve", {
+      email: "person@example.com",
+    }),
+    duplicate.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(duplicateResponse.status, 409);
-  assert.doesNotMatch(await duplicateResponse.text(), /UNIQUE|person@example|password/i);
+  assert.doesNotMatch(
+    await duplicateResponse.text(),
+    /UNIQUE|person@example|password/i,
+  );
 });
 
-test('admin entitlement input requires a boolean and unique strict versions', async () => {
+test("admin entitlement input requires a boolean and unique strict versions", async () => {
   const invalidBodies = [
-    { email: 'person@example.com', include_latest: 'true', versions: [] },
-    { email: 'person@example.com', include_latest: true, versions: ['1.2.3'] },
-    { email: 'person@example.com', include_latest: true, versions: ['v1.2.3', 'v1.2.3'] },
+    { email: "person@example.com", include_latest: "true", versions: [] },
+    { email: "person@example.com", include_latest: true, versions: ["1.2.3"] },
+    {
+      email: "person@example.com",
+      include_latest: true,
+      versions: ["v1.2.3", "v1.2.3"],
+    },
   ];
   for (const body of invalidBodies) {
     const { env, calls } = adminBindings();
     const response = await workerModule.route(
-      adminJson('/api/admin/authorization/grants', body, { method: 'PUT' }),
+      adminJson("/api/admin/authorization/grants", body, { method: "PUT" }),
       env,
       allowOwner,
       fixedDependencies,
@@ -906,91 +1248,170 @@ test('admin entitlement input requires a boolean and unique strict versions', as
   }
 });
 
-test('admin entitlement input rejects more than 100 unique canonical versions', async () => {
+test("admin entitlement input rejects more than 100 unique canonical versions", async () => {
   const { env, calls } = adminBindings();
   const versions = Array.from({ length: 101 }, (_, index) => `v1.2.${index}`);
-  const response = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-    email: 'person@example.com', include_latest: true, versions,
-  }, { method: 'PUT' }), env, allowOwner, fixedDependencies);
+  const response = await workerModule.route(
+    adminJson(
+      "/api/admin/authorization/grants",
+      {
+        email: "person@example.com",
+        include_latest: true,
+        versions,
+      },
+      { method: "PUT" },
+    ),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(new Set(versions).size, 101);
   assert.equal(response.status, 400);
   assert.equal(calls.length, 0);
 });
 
-test('admin entitlement input enforces the 32-character canonical version boundary', async () => {
-  const accepted = `v${'1'.repeat(10)}.${'2'.repeat(9)}.${'3'.repeat(10)}`;
+test("admin entitlement input enforces the 32-character canonical version boundary", async () => {
+  const accepted = `v${"1".repeat(10)}.${"2".repeat(9)}.${"3".repeat(10)}`;
   const rejected = `${accepted}4`;
   assert.equal(accepted.length, 32);
   assert.equal(rejected.length, 33);
 
   const invalid = adminBindings();
-  const response = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-    email: 'person@example.com', include_latest: true, versions: [rejected],
-  }, { method: 'PUT' }), invalid.env, allowOwner, fixedDependencies);
+  const response = await workerModule.route(
+    adminJson(
+      "/api/admin/authorization/grants",
+      {
+        email: "person@example.com",
+        include_latest: true,
+        versions: [rejected],
+      },
+      { method: "PUT" },
+    ),
+    invalid.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(response.status, 400);
   assert.equal(invalid.calls.length, 0);
 });
 
-test('grant replacement validates the trusted catalog before D1 mutation', async () => {
-  for (const [path, method] of [
-    ['/api/admin/authorization/grants', 'PUT'],
-  ]) {
-    const unpublished = adminBindings({ releases: adminCatalogBucket(['v1.2.3']) });
-    const unpublishedResponse = await workerModule.route(adminJson(path, {
-      email: 'person@example.com', include_latest: false, versions: ['v9.9.9'],
-    }, { method }), unpublished.env, allowOwner, fixedDependencies);
+test("grant replacement validates the trusted catalog before D1 mutation", async () => {
+  for (const [path, method] of [["/api/admin/authorization/grants", "PUT"]]) {
+    const unpublished = adminBindings({
+      releases: adminCatalogBucket(["v1.2.3"]),
+    });
+    const unpublishedResponse = await workerModule.route(
+      adminJson(
+        path,
+        {
+          email: "person@example.com",
+          include_latest: false,
+          versions: ["v9.9.9"],
+        },
+        { method },
+      ),
+      unpublished.env,
+      allowOwner,
+      fixedDependencies,
+    );
     assert.equal(unpublishedResponse.status, 409);
     assert.equal(unpublished.calls.length, 0);
     assert.equal(unpublished.batchCalls.length, 0);
-    assert.doesNotMatch(await unpublishedResponse.text(), /v9\.9\.9|credential|manifest/i);
+    assert.doesNotMatch(
+      await unpublishedResponse.text(),
+      /v9\.9\.9|credential|manifest/i,
+    );
 
     const malformed = adminBindings({
       releases: {
-        async list() { return { objects: [{ key: 'releases/v1.2.3/manifest.json' }] }; },
-        async get() { return { json: async () => ({ private_key: 'secret' }) }; },
-      },
-    });
-    const malformedResponse = await workerModule.route(adminJson(path, {
-      email: 'person@example.com', include_latest: true, versions: [],
-    }, { method }), malformed.env, allowOwner, fixedDependencies);
-    assert.equal(malformedResponse.status, 503);
-    assert.equal(malformed.calls.length, 0);
-    assert.equal(malformed.batchCalls.length, 0);
-    assert.doesNotMatch(await malformedResponse.text(), /secret|catalog|manifest/i);
-
-    const noLatest = adminBindings({
-      releases: {
-        async list() { return { objects: [{ key: 'releases/v1.2.3/manifest.json' }] }; },
-        async get(key) {
-          return key.endsWith('latest.json') ? null : { json: async () => adminReleaseManifest('v1.2.3') };
+        async list() {
+          return { objects: [{ key: "releases/v1.2.3/manifest.json" }] };
+        },
+        async get() {
+          return { json: async () => ({ private_key: "secret" }) };
         },
       },
     });
-    const noLatestResponse = await workerModule.route(adminJson(path, {
-      email: 'person@example.com', include_latest: true, versions: [],
-    }, { method }), noLatest.env, allowOwner, fixedDependencies);
+    const malformedResponse = await workerModule.route(
+      adminJson(
+        path,
+        {
+          email: "person@example.com",
+          include_latest: true,
+          versions: [],
+        },
+        { method },
+      ),
+      malformed.env,
+      allowOwner,
+      fixedDependencies,
+    );
+    assert.equal(malformedResponse.status, 503);
+    assert.equal(malformed.calls.length, 0);
+    assert.equal(malformed.batchCalls.length, 0);
+    assert.doesNotMatch(
+      await malformedResponse.text(),
+      /secret|catalog|manifest/i,
+    );
+
+    const noLatest = adminBindings({
+      releases: {
+        async list() {
+          return { objects: [{ key: "releases/v1.2.3/manifest.json" }] };
+        },
+        async get(key) {
+          return key.endsWith("latest.json")
+            ? null
+            : { json: async () => adminReleaseManifest("v1.2.3") };
+        },
+      },
+    });
+    const noLatestResponse = await workerModule.route(
+      adminJson(
+        path,
+        {
+          email: "person@example.com",
+          include_latest: true,
+          versions: [],
+        },
+        { method },
+      ),
+      noLatest.env,
+      allowOwner,
+      fixedDependencies,
+    );
     assert.equal(noLatestResponse.status, 503);
     assert.equal(noLatest.calls.length, 0);
     assert.equal(noLatest.batchCalls.length, 0);
   }
 });
 
-test('interest and user mutations return a route-specific rejection item', async () => {
+test("interest and user mutations return a route-specific rejection item", async () => {
   const rejectedItem = {
     ...interestRecord,
-    email: 'person@example.com',
-    release_decision: 'rejected',
-    release_reviewed_at: '2026-07-12T12:00:00.000Z',
+    email: "person@example.com",
+    release_decision: "rejected",
+    release_reviewed_at: "2026-07-12T12:00:00.000Z",
   };
-  const { env, calls, batchCalls } = adminBindings({ first: async () => rejectedItem });
-  const response = await workerModule.route(adminJson('/api/admin/interests/reject', {
-    email: ' Person@Example.com ',
-  }), env, allowOwner, fixedDependencies);
+  const { env, calls, batchCalls } = adminBindings({
+    first: async () => rejectedItem,
+  });
+  const response = await workerModule.route(
+    adminJson("/api/admin/interests/reject", {
+      email: " Person@Example.com ",
+    }),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), { ok: true, item: rejectedItem });
   assert.equal(batchCalls.length, 1);
   assert.equal(calls.length, 3);
-  assert.match(calls[0].sql, /UPDATE interest_subscribers[\s\S]+release_decision/i);
+  assert.match(
+    calls[0].sql,
+    /UPDATE interest_subscribers[\s\S]+release_decision/i,
+  );
   assert.match(calls[0].sql, /release_decision\s*=\s*'pending'/i);
   assert.match(calls[0].sql, /NOT EXISTS[\s\S]+release_accounts/i);
   assert.match(calls[1].sql, /rejection/);
@@ -998,129 +1419,219 @@ test('interest and user mutations return a route-specific rejection item', async
   assert.match(calls[1].sql, /release_decision\s*=\s*'rejected'/i);
   assert.match(calls[1].sql, /release_reviewed_at\s*=\s*\?/i);
   assert.match(calls[1].sql, /NOT EXISTS[\s\S]+release_accounts/i);
-  assert.ok(calls[1].values.includes('2026-07-12T12:00:00.000Z'));
+  assert.ok(calls[1].values.includes("2026-07-12T12:00:00.000Z"));
 
   const conflict = adminBindings({
-    batch: async (statements) => statements.map(() => ({ success: true, meta: { changes: 0 } })),
+    batch: async (statements) =>
+      statements.map(() => ({ success: true, meta: { changes: 0 } })),
   });
-  const conflictResponse = await workerModule.route(adminJson('/api/admin/interests/reject', {
-    email: 'person@example.com',
-  }), conflict.env, allowOwner, fixedDependencies);
+  const conflictResponse = await workerModule.route(
+    adminJson("/api/admin/interests/reject", {
+      email: "person@example.com",
+    }),
+    conflict.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(conflictResponse.status, 409);
   assert.deepEqual(await conflictResponse.json(), {
-    ok: false, message: 'Request could not be completed.',
+    ok: false,
+    message: "Request could not be completed.",
   });
 });
 
-test('same-timestamp rejection retry cannot emit a second event in real SQLite', async (context) => {
+test("same-timestamp rejection retry cannot emit a second event in real SQLite", async (context) => {
   const { database, binding } = sqliteD1();
   context.after(() => database.close());
-  database.prepare(`
+  database
+    .prepare(
+      `
     INSERT INTO interest_subscribers (email, consent_version)
     VALUES (?, '2026-07-12')
-  `).run('person@example.com');
-  const env = { ...HOST_ENV,
-    ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
-    ACCESS_AUD: 'admin-audience',
+  `,
+    )
+    .run("person@example.com");
+  const env = {
+    ...HOST_ENV,
+    ADMIN_EMAIL: "owner@example.com",
+    ACCESS_TEAM_DOMAIN: "debateai.cloudflareaccess.test",
+    ACCESS_AUD: "admin-audience",
     INTEREST_DB: binding,
   };
-  const rejectRequest = () => adminJson('/api/admin/interests/reject', {
-    email: 'person@example.com',
-  });
+  const rejectRequest = () =>
+    adminJson("/api/admin/interests/reject", {
+      email: "person@example.com",
+    });
 
   const accepted = await workerModule.route(
-    rejectRequest(), env, allowOwner, fixedDependencies,
+    rejectRequest(),
+    env,
+    allowOwner,
+    fixedDependencies,
   );
   const retried = await workerModule.route(
-    rejectRequest(), env, allowOwner, fixedDependencies,
+    rejectRequest(),
+    env,
+    allowOwner,
+    fixedDependencies,
   );
 
   assert.equal(accepted.status, 200);
   assert.equal(retried.status, 409);
-  assert.equal(database.prepare(`
+  assert.equal(
+    database
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_events WHERE action = 'rejection'
-  `).get().count, 1);
-  assert.equal(database.prepare(`
+  `,
+      )
+      .get().count,
+    1,
+  );
+  assert.equal(
+    database
+      .prepare(
+        `
     SELECT release_decision FROM interest_subscribers WHERE email = ?
-  `).get('person@example.com').release_decision, 'rejected');
+  `,
+      )
+      .get("person@example.com").release_decision,
+    "rejected",
+  );
 });
 
-test('approved account and session survive a rejected-state race in real SQLite', async (context) => {
+test("approved account and session survive a rejected-state race in real SQLite", async (context) => {
   const { database, binding } = sqliteD1();
   context.after(() => database.close());
-  database.prepare(`
+  database
+    .prepare(
+      `
     INSERT INTO interest_subscribers (email, consent_version)
     VALUES (?, '2026-07-12')
-  `).run('person@example.com');
-  const env = { ...HOST_ENV,
-    ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
-    ACCESS_AUD: 'admin-audience',
+  `,
+    )
+    .run("person@example.com");
+  const env = {
+    ...HOST_ENV,
+    ADMIN_EMAIL: "owner@example.com",
+    ACCESS_TEAM_DOMAIN: "debateai.cloudflareaccess.test",
+    ACCESS_AUD: "admin-audience",
     INTEREST_DB: binding,
-    RELEASES: adminCatalogBucket(['v1.2.3']),
+    RELEASES: adminCatalogBucket(["v1.2.3"]),
   };
 
-  const approval = await workerModule.route(adminJson('/api/admin/interests/approve', {
-    email: 'person@example.com',
-  }), env, allowOwner, fixedDependencies);
+  const approval = await workerModule.route(
+    adminJson("/api/admin/interests/approve", {
+      email: "person@example.com",
+    }),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(approval.status, 201);
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(31));
-  database.prepare(`
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(31),
+  );
+  database
+    .prepare(
+      `
     INSERT INTO release_sessions
       (token_hash, email, password_change_only, created_at, expires_at)
     VALUES (?, 'person@example.com', 0, ?, ?)
-  `).run(token.tokenHash, '2026-07-12T12:00:00.000Z', '2026-07-19T12:00:00.000Z');
+  `,
+    )
+    .run(
+      token.tokenHash,
+      "2026-07-12T12:00:00.000Z",
+      "2026-07-19T12:00:00.000Z",
+    );
 
-  const rejection = await workerModule.route(adminJson('/api/admin/interests/reject', {
-    email: 'person@example.com',
-  }), env, allowOwner, fixedDependencies);
+  const rejection = await workerModule.route(
+    adminJson("/api/admin/interests/reject", {
+      email: "person@example.com",
+    }),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(rejection.status, 409);
-  assert.equal(database.prepare(`
+  assert.equal(
+    database
+      .prepare(
+        `
     SELECT release_decision FROM interest_subscribers WHERE email = ?
-  `).get('person@example.com').release_decision, 'approved');
+  `,
+      )
+      .get("person@example.com").release_decision,
+    "approved",
+  );
 
-  const sessionRequest = () => downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-debateai_release=${token.token}` },
-  });
+  const sessionRequest = () =>
+    downloadRequest("/api/download/session", undefined, {
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
+    });
   const coherent = await workerModule.route(
-    sessionRequest(), env, undefined, downloadDependencies(),
+    sessionRequest(),
+    env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal((await coherent.json()).authenticated, true);
 
-  database.prepare(`
+  database
+    .prepare(
+      `
     UPDATE interest_subscribers SET release_decision = 'rejected' WHERE email = ?
-  `).run('person@example.com');
+  `,
+    )
+    .run("person@example.com");
   const inconsistent = await workerModule.route(
-    sessionRequest(), env, undefined, downloadDependencies(),
+    sessionRequest(),
+    env,
+    undefined,
+    downloadDependencies(),
   );
   assert.deepEqual(await inconsistent.json(), { authenticated: false });
 });
 
-test('authorization grant replacement batches policy, versions, and event', async () => {
+test("authorization grant replacement batches policy, versions, and event", async () => {
   let readCount = 0;
   const item = {
-    email: 'person@example.com',
-    account_state: 'active',
+    email: "person@example.com",
+    account_state: "active",
     include_latest: 0,
-    updated_at: '2026-07-12T12:00:00.000Z',
+    updated_at: "2026-07-12T12:00:00.000Z",
     versions: '["v1.2.3"]',
   };
   const { env, calls, batchCalls } = adminBindings({
-    first: async () => (++readCount === 1
-      ? { state: 'active', release_decision: 'approved' }
-      : item),
-    batch: async (statements) => statements.map((_, index) => ({
-      success: true, meta: { changes: index === 0 ? 0 : 1 },
-    })),
+    first: async () =>
+      ++readCount === 1
+        ? { state: "active", release_decision: "approved" }
+        : item,
+    batch: async (statements) =>
+      statements.map((_, index) => ({
+        success: true,
+        meta: { changes: index === 0 ? 0 : 1 },
+      })),
   });
-  const response = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-    email: 'person@example.com', include_latest: false, versions: ['v1.2.3'],
-  }, { method: 'PUT' }), env, allowOwner, fixedDependencies);
+  const response = await workerModule.route(
+    adminJson(
+      "/api/admin/authorization/grants",
+      {
+        email: "person@example.com",
+        include_latest: false,
+        versions: ["v1.2.3"],
+      },
+      { method: "PUT" },
+    ),
+    env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     ok: true,
-    item: { ...item, include_latest: false, versions: ['v1.2.3'] },
+    item: { ...item, include_latest: false, versions: ["v1.2.3"] },
   });
   assert.equal(batchCalls.length, 1);
   assert.match(calls[0].sql, /SELECT[\s\S]+release_accounts/i);
@@ -1134,118 +1645,211 @@ test('authorization grant replacement batches policy, versions, and event', asyn
   assert.match(calls[4].sql, /WHERE EXISTS[\s\S]+state = 'active'/i);
 
   const denied = adminBindings();
-  const deniedResponse = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-    email: 'person@example.com', include_latest: false, versions: [],
-  }, { method: 'PUT' }), denied.env, allowOwner, fixedDependencies);
+  const deniedResponse = await workerModule.route(
+    adminJson(
+      "/api/admin/authorization/grants",
+      {
+        email: "person@example.com",
+        include_latest: false,
+        versions: [],
+      },
+      { method: "PUT" },
+    ),
+    denied.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(deniedResponse.status, 400);
   assert.equal(denied.calls.length, 0);
 });
 
-test('authorization grant replacement rejects incomplete batch outcomes', async () => {
+test("authorization grant replacement rejects incomplete batch outcomes", async () => {
   const cases = [
-    (results) => { results[1].meta.changes = 0; },
-    (results) => { results[3].meta.changes = 0; },
-    (results) => { results.pop(); },
-    (results) => { results.push({ success: true, meta: { changes: 1 } }); },
+    (results) => {
+      results[1].meta.changes = 0;
+    },
+    (results) => {
+      results[3].meta.changes = 0;
+    },
+    (results) => {
+      results.pop();
+    },
+    (results) => {
+      results.push({ success: true, meta: { changes: 1 } });
+    },
   ];
 
   for (const alterResults of cases) {
     let readCount = 0;
     const bindings = adminBindings({
-      first: async () => (++readCount === 1
-        ? { state: 'active', release_decision: 'approved' }
-        : {
-          email: 'person@example.com', account_state: 'active', include_latest: 0,
-          updated_at: '2026-07-12T12:00:00.000Z', versions: '["v1.2.3"]',
-        }),
+      first: async () =>
+        ++readCount === 1
+          ? { state: "active", release_decision: "approved" }
+          : {
+              email: "person@example.com",
+              account_state: "active",
+              include_latest: 0,
+              updated_at: "2026-07-12T12:00:00.000Z",
+              versions: '["v1.2.3"]',
+            },
       batch: async (statements) => {
-        const results = statements.map(() => ({ success: true, meta: { changes: 1 } }));
+        const results = statements.map(() => ({
+          success: true,
+          meta: { changes: 1 },
+        }));
         alterResults(results);
         return results;
       },
     });
-    const response = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-      email: 'person@example.com', include_latest: false, versions: ['v1.2.3'],
-    }, { method: 'PUT' }), bindings.env, allowOwner, fixedDependencies);
+    const response = await workerModule.route(
+      adminJson(
+        "/api/admin/authorization/grants",
+        {
+          email: "person@example.com",
+          include_latest: false,
+          versions: ["v1.2.3"],
+        },
+        { method: "PUT" },
+      ),
+      bindings.env,
+      allowOwner,
+      fixedDependencies,
+    );
 
     assert.equal(response.status, 409);
     assert.deepEqual(await response.json(), {
-      ok: false, message: 'Request could not be completed.',
+      ok: false,
+      message: "Request could not be completed.",
     });
     assert.equal(bindings.batchCalls.length, 1);
   }
 });
 
-test('revoked authorization remains readable but immutable', async (context) => {
+test("revoked authorization remains readable but immutable", async (context) => {
   const bindings = sqliteReleaseBindings();
   context.after(() => bindings.db.close());
   seedApprovedReleaseAccount(bindings.db, {
-    email: 'person@example.com', includeLatest: 1, version: 'v0.2.0',
+    email: "person@example.com",
+    includeLatest: 1,
+    version: "v0.2.0",
   });
-  bindings.db.prepare(`
+  bindings.db
+    .prepare(
+      `
     UPDATE release_accounts SET state = 'revoked', revoked_at = ? WHERE email = ?
-  `).run('2026-07-12T12:00:00.000Z', 'person@example.com');
+  `,
+    )
+    .run("2026-07-12T12:00:00.000Z", "person@example.com");
 
   const read = await workerModule.route(
-    adminRequest('/api/admin/authorization'), bindings.env, allowOwner, fixedDependencies,
+    adminRequest("/api/admin/authorization"),
+    bindings.env,
+    allowOwner,
+    fixedDependencies,
   );
   assert.equal(read.status, 200);
-  assert.deepEqual((await read.json()).items, [{
-    email: 'person@example.com',
-    account_state: 'revoked',
-    include_latest: true,
-    updated_at: '2026-07-12T12:00:00.000Z',
-    versions: ['v0.2.0'],
-  }]);
+  assert.deepEqual((await read.json()).items, [
+    {
+      email: "person@example.com",
+      account_state: "revoked",
+      include_latest: true,
+      updated_at: "2026-07-12T12:00:00.000Z",
+      versions: ["v0.2.0"],
+    },
+  ]);
 
-  const mutation = await workerModule.route(adminJson('/api/admin/authorization/grants', {
-    email: 'person@example.com', include_latest: false, versions: ['v1.2.3'],
-  }, { method: 'PUT' }), bindings.env, allowOwner, fixedDependencies);
+  const mutation = await workerModule.route(
+    adminJson(
+      "/api/admin/authorization/grants",
+      {
+        email: "person@example.com",
+        include_latest: false,
+        versions: ["v1.2.3"],
+      },
+      { method: "PUT" },
+    ),
+    bindings.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(mutation.status, 409);
   assert.deepEqual(await mutation.json(), {
-    ok: false, message: 'Request could not be completed.',
+    ok: false,
+    message: "Request could not be completed.",
   });
-  assert.deepEqual({ ...bindings.db.prepare(`
+  assert.deepEqual(
+    {
+      ...bindings.db
+        .prepare(
+          `
     SELECT include_latest, updated_at FROM release_access_policies WHERE email = ?
-  `).get('person@example.com') }, {
-    include_latest: 1, updated_at: '2026-07-12T12:00:00.000Z',
-  });
-  assert.deepEqual(bindings.db.prepare(`
+  `,
+        )
+        .get("person@example.com"),
+    },
+    {
+      include_latest: 1,
+      updated_at: "2026-07-12T12:00:00.000Z",
+    },
+  );
+  assert.deepEqual(
+    bindings.db
+      .prepare(
+        `
     SELECT version FROM release_account_versions WHERE email = ? ORDER BY version
-  `).all('person@example.com').map(({ version }) => version), ['v0.2.0']);
-  assert.equal(bindings.db.prepare(`
+  `,
+      )
+      .all("person@example.com")
+      .map(({ version }) => version),
+    ["v0.2.0"],
+  );
+  assert.equal(
+    bindings.db
+      .prepare(
+        `
     SELECT count(*) AS count FROM release_access_events WHERE email = ?
-  `).get('person@example.com').count, 0);
+  `,
+      )
+      .get("person@example.com").count,
+    0,
+  );
 });
 
-test('old overloaded admin access routes return private 404', async () => {
+test("old overloaded admin access routes return private 404", async () => {
   for (const [path, method] of [
-    ['/api/admin/access/approve', 'POST'],
-    ['/api/admin/access/reject', 'POST'],
-    ['/api/admin/access/grants', 'PUT'],
-    ['/api/admin/access/reset-password', 'POST'],
-    ['/api/admin/access/revoke', 'POST'],
+    ["/api/admin/access/approve", "POST"],
+    ["/api/admin/access/reject", "POST"],
+    ["/api/admin/access/grants", "PUT"],
+    ["/api/admin/access/reset-password", "POST"],
+    ["/api/admin/access/revoke", "POST"],
   ]) {
     const bindings = adminBindings();
     const response = await workerModule.route(
-      adminJson(path, { email: 'person@example.com' }, { method }),
+      adminJson(path, { email: "person@example.com" }, { method }),
       bindings.env,
       allowOwner,
       fixedDependencies,
     );
     assert.equal(response.status, 404);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
-    assert.deepEqual(await response.json(), { ok: false, message: 'Not found.' });
+    assert.equal(response.headers.get("cache-control"), "no-store");
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      message: "Not found.",
+    });
     assert.equal(bindings.calls.length, 0);
     assert.equal(bindings.batchCalls.length, 0);
   }
 });
 
-test('password reset requires its exact batch and audit event', async () => {
+test("password reset requires its exact batch and audit event", async () => {
   const observed = {
-    state: 'active', release_decision: 'approved',
-    password_hash: 'observed-hash', password_salt: 'observed-salt',
-    password_iterations: 600000, must_change_password: 0, password_expires_at: null,
+    state: "active",
+    release_decision: "approved",
+    password_hash: "observed-hash",
+    password_salt: "observed-salt",
+    password_iterations: 600000,
+    must_change_password: 0,
+    password_expires_at: null,
   };
   const cases = [
     [
@@ -1267,7 +1871,9 @@ test('password reset requires its exact batch and audit event', async () => {
       batch: async () => results,
     });
     const response = await workerModule.route(
-      adminJson('/api/admin/users/reset-password', { email: 'person@example.com' }),
+      adminJson("/api/admin/users/reset-password", {
+        email: "person@example.com",
+      }),
       bindings.env,
       allowOwner,
       fixedDependencies,
@@ -1279,43 +1885,74 @@ test('password reset requires its exact batch and audit event', async () => {
   }
 });
 
-test('reset and revoke delete sessions atomically without reactivating accounts', async () => {
+test("reset and revoke delete sessions atomically without reactivating accounts", async () => {
   const observed = {
-    state: 'active', release_decision: 'approved',
-    password_hash: 'observed-hash', password_salt: 'observed-salt',
-    password_iterations: 600000, must_change_password: 0, password_expires_at: null,
+    state: "active",
+    release_decision: "approved",
+    password_hash: "observed-hash",
+    password_salt: "observed-salt",
+    password_iterations: 600000,
+    must_change_password: 0,
+    password_expires_at: null,
   };
   const activeUser = {
-    email: 'person@example.com', state: 'active', source: 'homepage',
-    requested_at: '2026-07-12T11:00:00.000Z', approved_at: '2026-07-12T12:00:00.000Z',
-    must_change_password: 1, password_expires_at: '2026-07-15T12:00:00.000Z',
-    password_changed_at: null, revoked_at: null, active_session_count: 0,
+    email: "person@example.com",
+    state: "active",
+    source: "homepage",
+    requested_at: "2026-07-12T11:00:00.000Z",
+    approved_at: "2026-07-12T12:00:00.000Z",
+    must_change_password: 1,
+    password_expires_at: "2026-07-15T12:00:00.000Z",
+    password_changed_at: null,
+    revoked_at: null,
+    active_session_count: 0,
     latest_session_expires_at: null,
   };
   let resetReads = 0;
   const reset = adminBindings({
     first: async () => (resetReads++ === 0 ? observed : activeUser),
   });
-  const resetResponse = await workerModule.route(adminJson('/api/admin/users/reset-password', {
-    email: 'person@example.com',
-  }), reset.env, allowOwner, fixedDependencies);
+  const resetResponse = await workerModule.route(
+    adminJson("/api/admin/users/reset-password", {
+      email: "person@example.com",
+    }),
+    reset.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(resetResponse.status, 200);
   const resetBody = await resetResponse.json();
   const resetCredential = resetBody.credential;
   assert.deepEqual(Object.keys(resetCredential).sort(), [
-    'email', 'login_url', 'password', 'password_expires_at',
+    "email",
+    "login_url",
+    "password",
+    "password_expires_at",
   ]);
-  assert.deepEqual(resetBody.item, { ...activeUser, must_change_password: true });
+  assert.deepEqual(resetBody.item, {
+    ...activeUser,
+    must_change_password: true,
+  });
   assert.equal(resetCredential.password.length, 20);
   assert.equal(reset.batchCalls.length, 1);
   for (const field of [
-    'password_hash', 'password_salt', 'password_iterations',
-    'must_change_password', 'password_expires_at',
-  ]) assert.match(reset.calls[0].sql, new RegExp(field));
-  assert.match(reset.calls[1].sql, /UPDATE release_accounts[\s\S]+must_change_password[\s\S]+password_changed_at/i);
+    "password_hash",
+    "password_salt",
+    "password_iterations",
+    "must_change_password",
+    "password_expires_at",
+  ])
+    assert.match(reset.calls[0].sql, new RegExp(field));
+  assert.match(
+    reset.calls[1].sql,
+    /UPDATE release_accounts[\s\S]+must_change_password[\s\S]+password_changed_at/i,
+  );
   assert.match(reset.calls[1].sql, /release_decision = 'approved'/i);
-  assert.match(reset.calls[1].sql, /password_hash\s*=\s*\?[\s\S]+password_salt\s*=\s*\?[\s\S]+password_iterations\s*=\s*\?[\s\S]+must_change_password\s*=\s*\?[\s\S]+password_expires_at IS \?/i);
-  for (const value of ['observed-hash', 'observed-salt', 600000, 0, null]) {
+  assert.match(
+    reset.calls[1].sql,
+    /password_hash\s*=\s*\?[\s\S]+password_salt\s*=\s*\?[\s\S]+password_iterations\s*=\s*\?[\s\S]+must_change_password\s*=\s*\?[\s\S]+password_expires_at IS \?/i,
+  );
+  for (const value of ["observed-hash", "observed-salt", 600000, 0, null]) {
     assert.ok(reset.calls[1].values.includes(value));
   }
   assert.doesNotMatch(reset.calls[1].sql, /SET\s+state\s*=/i);
@@ -1327,14 +1964,20 @@ test('reset and revoke delete sessions atomically without reactivating accounts'
   for (const call of reset.calls.slice(2, 4)) {
     assert.match(call.sql, /EXISTS[\s\S]+state = 'active'/i);
     assert.match(call.sql, /release_decision = 'approved'/i);
-    assert.match(call.sql, /password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_expires_at = \?/i);
+    assert.match(
+      call.sql,
+      /password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_expires_at = \?/i,
+    );
     assert.ok(call.values.includes(newHash));
     assert.ok(call.values.includes(newSalt));
     assert.ok(call.values.includes(newExpiry));
   }
-  assert.equal(JSON.stringify(reset.calls).includes(resetCredential.password), false);
+  assert.equal(
+    JSON.stringify(reset.calls).includes(resetCredential.password),
+    false,
+  );
   assert.doesNotMatch(
-    reset.calls.map(({ sql }) => sql).join('\n'),
+    reset.calls.map(({ sql }) => sql).join("\n"),
     /release_access_policies|release_account_versions/i,
   );
 
@@ -1345,32 +1988,63 @@ test('reset and revoke delete sessions atomically without reactivating accounts'
       resetAttempt += 1;
       return statements.map((_, index) => ({
         success: true,
-        meta: { changes: resetAttempt === 1 && (index === 0 || index === 2) ? 1 : 0 },
+        meta: {
+          changes: resetAttempt === 1 && (index === 0 || index === 2) ? 1 : 0,
+        },
       }));
     },
   });
-  const firstRace = await workerModule.route(adminJson('/api/admin/users/reset-password', {
-    email: 'person@example.com',
-  }), race.env, allowOwner, fixedDependencies);
-  const secondRace = await workerModule.route(adminJson('/api/admin/users/reset-password', {
-    email: 'person@example.com',
-  }), race.env, allowOwner, fixedDependencies);
+  const firstRace = await workerModule.route(
+    adminJson("/api/admin/users/reset-password", {
+      email: "person@example.com",
+    }),
+    race.env,
+    allowOwner,
+    fixedDependencies,
+  );
+  const secondRace = await workerModule.route(
+    adminJson("/api/admin/users/reset-password", {
+      email: "person@example.com",
+    }),
+    race.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(firstRace.status, 200);
   assert.equal(secondRace.status, 409);
-  assert.doesNotMatch(await secondRace.text(), /password|credential|person@example/i);
+  assert.doesNotMatch(
+    await secondRace.text(),
+    /password|credential|person@example/i,
+  );
 
-  const revokedReset = adminBindings({ first: async () => ({ state: 'revoked', release_decision: 'approved' }) });
-  const revokedResetResponse = await workerModule.route(adminJson('/api/admin/users/reset-password', {
-    email: 'person@example.com',
-  }), revokedReset.env, allowOwner, fixedDependencies);
+  const revokedReset = adminBindings({
+    first: async () => ({ state: "revoked", release_decision: "approved" }),
+  });
+  const revokedResetResponse = await workerModule.route(
+    adminJson("/api/admin/users/reset-password", {
+      email: "person@example.com",
+    }),
+    revokedReset.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(revokedResetResponse.status, 409);
   assert.equal(revokedReset.batchCalls.length, 0);
 
-  const revokedUser = { ...activeUser, state: 'revoked', revoked_at: fixedDependencies.now().toISOString() };
+  const revokedUser = {
+    ...activeUser,
+    state: "revoked",
+    revoked_at: fixedDependencies.now().toISOString(),
+  };
   const revoke = adminBindings({ first: async () => revokedUser });
-  const revokeResponse = await workerModule.route(adminJson('/api/admin/users/revoke', {
-    email: 'person@example.com',
-  }), revoke.env, allowOwner, fixedDependencies);
+  const revokeResponse = await workerModule.route(
+    adminJson("/api/admin/users/revoke", {
+      email: "person@example.com",
+    }),
+    revoke.env,
+    allowOwner,
+    fixedDependencies,
+  );
   assert.equal(revokeResponse.status, 200);
   assert.deepEqual(await revokeResponse.json(), {
     ok: true,
@@ -1382,21 +2056,28 @@ test('reset and revoke delete sessions atomically without reactivating accounts'
     /UPDATE release_accounts[\s\S]+state\s*=\s*'revoked'[\s\S]+state\s*=\s*'active'/i,
   );
   assert.match(revoke.calls[1].sql, /revocation[\s\S]+changes\(\)\s*=\s*1/i);
-  assert.match(revoke.calls[2].sql, /DELETE FROM release_sessions[\s\S]+changes\(\)\s*=\s*1/i);
+  assert.match(
+    revoke.calls[2].sql,
+    /DELETE FROM release_sessions[\s\S]+changes\(\)\s*=\s*1/i,
+  );
   assert.doesNotMatch(
-    revoke.calls.map(({ sql }) => sql).join('\n'),
+    revoke.calls.map(({ sql }) => sql).join("\n"),
     /release_access_policies|release_account_versions/i,
   );
 });
 
-test('admin release catalog returns summaries and bounded unavailable states', async () => {
-  const releases = adminCatalogBucket(['v1.2.3']);
+test("admin release catalog returns summaries and bounded unavailable states", async () => {
+  const releases = adminCatalogBucket(["v1.2.3"]);
   const good = adminBindings({ releases });
-  const response = await workerModule.route(adminRequest('/api/admin/releases'), good.env, allowOwner);
+  const response = await workerModule.route(
+    adminRequest("/api/admin/releases"),
+    good.env,
+    allowOwner,
+  );
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
-    items: [{ version: 'v1.2.3', published_at: '2026-07-12T12:00:00Z' }],
-    latest_version: 'v1.2.3',
+    items: [{ version: "v1.2.3", published_at: "2026-07-12T12:00:00Z" }],
+    latest_version: "v1.2.3",
     available: true,
   });
 
@@ -1404,28 +2085,45 @@ test('admin release catalog returns summaries and bounded unavailable states', a
     items: [],
     latest_version: null,
     available: false,
-    diagnostic: 'Release catalog is not ready.',
+    diagnostic: "Release catalog is not ready.",
   };
   const empty = adminBindings({
-    releases: { async list() { return { objects: [] }; }, async get() { return null; } },
+    releases: {
+      async list() {
+        return { objects: [] };
+      },
+      async get() {
+        return null;
+      },
+    },
   });
   const emptyResponse = await workerModule.route(
-    adminRequest('/api/admin/releases'), empty.env, allowOwner,
+    adminRequest("/api/admin/releases"),
+    empty.env,
+    allowOwner,
   );
   assert.equal(emptyResponse.status, 200);
   assert.deepEqual(await emptyResponse.json(), unavailable);
 
   const malformed = adminBindings({
     releases: {
-      async list() { return { objects: [{ key: 'releases/v1.2.3/manifest.json' }] }; },
+      async list() {
+        return { objects: [{ key: "releases/v1.2.3/manifest.json" }] };
+      },
       async get(key) {
-        return { json: async () => key.endsWith('latest.json')
-          ? { version: 'v1.2.3' } : { private_key: 'do-not-expose' } };
+        return {
+          json: async () =>
+            key.endsWith("latest.json")
+              ? { version: "v1.2.3" }
+              : { private_key: "do-not-expose" },
+        };
       },
     },
   });
   const malformedResponse = await workerModule.route(
-    adminRequest('/api/admin/releases'), malformed.env, allowOwner,
+    adminRequest("/api/admin/releases"),
+    malformed.env,
+    allowOwner,
   );
   assert.equal(malformedResponse.status, 200);
   const malformedText = await malformedResponse.text();
@@ -1433,82 +2131,143 @@ test('admin release catalog returns summaries and bounded unavailable states', a
   assert.doesNotMatch(malformedText, /private_key|manifest-invalid/i);
 
   const bad = adminBindings({
-    releases: { async list() { throw new Error('secret R2 key'); }, async get() { return null; } },
+    releases: {
+      async list() {
+        throw new Error("secret R2 key");
+      },
+      async get() {
+        return null;
+      },
+    },
   });
-  const failed = await workerModule.route(adminRequest('/api/admin/releases'), bad.env, allowOwner);
+  const failed = await workerModule.route(
+    adminRequest("/api/admin/releases"),
+    bad.env,
+    allowOwner,
+  );
   assert.equal(failed.status, 503);
-  assert.doesNotMatch(await failed.text(), /secret|catalog-unavailable|releases\//i);
+  assert.doesNotMatch(
+    await failed.text(),
+    /secret|catalog-unavailable|releases\//i,
+  );
 });
 
-test('admin API rejects mutations and redacts D1 failures', async () => {
+test("admin API rejects mutations and redacts D1 failures", async () => {
   const methodBindings = adminBindings();
   const wrongMethod = await workerModule.route(
-    adminRequest(undefined, { method: 'POST' }),
+    adminRequest(undefined, { method: "POST" }),
     methodBindings.env,
     allowOwner,
   );
   assert.equal(wrongMethod.status, 405);
-  assert.equal(wrongMethod.headers.get('allow'), 'GET');
+  assert.equal(wrongMethod.headers.get("allow"), "GET");
   assert.equal(methodBindings.calls.length, 0);
 
   const failureBindings = adminBindings({
-    all: async () => { throw new Error('private database detail'); },
+    all: async () => {
+      throw new Error("private database detail");
+    },
   });
-  const failed = await workerModule.route(adminRequest(), failureBindings.env, allowOwner);
+  const failed = await workerModule.route(
+    adminRequest(),
+    failureBindings.env,
+    allowOwner,
+  );
   assert.equal(failed.status, 503);
   assert.doesNotMatch(await failed.text(), /database detail/);
 });
 
-test('private host serves only mapped assets with security headers', async () => {
+test("private host serves only mapped assets with security headers", async () => {
   const { env, assetRequests } = adminBindings();
   const paths = [
-    '/', '/users', '/early-access', '/authorization',
-    '/admin.js', '/admin-core.js', '/early-access.js', '/users.js',
-    '/authorization.js', '/admin.css', '/style.css',
+    "/",
+    "/users",
+    "/early-access",
+    "/authorization",
+    "/admin.js",
+    "/admin-core.js",
+    "/early-access.js",
+    "/users.js",
+    "/authorization.js",
+    "/admin.css",
+    "/style.css",
   ];
   const responses = [];
   for (const path of paths) {
-    responses.push(await workerModule.route(adminRequest(path), env, allowOwner));
+    responses.push(
+      await workerModule.route(adminRequest(path), env, allowOwner),
+    );
   }
-  const missing = await workerModule.route(adminRequest('/not-found'), env, allowOwner);
+  const missing = await workerModule.route(
+    adminRequest("/not-found"),
+    env,
+    allowOwner,
+  );
 
   for (const response of responses) assert.equal(response.status, 200);
   assert.equal(missing.status, 404);
   assert.deepEqual(
     assetRequests.map((assetRequest) => new URL(assetRequest.url).pathname),
     [
-      '/admin/', '/admin/', '/admin/', '/admin/',
-      '/admin/admin.js', '/admin/admin-core.js', '/admin/early-access.js',
-      '/admin/users.js', '/admin/authorization.js', '/admin/admin.css', '/style.css',
+      "/admin/",
+      "/admin/",
+      "/admin/",
+      "/admin/",
+      "/admin/admin.js",
+      "/admin/admin-core.js",
+      "/admin/early-access.js",
+      "/admin/users.js",
+      "/admin/authorization.js",
+      "/admin/admin.css",
+      "/style.css",
     ],
   );
-  assert.equal(responses[0].headers.get('cache-control'), 'no-store');
-  assert.match(responses[0].headers.get('content-security-policy'), /frame-ancestors 'none'/);
-  assert.equal(responses[0].headers.get('referrer-policy'), 'no-referrer');
-  assert.equal(responses[0].headers.get('x-content-type-options'), 'nosniff');
-  assert.equal(responses[0].headers.get('x-frame-options'), 'DENY');
+  assert.equal(responses[0].headers.get("cache-control"), "no-store");
+  assert.match(
+    responses[0].headers.get("content-security-policy"),
+    /frame-ancestors 'none'/,
+  );
+  assert.equal(responses[0].headers.get("referrer-policy"), "no-referrer");
+  assert.equal(responses[0].headers.get("x-content-type-options"), "nosniff");
+  assert.equal(responses[0].headers.get("x-frame-options"), "DENY");
 });
 
-test('admin router isolates every page and module behind Access', async () => {
+test("admin router isolates every page and module behind Access", async () => {
   const { env, assetRequests } = adminBindings();
   const paths = [
-    '/', '/users', '/early-access', '/authorization',
-    '/admin.js', '/admin-core.js', '/early-access.js', '/users.js', '/authorization.js',
+    "/",
+    "/users",
+    "/early-access",
+    "/authorization",
+    "/admin.js",
+    "/admin-core.js",
+    "/early-access.js",
+    "/users.js",
+    "/authorization.js",
   ];
   for (const path of paths) {
     const response = await workerModule.route(
-      adminRequest(path), env, async () => ({ email: 'other@example.com' }),
+      adminRequest(path),
+      env,
+      async () => ({ email: "other@example.com" }),
     );
     assert.equal(response.status, 403);
   }
   assert.equal(assetRequests.length, 0);
 });
 
-test('public host never serves private admin assets', async () => {
+test("public host never serves private admin assets", async () => {
   const { env, assetRequests } = adminBindings();
   for (const path of [
-    '/admin', '/admin/', '/admin/admin.js', '/admin.js', '/admin-core.js',
-    '/early-access.js', '/users.js', '/authorization.js', '/admin.css',
+    "/admin",
+    "/admin/",
+    "/admin/admin.js",
+    "/admin.js",
+    "/admin-core.js",
+    "/early-access.js",
+    "/users.js",
+    "/authorization.js",
+    "/admin.css",
   ]) {
     const response = await workerModule.route(
       new Request(`https://debateai.test${path}`),
@@ -1516,24 +2275,32 @@ test('public host never serves private admin assets', async () => {
       allowOwner,
     );
     assert.equal(response.status, 404);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get("cache-control"), "no-store");
   }
   assert.equal(assetRequests.length, 0);
 });
 
-const DOWNLOAD_ORIGIN = 'https://downloads.debateai.test';
-const downloadNow = new Date('2026-07-12T12:00:00.000Z');
+const DOWNLOAD_ORIGIN = "https://downloads.debateai.test";
+const downloadNow = new Date("2026-07-12T12:00:00.000Z");
 
 function downloadRequest(path, body, init = {}) {
-  const method = init.method || (path.endsWith('/session') ? 'GET' : 'POST');
-  const headers = method === 'GET' ? {} : {
-    origin: DOWNLOAD_ORIGIN,
-    'content-type': 'application/json; charset=utf-8',
-  };
+  const method = init.method || (path.endsWith("/session") ? "GET" : "POST");
+  const headers =
+    method === "GET"
+      ? {}
+      : {
+          origin: DOWNLOAD_ORIGIN,
+          "content-type": "application/json; charset=utf-8",
+        };
   return new Request(`${DOWNLOAD_ORIGIN}${path}`, {
     method,
     headers: { ...headers, ...init.headers },
-    body: method === 'GET' ? undefined : (typeof body === 'string' ? body : JSON.stringify(body ?? {})),
+    body:
+      method === "GET"
+        ? undefined
+        : typeof body === "string"
+          ? body
+          : JSON.stringify(body ?? {}),
   });
 }
 
@@ -1545,8 +2312,9 @@ function downloadBindings({ first = async () => undefined, run, batch } = {}) {
   return {
     calls,
     batchCalls,
-    env: { ...HOST_ENV,
-      TURNSTILE_SECRET: 'download-secret',
+    env: {
+      ...HOST_ENV,
+      TURNSTILE_SECRET: "download-secret",
       INTEREST_DB: {
         prepare(sql) {
           const call = { sql, values: [] };
@@ -1558,8 +2326,10 @@ function downloadBindings({ first = async () => undefined, run, batch } = {}) {
             },
             async first(...values) {
               const record = await first(call, ...values);
-              return record && 'password_change_only' in record && !('release_decision' in record)
-                ? { ...record, release_decision: 'approved' }
+              return record &&
+                "password_change_only" in record &&
+                !("release_decision" in record)
+                ? { ...record, release_decision: "approved" }
                 : record;
             },
             run: run || defaultRun,
@@ -1573,10 +2343,12 @@ function downloadBindings({ first = async () => undefined, run, batch } = {}) {
             : statements.map(() => ({ success: true, meta: { changes: 1 } }));
         },
       },
-      ASSETS: { fetch: async (requestValue) => {
-        assetRequests.push(requestValue);
-        return new Response('recipient asset');
-      } },
+      ASSETS: {
+        fetch: async (requestValue) => {
+          assetRequests.push(requestValue);
+          return new Response("recipient asset");
+        },
+      },
     },
     assetRequests,
   };
@@ -1585,23 +2357,26 @@ function downloadBindings({ first = async () => undefined, run, batch } = {}) {
 function downloadDependencies(overrides = {}) {
   return {
     now: () => downloadNow,
-    fetch: async () => new Response(JSON.stringify({
-      success: true,
-      hostname: 'downloads.debateai.test',
-      action: 'download_login',
-    })),
+    fetch: async () =>
+      new Response(
+        JSON.stringify({
+          success: true,
+          hostname: "downloads.debateai.test",
+          action: "download_login",
+        }),
+      ),
     ...overrides,
   };
 }
 
-test('private page roots avoid Cloudflare index redirects', async () => {
+test("private page roots avoid Cloudflare index redirects", async () => {
   const cloudflareAsset = async (requestValue) => {
     const url = new URL(requestValue.url);
-    if (url.pathname.endsWith('/index.html')) {
-      url.pathname = url.pathname.slice(0, -'index.html'.length);
+    if (url.pathname.endsWith("/index.html")) {
+      url.pathname = url.pathname.slice(0, -"index.html".length);
       return Response.redirect(url, 307);
     }
-    return new Response('private asset');
+    return new Response("private asset");
   };
   const admin = adminBindings({ asset: cloudflareAsset });
   const download = downloadBindings();
@@ -1611,86 +2386,128 @@ test('private page roots avoid Cloudflare index redirects', async () => {
   };
 
   const adminPages = [];
-  for (const path of ['/', '/users', '/early-access', '/authorization']) {
-    adminPages.push(await workerModule.route(adminRequest(path), admin.env, allowOwner));
+  for (const path of ["/", "/users", "/early-access", "/authorization"]) {
+    adminPages.push(
+      await workerModule.route(adminRequest(path), admin.env, allowOwner),
+    );
   }
   const downloadPage = await workerModule.route(
-    downloadRequest('/', undefined, { method: 'GET' }),
+    downloadRequest("/", undefined, { method: "GET" }),
     download.env,
   );
 
   for (const page of adminPages) assert.equal(page.status, 200);
   assert.equal(downloadPage.status, 200);
   assert.deepEqual(
-    admin.assetRequests.map((requestValue) => new URL(requestValue.url).pathname),
-    ['/admin/', '/admin/', '/admin/', '/admin/'],
+    admin.assetRequests.map(
+      (requestValue) => new URL(requestValue.url).pathname,
+    ),
+    ["/admin/", "/admin/", "/admin/", "/admin/"],
   );
-  assert.equal(new URL(download.assetRequests[0].url).pathname, '/downloads/');
+  assert.equal(new URL(download.assetRequests[0].url).pathname, "/downloads/");
 });
 
 const approvedAccount = {
-  email: 'person@example.com',
-  state: 'active',
-  release_decision: 'approved',
-  password_hash: 'hash',
-  password_salt: 'salt',
+  email: "person@example.com",
+  state: "active",
+  release_decision: "approved",
+  password_hash: "hash",
+  password_salt: "salt",
   password_iterations: 600000,
   must_change_password: 1,
-  password_expires_at: '2026-07-12T12:30:00.000Z',
+  password_expires_at: "2026-07-12T12:30:00.000Z",
 };
 
-test('recipient host serves only mapped assets with distinct private headers', async () => {
+test("recipient host serves only mapped assets with distinct private headers", async () => {
   const bindingsValue = downloadBindings();
-  const paths = ['/', '/index.html', '/downloads.js', '/downloads.css'];
+  const paths = ["/", "/index.html", "/downloads.js", "/downloads.css"];
   const responses = [];
   for (const path of paths) {
-    responses.push(await workerModule.route(downloadRequest(path, undefined, { method: 'GET' }), bindingsValue.env));
+    responses.push(
+      await workerModule.route(
+        downloadRequest(path, undefined, { method: "GET" }),
+        bindingsValue.env,
+      ),
+    );
   }
   const missing = await workerModule.route(
-    downloadRequest('/not-found', undefined, { method: 'GET' }),
+    downloadRequest("/not-found", undefined, { method: "GET" }),
     bindingsValue.env,
   );
   const admin = adminBindings();
-  const adminPage = await workerModule.route(adminRequest('/'), admin.env, allowOwner);
+  const adminPage = await workerModule.route(
+    adminRequest("/"),
+    admin.env,
+    allowOwner,
+  );
 
   assert.ok(responses.every((response) => response.status === 200));
   assert.deepEqual(
-    bindingsValue.assetRequests.map((requestValue) => new URL(requestValue.url).pathname),
-    ['/downloads/', '/downloads/', '/downloads/downloads.js', '/downloads/downloads.css'],
+    bindingsValue.assetRequests.map(
+      (requestValue) => new URL(requestValue.url).pathname,
+    ),
+    [
+      "/downloads/",
+      "/downloads/",
+      "/downloads/downloads.js",
+      "/downloads/downloads.css",
+    ],
   );
-  const expectedCsp = "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
+  const expectedCsp =
+    "default-src 'self'; script-src 'self' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; connect-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'";
   for (const response of [...responses, missing]) {
-    assert.equal(response.headers.get('content-security-policy'), expectedCsp);
-    assert.equal(response.headers.get('cache-control'), 'private, no-store');
-    assert.equal(response.headers.get('referrer-policy'), 'no-referrer');
-    assert.equal(response.headers.get('x-content-type-options'), 'nosniff');
-    assert.match(response.headers.get('permissions-policy'), /camera=\(\)/);
+    assert.equal(response.headers.get("content-security-policy"), expectedCsp);
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.equal(response.headers.get("referrer-policy"), "no-referrer");
+    assert.equal(response.headers.get("x-content-type-options"), "nosniff");
+    assert.match(response.headers.get("permissions-policy"), /camera=\(\)/);
   }
   assert.equal(missing.status, 404);
-  assert.notEqual(adminPage.headers.get('content-security-policy'), expectedCsp);
+  assert.notEqual(
+    adminPage.headers.get("content-security-policy"),
+    expectedCsp,
+  );
 });
 
-test('recipient host keeps unknown paths private and mutations enforce request boundaries', async () => {
+test("recipient host keeps unknown paths private and mutations enforce request boundaries", async () => {
   const missing = downloadBindings();
-  for (const path of ['/unknown', '/api/download/unknown']) {
+  for (const path of ["/unknown", "/api/download/unknown"]) {
     const response = await workerModule.route(
-      downloadRequest(path, undefined, { method: 'GET' }),
+      downloadRequest(path, undefined, { method: "GET" }),
       missing.env,
     );
     assert.equal(response.status, 404);
-    assert.equal(response.headers.get('cache-control'), 'private, no-store');
-    assert.equal(response.headers.get('x-frame-options'), 'DENY');
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.equal(response.headers.get("x-frame-options"), "DENY");
   }
   assert.equal(missing.calls.length, 0);
 
   const cases = [
-    [downloadRequest('/api/download/login', {
-      email: 'person@example.com', password: 'temporary', turnstile_token: 'token',
-    }, { headers: { origin: 'https://attacker.example' } }), 403],
-    [downloadRequest('/api/download/login', {
-      email: 'person@example.com', password: 'temporary', turnstile_token: 'token',
-    }, { headers: { 'content-type': 'text/plain' } }), 415],
-    [downloadRequest('/api/download/login', 'x'.repeat(8193)), 413],
+    [
+      downloadRequest(
+        "/api/download/login",
+        {
+          email: "person@example.com",
+          password: "temporary",
+          turnstile_token: "token",
+        },
+        { headers: { origin: "https://attacker.example" } },
+      ),
+      403,
+    ],
+    [
+      downloadRequest(
+        "/api/download/login",
+        {
+          email: "person@example.com",
+          password: "temporary",
+          turnstile_token: "token",
+        },
+        { headers: { "content-type": "text/plain" } },
+      ),
+      415,
+    ],
+    [downloadRequest("/api/download/login", "x".repeat(8193)), 413],
   ];
   for (const [requestValue, expected] of cases) {
     const bindingsValue = downloadBindings();
@@ -1705,256 +2522,466 @@ test('recipient host keeps unknown paths private and mutations enforce request b
   }
 });
 
-test('recipient login requires exact Turnstile hostname and action', async () => {
+test("recipient login requires exact Turnstile hostname and action", async () => {
   const bodies = [];
   for (const verification of [
-    { success: true, hostname: 'debateai.test', action: 'download_login' },
-    { success: true, hostname: 'downloads.debateai.test', action: 'interest' },
+    { success: true, hostname: "debateai.test", action: "download_login" },
+    { success: true, hostname: "downloads.debateai.test", action: "interest" },
   ]) {
     const bindingsValue = downloadBindings();
-    const response = await workerModule.route(downloadRequest('/api/download/login', {
-      email: ' Person@Example.com ', password: 'temporary', turnstile_token: 'challenge',
-    }), bindingsValue.env, undefined, downloadDependencies({
-      async fetch(url, init) {
-        bodies.push({ url, init });
-        return new Response(JSON.stringify(verification));
-      },
-    }));
+    const response = await workerModule.route(
+      downloadRequest("/api/download/login", {
+        email: " Person@Example.com ",
+        password: "temporary",
+        turnstile_token: "challenge",
+      }),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies({
+        async fetch(url, init) {
+          bodies.push({ url, init });
+          return new Response(JSON.stringify(verification));
+        },
+      }),
+    );
     assert.equal(response.status, 401);
-    assert.deepEqual(await response.json(), { ok: false, error: 'Unable to sign in.' });
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "Unable to sign in.",
+    });
     assert.equal(bindingsValue.calls.length, 0);
   }
   assert.equal(bodies.length, 2);
-  assert.equal(bodies[0].url, 'https://challenges.cloudflare.com/turnstile/v0/siteverify');
-  assert.equal(bodies[0].init.body.get('secret'), 'download-secret');
-  assert.equal(bodies[0].init.body.get('response'), 'challenge');
+  assert.equal(
+    bodies[0].url,
+    "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+  );
+  assert.equal(bodies[0].init.body.get("secret"), "download-secret");
+  assert.equal(bodies[0].init.body.get("response"), "challenge");
 });
 
-test('recipient login performs one password verification for every account state', async () => {
+test("recipient login performs one password verification for every account state", async () => {
   const cases = [
     undefined,
-    { ...approvedAccount, state: 'revoked' },
-    { ...approvedAccount, release_decision: 'pending' },
-    { ...approvedAccount, release_decision: 'rejected' },
-    { ...approvedAccount, password_hash: 'malformed' },
-    { ...approvedAccount, password_expires_at: '2026-07-12T11:59:59.000Z' },
+    { ...approvedAccount, state: "revoked" },
+    { ...approvedAccount, release_decision: "pending" },
+    { ...approvedAccount, release_decision: "rejected" },
+    { ...approvedAccount, password_hash: "malformed" },
+    { ...approvedAccount, password_expires_at: "2026-07-12T11:59:59.000Z" },
     approvedAccount,
   ];
   const bodies = [];
   for (const [index, account] of cases.entries()) {
     let derivations = 0;
     const bindingsValue = downloadBindings({ first: async () => account });
-    const response = await workerModule.route(downloadRequest('/api/download/login', {
-      email: ' Person@Example.com ', password: 'wrong', turnstile_token: 'challenge',
-    }), bindingsValue.env, undefined, downloadDependencies({
-      async verifyPassword(password, record) {
-        derivations += 1;
-        assert.equal(password, 'wrong');
-        if (index === 0) assert.equal(record, undefined);
-        return index !== 4 && index !== 6;
-      },
-    }));
+    const response = await workerModule.route(
+      downloadRequest("/api/download/login", {
+        email: " Person@Example.com ",
+        password: "wrong",
+        turnstile_token: "challenge",
+      }),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies({
+        async verifyPassword(password, record) {
+          derivations += 1;
+          assert.equal(password, "wrong");
+          if (index === 0) assert.equal(record, undefined);
+          return index !== 4 && index !== 6;
+        },
+      }),
+    );
     assert.equal(derivations, 1);
     bodies.push({ status: response.status, body: await response.json() });
   }
   assert.deepEqual(new Set(bodies.map(({ status }) => status)), new Set([401]));
-  assert.deepEqual(new Set(bodies.map(({ body }) => JSON.stringify(body))), new Set([
-    JSON.stringify({ ok: false, error: 'Unable to sign in.' }),
-  ]));
+  assert.deepEqual(
+    new Set(bodies.map(({ body }) => JSON.stringify(body))),
+    new Set([JSON.stringify({ ok: false, error: "Unable to sign in." })]),
+  );
 });
 
-test('recipient login denies unknown and malformed accounts generically', async () => {
-  for (const account of [undefined, { ...approvedAccount, password_hash: 'malformed' }]) {
+test("recipient login denies unknown and malformed accounts generically", async () => {
+  for (const account of [
+    undefined,
+    { ...approvedAccount, password_hash: "malformed" },
+  ]) {
     const bindingsValue = downloadBindings({ first: async () => account });
-    const response = await workerModule.route(downloadRequest('/api/download/login', {
-      email: 'person@example.com', password: 'wrong', turnstile_token: 'challenge',
-    }), bindingsValue.env, undefined, downloadDependencies());
+    const response = await workerModule.route(
+      downloadRequest("/api/download/login", {
+        email: "person@example.com",
+        password: "wrong",
+        turnstile_token: "challenge",
+      }),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
+    );
     assert.equal(response.status, 401);
-    assert.deepEqual(await response.json(), { ok: false, error: 'Unable to sign in.' });
+    assert.deepEqual(await response.json(), {
+      ok: false,
+      error: "Unable to sign in.",
+    });
   }
 });
 
-test('temporary login stores only a token hash and caps the change session expiry', async () => {
+test("temporary login stores only a token hash and caps the change session expiry", async () => {
   for (const [passwordExpires, expectedExpires, maxAge] of [
-    ['2026-07-12T12:10:00.000Z', '2026-07-12T12:10:00.000Z', 600],
-    ['2026-07-12T13:00:00.000Z', '2026-07-12T12:30:00.000Z', 1800],
+    ["2026-07-12T12:10:00.000Z", "2026-07-12T12:10:00.000Z", 600],
+    ["2026-07-12T13:00:00.000Z", "2026-07-12T12:30:00.000Z", 1800],
   ]) {
     const bindingsValue = downloadBindings({
-      first: async () => ({ ...approvedAccount, password_expires_at: passwordExpires }),
+      first: async () => ({
+        ...approvedAccount,
+        password_expires_at: passwordExpires,
+      }),
     });
-    const response = await workerModule.route(downloadRequest('/api/download/login', {
-      email: ' Person@Example.com ', password: 'temporary', turnstile_token: 'challenge',
-    }), bindingsValue.env, undefined, downloadDependencies({
-      verifyPassword: async () => true,
-      createSessionToken: async () => ({ token: 'raw-token', tokenHash: 'stored-token-hash' }),
-    }));
+    const response = await workerModule.route(
+      downloadRequest("/api/download/login", {
+        email: " Person@Example.com ",
+        password: "temporary",
+        turnstile_token: "challenge",
+      }),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies({
+        verifyPassword: async () => true,
+        createSessionToken: async () => ({
+          token: "raw-token",
+          tokenHash: "stored-token-hash",
+        }),
+      }),
+    );
     assert.equal(response.status, 200);
-    assert.equal(response.headers.get('set-cookie'),
-      `__Host-debateai_release=raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`);
+    assert.equal(
+      response.headers.get("set-cookie"),
+      `__Host-debateai_release=raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=${maxAge}`,
+    );
     assert.equal(bindingsValue.batchCalls.length, 1);
     const serialized = JSON.stringify(bindingsValue.calls);
-    assert.match(bindingsValue.calls[1].sql,
-      /INSERT INTO release_sessions[\s\S]+SELECT[\s\S]+WHERE EXISTS[\s\S]+state = 'active'[\s\S]+release_decision = 'approved'/i);
+    assert.match(
+      bindingsValue.calls[1].sql,
+      /INSERT INTO release_sessions[\s\S]+SELECT[\s\S]+WHERE EXISTS[\s\S]+state = 'active'[\s\S]+release_decision = 'approved'/i,
+    );
     assert.deepEqual(bindingsValue.calls[1].values, [
-      'stored-token-hash', 'person@example.com', 1,
-      '2026-07-12T12:00:00.000Z', expectedExpires, 'person@example.com',
-      'hash', 'salt', 600000, 1, passwordExpires, 1, '2026-07-12T12:00:00.000Z',
+      "stored-token-hash",
+      "person@example.com",
+      1,
+      "2026-07-12T12:00:00.000Z",
+      expectedExpires,
+      "person@example.com",
+      "hash",
+      "salt",
+      600000,
+      1,
+      passwordExpires,
+      1,
+      "2026-07-12T12:00:00.000Z",
     ]);
     assert.match(bindingsValue.calls[2].sql, /login_success/i);
-    assert.equal(serialized.includes('raw-token'), false);
+    assert.equal(serialized.includes("raw-token"), false);
   }
 });
 
-test('permanent login creates a seven-day normal session', async () => {
-  const bindingsValue = downloadBindings({
-    first: async () => ({ ...approvedAccount, must_change_password: 0, password_expires_at: null }),
-  });
-  const response = await workerModule.route(downloadRequest('/api/download/login', {
-    email: 'person@example.com', password: 'permanent password', turnstile_token: 'challenge',
-  }), bindingsValue.env, undefined, downloadDependencies({
-    verifyPassword: async () => true,
-    createSessionToken: async () => ({ token: 'raw-token', tokenHash: 'stored-token-hash' }),
-  }));
-  assert.equal(response.status, 200);
-  assert.match(response.headers.get('set-cookie'), /Max-Age=604800$/);
-  assert.deepEqual(bindingsValue.calls[1].values, [
-    'stored-token-hash', 'person@example.com', 0,
-    '2026-07-12T12:00:00.000Z', '2026-07-19T12:00:00.000Z', 'person@example.com',
-    'hash', 'salt', 600000, 0, null, 0, '2026-07-12T12:00:00.000Z',
-  ]);
-});
-
-test('login rejects a concurrent credential reset without storing a session or cookie', async () => {
-  const bindingsValue = downloadBindings({
-    first: async () => approvedAccount,
-    batch: async (statements) => statements.map(() => ({ success: true, meta: { changes: 0 } })),
-  });
-  const response = await workerModule.route(downloadRequest('/api/download/login', {
-    email: 'person@example.com', password: 'temporary', turnstile_token: 'challenge',
-  }), bindingsValue.env, undefined, downloadDependencies({
-    verifyPassword: async () => true,
-    createSessionToken: async () => ({ token: 'stale-raw-token', tokenHash: 'stale-token-hash' }),
-  }));
-
-  assert.equal(response.status, 401);
-  assert.deepEqual(await response.json(), { ok: false, error: 'Unable to sign in.' });
-  assert.equal(response.headers.get('set-cookie'), null);
-  assert.equal(bindingsValue.batchCalls.length, 1);
-  assert.match(bindingsValue.calls[1].sql,
-    /password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_iterations = \?[\s\S]+must_change_password = \?[\s\S]+password_expires_at IS \?[\s\S]+password_expires_at > \?/i);
-  assert.deepEqual(bindingsValue.calls[1].values, [
-    'stale-token-hash', 'person@example.com', 1,
-    '2026-07-12T12:00:00.000Z', '2026-07-12T12:30:00.000Z',
-    'person@example.com', 'hash', 'salt', 600000, 1,
-    '2026-07-12T12:30:00.000Z', 1, '2026-07-12T12:00:00.000Z',
-  ]);
-  assert.match(bindingsValue.calls[2].sql,
-    /login_success[\s\S]+WHERE EXISTS[\s\S]+release_sessions[\s\S]+token_hash = \?/i);
-});
-
-test('session status hashes only the named cookie and rechecks session and account state', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(7));
+test("permanent login creates a seven-day normal session", async () => {
   const bindingsValue = downloadBindings({
     first: async () => ({
-      email: 'person@example.com', state: 'active', password_change_only: 1,
-      expires_at: '2026-07-12T12:30:00.000Z',
+      ...approvedAccount,
+      must_change_password: 0,
+      password_expires_at: null,
     }),
   });
-  const response = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `other=ignored; __Host-debateai_release=${token.token}` },
-  }), bindingsValue.env, undefined, downloadDependencies());
+  const response = await workerModule.route(
+    downloadRequest("/api/download/login", {
+      email: "person@example.com",
+      password: "permanent password",
+      turnstile_token: "challenge",
+    }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies({
+      verifyPassword: async () => true,
+      createSessionToken: async () => ({
+        token: "raw-token",
+        tokenHash: "stored-token-hash",
+      }),
+    }),
+  );
+  assert.equal(response.status, 200);
+  assert.match(response.headers.get("set-cookie"), /Max-Age=604800$/);
+  assert.deepEqual(bindingsValue.calls[1].values, [
+    "stored-token-hash",
+    "person@example.com",
+    0,
+    "2026-07-12T12:00:00.000Z",
+    "2026-07-19T12:00:00.000Z",
+    "person@example.com",
+    "hash",
+    "salt",
+    600000,
+    0,
+    null,
+    0,
+    "2026-07-12T12:00:00.000Z",
+  ]);
+});
+
+test("login rejects a concurrent credential reset without storing a session or cookie", async () => {
+  const bindingsValue = downloadBindings({
+    first: async () => approvedAccount,
+    batch: async (statements) =>
+      statements.map(() => ({ success: true, meta: { changes: 0 } })),
+  });
+  const response = await workerModule.route(
+    downloadRequest("/api/download/login", {
+      email: "person@example.com",
+      password: "temporary",
+      turnstile_token: "challenge",
+    }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies({
+      verifyPassword: async () => true,
+      createSessionToken: async () => ({
+        token: "stale-raw-token",
+        tokenHash: "stale-token-hash",
+      }),
+    }),
+  );
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), {
+    ok: false,
+    error: "Unable to sign in.",
+  });
+  assert.equal(response.headers.get("set-cookie"), null);
+  assert.equal(bindingsValue.batchCalls.length, 1);
+  assert.match(
+    bindingsValue.calls[1].sql,
+    /password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_iterations = \?[\s\S]+must_change_password = \?[\s\S]+password_expires_at IS \?[\s\S]+password_expires_at > \?/i,
+  );
+  assert.deepEqual(bindingsValue.calls[1].values, [
+    "stale-token-hash",
+    "person@example.com",
+    1,
+    "2026-07-12T12:00:00.000Z",
+    "2026-07-12T12:30:00.000Z",
+    "person@example.com",
+    "hash",
+    "salt",
+    600000,
+    1,
+    "2026-07-12T12:30:00.000Z",
+    1,
+    "2026-07-12T12:00:00.000Z",
+  ]);
+  assert.match(
+    bindingsValue.calls[2].sql,
+    /login_success[\s\S]+WHERE EXISTS[\s\S]+release_sessions[\s\S]+token_hash = \?/i,
+  );
+});
+
+test("session status hashes only the named cookie and rechecks session and account state", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(7),
+  );
+  const bindingsValue = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 1,
+      expires_at: "2026-07-12T12:30:00.000Z",
+    }),
+  });
+  const response = await workerModule.route(
+    downloadRequest("/api/download/session", undefined, {
+      headers: {
+        cookie: `other=ignored; __Host-debateai_release=${token.token}`,
+      },
+    }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.deepEqual(await response.json(), {
     authenticated: true,
     must_change_password: true,
-    email: 'person@example.com',
+    email: "person@example.com",
   });
-  assert.match(bindingsValue.calls[0].sql, /release_sessions[\s\S]+release_accounts/i);
+  assert.match(
+    bindingsValue.calls[0].sql,
+    /release_sessions[\s\S]+release_accounts/i,
+  );
   assert.match(bindingsValue.calls[0].sql, /interest_subscribers/i);
-  assert.match(bindingsValue.calls[0].sql, /release_decision\s*=\s*'approved'/i);
+  assert.match(
+    bindingsValue.calls[0].sql,
+    /release_decision\s*=\s*'approved'/i,
+  );
   assert.match(bindingsValue.calls[0].sql, /expires_at/i);
   assert.match(bindingsValue.calls[0].sql, /state/i);
   assert.equal(bindingsValue.calls[0].values[0], token.tokenHash);
 
   const invalid = downloadBindings();
-  const invalidResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-debateai_release=${token.token}` },
-  }), invalid.env, undefined, downloadDependencies());
+  const invalidResponse = await workerModule.route(
+    downloadRequest("/api/download/session", undefined, {
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
+    }),
+    invalid.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.deepEqual(await invalidResponse.json(), { authenticated: false });
-  assert.equal(invalidResponse.headers.get('set-cookie'),
-    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
+  assert.equal(
+    invalidResponse.headers.get("set-cookie"),
+    "__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0",
+  );
 
-  const malformed = downloadBindings({ first: async () => ({
-    email: 'person@example.com', state: 'active', password_change_only: 0,
-    expires_at: 'not-a-time',
-  }) });
-  const malformedResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-debateai_release=${token.token}` },
-  }), malformed.env, undefined, downloadDependencies());
+  const malformed = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 0,
+      expires_at: "not-a-time",
+    }),
+  });
+  const malformedResponse = await workerModule.route(
+    downloadRequest("/api/download/session", undefined, {
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
+    }),
+    malformed.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.deepEqual(await malformedResponse.json(), { authenticated: false });
 
-  const inconsistent = downloadBindings({ first: async () => ({
-    email: 'person@example.com', state: 'active', release_decision: 'rejected',
-    password_change_only: 0, expires_at: '2026-07-19T12:00:00.000Z',
-  }) });
-  const inconsistentResponse = await workerModule.route(downloadRequest('/api/download/session', undefined, {
-    headers: { cookie: `__Host-debateai_release=${token.token}` },
-  }), inconsistent.env, undefined, downloadDependencies());
+  const inconsistent = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      release_decision: "rejected",
+      password_change_only: 0,
+      expires_at: "2026-07-19T12:00:00.000Z",
+    }),
+  });
+  const inconsistentResponse = await workerModule.route(
+    downloadRequest("/api/download/session", undefined, {
+      headers: { cookie: `__Host-debateai_release=${token.token}` },
+    }),
+    inconsistent.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.deepEqual(await inconsistentResponse.json(), { authenticated: false });
 });
 
-test('password change requires a change-only session and rotates it atomically', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(8));
-  const normal = downloadBindings({ first: async () => ({
-    email: 'person@example.com', state: 'active', password_change_only: 0,
-    expires_at: '2026-07-19T12:00:00.000Z',
-  }) });
-  const denied = await workerModule.route(downloadRequest('/api/download/password', {
-    password: 'long enough password',
-  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
-  normal.env, undefined, downloadDependencies());
+test("password change requires a change-only session and rotates it atomically", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(8),
+  );
+  const normal = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 0,
+      expires_at: "2026-07-19T12:00:00.000Z",
+    }),
+  });
+  const denied = await workerModule.route(
+    downloadRequest(
+      "/api/download/password",
+      {
+        password: "long enough password",
+      },
+      { headers: { cookie: `__Host-debateai_release=${token.token}` } },
+    ),
+    normal.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.equal(denied.status, 401);
   assert.equal(normal.batchCalls.length, 0);
 
   const short = downloadBindings();
-  const shortResponse = await workerModule.route(downloadRequest('/api/download/password', {
-    password: '1234567890123',
-  }), short.env, undefined, downloadDependencies());
+  const shortResponse = await workerModule.route(
+    downloadRequest("/api/download/password", {
+      password: "1234567890123",
+    }),
+    short.env,
+    undefined,
+    downloadDependencies(),
+  );
   assert.equal(shortResponse.status, 400);
   assert.equal(short.calls.length, 0);
 
-  const bindingsValue = downloadBindings({ first: async () => ({
-    email: 'person@example.com', state: 'active', password_change_only: 1,
-    expires_at: '2026-07-12T12:30:00.000Z',
-  }) });
-  const response = await workerModule.route(downloadRequest('/api/download/password', {
-    password: 'a new permanent password',
-  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
-  bindingsValue.env, undefined, downloadDependencies({
-    verifyPassword: async () => false,
-    hashPassword: async () => ({ hash: 'new-hash', salt: 'new-salt', iterations: 600000 }),
-    createSessionToken: async () => ({ token: 'new-raw-token', tokenHash: 'new-token-hash' }),
-  }));
+  const bindingsValue = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 1,
+      expires_at: "2026-07-12T12:30:00.000Z",
+    }),
+  });
+  const response = await workerModule.route(
+    downloadRequest(
+      "/api/download/password",
+      {
+        password: "a new permanent password",
+      },
+      { headers: { cookie: `__Host-debateai_release=${token.token}` } },
+    ),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies({
+      verifyPassword: async () => false,
+      hashPassword: async () => ({
+        hash: "new-hash",
+        salt: "new-salt",
+        iterations: 600000,
+      }),
+      createSessionToken: async () => ({
+        token: "new-raw-token",
+        tokenHash: "new-token-hash",
+      }),
+    }),
+  );
   assert.equal(response.status, 200);
   assert.equal(bindingsValue.batchCalls.length, 1);
-  assert.match(bindingsValue.calls[1].sql, /UPDATE release_accounts[\s\S]+must_change_password\s*=\s*0/i);
-  assert.match(bindingsValue.calls[2].sql, /DELETE FROM release_sessions[\s\S]+email/i);
+  assert.match(
+    bindingsValue.calls[1].sql,
+    /UPDATE release_accounts[\s\S]+must_change_password\s*=\s*0/i,
+  );
+  assert.match(
+    bindingsValue.calls[2].sql,
+    /DELETE FROM release_sessions[\s\S]+email/i,
+  );
   assert.match(bindingsValue.calls[3].sql, /INSERT INTO release_sessions/i);
   assert.match(bindingsValue.calls[4].sql, /password_change/i);
-  assert.equal(JSON.stringify(bindingsValue.calls).includes('new-raw-token'), false);
-  assert.equal(response.headers.get('set-cookie'),
-    '__Host-debateai_release=new-raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800');
+  assert.equal(
+    JSON.stringify(bindingsValue.calls).includes("new-raw-token"),
+    false,
+  );
+  assert.equal(
+    response.headers.get("set-cookie"),
+    "__Host-debateai_release=new-raw-token; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=604800",
+  );
 });
 
-test('password change rejects reuse of the temporary credential without rotation', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(12));
+test("password change rejects reuse of the temporary credential without rotation", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(12),
+  );
   let hashCalls = 0;
   let sessionCalls = 0;
   let batchCalls = 0;
   const bindings = downloadBindings({
     first: async () => ({
-      email: 'person@example.com', state: 'active', password_change_only: 1,
-      expires_at: '2026-07-13T12:30:00.000Z', password_hash: 'hash',
-      password_salt: 'salt', password_iterations: 600000,
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 1,
+      expires_at: "2026-07-13T12:30:00.000Z",
+      password_hash: "hash",
+      password_salt: "salt",
+      password_iterations: 600000,
     }),
     batch: async (statements) => {
       batchCalls += 1;
@@ -1962,133 +2989,211 @@ test('password change rejects reuse of the temporary credential without rotation
     },
   });
   const response = await workerModule.route(
-    downloadRequest('/api/download/password', { password: 'Temporary-Password1!' }, {
-      headers: { cookie: `__Host-debateai_release=${token.token}` },
-    }),
+    downloadRequest(
+      "/api/download/password",
+      { password: "Temporary-Password1!" },
+      {
+        headers: { cookie: `__Host-debateai_release=${token.token}` },
+      },
+    ),
     bindings.env,
     undefined,
     downloadDependencies({
-      now: () => new Date('2026-07-13T12:00:00.000Z'),
+      now: () => new Date("2026-07-13T12:00:00.000Z"),
       verifyPassword: async () => true,
-      hashPassword: async () => { hashCalls += 1; },
-      createSessionToken: async () => { sessionCalls += 1; },
+      hashPassword: async () => {
+        hashCalls += 1;
+      },
+      createSessionToken: async () => {
+        sessionCalls += 1;
+      },
     }),
   );
   assert.equal(response.status, 400);
   assert.equal(hashCalls, 0);
   assert.equal(sessionCalls, 0);
   assert.equal(batchCalls, 0);
-  assert.equal(response.headers.has('set-cookie'), false);
+  assert.equal(response.headers.has("set-cookie"), false);
 });
 
-test('password change makes every write conditional on the exact presented session', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(10));
+test("password change makes every write conditional on the exact presented session", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(10),
+  );
   const bindingsValue = downloadBindings({
     first: async () => ({
-      email: 'person@example.com', state: 'active', password_change_only: 1,
-      expires_at: '2026-07-12T12:30:00.000Z',
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 1,
+      expires_at: "2026-07-12T12:30:00.000Z",
     }),
-    batch: async (statements) => statements.map(() => ({ success: true, meta: { changes: 0 } })),
+    batch: async (statements) =>
+      statements.map(() => ({ success: true, meta: { changes: 0 } })),
   });
-  const response = await workerModule.route(downloadRequest('/api/download/password', {
-    password: 'a new permanent password',
-  }, { headers: { cookie: `__Host-debateai_release=${token.token}` } }),
-  bindingsValue.env, undefined, downloadDependencies({
-    verifyPassword: async () => false,
-    hashPassword: async () => ({ hash: 'new-hash', salt: 'new-salt', iterations: 600000 }),
-    createSessionToken: async () => ({ token: 'new-raw-token', tokenHash: 'new-token-hash' }),
-  }));
+  const response = await workerModule.route(
+    downloadRequest(
+      "/api/download/password",
+      {
+        password: "a new permanent password",
+      },
+      { headers: { cookie: `__Host-debateai_release=${token.token}` } },
+    ),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies({
+      verifyPassword: async () => false,
+      hashPassword: async () => ({
+        hash: "new-hash",
+        salt: "new-salt",
+        iterations: 600000,
+      }),
+      createSessionToken: async () => ({
+        token: "new-raw-token",
+        tokenHash: "new-token-hash",
+      }),
+    }),
+  );
 
   assert.equal(response.status, 401);
-  assert.equal(response.headers.get('set-cookie'), null);
+  assert.equal(response.headers.get("set-cookie"), null);
   assert.equal(bindingsValue.batchCalls.length, 1);
-  assert.match(bindingsValue.calls[1].sql,
-    /UPDATE release_accounts[\s\S]+WHERE[\s\S]+state = 'active'[\s\S]+EXISTS[\s\S]+release_sessions[\s\S]+token_hash = \?[\s\S]+password_change_only = 1[\s\S]+expires_at > \?/i);
+  assert.match(
+    bindingsValue.calls[1].sql,
+    /UPDATE release_accounts[\s\S]+WHERE[\s\S]+state = 'active'[\s\S]+EXISTS[\s\S]+release_sessions[\s\S]+token_hash = \?[\s\S]+password_change_only = 1[\s\S]+expires_at > \?/i,
+  );
   assert.ok(bindingsValue.calls[1].values.includes(token.tokenHash));
   for (const call of bindingsValue.calls.slice(2, 5)) {
-    assert.match(call.sql,
-      /EXISTS[\s\S]+password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_changed_at = \?/i);
-    assert.ok(call.values.includes('new-hash'));
-    assert.ok(call.values.includes('new-salt'));
-    assert.ok(call.values.includes('2026-07-12T12:00:00.000Z'));
+    assert.match(
+      call.sql,
+      /EXISTS[\s\S]+password_hash = \?[\s\S]+password_salt = \?[\s\S]+password_changed_at = \?/i,
+    );
+    assert.ok(call.values.includes("new-hash"));
+    assert.ok(call.values.includes("new-salt"));
+    assert.ok(call.values.includes("2026-07-12T12:00:00.000Z"));
   }
 });
 
-test('logout clears the cookie after presented session deletion or an invalid token', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(9));
-  const bindingsValue = downloadBindings({ first: async () => ({
-    email: 'person@example.com', state: 'active', password_change_only: 0,
-    expires_at: '2026-07-19T12:00:00.000Z',
-  }) });
-  const response = await workerModule.route(downloadRequest('/api/download/logout', {}, {
-    headers: { cookie: `__Host-debateai_release=${token.token}` },
-  }), bindingsValue.env, undefined, downloadDependencies());
-  assert.deepEqual(await response.json(), { ok: true });
-  assert.equal(bindingsValue.batchCalls.length, 1);
-  assert.match(bindingsValue.calls[1].sql, /DELETE FROM release_sessions WHERE token_hash = \?/i);
-  assert.deepEqual(bindingsValue.calls[1].values, [token.tokenHash]);
-  assert.match(bindingsValue.calls[2].sql, /logout[\s\S]+changes\(\) = 1/i);
-  assert.equal(response.headers.get('set-cookie'),
-    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
-
-  const invalid = downloadBindings();
-  const invalidResponse = await workerModule.route(downloadRequest('/api/download/logout', {}, {
-    headers: { cookie: '__Host-debateai_release=invalid' },
-  }), invalid.env, undefined, downloadDependencies());
-  assert.deepEqual(await invalidResponse.json(), { ok: true });
-  assert.equal(invalidResponse.headers.get('set-cookie'),
-    '__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0');
-});
-
-test('logout D1 failure returns retryable error and preserves the cookie', async () => {
-  const token = await createSessionToken((length) => new Uint8Array(length).fill(13));
-  const bindings = downloadBindings({
+test("logout clears the cookie after presented session deletion or an invalid token", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(9),
+  );
+  const bindingsValue = downloadBindings({
     first: async () => ({
-      email: 'person@example.com', state: 'active', password_change_only: 0,
-      expires_at: '2026-07-20T12:00:00.000Z',
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 0,
+      expires_at: "2026-07-19T12:00:00.000Z",
     }),
-    batch: async () => { throw new Error('offline'); },
   });
   const response = await workerModule.route(
-    downloadRequest('/api/download/logout', {}, {
-      headers: { cookie: `__Host-debateai_release=${token.token}` },
+    downloadRequest(
+      "/api/download/logout",
+      {},
+      {
+        headers: { cookie: `__Host-debateai_release=${token.token}` },
+      },
+    ),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
+  );
+  assert.deepEqual(await response.json(), { ok: true });
+  assert.equal(bindingsValue.batchCalls.length, 1);
+  assert.match(
+    bindingsValue.calls[1].sql,
+    /DELETE FROM release_sessions WHERE token_hash = \?/i,
+  );
+  assert.deepEqual(bindingsValue.calls[1].values, [token.tokenHash]);
+  assert.match(bindingsValue.calls[2].sql, /logout[\s\S]+changes\(\) = 1/i);
+  assert.equal(
+    response.headers.get("set-cookie"),
+    "__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0",
+  );
+
+  const invalid = downloadBindings();
+  const invalidResponse = await workerModule.route(
+    downloadRequest(
+      "/api/download/logout",
+      {},
+      {
+        headers: { cookie: "__Host-debateai_release=invalid" },
+      },
+    ),
+    invalid.env,
+    undefined,
+    downloadDependencies(),
+  );
+  assert.deepEqual(await invalidResponse.json(), { ok: true });
+  assert.equal(
+    invalidResponse.headers.get("set-cookie"),
+    "__Host-debateai_release=; Path=/; Secure; HttpOnly; SameSite=Strict; Max-Age=0",
+  );
+});
+
+test("logout D1 failure returns retryable error and preserves the cookie", async () => {
+  const token = await createSessionToken((length) =>
+    new Uint8Array(length).fill(13),
+  );
+  const bindings = downloadBindings({
+    first: async () => ({
+      email: "person@example.com",
+      state: "active",
+      password_change_only: 0,
+      expires_at: "2026-07-20T12:00:00.000Z",
     }),
+    batch: async () => {
+      throw new Error("offline");
+    },
+  });
+  const response = await workerModule.route(
+    downloadRequest(
+      "/api/download/logout",
+      {},
+      {
+        headers: { cookie: `__Host-debateai_release=${token.token}` },
+      },
+    ),
     bindings.env,
     undefined,
     downloadDependencies(),
   );
   assert.equal(response.status, 503);
-  assert.equal(response.headers.has('set-cookie'), false);
+  assert.equal(response.headers.has("set-cookie"), false);
 });
 
-const releaseToken = await createSessionToken((length) => new Uint8Array(length).fill(11));
+const releaseToken = await createSessionToken((length) =>
+  new Uint8Array(length).fill(11),
+);
 const releaseSession = {
-  email: 'person@example.com',
-  state: 'active',
+  email: "person@example.com",
+  state: "active",
   password_change_only: 0,
-  expires_at: '2026-07-19T12:00:00.000Z',
+  expires_at: "2026-07-19T12:00:00.000Z",
   include_latest: 1,
-  versions: JSON.stringify(['v1.0.0', 'v2.0.0', 'v1.0.0']),
+  versions: JSON.stringify(["v1.0.0", "v2.0.0", "v1.0.0"]),
 };
 
 const defaultReleaseAsset = {
-  id: 'windows-x64',
-  platform: 'Windows x64',
-  filename: 'DebateAI-windows-x64.zip',
-  content_type: 'application/zip',
+  id: "windows-x64",
+  platform: "Windows x64",
+  filename: "DebateAI-windows-x64.zip",
+  content_type: "application/zip",
 };
 
 function releaseManifest(version, size = 100, asset = defaultReleaseAsset) {
   return {
     version,
-    published_at: version === 'v2.0.0' ? '2026-07-12T18:00:00Z' : '2026-06-01T18:00:00Z',
-    commit: 'a'.repeat(40),
-    assets: [{
-      ...asset,
-      key: `releases/${version}/${asset.filename}`,
-      size,
-      sha256: 'b'.repeat(64),
-    }],
+    published_at:
+      version === "v2.0.0" ? "2026-07-12T18:00:00Z" : "2026-06-01T18:00:00Z",
+    commit: "a".repeat(40),
+    assets: [
+      {
+        ...asset,
+        key: `releases/${version}/${asset.filename}`,
+        size,
+        sha256: "b".repeat(64),
+      },
+    ],
   };
 }
 
@@ -2097,41 +3202,46 @@ function releaseBucket({
   metadata = {
     size: 100,
     httpEtag: '"object-etag"',
-    uploaded: new Date('2026-07-12T12:00:00.900Z'),
+    uploaded: new Date("2026-07-12T12:00:00.900Z"),
   },
   malformed = false,
   asset = defaultReleaseAsset,
 } = {}) {
   const calls = [];
   const manifests = new Map([
-    ['v1.0.0', releaseManifest('v1.0.0', 100, asset)],
-    ['v2.0.0', releaseManifest('v2.0.0', 100, asset)],
+    ["v1.0.0", releaseManifest("v1.0.0", 100, asset)],
+    ["v2.0.0", releaseManifest("v2.0.0", 100, asset)],
   ]);
   return {
     calls,
     async list(options) {
-      calls.push({ operation: 'list', options });
+      calls.push({ operation: "list", options });
       return {
         objects: [
-          ...[...manifests].map(([version]) => ({ key: `releases/${version}/manifest.json` })),
-          ...(malformed ? [{ key: 'releases/v3.0.0/manifest.json' }] : []),
+          ...[...manifests].map(([version]) => ({
+            key: `releases/${version}/manifest.json`,
+          })),
+          ...(malformed ? [{ key: "releases/v3.0.0/manifest.json" }] : []),
         ],
         truncated: false,
       };
     },
     async get(key, options) {
-      calls.push({ operation: 'get', key, options });
-      if (key === 'releases/latest.json') return { json: async () => ({ version: 'v2.0.0' }) };
+      calls.push({ operation: "get", key, options });
+      if (key === "releases/latest.json")
+        return { json: async () => ({ version: "v2.0.0" }) };
       const manifest = /^releases\/(v[0-9.]+)\/manifest\.json$/.exec(key);
-      if (manifest) return {
-        json: async () => malformed && manifest[1] === 'v3.0.0'
-          ? { version: 'not-valid' }
-          : structuredClone(manifests.get(manifest[1])),
-      };
+      if (manifest)
+        return {
+          json: async () =>
+            malformed && manifest[1] === "v3.0.0"
+              ? { version: "not-valid" }
+              : structuredClone(manifests.get(manifest[1])),
+        };
       return object(key, options);
     },
     async head(key) {
-      calls.push({ operation: 'head', key });
+      calls.push({ operation: "head", key });
       return metadata;
     },
   };
@@ -2139,106 +3249,167 @@ function releaseBucket({
 
 function progressiveReleaseBucket({ signed = false, schema = 1 } = {}) {
   const calls = [];
-  const version = 'v2.0.0';
-  const commit = 'a'.repeat(40);
+  const version = "v2.0.0";
+  const commit = "a".repeat(40);
   const asset = {
     ...defaultReleaseAsset,
     key: `releases/${version}/${defaultReleaseAsset.filename}`,
     size: 100,
-    sha256: 'b'.repeat(64),
+    sha256: "b".repeat(64),
   };
   const objects = new Map([
-    [`releases/${version}/release.json`, {
-      version, published_at: '2026-07-12T18:00:00Z', commit,
-    }],
-    [`releases/${version}/platforms/windows-x64.json`, {
-      version,
-      commit,
-      asset,
-      ...(signed ? {
-        published_at: '2026-07-12T18:00:00Z',
-        release_notes: 'Security and reliability fixes.',
-        update: {
-          key_id: 'test-key',
-          schema,
-          signature: 'A'.repeat(86),
-        },
-      } : {}),
-    }],
-    ['releases/latest.json', { version }],
+    [
+      `releases/${version}/release.json`,
+      {
+        version,
+        published_at: "2026-07-12T18:00:00Z",
+        commit,
+      },
+    ],
+    [
+      `releases/${version}/platforms/windows-x64.json`,
+      {
+        version,
+        commit,
+        asset,
+        ...(signed
+          ? {
+              published_at: "2026-07-12T18:00:00Z",
+              release_notes: "Security and reliability fixes.",
+              update: {
+                key_id: "test-key",
+                schema,
+                signature: "A".repeat(86),
+              },
+            }
+          : {}),
+      },
+    ],
+    ["releases/latest.json", { version }],
   ]);
   return {
     calls,
     async list(options) {
-      calls.push({ operation: 'list', options });
+      calls.push({ operation: "list", options });
       return {
         objects: [...objects.keys()].map((key) => ({ key })),
         truncated: false,
       };
     },
     async get(key, options) {
-      calls.push({ operation: 'get', key, options });
-      if (objects.has(key)) return { json: async () => structuredClone(objects.get(key)) };
-      if (key === asset.key) return {
-        body: new ReadableStream(), size: asset.size, httpEtag: '"progressive-etag"',
-      };
+      calls.push({ operation: "get", key, options });
+      if (objects.has(key))
+        return { json: async () => structuredClone(objects.get(key)) };
+      if (key === asset.key)
+        return {
+          body: new ReadableStream(),
+          size: asset.size,
+          httpEtag: '"progressive-etag"',
+        };
       return null;
     },
     async head(key) {
-      calls.push({ operation: 'head', key });
-      return key === asset.key ? {
-        size: asset.size,
-        httpEtag: '"progressive-etag"',
-        uploaded: new Date('2026-07-12T12:00:00.900Z'),
-      } : null;
+      calls.push({ operation: "head", key });
+      return key === asset.key
+        ? {
+            size: asset.size,
+            httpEtag: '"progressive-etag"',
+            uploaded: new Date("2026-07-12T12:00:00.900Z"),
+          }
+        : null;
     },
   };
 }
 
-test('recipient host exposes only a strict signed Latest update descriptor', async () => {
+test("recipient host exposes only a strict signed Latest update descriptor", async () => {
   const signed = releaseBindings(progressiveReleaseBucket({ signed: true }));
-  const response = await workerModule.route(downloadRequest(
-    '/api/update/latest/windows-x64', undefined, { method: 'GET' },
-  ), signed.env);
+  const response = await workerModule.route(
+    downloadRequest("/api/update/latest/windows-x64", undefined, {
+      method: "GET",
+    }),
+    signed.env,
+  );
   assert.equal(response.status, 200);
-  assert.equal(response.headers.get('cache-control'), 'public, max-age=300');
+  assert.equal(response.headers.get("cache-control"), "public, max-age=300");
   assert.deepEqual(await response.json(), {
-    version: 'v2.0.0',
-    commit: 'a'.repeat(40),
-    published_at: '2026-07-12T18:00:00Z',
-    release_notes: 'Security and reliability fixes.',
+    version: "v2.0.0",
+    commit: "a".repeat(40),
+    published_at: "2026-07-12T18:00:00Z",
+    release_notes: "Security and reliability fixes.",
     asset: {
-      id: 'windows-x64',
-      platform: 'Windows x64',
-      filename: 'DebateAI-windows-x64.zip',
+      id: "windows-x64",
+      platform: "Windows x64",
+      filename: "DebateAI-windows-x64.zip",
       size: 100,
-      sha256: 'b'.repeat(64),
+      sha256: "b".repeat(64),
     },
-    key_id: 'test-key',
+    key_id: "test-key",
     schema: 1,
-    signature: 'A'.repeat(86),
+    signature: "A".repeat(86),
   });
-  assert.equal(signed.calls.length, 0, 'public update checks must not query recipient identity');
+  assert.equal(
+    signed.calls.length,
+    0,
+    "public update checks must not query recipient identity",
+  );
 
   const unsigned = releaseBindings(progressiveReleaseBucket());
-  const malformed = releaseBindings(progressiveReleaseBucket({ signed: true, schema: 2 }));
+  const malformed = releaseBindings(
+    progressiveReleaseBucket({ signed: true, schema: 2 }),
+  );
   const admin = adminBindings();
   const cases = [
-    [downloadRequest('/api/update/latest/windows-x64', undefined, { method: 'GET' }), unsigned.env, undefined, 404],
-    [downloadRequest('/api/update/latest/windows-x64', undefined, { method: 'GET' }), malformed.env, undefined, 404],
-    [downloadRequest('/api/update/latest/unknown', undefined, { method: 'GET' }), signed.env, undefined, 404],
-    [downloadRequest('/api/update/latest/windows-x64', {}, { method: 'POST' }), signed.env, undefined, 405],
-    [new Request('https://debateai.test/api/update/latest/windows-x64'), signed.env, undefined, 404],
-    [adminRequest('/api/update/latest/windows-x64'), admin.env, allowOwner, 404],
+    [
+      downloadRequest("/api/update/latest/windows-x64", undefined, {
+        method: "GET",
+      }),
+      unsigned.env,
+      undefined,
+      404,
+    ],
+    [
+      downloadRequest("/api/update/latest/windows-x64", undefined, {
+        method: "GET",
+      }),
+      malformed.env,
+      undefined,
+      404,
+    ],
+    [
+      downloadRequest("/api/update/latest/unknown", undefined, {
+        method: "GET",
+      }),
+      signed.env,
+      undefined,
+      404,
+    ],
+    [
+      downloadRequest("/api/update/latest/windows-x64", {}, { method: "POST" }),
+      signed.env,
+      undefined,
+      405,
+    ],
+    [
+      new Request("https://debateai.test/api/update/latest/windows-x64"),
+      signed.env,
+      undefined,
+      404,
+    ],
+    [
+      adminRequest("/api/update/latest/windows-x64"),
+      admin.env,
+      allowOwner,
+      404,
+    ],
   ];
   for (const [requestValue, env, verify, status] of cases) {
     const result = await workerModule.route(requestValue, env, verify);
     assert.equal(result.status, status);
-    assert.match(result.headers.get('cache-control'), /no-store/);
+    assert.match(result.headers.get("cache-control"), /no-store/);
   }
 });
 
-test('public Latest descriptor is served from edge cache after the first catalog read', async () => {
+test("public Latest descriptor is served from edge cache after the first catalog read", async () => {
   const bucket = progressiveReleaseBucket({ signed: true });
   const bindingsValue = releaseBindings(bucket);
   const stored = new Map();
@@ -2250,32 +3421,39 @@ test('public Latest descriptor is served from edge cache after the first catalog
       stored.set(requestValue.url, response.clone());
     },
   };
-  const requestValue = () => downloadRequest(
-    '/api/update/latest/windows-x64', undefined, { method: 'GET' },
-  );
+  const requestValue = () =>
+    downloadRequest("/api/update/latest/windows-x64", undefined, {
+      method: "GET",
+    });
 
   const first = await workerModule.route(
-    requestValue(), bindingsValue.env, undefined, { cache },
+    requestValue(),
+    bindingsValue.env,
+    undefined,
+    { cache },
   );
   assert.equal(first.status, 200);
   const catalogReads = bucket.calls.length;
   assert.ok(catalogReads > 0);
 
   const second = await workerModule.route(
-    requestValue(), bindingsValue.env, undefined, { cache },
+    requestValue(),
+    bindingsValue.env,
+    undefined,
+    { cache },
   );
   assert.equal(second.status, 200);
   assert.equal(bucket.calls.length, catalogReads);
   assert.deepEqual(await second.json(), await first.json());
 });
 
-const updateNonce = '0123456789abcdef0123456789abcdef';
-const updateGrantToken = await createSessionToken(
-  (length) => new Uint8Array(length).fill(21),
+const updateNonce = "0123456789abcdef0123456789abcdef";
+const updateGrantToken = await createSessionToken((length) =>
+  new Uint8Array(length).fill(21),
 );
 
 function updateGrantRequest(body, init = {}) {
-  return downloadRequest('/api/download/update-grants', body, {
+  return downloadRequest("/api/download/update-grants", body, {
     ...init,
     headers: {
       cookie: `__Host-debateai_release=${releaseToken.token}`,
@@ -2284,9 +3462,12 @@ function updateGrantRequest(body, init = {}) {
   });
 }
 
-function updateAssetRequest(path = '/api/update/assets/v2.0.0/windows-x64', headers = {}) {
+function updateAssetRequest(
+  path = "/api/update/assets/v2.0.0/windows-x64",
+  headers = {},
+) {
   return downloadRequest(path, undefined, {
-    method: 'GET',
+    method: "GET",
     headers: {
       authorization: `Bearer ${updateGrantToken.token}`,
       ...headers,
@@ -2297,21 +3478,23 @@ function updateAssetRequest(path = '/api/update/assets/v2.0.0/windows-x64', head
 function grantRecord(overrides = {}) {
   return {
     email: releaseSession.email,
-    version: 'v2.0.0',
-    asset_id: 'windows-x64',
-    expires_at: '2026-07-12T12:15:00.000Z',
-    state: 'active',
-    release_decision: 'approved',
+    version: "v2.0.0",
+    asset_id: "windows-x64",
+    expires_at: "2026-07-12T12:15:00.000Z",
+    state: "active",
+    release_decision: "approved",
     ...overrides,
   };
 }
 
-function updateGrantBindings({ bucket = progressiveReleaseBucket({ signed: true }),
-  session = releaseSession, grant = grantRecord() } = {}) {
+function updateGrantBindings({
+  bucket = progressiveReleaseBucket({ signed: true }),
+  session = releaseSession,
+  grant = grantRecord(),
+} = {}) {
   const result = downloadBindings({
-    first: async (call) => (
-      call.sql.includes('release_update_grants') ? grant : session
-    ),
+    first: async (call) =>
+      call.sql.includes("release_update_grants") ? grant : session,
   });
   result.env.RELEASES = bucket;
   return { ...result, bucket };
@@ -2321,64 +3504,113 @@ function updateGrantBindings({ bucket = progressiveReleaseBucket({ signed: true 
 // anyone, so none of this path may require an account. It used to: the app
 // sent the user to the portal for a grant, the portal answered with a login
 // panel, and the asset route checked the grant against an approved recipient.
-test('update grants are issued anonymously and record nothing', async () => {
+test("update grants are issued anonymously and record nothing", async () => {
   const bindings = updateGrantBindings({ session: null });
-  const response = await workerModule.route(updateGrantRequest({
-    nonce: updateNonce,
-    version: 'v2.0.0',
-    asset_id: 'windows-x64',
-  }), bindings.env, undefined, downloadDependencies({
-    createSessionToken: async () => updateGrantToken,
-  }));
+  const response = await workerModule.route(
+    updateGrantRequest({
+      nonce: updateNonce,
+      version: "v2.0.0",
+      asset_id: "windows-x64",
+    }),
+    bindings.env,
+    undefined,
+    downloadDependencies({
+      createSessionToken: async () => updateGrantToken,
+    }),
+  );
   assert.equal(response.status, 200);
   assert.deepEqual(await response.json(), {
     nonce: updateNonce,
-    version: 'v2.0.0',
-    asset_id: 'windows-x64',
+    version: "v2.0.0",
+    asset_id: "windows-x64",
     grant: updateGrantToken.token,
-    expires_at: '2026-07-12T12:15:00.000Z',
+    expires_at: "2026-07-12T12:15:00.000Z",
   });
   // The token authorizes nothing now, so it is neither stored nor looked up.
-  assert.equal(bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)), false);
+  assert.equal(
+    bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)),
+    false,
+  );
   assert.equal(bindings.batchCalls.length, 0);
-  assert.equal(JSON.stringify(bindings.calls).includes(updateGrantToken.token), false);
+  assert.equal(
+    JSON.stringify(bindings.calls).includes(updateGrantToken.token),
+    false,
+  );
 });
 
-test('update grant creation still fails closed on request shape and unknown assets', async () => {
-  const valid = { nonce: updateNonce, version: 'v2.0.0', asset_id: 'windows-x64' };
+test("update grant creation still fails closed on request shape and unknown assets", async () => {
+  const valid = {
+    nonce: updateNonce,
+    version: "v2.0.0",
+    asset_id: "windows-x64",
+  };
   const cases = [
-    [updateGrantRequest(valid, { headers: { origin: 'https://attacker.example' } }),
-      updateGrantBindings(), 403],
-    [updateGrantRequest('not-json', {
-      headers: { 'content-type': 'text/plain', origin: DOWNLOAD_ORIGIN },
-    }), updateGrantBindings(), 415],
-    [updateGrantRequest({ ...valid, nonce: 'short' }), updateGrantBindings(), 400],
-    [updateGrantRequest({ ...valid, version: 'v02.0.0' }), updateGrantBindings(), 400],
-    [updateGrantRequest({ ...valid, asset_id: 'unknown' }), updateGrantBindings(), 400],
+    [
+      updateGrantRequest(valid, {
+        headers: { origin: "https://attacker.example" },
+      }),
+      updateGrantBindings(),
+      403,
+    ],
+    [
+      updateGrantRequest("not-json", {
+        headers: { "content-type": "text/plain", origin: DOWNLOAD_ORIGIN },
+      }),
+      updateGrantBindings(),
+      415,
+    ],
+    [
+      updateGrantRequest({ ...valid, nonce: "short" }),
+      updateGrantBindings(),
+      400,
+    ],
+    [
+      updateGrantRequest({ ...valid, version: "v02.0.0" }),
+      updateGrantBindings(),
+      400,
+    ],
+    [
+      updateGrantRequest({ ...valid, asset_id: "unknown" }),
+      updateGrantBindings(),
+      400,
+    ],
     [updateGrantRequest({ ...valid, extra: true }), updateGrantBindings(), 400],
     // Published without an update descriptor: not fetchable through this path.
-    [updateGrantRequest(valid), updateGrantBindings({
-      bucket: progressiveReleaseBucket(),
-    }), 404],
-    [updateGrantRequest({ ...valid, version: 'v9.9.9' }), updateGrantBindings(), 404],
+    [
+      updateGrantRequest(valid),
+      updateGrantBindings({
+        bucket: progressiveReleaseBucket(),
+      }),
+      404,
+    ],
+    [
+      updateGrantRequest({ ...valid, version: "v9.9.9" }),
+      updateGrantBindings(),
+      404,
+    ],
   ];
   for (const [requestValue, bindings, expected] of cases) {
     const response = await workerModule.route(
       requestValue,
       bindings.env,
       undefined,
-      downloadDependencies({ createSessionToken: async () => updateGrantToken }),
+      downloadDependencies({
+        createSessionToken: async () => updateGrantToken,
+      }),
     );
     assert.equal(response.status, expected);
-    assert.equal(bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)), false);
+    assert.equal(
+      bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)),
+      false,
+    );
   }
 });
 
-test('update downloads are anonymous and reuse full, ranged, and conditional streaming', async () => {
+test("update downloads are anonymous and reuse full, ranged, and conditional streaming", async () => {
   for (const [headers, expectedStatus, expectedLength] of [
-    [{}, 200, '100'],
-    [{ range: 'bytes=10-19' }, 206, '10'],
-    [{ 'if-none-match': '"progressive-etag"' }, 304, null],
+    [{}, 200, "100"],
+    [{ range: "bytes=10-19" }, 206, "10"],
+    [{ "if-none-match": '"progressive-etag"' }, 304, null],
   ]) {
     const bindings = updateGrantBindings({ session: null, grant: null });
     // No cookie and no bearer: exactly what an install with no account sends.
@@ -2389,19 +3621,25 @@ test('update downloads are anonymous and reuse full, ranged, and conditional str
       downloadDependencies(),
     );
     assert.equal(response.status, expectedStatus);
-    assert.equal(response.headers.get('content-length'), expectedLength);
+    assert.equal(response.headers.get("content-length"), expectedLength);
     if (expectedStatus === 206) {
-      assert.equal(response.headers.get('content-range'), 'bytes 10-19/100');
+      assert.equal(response.headers.get("content-range"), "bytes 10-19/100");
     }
-    assert.equal(bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)), false);
-    assert.doesNotMatch(JSON.stringify([...response.headers]), /releases\/v2\.0\.0/);
+    assert.equal(
+      bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)),
+      false,
+    );
+    assert.doesNotMatch(
+      JSON.stringify([...response.headers]),
+      /releases\/v2\.0\.0/,
+    );
   }
 });
 
-test('a bearer from an install built before the fix is accepted and ignored', async () => {
+test("a bearer from an install built before the fix is accepted and ignored", async () => {
   for (const authorization of [
     `Bearer ${updateGrantToken.token}`,
-    'Bearer malformed',
+    "Bearer malformed",
   ]) {
     const bindings = updateGrantBindings({ session: null, grant: null });
     const response = await workerModule.route(
@@ -2411,30 +3649,45 @@ test('a bearer from an install built before the fix is accepted and ignored', as
       downloadDependencies(),
     );
     assert.equal(response.status, 200);
-    assert.equal(bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)), false);
+    assert.equal(
+      bindings.calls.some(({ sql }) => /release_update_grants/i.test(sql)),
+      false,
+    );
   }
 });
 
-test('unknown update versions and assets stay indistinguishable private 404 responses', async () => {
+test("unknown update versions and assets stay indistinguishable private 404 responses", async () => {
   const cases = [
-    [updateAssetRequest('/api/update/assets/v9.9.9/windows-x64'), updateGrantBindings()],
-    [updateAssetRequest('/api/update/assets/v2.0.0/linux-x64'), updateGrantBindings()],
+    [
+      updateAssetRequest("/api/update/assets/v9.9.9/windows-x64"),
+      updateGrantBindings(),
+    ],
+    [
+      updateAssetRequest("/api/update/assets/v2.0.0/linux-x64"),
+      updateGrantBindings(),
+    ],
     // A release published with no update descriptor.
-    [updateAssetRequest(), updateGrantBindings({ bucket: progressiveReleaseBucket() })],
+    [
+      updateAssetRequest(),
+      updateGrantBindings({ bucket: progressiveReleaseBucket() }),
+    ],
   ];
   for (const [requestValue, bindings] of cases) {
     const response = await workerModule.route(
-      requestValue, bindings.env, undefined, downloadDependencies(),
+      requestValue,
+      bindings.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, 404);
-    assert.equal(response.headers.get('cache-control'), 'private, no-store');
-    assert.deepEqual(await response.json(), { ok: false, error: 'Not found.' });
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.deepEqual(await response.json(), { ok: false, error: "Not found." });
   }
 });
 
 function releaseGet(path, headers = {}) {
   return downloadRequest(path, undefined, {
-    method: 'GET',
+    method: "GET",
     headers: {
       cookie: `__Host-debateai_release=${releaseToken.token}`,
       ...headers,
@@ -2449,162 +3702,248 @@ function releaseBindings(bucket, session = releaseSession) {
 }
 
 function assetCalls(bucket, filename = defaultReleaseAsset.filename) {
-  return bucket.calls.filter(({ operation, key }) => (
-    operation === 'get' && key?.endsWith(filename)
-  ));
+  return bucket.calls.filter(
+    ({ operation, key }) => operation === "get" && key?.endsWith(filename),
+  );
 }
 
-test('release listing serves the full public catalog without sessions or R2 metadata leaks', async () => {
+test("release listing serves the full public catalog without sessions or R2 metadata leaks", async () => {
   const bucket = releaseBucket({ malformed: true });
   const bindingsValue = releaseBindings(bucket);
   const response = await workerModule.route(
-    downloadRequest('/api/download/releases', undefined, { method: 'GET' }),
-    bindingsValue.env, undefined, downloadDependencies(),
+    downloadRequest("/api/download/releases", undefined, { method: "GET" }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
 
   assert.equal(response.status, 200);
   const body = await response.json();
-  assert.equal(body.latest_version, 'v2.0.0');
-  assert.deepEqual(body.items.map(({ version }) => version), ['v2.0.0', 'v1.0.0']);
-  assert.deepEqual(Object.keys(body.items[0]), ['version', 'published_at', 'assets']);
-  assert.deepEqual(Object.keys(body.items[0].assets[0]),
-    ['id', 'platform', 'filename', 'size', 'sha256']);
+  assert.equal(body.latest_version, "v2.0.0");
+  assert.deepEqual(
+    body.items.map(({ version }) => version),
+    ["v2.0.0", "v1.0.0"],
+  );
+  assert.deepEqual(Object.keys(body.items[0]), [
+    "version",
+    "published_at",
+    "assets",
+  ]);
+  assert.deepEqual(Object.keys(body.items[0].assets[0]), [
+    "id",
+    "platform",
+    "filename",
+    "size",
+    "sha256",
+  ]);
   assert.doesNotMatch(JSON.stringify(body), /releases\/|content_type|commit/);
-  assert.equal(bindingsValue.calls.length, 0, 'public listing must not read recipient identity');
+  assert.equal(
+    bindingsValue.calls.length,
+    0,
+    "public listing must not read recipient identity",
+  );
 });
 
-test('progressive release publication exposes and downloads only completed platforms', async () => {
+test("progressive release publication exposes and downloads only completed platforms", async () => {
   const bucket = progressiveReleaseBucket();
   const bindingsValue = releaseBindings(bucket);
   const listing = await workerModule.route(
-    downloadRequest('/api/download/releases', undefined, { method: 'GET' }),
-    bindingsValue.env, undefined, downloadDependencies(),
+    downloadRequest("/api/download/releases", undefined, { method: "GET" }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal(listing.status, 200);
   const body = await listing.json();
-  assert.equal(body.latest_version, 'v2.0.0');
-  assert.deepEqual(body.items[0].assets.map(({ id }) => id), ['windows-x64']);
+  assert.equal(body.latest_version, "v2.0.0");
+  assert.deepEqual(
+    body.items[0].assets.map(({ id }) => id),
+    ["windows-x64"],
+  );
   assert.doesNotMatch(JSON.stringify(body), /releases\/|content_type|commit/);
 
   const windows = await workerModule.route(
-    downloadRequest('/api/download/releases/v2.0.0/windows-x64', undefined, { method: 'GET' }),
-    bindingsValue.env, undefined, downloadDependencies(),
+    downloadRequest("/api/download/releases/v2.0.0/windows-x64", undefined, {
+      method: "GET",
+    }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal(windows.status, 200);
 
   const callCount = bucket.calls.length;
   const linux = await workerModule.route(
-    downloadRequest('/api/download/releases/v2.0.0/linux-x64', undefined, { method: 'GET' }),
-    bindingsValue.env, undefined, downloadDependencies(),
+    downloadRequest("/api/download/releases/v2.0.0/linux-x64", undefined, {
+      method: "GET",
+    }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal(linux.status, 404);
-  assert.equal(bucket.calls.slice(callCount).some(({ operation, key }) => (
-    operation === 'head' || (operation === 'get' && !key.endsWith('.json'))
-  )), false);
+  assert.equal(
+    bucket.calls
+      .slice(callCount)
+      .some(
+        ({ operation, key }) =>
+          operation === "head" ||
+          (operation === "get" && !key.endsWith(".json")),
+      ),
+    false,
+  );
 });
 
-test('release APIs ignore recipient sessions and reject invalid paths before catalog access', async () => {
+test("release APIs ignore recipient sessions and reject invalid paths before catalog access", async () => {
   const bucket = releaseBucket();
   const bindingsValue = releaseBindings(bucket, null);
   const anonymous = await workerModule.route(
-    downloadRequest('/api/download/releases', undefined, { method: 'GET' }),
-    bindingsValue.env, undefined, downloadDependencies(),
+    downloadRequest("/api/download/releases", undefined, { method: "GET" }),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal(anonymous.status, 200);
   assert.equal(bindingsValue.calls.length, 0);
 
   const withSession = await workerModule.route(
-    releaseGet('/api/download/releases'), bindingsValue.env,
-    undefined, downloadDependencies(),
+    releaseGet("/api/download/releases"),
+    bindingsValue.env,
+    undefined,
+    downloadDependencies(),
   );
   assert.equal(withSession.status, 200);
-  assert.equal(bindingsValue.calls.length, 0, 'a presented cookie must not trigger D1 reads');
+  assert.equal(
+    bindingsValue.calls.length,
+    0,
+    "a presented cookie must not trigger D1 reads",
+  );
 
   for (const path of [
-    '/api/download/releases/1.0.0/windows-x64',
-    '/api/download/releases/v01.0.0/windows-x64',
-    '/api/download/releases/v1.0.0/Windows-x64',
-    '/api/download/releases/v1.0.0/DebateAI-windows-x64.zip',
-    '/api/download/releases/v1.0.0/windows-x64/extra',
-    '/api/download/releases/v1.0.0%2Fwindows-x64',
-    '/api/download/releases/v1.0.0/windows%2Fx64',
+    "/api/download/releases/1.0.0/windows-x64",
+    "/api/download/releases/v01.0.0/windows-x64",
+    "/api/download/releases/v1.0.0/Windows-x64",
+    "/api/download/releases/v1.0.0/DebateAI-windows-x64.zip",
+    "/api/download/releases/v1.0.0/windows-x64/extra",
+    "/api/download/releases/v1.0.0%2Fwindows-x64",
+    "/api/download/releases/v1.0.0/windows%2Fx64",
   ]) {
     const bucket = releaseBucket();
     const response = await workerModule.route(
-      releaseGet(path), releaseBindings(bucket).env, undefined, downloadDependencies(),
+      releaseGet(path),
+      releaseBindings(bucket).env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, 404, path);
     assert.equal(bucket.calls.length, 0, path);
   }
 });
 
-test('unknown versions and missing asset IDs are indistinguishable private 404s', async () => {
+test("unknown versions and missing asset IDs are indistinguishable private 404s", async () => {
   const responses = [];
   for (const path of [
-    '/api/download/releases/v3.0.0/windows-x64',
-    '/api/download/releases/v1.0.0/linux-x64',
+    "/api/download/releases/v3.0.0/windows-x64",
+    "/api/download/releases/v1.0.0/linux-x64",
   ]) {
     const bucket = releaseBucket();
-    responses.push(await workerModule.route(
-      releaseGet(path), releaseBindings(bucket).env, undefined, downloadDependencies(),
-    ));
+    responses.push(
+      await workerModule.route(
+        releaseGet(path),
+        releaseBindings(bucket).env,
+        undefined,
+        downloadDependencies(),
+      ),
+    );
     assert.equal(assetCalls(bucket).length, 0);
   }
-  assert.deepEqual(responses.map(({ status }) => status), [404, 404]);
+  assert.deepEqual(
+    responses.map(({ status }) => status),
+    [404, 404],
+  );
   assert.deepEqual(await responses[0].json(), await responses[1].json());
-  assert.equal(responses[0].headers.get('cache-control'), 'private, no-store');
+  assert.equal(responses[0].headers.get("cache-control"), "private, no-store");
 });
 
-test('public downloads stream full and ranged R2 bodies with exact headers and no identity events', async () => {
+test("public downloads stream full and ranged R2 bodies with exact headers and no identity events", async () => {
   const cases = [
     [undefined, 200, 100, null],
-    ['bytes=10-19', 206, 10, 'bytes 10-19/100'],
-    ['bytes=25-', 206, 75, 'bytes 25-99/100'],
-    ['bytes=-10', 206, 10, 'bytes 90-99/100'],
-    ['bytes=7-7', 206, 1, 'bytes 7-7/100'],
+    ["bytes=10-19", 206, 10, "bytes 10-19/100"],
+    ["bytes=25-", 206, 75, "bytes 25-99/100"],
+    ["bytes=-10", 206, 10, "bytes 90-99/100"],
+    ["bytes=7-7", 206, 1, "bytes 7-7/100"],
   ];
   for (const [range, status, length, contentRange] of cases) {
     const body = new ReadableStream();
-    const bucket = releaseBucket({ object: async () => ({
-      body, size: 100, httpEtag: '"object-etag"',
-    }) });
+    const bucket = releaseBucket({
+      object: async () => ({
+        body,
+        size: 100,
+        httpEtag: '"object-etag"',
+      }),
+    });
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', range ? { range } : {}),
-      bindingsValue.env, undefined, downloadDependencies(),
+      releaseGet(
+        "/api/download/releases/v1.0.0/windows-x64",
+        range ? { range } : {},
+      ),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, status, range);
     assert.equal(response.body, body, range);
-    assert.equal(response.headers.get('content-length'), String(length));
-    assert.equal(response.headers.get('content-range'), contentRange);
-    assert.equal(response.headers.get('content-type'), 'application/zip');
-    assert.equal(response.headers.get('content-disposition'),
-      'attachment; filename="DebateAI-windows-x64-v1.0.0.zip"');
-    assert.equal(response.headers.get('etag'), '"object-etag"');
-    assert.equal(response.headers.get('accept-ranges'), 'bytes');
-    assert.equal(response.headers.get('cache-control'), 'private, no-store');
+    assert.equal(response.headers.get("content-length"), String(length));
+    assert.equal(response.headers.get("content-range"), contentRange);
+    assert.equal(response.headers.get("content-type"), "application/zip");
+    assert.equal(
+      response.headers.get("content-disposition"),
+      'attachment; filename="DebateAI-windows-x64-v1.0.0.zip"',
+    );
+    assert.equal(response.headers.get("etag"), '"object-etag"');
+    assert.equal(response.headers.get("accept-ranges"), "bytes");
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
     const call = assetCalls(bucket)[0];
-    assert.equal(call.options.range.get('range'), range || null);
-    assert.equal(call.options.onlyIf.get('range'), range || null);
-    assert.equal(bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)), false,
-      'anonymous downloads must not record identity events');
+    assert.equal(call.options.range.get("range"), range || null);
+    assert.equal(call.options.onlyIf.get("range"), range || null);
+    assert.equal(
+      bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)),
+      false,
+      "anonymous downloads must not record identity events",
+    );
   }
 });
 
-test('download filenames append version before archive extensions', async () => {
+test("download filenames append version before archive extensions", async () => {
   const cases = [
-    [{
-      id: 'windows-x64', platform: 'Windows x64',
-      filename: 'DebateAI-windows-x64.zip', content_type: 'application/zip',
-    }, 'DebateAI-windows-x64-v1.0.0.zip'],
-    [{
-      id: 'macos-arm64', platform: 'macOS arm64',
-      filename: 'DebateAI-macos-arm64.zip', content_type: 'application/zip',
-    }, 'DebateAI-macos-arm64-v1.0.0.zip'],
-    [{
-      id: 'linux-x64', platform: 'Linux x64',
-      filename: 'DebateAI-linux-x64.tar.gz', content_type: 'application/gzip',
-    }, 'DebateAI-linux-x64-v1.0.0.tar.gz'],
+    [
+      {
+        id: "windows-x64",
+        platform: "Windows x64",
+        filename: "DebateAI-windows-x64.zip",
+        content_type: "application/zip",
+      },
+      "DebateAI-windows-x64-v1.0.0.zip",
+    ],
+    [
+      {
+        id: "macos-arm64",
+        platform: "macOS arm64",
+        filename: "DebateAI-macos-arm64.zip",
+        content_type: "application/zip",
+      },
+      "DebateAI-macos-arm64-v1.0.0.zip",
+    ],
+    [
+      {
+        id: "linux-x64",
+        platform: "Linux x64",
+        filename: "DebateAI-linux-x64.tar.gz",
+        content_type: "application/gzip",
+      },
+      "DebateAI-linux-x64-v1.0.0.tar.gz",
+    ],
   ];
 
   for (const [asset, expected] of cases) {
@@ -2615,263 +3954,458 @@ test('download filenames append version before archive extensions', async () => 
     });
     const response = await workerModule.route(
       releaseGet(`/api/download/releases/v1.0.0/${asset.id}`),
-      releaseBindings(bucket).env, undefined, downloadDependencies(),
+      releaseBindings(bucket).env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, 200, asset.id);
-    assert.equal(response.headers.get('content-disposition'),
-      `attachment; filename="${expected}"`, asset.id);
+    assert.equal(
+      response.headers.get("content-disposition"),
+      `attachment; filename="${expected}"`,
+      asset.id,
+    );
     assert.equal(response.body, body, asset.id);
     assert.equal(assetCalls(bucket, asset.filename).length, 1, asset.id);
   }
 });
 
-test('ranges and conditional absence map to 304, 412, and 416 with defined precedence', async () => {
-  for (const range of ['', 'bytes=0-1,5-6', 'bytes=100-', 'items=0-1']) {
+test("ranges and conditional absence map to 304, 412, and 416 with defined precedence", async () => {
+  for (const range of ["", "bytes=0-1,5-6", "bytes=100-", "items=0-1"]) {
     const bucket = releaseBucket();
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', { range }),
-      bindingsValue.env, undefined, downloadDependencies(),
+      releaseGet("/api/download/releases/v1.0.0/windows-x64", { range }),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, 416, range);
     assert.equal(response.body, null);
-    assert.equal(response.headers.get('content-range'), 'bytes */100');
+    assert.equal(response.headers.get("content-range"), "bytes */100");
     assert.equal(assetCalls(bucket).length, 0);
-    assert.equal(bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)), false);
+    assert.equal(
+      bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)),
+      false,
+    );
   }
 
   const conditions = [
-    [{ 'if-none-match': '"object-etag"', range: 'bytes=0-9' }, 304],
-    [{ 'if-modified-since': 'Sun, 12 Jul 2026 13:00:00 GMT' }, 304],
-    [{ 'if-match': '"old"', range: 'bytes=0-9' }, 412],
-    [{ 'if-unmodified-since': 'Sun, 12 Jul 2026 11:59:59 GMT' }, 412],
-    [{ 'if-match': '"old"', 'if-none-match': '"object-etag"', range: 'bytes=0-9' }, 412],
+    [{ "if-none-match": '"object-etag"', range: "bytes=0-9" }, 304],
+    [{ "if-modified-since": "Sun, 12 Jul 2026 13:00:00 GMT" }, 304],
+    [{ "if-match": '"old"', range: "bytes=0-9" }, 412],
+    [{ "if-unmodified-since": "Sun, 12 Jul 2026 11:59:59 GMT" }, 412],
+    [
+      {
+        "if-match": '"old"',
+        "if-none-match": '"object-etag"',
+        range: "bytes=0-9",
+      },
+      412,
+    ],
   ];
   for (const [headers, status] of conditions) {
-    const bucket = releaseBucket({ object: async () => ({
-      size: 100,
-      httpEtag: '"object-etag"',
-      uploaded: new Date('2026-07-12T12:00:00.900Z'),
-    }) });
+    const bucket = releaseBucket({
+      object: async () => ({
+        size: 100,
+        httpEtag: '"object-etag"',
+        uploaded: new Date("2026-07-12T12:00:00.900Z"),
+      }),
+    });
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', headers),
-      bindingsValue.env, undefined, downloadDependencies(),
+      releaseGet("/api/download/releases/v1.0.0/windows-x64", headers),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, status, JSON.stringify(headers));
     assert.equal(response.body, null);
-    assert.equal(response.headers.get('content-length'), null);
-    assert.equal(bucket.calls.filter(({ operation }) => operation === 'head').length, 1);
+    assert.equal(response.headers.get("content-length"), null);
+    assert.equal(
+      bucket.calls.filter(({ operation }) => operation === "head").length,
+      1,
+    );
     assert.equal(assetCalls(bucket).length, 0);
-    assert.equal(bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)), false);
+    assert.equal(
+      bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)),
+      false,
+    );
   }
 });
 
-test('GET preconditions use object metadata in RFC order before Range parsing', async () => {
+test("GET preconditions use object metadata in RFC order before Range parsing", async () => {
   const cases = [
-    ['If-Match mismatch beats multi-range', {
-      'if-match': '"other"', range: 'bytes=0-1,5-6',
-    }, 412],
-    ['If-Match uses strong comparison', {
-      'if-match': 'W/"object-etag"', range: 'bytes=100-',
-    }, 412],
-    ['If-Match lists preserve commas inside quoted tags', {
-      'if-match': '"tag,with,comma", "object-etag"', range: 'bytes=100-',
-    }, 416],
-    ['If-Match wildcard passes for an existing object', {
-      'if-match': '*', range: 'bytes=100-',
-    }, 416],
-    ['If-Unmodified-Since failure beats invalid range', {
-      'if-unmodified-since': 'Sun, 12 Jul 2026 11:59:59 GMT', range: 'invalid',
-    }, 412],
-    ['If-Unmodified-Since is ignored when If-Match is present', {
-      'if-match': '"object-etag"',
-      'if-unmodified-since': 'Sun, 12 Jul 2026 11:59:59 GMT',
-      range: 'invalid',
-    }, 416],
-    ['invalid If-Unmodified-Since is ignored', {
-      'if-unmodified-since': '0', range: 'invalid',
-    }, 416],
-    ['If-None-Match uses weak comparison before Range', {
-      'if-none-match': 'W/"object-etag"', range: 'bytes=0-1,5-6',
-    }, 304],
-    ['If-None-Match wildcard matches an existing object', {
-      'if-none-match': '*', range: 'bytes=100-',
-    }, 304],
-    ['If-None-Match suppresses If-Modified-Since when it does not match', {
-      'if-none-match': '"other"',
-      'if-modified-since': 'Sun, 12 Jul 2026 13:00:00 GMT',
-      range: 'bytes=100-',
-    }, 416],
-    ['If-Modified-Since compares at HTTP second precision', {
-      'if-modified-since': 'Sun, 12 Jul 2026 12:00:00 GMT', range: 'bytes=100-',
-    }, 304],
-    ['invalid If-Modified-Since is ignored', {
-      'if-modified-since': '9999', range: 'bytes=100-',
-    }, 416],
-    ['If-Match pass plus If-None-Match match returns actual 304', {
-      'if-match': '"object-etag"',
-      'if-none-match': '"object-etag"',
-      range: 'bytes=100-',
-    }, 304],
-    ['If-Match failure wins over matching If-None-Match', {
-      'if-match': '"other"',
-      'if-none-match': '"object-etag"',
-      range: 'bytes=100-',
-    }, 412],
+    [
+      "If-Match mismatch beats multi-range",
+      {
+        "if-match": '"other"',
+        range: "bytes=0-1,5-6",
+      },
+      412,
+    ],
+    [
+      "If-Match uses strong comparison",
+      {
+        "if-match": 'W/"object-etag"',
+        range: "bytes=100-",
+      },
+      412,
+    ],
+    [
+      "If-Match lists preserve commas inside quoted tags",
+      {
+        "if-match": '"tag,with,comma", "object-etag"',
+        range: "bytes=100-",
+      },
+      416,
+    ],
+    [
+      "If-Match wildcard passes for an existing object",
+      {
+        "if-match": "*",
+        range: "bytes=100-",
+      },
+      416,
+    ],
+    [
+      "If-Unmodified-Since failure beats invalid range",
+      {
+        "if-unmodified-since": "Sun, 12 Jul 2026 11:59:59 GMT",
+        range: "invalid",
+      },
+      412,
+    ],
+    [
+      "If-Unmodified-Since is ignored when If-Match is present",
+      {
+        "if-match": '"object-etag"',
+        "if-unmodified-since": "Sun, 12 Jul 2026 11:59:59 GMT",
+        range: "invalid",
+      },
+      416,
+    ],
+    [
+      "invalid If-Unmodified-Since is ignored",
+      {
+        "if-unmodified-since": "0",
+        range: "invalid",
+      },
+      416,
+    ],
+    [
+      "If-None-Match uses weak comparison before Range",
+      {
+        "if-none-match": 'W/"object-etag"',
+        range: "bytes=0-1,5-6",
+      },
+      304,
+    ],
+    [
+      "If-None-Match wildcard matches an existing object",
+      {
+        "if-none-match": "*",
+        range: "bytes=100-",
+      },
+      304,
+    ],
+    [
+      "If-None-Match suppresses If-Modified-Since when it does not match",
+      {
+        "if-none-match": '"other"',
+        "if-modified-since": "Sun, 12 Jul 2026 13:00:00 GMT",
+        range: "bytes=100-",
+      },
+      416,
+    ],
+    [
+      "If-Modified-Since compares at HTTP second precision",
+      {
+        "if-modified-since": "Sun, 12 Jul 2026 12:00:00 GMT",
+        range: "bytes=100-",
+      },
+      304,
+    ],
+    [
+      "invalid If-Modified-Since is ignored",
+      {
+        "if-modified-since": "9999",
+        range: "bytes=100-",
+      },
+      416,
+    ],
+    [
+      "If-Match pass plus If-None-Match match returns actual 304",
+      {
+        "if-match": '"object-etag"',
+        "if-none-match": '"object-etag"',
+        range: "bytes=100-",
+      },
+      304,
+    ],
+    [
+      "If-Match failure wins over matching If-None-Match",
+      {
+        "if-match": '"other"',
+        "if-none-match": '"object-etag"',
+        range: "bytes=100-",
+      },
+      412,
+    ],
   ];
 
   for (const [name, headers, expected] of cases) {
     const bucket = releaseBucket();
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', headers),
-      bindingsValue.env, undefined, downloadDependencies(),
+      releaseGet("/api/download/releases/v1.0.0/windows-x64", headers),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, expected, name);
-    assert.equal(bucket.calls.filter(({ operation }) => operation === 'head').length, 1, name);
+    assert.equal(
+      bucket.calls.filter(({ operation }) => operation === "head").length,
+      1,
+      name,
+    );
     assert.equal(assetCalls(bucket).length, 0, `${name}: must not call get`);
     assert.equal(response.body, null, name);
-    assert.equal(bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)), false, name);
+    assert.equal(
+      bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)),
+      false,
+      name,
+    );
   }
 });
 
-test('legacy HTTP dates honor RFC850 rollover and asctime semantics before Range', async () => {
+test("legacy HTTP dates honor RFC850 rollover and asctime semantics before Range", async () => {
   const cases = [
-    ['RFC850 most-recent-past year fails If-Unmodified-Since',
-      'if-unmodified-since', 'Sunday, 06-Nov-94 08:49:37 GMT',
-      '1995-01-01T00:00:00.000Z', 412],
-    ['RFC850 exactly fifty years ahead is not rolled back',
-      'if-unmodified-since', 'Sunday, 12-Jul-76 12:00:00 GMT',
-      '2100-01-01T00:00:00.000Z', 412],
-    ['asctime not-modified returns 304',
-      'if-modified-since', 'Sun Jul 12 13:00:00 2026',
-      '2026-07-12T12:00:00.900Z', 304],
-    ['impossible RFC850 date is ignored',
-      'if-unmodified-since', 'Monday, 31-Feb-25 12:00:00 GMT',
-      '2026-07-12T12:00:00.900Z', 416],
-    ['RFC850 lookalike without GMT is ignored',
-      'if-unmodified-since', 'Saturday, 12-Jul-25 12:00:00 UTC',
-      '2026-07-12T12:00:00.900Z', 416],
-    ['malformed asctime spacing is ignored',
-      'if-modified-since', 'Sun Jul 6 13:00:00 2026',
-      '2026-07-12T12:00:00.900Z', 416],
+    [
+      "RFC850 most-recent-past year fails If-Unmodified-Since",
+      "if-unmodified-since",
+      "Sunday, 06-Nov-94 08:49:37 GMT",
+      "1995-01-01T00:00:00.000Z",
+      412,
+    ],
+    [
+      "RFC850 exactly fifty years ahead is not rolled back",
+      "if-unmodified-since",
+      "Sunday, 12-Jul-76 12:00:00 GMT",
+      "2100-01-01T00:00:00.000Z",
+      412,
+    ],
+    [
+      "asctime not-modified returns 304",
+      "if-modified-since",
+      "Sun Jul 12 13:00:00 2026",
+      "2026-07-12T12:00:00.900Z",
+      304,
+    ],
+    [
+      "impossible RFC850 date is ignored",
+      "if-unmodified-since",
+      "Monday, 31-Feb-25 12:00:00 GMT",
+      "2026-07-12T12:00:00.900Z",
+      416,
+    ],
+    [
+      "RFC850 lookalike without GMT is ignored",
+      "if-unmodified-since",
+      "Saturday, 12-Jul-25 12:00:00 UTC",
+      "2026-07-12T12:00:00.900Z",
+      416,
+    ],
+    [
+      "malformed asctime spacing is ignored",
+      "if-modified-since",
+      "Sun Jul 6 13:00:00 2026",
+      "2026-07-12T12:00:00.900Z",
+      416,
+    ],
   ];
 
   for (const [name, header, value, uploaded, expected] of cases) {
-    const bucket = releaseBucket({ metadata: {
-      size: 100, httpEtag: '"object-etag"', uploaded: new Date(uploaded),
-    } });
+    const bucket = releaseBucket({
+      metadata: {
+        size: 100,
+        httpEtag: '"object-etag"',
+        uploaded: new Date(uploaded),
+      },
+    });
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', {
-        [header]: value, range: 'bytes=0-1,5-6',
+      releaseGet("/api/download/releases/v1.0.0/windows-x64", {
+        [header]: value,
+        range: "bytes=0-1,5-6",
       }),
-      bindingsValue.env, undefined, downloadDependencies(),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, expected, name);
-    assert.equal(bucket.calls.filter(({ operation }) => operation === 'head').length, 1, name);
+    assert.equal(
+      bucket.calls.filter(({ operation }) => operation === "head").length,
+      1,
+      name,
+    );
     assert.equal(assetCalls(bucket).length, 0, name);
   }
 });
 
-test('legacy HTTP dates are reevaluated on bodyless conditional get results', async () => {
+test("legacy HTTP dates are reevaluated on bodyless conditional get results", async () => {
   const cases = [
-    ['RFC850 fallback returns 412', 'if-unmodified-since',
-      'Sunday, 12-Jul-26 13:00:00 GMT',
-      '2026-07-12T12:00:00.000Z', '2026-07-12T14:00:00.000Z', 412],
-    ['asctime fallback returns 304', 'if-modified-since',
-      'Sun Jul 12 13:00:00 2026',
-      '2026-07-12T14:00:00.000Z', '2026-07-12T12:00:00.000Z', 304],
+    [
+      "RFC850 fallback returns 412",
+      "if-unmodified-since",
+      "Sunday, 12-Jul-26 13:00:00 GMT",
+      "2026-07-12T12:00:00.000Z",
+      "2026-07-12T14:00:00.000Z",
+      412,
+    ],
+    [
+      "asctime fallback returns 304",
+      "if-modified-since",
+      "Sun Jul 12 13:00:00 2026",
+      "2026-07-12T14:00:00.000Z",
+      "2026-07-12T12:00:00.000Z",
+      304,
+    ],
   ];
 
-  for (const [name, header, value, headUploaded, getUploaded, expected] of cases) {
+  for (const [
+    name,
+    header,
+    value,
+    headUploaded,
+    getUploaded,
+    expected,
+  ] of cases) {
     const bucket = releaseBucket({
       metadata: {
-        size: 100, httpEtag: '"object-etag"', uploaded: new Date(headUploaded),
+        size: 100,
+        httpEtag: '"object-etag"',
+        uploaded: new Date(headUploaded),
       },
       object: async () => ({
-        size: 100, httpEtag: '"object-etag"', uploaded: new Date(getUploaded),
+        size: 100,
+        httpEtag: '"object-etag"',
+        uploaded: new Date(getUploaded),
       }),
     });
     const bindingsValue = releaseBindings(bucket);
     const response = await workerModule.route(
-      releaseGet('/api/download/releases/v1.0.0/windows-x64', {
-        [header]: value, range: 'bytes=0-9',
+      releaseGet("/api/download/releases/v1.0.0/windows-x64", {
+        [header]: value,
+        range: "bytes=0-9",
       }),
-      bindingsValue.env, undefined, downloadDependencies(),
+      bindingsValue.env,
+      undefined,
+      downloadDependencies(),
     );
     assert.equal(response.status, expected, name);
     assert.equal(assetCalls(bucket).length, 1, name);
     assert.equal(response.body, null, name);
-    assert.equal(bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)), false, name);
+    assert.equal(
+      bindingsValue.calls.some(({ sql }) => /download_start/.test(sql)),
+      false,
+      name,
+    );
   }
 });
 
-test('missing bindings and missing authorized objects fail generically without download events', async () => {
+test("missing bindings and missing authorized objects fail generically without download events", async () => {
   const noBinding = releaseBindings();
   const absentBucket = releaseBucket({ metadata: null });
   const absent = releaseBindings(absentBucket);
   const responses = [
-    await workerModule.route(releaseGet('/api/download/releases'), noBinding.env,
-      undefined, downloadDependencies()),
-    await workerModule.route(releaseGet('/api/download/releases/v1.0.0/windows-x64'), absent.env,
-      undefined, downloadDependencies()),
+    await workerModule.route(
+      releaseGet("/api/download/releases"),
+      noBinding.env,
+      undefined,
+      downloadDependencies(),
+    ),
+    await workerModule.route(
+      releaseGet("/api/download/releases/v1.0.0/windows-x64"),
+      absent.env,
+      undefined,
+      downloadDependencies(),
+    ),
   ];
-  assert.deepEqual(responses.map(({ status }) => status), [503, 503]);
-  assert.equal(absent.calls.some(({ sql }) => /download_start/.test(sql)), false);
+  assert.deepEqual(
+    responses.map(({ status }) => status),
+    [503, 503],
+  );
+  assert.equal(
+    absent.calls.some(({ sql }) => /download_start/.test(sql)),
+    false,
+  );
 });
 
-test('normalizes operator-provided Worker host variables before dispatch', async () => {
+test("normalizes operator-provided Worker host variables before dispatch", async () => {
   const { env } = bindings();
   Object.assign(env, {
-    DEBATEAI_PUBLIC_HOST: ' DebateAI.TEST ',
-    DEBATEAI_WWW_HOST: ' WWW.DEBATEAI.TEST ',
-    DEBATEAI_ADMIN_HOST: ' ADMIN.DEBATEAI.TEST ',
-    DEBATEAI_DOWNLOAD_HOST: ' DOWNLOADS.DEBATEAI.TEST ',
+    DEBATEAI_PUBLIC_HOST: " DebateAI.TEST ",
+    DEBATEAI_WWW_HOST: " WWW.DEBATEAI.TEST ",
+    DEBATEAI_ADMIN_HOST: " ADMIN.DEBATEAI.TEST ",
+    DEBATEAI_DOWNLOAD_HOST: " DOWNLOADS.DEBATEAI.TEST ",
   });
   const response = await workerModule.route(
-    new Request('https://debateai.test/index.html'),
+    new Request("https://debateai.test/index.html"),
     env,
   );
   assert.equal(response.status, 200);
 });
 
-test('router isolates every hostname before API and static dispatch', async () => {
+test("router isolates every hostname before API and static dispatch", async () => {
   const assets = [];
-  const env = { ...HOST_ENV,
+  const env = {
+    ...HOST_ENV,
     ...downloadBindings().env,
-    ADMIN_EMAIL: 'owner@example.com',
-    ACCESS_TEAM_DOMAIN: 'debateai.cloudflareaccess.test',
-    ACCESS_AUD: 'admin-audience',
-    ASSETS: { async fetch(requestValue) {
-      assets.push(requestValue.url);
-      return new Response('asset');
-    } },
+    ADMIN_EMAIL: "owner@example.com",
+    ACCESS_TEAM_DOMAIN: "debateai.cloudflareaccess.test",
+    ACCESS_AUD: "admin-audience",
+    ASSETS: {
+      async fetch(requestValue) {
+        assets.push(requestValue.url);
+        return new Response("asset");
+      },
+    },
   };
 
   const redirect = await workerModule.route(
-    new Request('https://www.debateai.test/docs/?q=1'), env, allowOwner,
+    new Request("https://www.debateai.test/docs/?q=1"),
+    env,
+    allowOwner,
   );
   assert.equal(redirect.status, 301);
-  assert.equal(redirect.headers.get('location'), 'https://debateai.test/docs/?q=1');
+  assert.equal(
+    redirect.headers.get("location"),
+    "https://debateai.test/docs/?q=1",
+  );
 
   for (const host of [
-    'www.attacker.example', 'debateai-site.workers.dev',
-    'preview.debateai-site.workers.dev', 'unknown.debateai.test',
+    "www.attacker.example",
+    "debateai-site.workers.dev",
+    "preview.debateai-site.workers.dev",
+    "unknown.debateai.test",
   ]) {
-    const response = await workerModule.route(new Request(`https://${host}/api/interest`), env,
-      async () => { throw new Error('unknown hosts must not authorize'); });
+    const response = await workerModule.route(
+      new Request(`https://${host}/api/interest`),
+      env,
+      async () => {
+        throw new Error("unknown hosts must not authorize");
+      },
+    );
     assert.equal(response.status, 404, host);
-    assert.equal(response.headers.get('cache-control'), 'no-store');
+    assert.equal(response.headers.get("cache-control"), "no-store");
   }
 
   const isolated = [
-    new Request('https://debateai.test/%61dmin/admin.js'),
-    new Request('https://debateai.test/downloads/downloads.js'),
-    new Request('https://downloads.debateai.test/admin.js'),
-    new Request('https://downloads.debateai.test/api%2Fdownload%2Freleases'),
-    adminRequest('/downloads.js'),
+    new Request("https://debateai.test/%61dmin/admin.js"),
+    new Request("https://debateai.test/downloads/downloads.js"),
+    new Request("https://downloads.debateai.test/admin.js"),
+    new Request("https://downloads.debateai.test/api%2Fdownload%2Freleases"),
+    adminRequest("/downloads.js"),
   ];
   for (const requestValue of isolated) {
     const response = await workerModule.route(requestValue, env, allowOwner);

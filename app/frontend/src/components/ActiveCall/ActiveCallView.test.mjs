@@ -21,7 +21,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./ActiveCallView.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./ActiveCallView.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "active-call-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -82,7 +84,12 @@ function props(overrides = {}) {
     isCapturing: false,
     isStarting: false,
     audioLevel: 0,
-    audioStats: { chunksSent: 0, bytesSent: 0, chunksDropped: 0, lastSentAt: null },
+    audioStats: {
+      chunksSent: 0,
+      bytesSent: 0,
+      chunksDropped: 0,
+      lastSentAt: null,
+    },
     synthesis: null,
     activity: null,
     debateRecommendation: null,
@@ -172,8 +179,14 @@ test("a degraded call says recording continues before describing the impact", ()
 });
 
 test("the pending ask renders above the insight list", () => {
-  const src = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
-  const activitySrc = readFileSync(new URL("./AgentActivityPanel.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
+  const activitySrc = readFileSync(
+    new URL("./AgentActivityPanel.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(activitySrc, /diarization\.shed\} abgewiesen/);
   assert.match(src, /pendingAsk/);
   assert.ok(
@@ -183,7 +196,10 @@ test("the pending ask renders above the insight list", () => {
 });
 
 test("the live speaking track sits above the ordinary insight list", () => {
-  const src = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
   assert.ok(
     src.indexOf("<DebateCoachPanel") < src.indexOf("Live-Argumente"),
     "the time-critical speaking track must appear before the insight feed",
@@ -191,12 +207,21 @@ test("the live speaking track sits above the ordinary insight list", () => {
 });
 
 test("the live research controls receive the authoritative Privacy First state", () => {
-  const src = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
-  assert.match(src, /privacyFirst=\{activity\?\.call\.privacy_first \?\? false\}/);
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
+  assert.match(
+    src,
+    /privacyFirst=\{activity\?\.call\.privacy_first \?\? false\}/,
+  );
 });
 
 test("the bar receives the ask handler and model props", () => {
-  const src = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
   assert.match(src, /onAsk=\{/);
   assert.match(src, /modelId=\{/);
   assert.match(src, /localOnly=\{/);
@@ -320,7 +345,10 @@ test("a signal on the panel is also listed with the other strategic insights", (
       status: "connected",
       isCapturing: true,
       synthesis: signalSynthesis,
-      questions: [signalInsight("s-1", "On the panel."), signalInsight("s-2", "Not on the panel")],
+      questions: [
+        signalInsight("s-1", "On the panel."),
+        signalInsight("s-2", "Not on the panel"),
+      ],
     }),
   );
 
@@ -333,7 +361,10 @@ test("a signal on the panel is also listed with the other strategic insights", (
 });
 
 test("the auto-prioritize rule is gone: a signal is not force-upvoted", () => {
-  const src = readFileSync(new URL("./ActiveCallView.tsx", import.meta.url), "utf8");
+  const src = readFileSync(
+    new URL("./ActiveCallView.tsx", import.meta.url),
+    "utf8",
+  );
   assert.doesNotMatch(src, /autoUpvoted/);
   assert.doesNotMatch(src, /getLiveSignalInsightIds/);
 });
@@ -368,7 +399,13 @@ test("the Strategic chip stays hidden when no signal has been captured", () => {
 test("admin and post-call views are loaded only when opened", () => {
   const app = readFileSync(new URL("../../App.tsx", import.meta.url), "utf8");
 
-  assert.match(app, /lazy\(\(\) => import\("\.\/components\/ManagementView"\)\)/);
-  assert.match(app, /lazy\(\(\) => import\("\.\/components\/PostCall\/PostCallView"\)\)/);
+  assert.match(
+    app,
+    /lazy\(\(\) => import\("\.\/components\/ManagementView"\)\)/,
+  );
+  assert.match(
+    app,
+    /lazy\(\(\) => import\("\.\/components\/PostCall\/PostCallView"\)\)/,
+  );
   assert.match(app, /<Suspense/);
 });

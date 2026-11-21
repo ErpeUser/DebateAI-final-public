@@ -3,9 +3,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from fastapi import HTTPException
-from pydantic import ValidationError
-
 from app.routers.ask import (
     ANSWER_TRUNCATION_MARKER,
     ASK_AGENT_SOURCE,
@@ -18,6 +15,8 @@ from app.routers.ask import (
     load_live_context,
 )
 from app.services.privacy import LocalOnlyModeError
+from fastapi import HTTPException
+from pydantic import ValidationError
 
 
 class AskInTests(unittest.TestCase):
@@ -80,9 +79,13 @@ def _db_mock():
 
 class AskEmptyAnswerTests(unittest.IsolatedAsyncioTestCase):
     async def test_empty_model_reply_is_rejected_instead_of_saved(self):
-        body = AskIn(model_id="gemini-3.5-flash", question="what budget did they mention?")
-        with patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=False)), \
-                patch("app.routers.ask.generate_text", new=AsyncMock(return_value="")):
+        body = AskIn(
+            model_id="gemini-3.5-flash", question="what budget did they mention?"
+        )
+        with (
+            patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=False)),
+            patch("app.routers.ask.generate_text", new=AsyncMock(return_value="")),
+        ):
             with self.assertRaises(HTTPException) as ctx:
                 await ask(uuid4(), body, db=_db_mock())
         self.assertEqual(ctx.exception.status_code, 502)
@@ -110,11 +113,19 @@ class ClampAnswerTests(unittest.TestCase):
 class AskOverlongAnswerTests(unittest.IsolatedAsyncioTestCase):
     async def test_a_runaway_reply_is_stored_clamped(self):
         overlong = "y" * (MAX_ANSWER_CHARS + 200)
-        body = AskIn(model_id="gemini-3.5-flash", question="what budget did they mention?")
-        with patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=False)), \
-                patch("app.routers.ask.generate_text", new=AsyncMock(return_value=overlong)):
+        body = AskIn(
+            model_id="gemini-3.5-flash", question="what budget did they mention?"
+        )
+        with (
+            patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=False)),
+            patch(
+                "app.routers.ask.generate_text", new=AsyncMock(return_value=overlong)
+            ),
+        ):
             row = await ask(uuid4(), body, db=_db_mock())
-        self.assertEqual(MAX_ANSWER_CHARS + len(ANSWER_TRUNCATION_MARKER), len(row.answer_summary))
+        self.assertEqual(
+            MAX_ANSWER_CHARS + len(ANSWER_TRUNCATION_MARKER), len(row.answer_summary)
+        )
         self.assertTrue(row.answer_summary.endswith(ANSWER_TRUNCATION_MARKER))
 
 
@@ -135,7 +146,9 @@ class LiveContextSignalsTests(unittest.IsolatedAsyncioTestCase):
         return context["signals"]
 
     async def test_dict_with_title_and_summary(self):
-        signals = await self._signals_for([{"title": "Budget", "summary": "180K mentioned"}])
+        signals = await self._signals_for(
+            [{"title": "Budget", "summary": "180K mentioned"}]
+        )
         self.assertEqual("- Budget: 180K mentioned", signals)
 
     async def test_dict_missing_summary_renders_title_only(self):
@@ -160,23 +173,39 @@ class AskPrivacyFirstTests(unittest.IsolatedAsyncioTestCase):
     a local endpoint model."""
 
     async def test_privacy_first_rejects_a_cloud_model(self):
-        body = AskIn(model_id="gemini-3.5-flash", question="what budget did they mention?")
-        with patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=True)), \
-                patch("app.routers.ask.allows_local_only", new=AsyncMock(return_value=False)):
-            with self.assertRaises(LocalOnlyModeError):
-                await ask(uuid4(), body, db=_db_mock())
+        body = AskIn(
+            model_id="gemini-3.5-flash", question="what budget did they mention?"
+        )
+        with (
+            patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=True)),
+            patch(
+                "app.routers.ask.allows_local_only", new=AsyncMock(return_value=False)
+            ),
+            self.assertRaises(LocalOnlyModeError),
+        ):
+            await ask(uuid4(), body, db=_db_mock())
 
     async def test_privacy_first_admits_a_local_endpoint_model(self):
         body = AskIn(
             model_id="endpoint:lm-studio:antares-1b",
             question="what budget did they mention?",
         )
-        with patch(
-            "app.routers.ask.endpoint_model_entry",
-            new=AsyncMock(return_value={"supports_text": True, "name": "antares-1b"}),
-        ), patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=True)), \
-                patch("app.routers.ask.allows_local_only", new=AsyncMock(return_value=True)), \
-                patch("app.routers.ask.generate_text", new=AsyncMock(return_value="They said 180K.")):
+        with (
+            patch(
+                "app.routers.ask.endpoint_model_entry",
+                new=AsyncMock(
+                    return_value={"supports_text": True, "name": "antares-1b"}
+                ),
+            ),
+            patch("app.routers.ask.is_local_only", new=AsyncMock(return_value=True)),
+            patch(
+                "app.routers.ask.allows_local_only", new=AsyncMock(return_value=True)
+            ),
+            patch(
+                "app.routers.ask.generate_text",
+                new=AsyncMock(return_value="They said 180K."),
+            ),
+        ):
             row = await ask(uuid4(), body, db=_db_mock())
         self.assertEqual(row.item_type, ASK_ITEM_TYPE)
         self.assertEqual(row.answer_summary, "They said 180K.")

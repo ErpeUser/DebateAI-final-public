@@ -23,6 +23,7 @@ from __future__ import annotations
 import threading
 import time
 from contextlib import contextmanager
+from typing import Self
 
 from app.services import std_streams
 
@@ -37,7 +38,16 @@ ERROR = "error"
 
 
 class _Job:
-    __slots__ = ("key", "label", "purpose", "state", "downloaded", "total", "error", "at")
+    __slots__ = (
+        "at",
+        "downloaded",
+        "error",
+        "key",
+        "label",
+        "purpose",
+        "state",
+        "total",
+    )
 
     def __init__(self, key: str, label: str, purpose: str):
         self.key = key
@@ -177,7 +187,7 @@ def download(key: str, label: str, purpose: str = ""):
     begin(key)
     try:
         yield
-    except BaseException as exc:  # noqa: BLE001 - recorded, then re-raised unchanged
+    except BaseException as exc:
         fail(key, f"{type(exc).__name__}: {exc}")
         raise
     else:
@@ -228,7 +238,7 @@ class ProgressReporter:
 
     def update_transfer(self, n: int = 1) -> None:
         """Xet's second counter; the bytes are already counted by `update`."""
-        return None
+        return
 
     def close(self) -> None:
         return None
@@ -262,7 +272,7 @@ class ProgressReporter:
 
         return _noop
 
-    def __enter__(self) -> "ProgressReporter":
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *exc) -> None:

@@ -10,7 +10,6 @@ import uuid
 from collections import OrderedDict, deque
 from typing import Any
 
-
 COALESCIBLE_TYPES = {"interim_transcript", "audio_level"}
 DEFAULT_JOURNAL_MAX_BYTES = 2 * 1024 * 1024
 DEFAULT_JOURNAL_IDLE_TTL_SECONDS = 60 * 60
@@ -60,8 +59,15 @@ def _state_key(event: dict[str, Any]) -> tuple[str, str]:
     if event_type in {"transcript", "transcript_updated"}:
         # Keep the durable creation event as well as its latest revision. A
         # reconnect snapshot must insert the row before applying the update.
-        return event_type, str(data.get("id") or data.get("sequence") or event.get("session_sequence"))
-    if event_type in {"question", "question_answered", "insight_updated", "insight_elevated"}:
+        return event_type, str(
+            data.get("id") or data.get("sequence") or event.get("session_sequence")
+        )
+    if event_type in {
+        "question",
+        "question_answered",
+        "insight_updated",
+        "insight_elevated",
+    }:
         return event_type, str(data.get("id") or event.get("session_sequence"))
     return event_type, "latest"
 
@@ -153,7 +159,8 @@ class SessionEventJournal:
             previous_data = previous.get("data") or {}
             state_event["data"] = {
                 **data,
-                "text": str(previous_data.get("text") or "") + str(data.get("text") or ""),
+                "text": str(previous_data.get("text") or "")
+                + str(data.get("text") or ""),
                 # Reconnect state is self-contained. The live event remains a
                 # small append delta so a long call does not send quadratic data.
                 "mode": "replace",
@@ -179,7 +186,9 @@ class SessionEventJournal:
         after_epoch: str | None = None,
     ) -> dict[str, Any]:
         self._last_touch = time.monotonic()
-        earliest = self._events[0]["session_sequence"] if self._events else self._sequence + 1
+        earliest = (
+            self._events[0]["session_sequence"] if self._events else self._sequence + 1
+        )
         full = (
             (after_epoch is not None and after_epoch != self.server_epoch)
             or after_sequence <= 0
@@ -241,7 +250,10 @@ class ClientSendBuffer:
             if kind in COALESCIBLE_TYPES:
                 key = _coalescible_key(event)
                 for index, queued in enumerate(self._items):
-                    if _payload(queued).get("type") in COALESCIBLE_TYPES and _coalescible_key(queued) == key:
+                    if (
+                        _payload(queued).get("type") in COALESCIBLE_TYPES
+                        and _coalescible_key(queued) == key
+                    ):
                         # A reconnect cursor must not land between an unsent
                         # interim prefix and the event that now carries it.
                         if kind == "audio_level" or index == len(self._items) - 1:
@@ -349,7 +361,9 @@ def event_journal(session_id: uuid.UUID | str) -> SessionEventJournal:
     return journal
 
 
-def latest_session_event(session_id: uuid.UUID | str, event_type: str) -> dict[str, Any] | None:
+def latest_session_event(
+    session_id: uuid.UUID | str, event_type: str
+) -> dict[str, Any] | None:
     journal = _journals.get(str(session_id))
     return journal.latest(event_type) if journal else None
 

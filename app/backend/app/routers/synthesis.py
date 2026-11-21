@@ -1,14 +1,13 @@
 import uuid
 from typing import Literal
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Session
 from app.schemas import SessionSynthesisOut
 from app.services.agents.strategic_signals import run_strategic_signals_cycle
 from app.services.briefing_synthesis import get_session_synthesis, run_session_synthesis
+from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/synthesis", tags=["synthesis"])
 
@@ -48,7 +47,9 @@ async def refresh_synthesis(
     else:
         synthesis = await run_session_synthesis(session_id, mode="post_call")
     if not synthesis:
-        raise HTTPException(400, "Briefing synthesis is disabled or no transcript is available")
+        raise HTTPException(
+            400, "Briefing synthesis is disabled or no transcript is available"
+        )
     return _synthesis_response(synthesis)
 
 

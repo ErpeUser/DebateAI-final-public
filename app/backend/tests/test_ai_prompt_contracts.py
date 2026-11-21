@@ -9,18 +9,27 @@ from app.services import ai_config
 class PromptContractTests(unittest.TestCase):
     def test_python_templates_reject_fields_their_consumer_cannot_render(self):
         for template in (
-            "{claim}", "{}", "{0}", "{transcript_text[99]}",
-            "{transcript_text.missing}", "{transcript_text:{claim}}",
-            "{transcript_text:invalid}", "{transcript_text!x}",
+            "{claim}",
+            "{}",
+            "{0}",
+            "{transcript_text[99]}",
+            "{transcript_text.missing}",
+            "{transcript_text:{claim}}",
+            "{transcript_text:invalid}",
+            "{transcript_text!x}",
         ):
             with self.subTest(template=template), self.assertRaises(ValueError):
                 ai_config._validate_prompt_content("analyze_transcript", template)
 
     def test_literal_json_is_valid_in_raw_and_literal_replacement_prompts(self):
         raw = 'Return JSON: {"answer": "text"}'
-        self.assertEqual(ai_config._validate_prompt_content("postcall_chat_system", raw), raw)
-        deep = '{claim}\n{own_position}\n{relevant_context}\n{evidence}\n' + raw
-        self.assertEqual(ai_config._validate_prompt_content("debate_deep_v1", deep), deep)
+        self.assertEqual(
+            ai_config._validate_prompt_content("postcall_chat_system", raw), raw
+        )
+        deep = "{claim}\n{own_position}\n{relevant_context}\n{evidence}\n" + raw
+        self.assertEqual(
+            ai_config._validate_prompt_content("debate_deep_v1", deep), deep
+        )
 
     def test_valid_python_fields_and_escaped_json_remain_renderable(self):
         template = '{meeting_context_text}\n{transcript_text}\n{{"answer": "text"}}'
@@ -37,8 +46,11 @@ class ResearchOptOutTests(unittest.TestCase):
             research = {"providers": [{"id": "gemini_api", "enabled": False}]}
             if fallback is not None:
                 research["fallback_providers"] = fallback
-            with self.subTest(fallback=fallback), patch.object(
-                ai_config, "load_ai_json", return_value={"research": research}
+            with (
+                self.subTest(fallback=fallback),
+                patch.object(
+                    ai_config, "load_ai_json", return_value={"research": research}
+                ),
             ):
                 settings = ai_config.research_settings()
             self.assertNotIn("gemini_api", settings["providers"])
@@ -49,6 +61,7 @@ class ResearchOptOutTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
 
 class LivePromptQualityContractTests(unittest.TestCase):
     def test_live_prompt_requires_spoken_answer_and_honest_support(self):

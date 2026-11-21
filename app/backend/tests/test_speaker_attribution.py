@@ -3,7 +3,10 @@ from uuid import uuid4
 
 from app.services.agents.base import TranscriptBuffer
 from app.services.agents.consolidated_analyst import _normalize_speaker_id
-from app.services.agents.speaker_context import format_speaker_context, format_speakers_list
+from app.services.agents.speaker_context import (
+    format_speaker_context,
+    format_speakers_list,
+)
 
 
 class SpeakerAttributionTests(unittest.IsolatedAsyncioTestCase):
@@ -11,7 +14,9 @@ class SpeakerAttributionTests(unittest.IsolatedAsyncioTestCase):
         speaker_id = str(uuid4())
         buffer = TranscriptBuffer()
 
-        await buffer.add("We need Mark to follow up.", "Speaker 1", speaker_id=speaker_id)
+        await buffer.add(
+            "We need Mark to follow up.", "Speaker 1", speaker_id=speaker_id
+        )
 
         window = await buffer.get_window()
         self.assertIn("Speaker 1", window)
@@ -38,9 +43,16 @@ class SpeakerAttributionTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_participants_legend_still_carries_speaker_type(self):
         speaker_id = str(uuid4())
-        legend = format_speakers_list([
-            {"id": speaker_id, "name": "Account Manager", "speaker_type": "team", "role": "AE"},
-        ])
+        legend = format_speakers_list(
+            [
+                {
+                    "id": speaker_id,
+                    "name": "Account Manager",
+                    "speaker_type": "team",
+                    "role": "AE",
+                },
+            ]
+        )
         self.assertIn("speaker_type=team", legend)
 
     async def test_transcript_buffer_omits_missing_speaker_id(self):
@@ -70,36 +82,39 @@ class SpeakerContextFormattingTests(unittest.TestCase):
     def test_format_speaker_context_includes_type_and_display_name(self):
         speaker_id = str(uuid4())
 
-        context = format_speaker_context({
-            "id": speaker_id,
-            "name": "Speaker 2",
-            "display_name": "Dana Client",
-            "display_name_enabled": True,
-            "role": "CISO",
-            "speaker_type": "external",
-        })
+        context = format_speaker_context(
+            {
+                "id": speaker_id,
+                "name": "Speaker 2",
+                "display_name": "Dana Client",
+                "display_name_enabled": True,
+                "role": "CISO",
+                "speaker_type": "external",
+            }
+        )
 
         self.assertEqual(
-            "- Dana Client [speaker_id="
-            f"{speaker_id}; speaker_type=external] (CISO)",
+            f"- Dana Client [speaker_id={speaker_id}; speaker_type=external] (CISO)",
             context,
         )
 
     def test_format_speakers_list_warns_team_summaries_are_not_client_evidence(self):
-        context = format_speakers_list([
-            {
-                "id": str(uuid4()),
-                "name": "Account Manager",
-                "role": "Account Manager",
-                "speaker_type": "team",
-            },
-            {
-                "id": str(uuid4()),
-                "name": "External 1",
-                "role": "Client",
-                "speaker_type": "external",
-            },
-        ])
+        context = format_speakers_list(
+            [
+                {
+                    "id": str(uuid4()),
+                    "name": "Account Manager",
+                    "role": "Account Manager",
+                    "speaker_type": "team",
+                },
+                {
+                    "id": str(uuid4()),
+                    "name": "External 1",
+                    "role": "Client",
+                    "speaker_type": "external",
+                },
+            ]
+        )
 
         self.assertIn("Account Manager", context)
         self.assertIn("speaker_type=team", context)

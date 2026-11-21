@@ -9,10 +9,7 @@ module itself depends on nothing that depends on it.
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import datetime, timedelta, timezone
-
-from sqlalchemy import func, select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime, timedelta
 
 from app.models import AgentConfig, PiiRevealEvent, PiiVaultEntry
 from app.services import model_downloads
@@ -23,10 +20,14 @@ from app.services.pii.shield import get_settings
 from app.services.privacy import is_local_model
 from app.services.transcript_refiner import REFINER_SLUG
 from app.services.transcription_runtime import get_transcription_runtime_config
+from sqlalchemy import func, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 async def _agent(db: AsyncSession, slug: str) -> AgentConfig | None:
-    return (await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))).scalar_one_or_none()
+    return (
+        await db.execute(select(AgentConfig).where(AgentConfig.slug == slug))
+    ).scalar_one_or_none()
 
 
 def refinement_coverage(settings, refiner) -> dict:
@@ -81,12 +82,16 @@ async def status(db: AsyncSession) -> dict:
     gateway_is_local = not gateway_model or is_local_live_model(gateway_model)
     refiner = await _agent(db, REFINER_SLUG)
 
-    vault_total = (await db.execute(select(func.count(PiiVaultEntry.id)))).scalar_one() or 0
-    since = datetime.now(timezone.utc) - timedelta(days=1)
+    vault_total = (
+        await db.execute(select(func.count(PiiVaultEntry.id)))
+    ).scalar_one() or 0
+    since = datetime.now(UTC) - timedelta(days=1)
     reveals = (
         await db.execute(
-            select(func.count(PiiRevealEvent.id), func.coalesce(func.sum(PiiRevealEvent.token_count), 0))
-            .where(PiiRevealEvent.at >= since)
+            select(
+                func.count(PiiRevealEvent.id),
+                func.coalesce(func.sum(PiiRevealEvent.token_count), 0),
+            ).where(PiiRevealEvent.at >= since)
         )
     ).one()
 
@@ -102,15 +107,23 @@ async def status(db: AsyncSession) -> dict:
         "coverage": {
             "text": settings.enabled,
             "enforced": settings.enabled,
-            "transcription": {"covered": is_local_model(runtime.batch_model_id), "model_id": runtime.batch_model_id},
+            "transcription": {
+                "covered": is_local_model(runtime.batch_model_id),
+                "model_id": runtime.batch_model_id,
+            },
             "live_gateway": {
                 "covered": gateway_is_local or settings.enabled,
                 "model_id": gateway_model,
-                "paused": bool(gateway_model) and not gateway_is_local and settings.enabled,
+                "paused": bool(gateway_model)
+                and not gateway_is_local
+                and settings.enabled,
             },
             "documents": settings.enabled,
             "refinement": refinement_coverage(settings, refiner),
         },
         "vault": {"entries": int(vault_total)},
-        "reveals_24h": {"requests": int(reveals[0] or 0), "tokens": int(reveals[1] or 0)},
+        "reveals_24h": {
+            "requests": int(reveals[0] or 0),
+            "tokens": int(reveals[1] or 0),
+        },
     }

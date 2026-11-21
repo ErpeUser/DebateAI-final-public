@@ -14,7 +14,6 @@ import sys
 from importlib import metadata
 from pathlib import Path
 
-
 _REQ = re.compile(
     r"^\s*(?P<name>[A-Za-z0-9_.-]+)(?:\[[^\]]+\])?\s*(?P<constraint>(?:===|==|~=|!=|<=|>=|<|>).*?)?\s*(?:;\s*(?P<marker>.*))?$"
 )
@@ -75,7 +74,9 @@ def _metadata(name: str) -> tuple[str, str]:
     license_name = (package.metadata.get("License") or "").strip()
     if not license_name:
         classifiers = package.metadata.get_all("Classifier") or []
-        licenses = [item.split(" :: ")[-1] for item in classifiers if "License ::" in item]
+        licenses = [
+            item.split(" :: ")[-1] for item in classifiers if "License ::" in item
+        ]
         license_name = "; ".join(licenses)
     return package.version, license_name
 
@@ -95,7 +96,9 @@ def audit_requirements(path: Path) -> list[dict[str, object]]:
                 "license": license_name or "metadata-unreported",
                 "native": requirement["name"] in _NATIVE_HINTS,
                 "platform": sys.platform,
-                "purpose": _PURPOSES.get(requirement["name"], "direct production dependency"),
+                "purpose": _PURPOSES.get(
+                    requirement["name"], "direct production dependency"
+                ),
                 "security_status": "not_scanned",
                 "deprecation_status": "manual_review",
                 "review": "compatibility-and-security-review-required",

@@ -20,7 +20,6 @@ import logging
 
 import numpy as np
 import websockets
-
 from app.services.batch_transcriber import _is_hallucination
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
@@ -102,7 +101,9 @@ def _parse_event(event: dict) -> str | None:
     if not text:
         return None
     if _is_hallucination(text):
-        logger.info("Filtered hallucinated realtime transcription (%d chars)", len(text))
+        logger.info(
+            "Filtered hallucinated realtime transcription (%d chars)", len(text)
+        )
         return None
     return text
 
@@ -126,7 +127,9 @@ class OpenAIRealtimeSession:
     async def connect(self):
         key = self._api_key or await resolve_provider_key("openai")
         if not key:
-            raise RuntimeError("No API key configured for openai; add one in Admin -> Connections")
+            raise RuntimeError(
+                "No API key configured for openai; add one in Admin -> Connections"
+            )
         self._ws = await websockets.connect(
             REALTIME_URL,
             additional_headers={"Authorization": f"Bearer {key}"},
@@ -136,9 +139,9 @@ class OpenAIRealtimeSession:
             ping_timeout=20,
             compression=None,
         )
-        await self._ws.send(json.dumps(
-            _session_update_payload(self._transcribe_model, self._language)
-        ))
+        await self._ws.send(
+            json.dumps(_session_update_payload(self._transcribe_model, self._language))
+        )
         self._bytes_since_commit = 0
         self.session = self._ws
         logger.info(
@@ -149,10 +152,16 @@ class OpenAIRealtimeSession:
     async def send_audio(self, audio_data: bytes):
         if not self._ws:
             return
-        await self._ws.send(json.dumps({
-            "type": "input_audio_buffer.append",
-            "audio": base64.b64encode(_resample_16k_to_24k(audio_data)).decode(),
-        }))
+        await self._ws.send(
+            json.dumps(
+                {
+                    "type": "input_audio_buffer.append",
+                    "audio": base64.b64encode(
+                        _resample_16k_to_24k(audio_data)
+                    ).decode(),
+                }
+            )
+        )
         self._bytes_since_commit += len(audio_data)
         if self._bytes_since_commit >= COMMIT_INTERVAL_BYTES:
             await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
@@ -169,7 +178,10 @@ class OpenAIRealtimeSession:
             if event.get("type") == "error":
                 logger.warning(f"OpenAI Realtime error event: {event.get('error')}")
                 continue
-            if event.get("type") == "conversation.item.input_audio_transcription.completed":
+            if (
+                event.get("type")
+                == "conversation.item.input_audio_transcription.completed"
+            ):
                 # Usage here is per completed item, not cumulative, so rows add
                 # up. For gpt-live-transcribe it arrives as a duration payload
                 # rather than token counts (ALP-300); record_token_usage stores
@@ -190,7 +202,9 @@ class OpenAIRealtimeSession:
                 # Flush the final sub-interval before closing. Otherwise the
                 # last <3s of audio is silently discarded by the provider.
                 if self._bytes_since_commit > 0:
-                    await self._ws.send(json.dumps({"type": "input_audio_buffer.commit"}))
+                    await self._ws.send(
+                        json.dumps({"type": "input_audio_buffer.commit"})
+                    )
                     self._bytes_since_commit = 0
                     await asyncio.sleep(0)
                 await self._ws.close()

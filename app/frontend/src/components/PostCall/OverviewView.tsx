@@ -10,8 +10,16 @@ import type {
   TokenUsageSummary,
   TranscriptEntry,
 } from "../../types";
-import { estimateSessionCostUsd, formatEstimatedCost } from "../../lib/modelPricing";
-import { DIVIDED_LIST_CLASS, SectionHeading, StatusText, meetingTypeLabel } from "./BriefingView";
+import {
+  estimateSessionCostUsd,
+  formatEstimatedCost,
+} from "../../lib/modelPricing";
+import {
+  DIVIDED_LIST_CLASS,
+  SectionHeading,
+  StatusText,
+  meetingTypeLabel,
+} from "./BriefingView";
 import {
   callRhythm,
   commitments,
@@ -114,7 +122,9 @@ function Row({ item }: { item: OverviewItem }) {
         )}
       </div>
       {item.detail && (
-        <p className="mt-1 line-clamp-2 max-w-prose font-body text-sm leading-relaxed text-brand-gray">{item.detail}</p>
+        <p className="mt-1 line-clamp-2 max-w-prose font-body text-sm leading-relaxed text-brand-gray">
+          {item.detail}
+        </p>
       )}
     </li>
   );
@@ -130,27 +140,60 @@ interface ListSpec {
   inInsights: (matching: number, shown: number) => string;
 }
 
-function ListSection({ spec, onNavigate }: { spec: ListSpec; onNavigate: (target: OverviewTarget) => void }) {
+function ListSection({
+  spec,
+  onNavigate,
+}: {
+  spec: ListSpec;
+  onNavigate: (target: OverviewTarget) => void;
+}) {
   const { section } = spec;
-  const toInsights = () => onNavigate({ tab: "insights", filter: section.insights.filter });
+  const toInsights = () =>
+    onNavigate({ tab: "insights", filter: section.insights.filter });
   const footer: ReactNode[] = [];
   if (section.source === "briefing") {
     if (section.total > section.items.length) {
-      footer.push(<Link key="all" label={`Alle ${section.total} in der Auswertung`} onClick={() => onNavigate({ tab: "briefing" })} />);
+      footer.push(
+        <Link
+          key="all"
+          label={`Alle ${section.total} in der Auswertung`}
+          onClick={() => onNavigate({ tab: "briefing" })}
+        />,
+      );
     }
     if (section.insights.matching > 0) {
-      footer.push(<Link key="live" label={spec.inInsights(section.insights.matching, section.insights.shown)} onClick={toInsights} />);
+      footer.push(
+        <Link
+          key="live"
+          label={spec.inInsights(
+            section.insights.matching,
+            section.insights.shown,
+          )}
+          onClick={toInsights}
+        />,
+      );
     } else {
       footer.push(<span key="none">Live wurde nichts erfasst.</span>);
     }
   } else if (section.insights.matching > 0) {
-    footer.push(<Link key="live" label={spec.inInsights(section.insights.matching, section.insights.shown)} onClick={toInsights} />);
+    footer.push(
+      <Link
+        key="live"
+        label={spec.inInsights(
+          section.insights.matching,
+          section.insights.shown,
+        )}
+        onClick={toInsights}
+      />,
+    );
   }
   return (
     <section>
       <SectionHeading label={spec.label} count={section.total} />
       {section.items.length === 0 ? (
-        <p className="mt-3 font-body text-sm text-brand-mid-gray">{spec.empty}</p>
+        <p className="mt-3 font-body text-sm text-brand-mid-gray">
+          {spec.empty}
+        </p>
       ) : (
         <ul className={`mt-4 ${DIVIDED_LIST_CLASS}`}>
           {section.items.map((item) => (
@@ -159,7 +202,9 @@ function ListSection({ spec, onNavigate }: { spec: ListSpec; onNavigate: (target
         </ul>
       )}
       {footer.length > 0 && (
-        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-brand-mid-gray">{footer}</p>
+        <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 font-body text-xs text-brand-mid-gray">
+          {footer}
+        </p>
       )}
     </section>
   );
@@ -191,25 +236,39 @@ function StatTile({
       }`}
     >
       <p className="text-xs font-medium text-brand-mid-gray">{label}</p>
-      <p className={`mt-1 font-display text-2xl font-semibold tabular-nums leading-none ${primary ? "text-brand-teal" : "text-brand-dark-gray"}`}>
+      <p
+        className={`mt-1 font-display text-2xl font-semibold tabular-nums leading-none ${primary ? "text-brand-teal" : "text-brand-dark-gray"}`}
+      >
         {value}
       </p>
-      <p className="mt-1.5 truncate text-xs text-brand-mid-gray">{sub || "\u00a0"}</p>
+      <p className="mt-1.5 truncate text-xs text-brand-mid-gray">
+        {sub || "\u00a0"}
+      </p>
     </button>
   );
 }
 
-function sectionTile(spec: ListSpec, primary: boolean, onNavigate: (target: OverviewTarget) => void) {
+function sectionTile(
+  spec: ListSpec,
+  primary: boolean,
+  onNavigate: (target: OverviewTarget) => void,
+) {
   const { section } = spec;
   return (
     <StatTile
       key={spec.key}
       label={spec.label}
       value={section.total}
-      sub={section.source === "briefing" ? "Aus der Auswertung" : "Aus Argumenten"}
+      sub={
+        section.source === "briefing" ? "Aus der Auswertung" : "Aus Argumenten"
+      }
       primary={primary}
       onClick={() =>
-        onNavigate(section.source === "briefing" ? { tab: "briefing" } : { tab: "insights", filter: section.insights.filter })
+        onNavigate(
+          section.source === "briefing"
+            ? { tab: "briefing" }
+            : { tab: "insights", filter: section.insights.filter },
+        )
       }
     />
   );
@@ -230,16 +289,38 @@ function CostTile({
     return (
       <StatTile
         label="Geschätzte Kosten"
-        value={<span className="inline-block h-6 w-14 animate-pulse rounded bg-brand-light-gray-2 motion-reduce:animate-none" role="img" aria-label="Wird geladen" />}
+        value={
+          <span
+            className="inline-block h-6 w-14 animate-pulse rounded bg-brand-light-gray-2 motion-reduce:animate-none"
+            role="img"
+            aria-label="Wird geladen"
+          />
+        }
         sub="Verbrauch wird geladen"
         onClick={onClick}
       />
     );
   }
-  const recorded = Boolean(tokenUsage && (tokenUsage.total_tokens > 0 || tokenUsage.audio_seconds > 0));
-  const cost = tokenUsage && pricing && recorded ? estimateSessionCostUsd(tokenUsage.by_model, pricing.models) : null;
-  const sub = !tokenUsage ? "Verbrauch nicht verfügbar" : !recorded ? "Kein Verbrauch erfasst" : `${tokenUsage.total_tokens.toLocaleString()} Token`;
-  return <StatTile label="Geschätzte Kosten" value={formatEstimatedCost(cost)} sub={sub} onClick={onClick} />;
+  const recorded = Boolean(
+    tokenUsage && (tokenUsage.total_tokens > 0 || tokenUsage.audio_seconds > 0),
+  );
+  const cost =
+    tokenUsage && pricing && recorded
+      ? estimateSessionCostUsd(tokenUsage.by_model, pricing.models)
+      : null;
+  const sub = !tokenUsage
+    ? "Verbrauch nicht verfügbar"
+    : !recorded
+      ? "Kein Verbrauch erfasst"
+      : `${tokenUsage.total_tokens.toLocaleString()} Token`;
+  return (
+    <StatTile
+      label="Geschätzte Kosten"
+      value={formatEstimatedCost(cost)}
+      sub={sub}
+      onClick={onClick}
+    />
+  );
 }
 
 function ParticipationPanel({
@@ -256,10 +337,15 @@ function ParticipationPanel({
   const hidden = rows.length - shown.length;
   const headingId = "overview-participation";
   return (
-    <section aria-labelledby={headingId} className="rounded-xl bg-surface p-5 shadow-sm">
+    <section
+      aria-labelledby={headingId}
+      className="rounded-xl bg-surface p-5 shadow-sm"
+    >
       <SectionHeading id={headingId} label="Redeanteile" count={rows.length} />
       {rows.length === 0 ? (
-        <p className="mt-3 font-body text-sm text-brand-mid-gray">Kein Transkripttext zum Auswerten vorhanden.</p>
+        <p className="mt-3 font-body text-sm text-brand-mid-gray">
+          Kein Transkripttext zum Auswerten vorhanden.
+        </p>
       ) : (
         <>
           <div
@@ -271,7 +357,10 @@ function ParticipationPanel({
               <div
                 key={row.speakerId ?? "unattributed"}
                 className="h-full min-w-[2px]"
-                style={{ width: `${row.share * 100}%`, backgroundColor: row.color }}
+                style={{
+                  width: `${row.share * 100}%`,
+                  backgroundColor: row.color,
+                }}
                 title={`${row.name}: ${percent(row.share)}`}
               />
             ))}
@@ -279,31 +368,55 @@ function ParticipationPanel({
           <table className="mt-3 w-full font-body text-xs">
             <thead>
               <tr className="text-brand-mid-gray">
-                <th scope="col" className="pb-1.5 text-left font-medium">Sprecher</th>
-                <th scope="col" className="pb-1.5 text-right font-medium">Anteil</th>
-                <th scope="col" className="pb-1.5 text-right font-medium">Wörter</th>
-                <th scope="col" className="pb-1.5 text-right font-medium">Beiträge</th>
+                <th scope="col" className="pb-1.5 text-left font-medium">
+                  Sprecher
+                </th>
+                <th scope="col" className="pb-1.5 text-right font-medium">
+                  Anteil
+                </th>
+                <th scope="col" className="pb-1.5 text-right font-medium">
+                  Wörter
+                </th>
+                <th scope="col" className="pb-1.5 text-right font-medium">
+                  Beiträge
+                </th>
               </tr>
             </thead>
             <tbody className={DIVIDED_LIST_CLASS}>
               {shown.map((row) => (
                 <tr key={row.speakerId ?? "unattributed"}>
-                  <th scope="row" className="py-1.5 text-left font-medium text-brand-dark-gray">
+                  <th
+                    scope="row"
+                    className="py-1.5 text-left font-medium text-brand-dark-gray"
+                  >
                     <span className="flex items-center gap-2">
-                      <span className="inline-block h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: row.color }} aria-hidden="true" />
+                      <span
+                        className="inline-block h-2.5 w-2.5 shrink-0 rounded-full"
+                        style={{ backgroundColor: row.color }}
+                        aria-hidden="true"
+                      />
                       <span className="truncate">{row.name}</span>
                     </span>
                   </th>
-                  <td className="py-1.5 text-right tabular-nums text-brand-dark-gray">{percent(row.share)}</td>
-                  <td className="py-1.5 text-right tabular-nums text-brand-gray">{row.words.toLocaleString()}</td>
-                  <td className="py-1.5 text-right tabular-nums text-brand-gray">{row.turns.toLocaleString()}</td>
+                  <td className="py-1.5 text-right tabular-nums text-brand-dark-gray">
+                    {percent(row.share)}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums text-brand-gray">
+                    {row.words.toLocaleString()}
+                  </td>
+                  <td className="py-1.5 text-right tabular-nums text-brand-gray">
+                    {row.turns.toLocaleString()}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
           <p className="mt-3 flex flex-wrap items-center gap-x-4 font-body text-xs text-brand-mid-gray">
             {hidden > 0 && <span>{hidden} weitere nicht angezeigt.</span>}
-            <Link label="Sprecher" onClick={() => onNavigate({ tab: "speakers" })} />
+            <Link
+              label="Sprecher"
+              onClick={() => onNavigate({ tab: "speakers" })}
+            />
           </p>
         </>
       )}
@@ -339,7 +452,10 @@ function RhythmPanel({
   const headingId = "overview-rhythm";
   const summary = `${total} Argumente in ${endMinutes} Gesprächsminuten; höchste Aktivität zwischen Minute ${minutesAt(busiest)} und ${minutesAt(busiest + 1)} mit ${peak}.`;
   return (
-    <section aria-labelledby={headingId} className="rounded-xl bg-surface p-5 shadow-sm">
+    <section
+      aria-labelledby={headingId}
+      className="rounded-xl bg-surface p-5 shadow-sm"
+    >
       <SectionHeading id={headingId} label="Gesprächsverlauf" count={total} />
       <svg
         viewBox={`0 0 ${width} ${CHART_H}`}
@@ -349,7 +465,13 @@ function RhythmPanel({
         aria-label={`Argumente je fünf Gesprächsminuten. ${summary}`}
       >
         {buckets.map((bucket, index) => {
-          const h = peak > 0 ? Math.max(bucket.count > 0 ? 1 : 0, (bucket.count / peak) * CHART_H) : 0;
+          const h =
+            peak > 0
+              ? Math.max(
+                  bucket.count > 0 ? 1 : 0,
+                  (bucket.count / peak) * CHART_H,
+                )
+              : 0;
           return (
             <g key={bucket.startMs}>
               <title>{`${minutesAt(index)}-${minutesAt(index + 1)} Min.: ${bucket.count} ${bucket.count === 1 ? "Argument" : "Argumente"}`}</title>
@@ -382,19 +504,36 @@ function RhythmPanel({
             />
           );
         })}
-        <line x1={0} x2={width} y1={CHART_H - 0.25} y2={CHART_H - 0.25} stroke="currentColor" strokeOpacity={0.25} strokeWidth={0.5} />
+        <line
+          x1={0}
+          x2={width}
+          y1={CHART_H - 0.25}
+          y2={CHART_H - 0.25}
+          stroke="currentColor"
+          strokeOpacity={0.25}
+          strokeWidth={0.5}
+        />
       </svg>
-      <div className="mt-1 flex justify-between font-mono text-[10px] tabular-nums text-brand-mid-gray" aria-hidden="true">
+      <div
+        className="mt-1 flex justify-between font-mono text-[10px] tabular-nums text-brand-mid-gray"
+        aria-hidden="true"
+      >
         <span>0m</span>
         <span>{midMinutes}m</span>
         <span>{endMinutes}m</span>
       </div>
       <p className="mt-2 font-body text-xs text-brand-gray">
-        Höchste Aktivität zwischen Minute {minutesAt(busiest)} und {minutesAt(busiest + 1)} mit {peak} {peak === 1 ? "Argument" : "Argumenten"}.
-        {rhythm.segments > 1 && ` Gesprächszeit über ${rhythm.segments} Abschnitte; gestrichelte Linien markieren Fortsetzungen.`}
+        Höchste Aktivität zwischen Minute {minutesAt(busiest)} und{" "}
+        {minutesAt(busiest + 1)} mit {peak}{" "}
+        {peak === 1 ? "Argument" : "Argumenten"}.
+        {rhythm.segments > 1 &&
+          ` Gesprächszeit über ${rhythm.segments} Abschnitte; gestrichelte Linien markieren Fortsetzungen.`}
       </p>
       <p className="mt-2 flex font-body text-xs text-brand-mid-gray">
-        <Link label="Transkript" onClick={() => onNavigate({ tab: "transcript" })} />
+        <Link
+          label="Transkript"
+          onClick={() => onNavigate({ tab: "transcript" })}
+        />
       </p>
     </section>
   );
@@ -402,35 +541,42 @@ function RhythmPanel({
 
 // The four lists, in reading order, with the wording each footer uses for its
 // live-insight counterpart.
-function buildSpecs(questions: Question[], synthesis: SessionSynthesis | null): ListSpec[] {
+function buildSpecs(
+  questions: Question[],
+  synthesis: SessionSynthesis | null,
+): ListSpec[] {
   return [
     {
       key: "commitments",
       label: "Zusagen",
       section: commitments(questions, synthesis),
       empty: "Es wurden keine Aufgaben oder nächsten Schritte erfasst.",
-      inInsights: (matching) => `${matching} ${matching === 1 ? "Aufgabe" : "Aufgaben"} in Argumenten`,
+      inInsights: (matching) =>
+        `${matching} ${matching === 1 ? "Aufgabe" : "Aufgaben"} in Argumenten`,
     },
     {
       key: "open",
       label: "Offene Punkte",
       section: openLoops(questions, synthesis),
       empty: "Alle erfassten Fragen wurden beantwortet.",
-      inInsights: (matching, shown) => `${matching} offen von ${shown} ${shown === 1 ? "Frage" : "Fragen"} in Argumenten`,
+      inInsights: (matching, shown) =>
+        `${matching} offen von ${shown} ${shown === 1 ? "Frage" : "Fragen"} in Argumenten`,
     },
     {
       key: "opportunities",
       label: "Chancen",
       section: opportunities(questions, synthesis),
       empty: "In diesem Gespräch wurden keine Chancen erkannt.",
-      inInsights: (matching) => `${matching} ${matching === 1 ? "Chance" : "Chancen"} in Argumenten`,
+      inInsights: (matching) =>
+        `${matching} ${matching === 1 ? "Chance" : "Chancen"} in Argumenten`,
     },
     {
       key: "risks",
       label: "Risiken",
       section: risks(questions, synthesis),
       empty: "Es wurden keine Risiken oder Blockaden markiert.",
-      inInsights: (matching, shown) => `${matching} von ${shown} aktuellen strategischen ${shown === 1 ? "Signal" : "Signalen"} in Argumenten`,
+      inInsights: (matching, shown) =>
+        `${matching} von ${shown} aktuellen strategischen ${shown === 1 ? "Signal" : "Signalen"} in Argumenten`,
     },
   ];
 }
@@ -448,10 +594,21 @@ function HeadlineSection({
   hasBriefing: boolean;
   onNavigate: (target: OverviewTarget) => void;
 }) {
-  const meta = [meetingTypeLabel(session.meeting_type), speakers.length ? `${speakers.length} Sprecher` : ""].filter(Boolean);
-  const readBriefing = <Link label="Auswertung öffnen" onClick={() => onNavigate({ tab: "briefing" })} />;
+  const meta = [
+    meetingTypeLabel(session.meeting_type),
+    speakers.length ? `${speakers.length} Sprecher` : "",
+  ].filter(Boolean);
+  const readBriefing = (
+    <Link
+      label="Auswertung öffnen"
+      onClick={() => onNavigate({ tab: "briefing" })}
+    />
+  );
   return (
-    <section aria-labelledby="overview-headline" className="rounded-xl bg-surface p-6 shadow-sm">
+    <section
+      aria-labelledby="overview-headline"
+      className="rounded-xl bg-surface p-6 shadow-sm"
+    >
       {meta.length > 0 && (
         <p className="flex flex-wrap items-center font-body text-xs text-brand-mid-gray">
           {meta.map((part, index) => (
@@ -462,10 +619,17 @@ function HeadlineSection({
           ))}
         </p>
       )}
-      <h2 id="overview-headline" className="mt-2 text-balance font-display text-xl font-semibold leading-snug tracking-tight text-brand-dark-gray">
+      <h2
+        id="overview-headline"
+        className="mt-2 text-balance font-display text-xl font-semibold leading-snug tracking-tight text-brand-dark-gray"
+      >
         {lead.text}
       </h2>
-      {lead.detail && <p className="mt-1.5 max-w-prose font-body text-sm leading-relaxed text-brand-gray">{lead.detail}</p>}
+      {lead.detail && (
+        <p className="mt-1.5 max-w-prose font-body text-sm leading-relaxed text-brand-gray">
+          {lead.detail}
+        </p>
+      )}
       <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 font-body text-xs text-brand-mid-gray">
         {lead.source === "briefing" ? (
           <>
@@ -478,7 +642,10 @@ function HeadlineSection({
             {readBriefing}
           </>
         ) : (
-          <span>Zahlen aus den erfassten Daten; es wurde noch keine Auswertung erstellt.</span>
+          <span>
+            Zahlen aus den erfassten Daten; es wurde noch keine Auswertung
+            erstellt.
+          </span>
         )}
       </p>
     </section>
@@ -495,12 +662,22 @@ function UnanalyzedCard({
   analyzing: boolean;
 }) {
   return (
-    <section aria-labelledby="overview-unanalyzed" className="rounded-xl border border-dashed border-brand-light-gray-1 bg-surface p-6">
-      <h3 id="overview-unanalyzed" className="font-display text-sm font-semibold text-brand-dark-gray">Noch nichts analysiert</h3>
+    <section
+      aria-labelledby="overview-unanalyzed"
+      className="rounded-xl border border-dashed border-brand-light-gray-1 bg-surface p-6"
+    >
+      <h3
+        id="overview-unanalyzed"
+        className="font-display text-sm font-semibold text-brand-dark-gray"
+      >
+        Noch nichts analysiert
+      </h3>
       {hasTranscript ? (
         <>
           <p className="mt-1 max-w-prose font-body text-sm text-brand-gray">
-            Das Transkript ist gespeichert, aber es gibt noch keine Argumente oder Auswertung. Analysiere es jetzt oder erstelle im Reiter Auswertung eine Zusammenfassung.
+            Das Transkript ist gespeichert, aber es gibt noch keine Argumente
+            oder Auswertung. Analysiere es jetzt oder erstelle im Reiter
+            Auswertung eine Zusammenfassung.
           </p>
           {onAnalyze && (
             <button
@@ -515,7 +692,8 @@ function UnanalyzedCard({
         </>
       ) : (
         <p className="mt-1 max-w-prose font-body text-sm text-brand-gray">
-          Es wurde auch kein Transkript aufgezeichnet. Setze das Gespräch fort oder importiere in einer neuen Debatte ein Transkript.
+          Es wurde auch kein Transkript aufgezeichnet. Setze das Gespräch fort
+          oder importiere in einer neuen Debatte ein Transkript.
         </p>
       )}
     </section>
@@ -577,19 +755,36 @@ export default function OverviewView({
   analyzing = false,
   analyzeError = null,
 }: OverviewViewProps) {
-  const lead = headline(session, synthesis, questions, speakers, segments, transcripts);
+  const lead = headline(
+    session,
+    synthesis,
+    questions,
+    speakers,
+    segments,
+    transcripts,
+  );
   // Raw count, dismissed rows included: a session whose every insight was
   // dismissed has been analyzed, and analyzing it again would append duplicates.
   const nothingAnalyzed = questions.length === 0 && !synthesis;
 
   return (
     <div className="space-y-6">
-      <HeadlineSection session={session} speakers={speakers} lead={lead} hasBriefing={Boolean(synthesis)} onNavigate={onNavigate} />
+      <HeadlineSection
+        session={session}
+        speakers={speakers}
+        lead={lead}
+        hasBriefing={Boolean(synthesis)}
+        onNavigate={onNavigate}
+      />
 
       {analyzeError && <ErrorNote text={analyzeError} />}
 
       {nothingAnalyzed ? (
-        <UnanalyzedCard hasTranscript={transcripts.length > 0} onAnalyze={onAnalyze} analyzing={analyzing} />
+        <UnanalyzedCard
+          hasTranscript={transcripts.length > 0}
+          onAnalyze={onAnalyze}
+          analyzing={analyzing}
+        />
       ) : (
         <SummaryBlock
           specs={buildSpecs(questions, synthesis)}
@@ -602,8 +797,18 @@ export default function OverviewView({
       )}
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <ParticipationPanel transcripts={transcripts} speakers={speakers} onNavigate={onNavigate} />
-        <RhythmPanel questions={questions} session={session} segments={segments} transcripts={transcripts} onNavigate={onNavigate} />
+        <ParticipationPanel
+          transcripts={transcripts}
+          speakers={speakers}
+          onNavigate={onNavigate}
+        />
+        <RhythmPanel
+          questions={questions}
+          session={session}
+          segments={segments}
+          transcripts={transcripts}
+          onNavigate={onNavigate}
+        />
       </div>
     </div>
   );

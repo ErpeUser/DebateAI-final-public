@@ -14,7 +14,9 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("call_segments", sa.Column("audio_path", sa.String(length=500), nullable=True))
+    op.add_column(
+        "call_segments", sa.Column("audio_path", sa.String(length=500), nullable=True)
+    )
 
 
 def downgrade() -> None:

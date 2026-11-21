@@ -14,16 +14,26 @@ from app.services.transcription_runtime import (
 
 class TranscriptionRuntimeTests(unittest.TestCase):
     def test_current_batch_transcriber_default_is_supported(self):
-        self.assertEqual("local-whisper-base", Settings.model_fields["BATCH_TRANSCRIBER_MODEL"].default)
-        self.assertTrue(is_supported_transcription_model(settings.BATCH_TRANSCRIBER_MODEL))
-        self.assertEqual("Local", next(
-            model["provider"]
-            for model in MODEL_REGISTRY
-            if model["id"] == settings.BATCH_TRANSCRIBER_MODEL
-        ))
+        self.assertEqual(
+            "local-whisper-base",
+            Settings.model_fields["BATCH_TRANSCRIBER_MODEL"].default,
+        )
+        self.assertTrue(
+            is_supported_transcription_model(settings.BATCH_TRANSCRIBER_MODEL)
+        )
+        self.assertEqual(
+            "Local",
+            next(
+                model["provider"]
+                for model in MODEL_REGISTRY
+                if model["id"] == settings.BATCH_TRANSCRIBER_MODEL
+            ),
+        )
 
     def test_live_only_model_is_not_supported_for_batch_transcription(self):
-        self.assertFalse(is_supported_transcription_model("gemini-3.1-flash-live-preview"))
+        self.assertFalse(
+            is_supported_transcription_model("gemini-3.1-flash-live-preview")
+        )
 
     def test_nonexistent_model_is_not_supported(self):
         self.assertFalse(is_supported_transcription_model("not-a-model"))
@@ -41,7 +51,11 @@ class TranscriptionRuntimeTests(unittest.TestCase):
         self.assertNotIn("gemini-2.5-pro-preview-05-06", registry_ids)
 
     def test_latest_gemini_models_support_batch_not_live_audio(self):
-        for model_id in ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"):
+        for model_id in (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+        ):
             self.assertTrue(is_supported_transcription_model(model_id))
             self.assertFalse(is_supported_live_model(model_id))
 
@@ -90,8 +104,7 @@ class TranscriptionRuntimeSelectionTests(unittest.IsolatedAsyncioTestCase):
 class _RuntimeDB:
     def __init__(self, *, settings, gateway):
         self.settings = {
-            key: SimpleNamespace(value=value)
-            for key, value in settings.items()
+            key: SimpleNamespace(value=value) for key, value in settings.items()
         }
         self.gateway = gateway
 

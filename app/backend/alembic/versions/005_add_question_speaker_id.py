@@ -6,9 +6,8 @@ Create Date: 2026-05-06
 """
 
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
-
 from alembic import op
+from sqlalchemy.dialects import postgresql
 
 revision = "005"
 down_revision = "004"
@@ -17,7 +16,10 @@ depends_on = None
 
 
 def upgrade():
-    op.add_column("questions", sa.Column("speaker_id", postgresql.UUID(as_uuid=True), nullable=True))
+    op.add_column(
+        "questions",
+        sa.Column("speaker_id", postgresql.UUID(as_uuid=True), nullable=True),
+    )
     op.create_foreign_key(
         "fk_questions_speaker_id_speakers",
         "questions",
@@ -28,5 +30,7 @@ def upgrade():
 
 
 def downgrade():
-    op.drop_constraint("fk_questions_speaker_id_speakers", "questions", type_="foreignkey")
+    op.drop_constraint(
+        "fk_questions_speaker_id_speakers", "questions", type_="foreignkey"
+    )
     op.drop_column("questions", "speaker_id")

@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./DebateCoachPanel.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./DebateCoachPanel.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "debate-panel-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -62,11 +64,14 @@ const ready = {
   primary_move: "answer",
   question_status: "partial",
   open_question: "Welche Vergleichsbasis gilt hier?",
-  follow_ups: [{
-    condition: "Wenn keine Vergleichsbasis genannt wird",
-    question: "Warum soll die Einzelzahl dann genuegen?",
-  }],
-  analogy: "Das ist wie ein einzelnes Foto, das noch keinen ganzen Film beweist.",
+  follow_ups: [
+    {
+      condition: "Wenn keine Vergleichsbasis genannt wird",
+      question: "Warum soll die Einzelzahl dann genuegen?",
+    },
+  ],
+  analogy:
+    "Das ist wie ein einzelnes Foto, das noch keinen ganzen Film beweist.",
   target_claim: "Die Inflation lag bei acht Prozent.",
   argument_points: [
     "Amtlich wurden 2,2 Prozent gemessen",
@@ -74,21 +79,24 @@ const ready = {
     "Eine Einzelzahl belegt keinen dauerhaften Trend",
     "Dieser vierte Nebenpunkt soll nicht die Live-Ansicht ueberladen",
   ],
-  research_alert: "Gegenbeleg gefunden: Die amtliche Rate lag deutlich darunter.",
+  research_alert:
+    "Gegenbeleg gefunden: Die amtliche Rate lag deutlich darunter.",
   confidence: "low",
   needs_research: false,
   research_query: "Inflationsrate Deutschland 2025",
   research_status: "completed",
-  sources: [{
-    title: "Amtliche Inflationsrate",
-    url: "https://example.test/inflation",
-    snippet: "Die amtliche Rate lag bei 2,2 Prozent.",
-    verification_status: "found",
-    passage: "",
-    published_at: "",
-    provider: "test",
-    claim: "Die Inflation lag bei acht Prozent.",
-  }],
+  sources: [
+    {
+      title: "Amtliche Inflationsrate",
+      url: "https://example.test/inflation",
+      snippet: "Die amtliche Rate lag bei 2,2 Prozent.",
+      verification_status: "found",
+      passage: "",
+      published_at: "",
+      provider: "test",
+      claim: "Die Inflation lag bei acht Prozent.",
+    },
+  ],
   revision: 3,
   generated_at: "2026-11-02T10:05:00Z",
 };
@@ -115,9 +123,21 @@ test("ready state renders one primary speaking move and keeps the alternative se
 });
 
 test("ready state offers all compact manual debate actions without adding prompt panels", () => {
-  const html = render({ recommendation: ready, activity: activity("waiting"), onQuickAction: () => {} });
+  const html = render({
+    recommendation: ready,
+    activity: activity("waiting"),
+    onQuickAction: () => {},
+  });
 
-  for (const label of ["Widerlegen", "Gegenfrage", "Prämissen prüfen", "Doppelstandard", "Faktencheck", "Originalquelle", "Besonders gründlich"]) {
+  for (const label of [
+    "Widerlegen",
+    "Gegenfrage",
+    "Prämissen prüfen",
+    "Doppelstandard",
+    "Faktencheck",
+    "Originalquelle",
+    "Besonders gründlich",
+  ]) {
     assert.match(html, new RegExp(label.replace("&", "&amp;")));
   }
   assert.equal((html.match(/data-quick-action=/g) || []).length, 16);
@@ -200,12 +220,20 @@ test("running activity keeps the previous guidance visible", () => {
 
 test("manual deep analysis exposes a cancel action while automatic work does not", () => {
   const manual = render({
-    recommendation: { ...ready, analysis_status: "analyzing", analysis_can_cancel: true },
+    recommendation: {
+      ...ready,
+      analysis_status: "analyzing",
+      analysis_can_cancel: true,
+    },
     activity: activity("running"),
     onCancelAnalysis: () => {},
   });
   const automatic = render({
-    recommendation: { ...ready, analysis_status: "analyzing", analysis_can_cancel: false },
+    recommendation: {
+      ...ready,
+      analysis_status: "analyzing",
+      analysis_can_cancel: false,
+    },
     activity: activity("running"),
     onCancelAnalysis: () => {},
   });
@@ -216,7 +244,11 @@ test("manual deep analysis exposes a cancel action while automatic work does not
 
 test("completed deep analysis hides provider internals in the live card", () => {
   const html = render({
-    recommendation: { ...ready, analysis_status: "completed", analyst_provider: "gemini-cli-oauth" },
+    recommendation: {
+      ...ready,
+      analysis_status: "completed",
+      analyst_provider: "gemini-cli-oauth",
+    },
     activity: activity("waiting"),
   });
 
@@ -225,7 +257,11 @@ test("completed deep analysis hides provider internals in the live card", () => 
 });
 
 test("low confidence is explicitly unverified and sources stay claim-linked", () => {
-  const html = render({ recommendation: ready, activity: activity("waiting"), onResearch: () => {} });
+  const html = render({
+    recommendation: ready,
+    activity: activity("waiting"),
+    onResearch: () => {},
+  });
 
   assert.match(html, /Quelle unklar/);
   assert.match(html, /Gefunden zu/);
@@ -308,7 +344,12 @@ test("error state keeps the failure visible without raw internals", () => {
   const html = render({
     recommendation: null,
     activity: activity("failing", {
-      last_error: { kind: "api_error", detail: "Modell antwortet nicht.", remedy: "Modell prüfen.", at: "2026-11-02T10:05:00Z" },
+      last_error: {
+        kind: "api_error",
+        detail: "Modell antwortet nicht.",
+        remedy: "Modell prüfen.",
+        at: "2026-11-02T10:05:00Z",
+      },
     }),
   });
   assert.match(html, /Empfehlung gerade nicht verfügbar/);

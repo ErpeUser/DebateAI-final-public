@@ -1,10 +1,11 @@
 """Repository layout, GitHub ownership, and Git ignore regression contracts."""
+
 from __future__ import annotations
 
 import importlib.util
 import subprocess
-from pathlib import Path
 import unittest
+from pathlib import Path
 
 APP = Path(__file__).resolve().parents[2]
 ROOT = APP.parent
@@ -52,21 +53,34 @@ class RepositoryLayoutTests(unittest.TestCase):
                 self.assertTrue(violations, bad)
 
     def test_secret_env_variants_and_keys_are_rejected(self):
-        for path in ("app/.env", "app/.env.staging",
-                     "app/backend/.env.production", "app/desktop/private.key",
-                     "app/backend/data.sqlite", "app/desktop/signing.p12"):
+        for path in (
+            "app/.env",
+            "app/.env.staging",
+            "app/backend/.env.production",
+            "app/desktop/private.key",
+            "app/backend/data.sqlite",
+            "app/desktop/signing.p12",
+        ):
             with self.subTest(path=path):
                 self.assertTrue(layout.validate_paths(self.good() | {path}))
 
     def test_new_root_source_alias_is_forbidden(self):
-        for path in ("source/backend/main.py", "backend/main.py",
-                     ".github/workflows/private.env", "app/unknown/input.py"):
+        for path in (
+            "source/backend/main.py",
+            "backend/main.py",
+            ".github/workflows/private.env",
+            "app/unknown/input.py",
+        ):
             with self.subTest(path=path):
                 self.assertTrue(layout.validate_paths(self.good() | {path}))
 
     def test_windows_case_collisions_and_noncanonical_names_rejected(self):
-        for path in ("APP/site/index.html", "app/../runtime/new.exe",
-                     "app\\site\\index.html", "app/site//index.html"):
+        for path in (
+            "APP/site/index.html",
+            "app/../runtime/new.exe",
+            "app\\site\\index.html",
+            "app/site//index.html",
+        ):
             with self.subTest(path=path):
                 self.assertTrue(layout.validate_paths(self.good() | {path}))
 
@@ -90,8 +104,11 @@ class RepositoryLayoutTests(unittest.TestCase):
         )
         for path in ignored:
             with self.subTest(ignored=path):
-                result = subprocess.run(["git", "check-ignore", "--no-index", "-q", "--", path],
-                                        cwd=ROOT, capture_output=True)
+                result = subprocess.run(
+                    ["git", "check-ignore", "--no-index", "-q", "--", path],
+                    cwd=ROOT,
+                    capture_output=True,
+                )
                 self.assertEqual(result.returncode, 0, path)
         for path in (
             "app/.env.example",
@@ -103,8 +120,11 @@ class RepositoryLayoutTests(unittest.TestCase):
             "app/desktop/release_signing_keys.json",
         ):
             with self.subTest(versioned=path):
-                result = subprocess.run(["git", "check-ignore", "--no-index", "-q", "--", path],
-                                        cwd=ROOT, capture_output=True)
+                result = subprocess.run(
+                    ["git", "check-ignore", "--no-index", "-q", "--", path],
+                    cwd=ROOT,
+                    capture_output=True,
+                )
                 self.assertEqual(result.returncode, 1, path)
 
     def test_structure_workflow_has_blocking_repository_gate(self):
@@ -117,9 +137,16 @@ class RepositoryLayoutTests(unittest.TestCase):
 
     def test_codeowners_cover_real_app_paths(self):
         owners = (ROOT / ".github/CODEOWNERS").read_text(encoding="utf-8")
-        for entry in ("/.github/", "/app/backend/", "/app/desktop/",
-                      "/app/scripts/", "/app/site/", "/app/docs-site/",
-                      "/.gitignore", "/AGENTS.md"):
+        for entry in (
+            "/.github/",
+            "/app/backend/",
+            "/app/desktop/",
+            "/app/scripts/",
+            "/app/site/",
+            "/app/docs-site/",
+            "/.gitignore",
+            "/AGENTS.md",
+        ):
             with self.subTest(path=entry):
                 self.assertIn(entry + " @ErpeUser", owners)
 

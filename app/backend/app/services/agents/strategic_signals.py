@@ -7,8 +7,8 @@ import uuid
 from collections.abc import Callable
 from typing import Any
 
-from app.services.agents.prompts import STRATEGIC_SIGNALS_PROMPT
 from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.agents.prompts import STRATEGIC_SIGNALS_PROMPT
 from app.services.agents.signal_insights import sync_signal_insights
 from app.services.briefing_synthesis import (
     BriefArbiterOutput,
@@ -51,7 +51,9 @@ async def run_strategic_signals_cycle(
     # Judge the agent's own model: a self-hosted one keeps the signals running
     # with the mode on, which is the whole point of Privacy First by destination.
     if await is_local_only() and not await allows_local_only(cfg.model_id):
-        raise LocalOnlyModeError("live strategic signals", cfg.model_id, STRATEGIC_SIGNALS_SLUG)
+        raise LocalOnlyModeError(
+            "live strategic signals", cfg.model_id, STRATEGIC_SIGNALS_SLUG
+        )
 
     context = await _build_context(
         session_id,
@@ -66,7 +68,9 @@ async def run_strategic_signals_cycle(
         return None
 
     system, prompt = format_prompt_layers(
-        load_prompt_resource("agent.strategic_signals", cfg.prompt or STRATEGIC_SIGNALS_PROMPT),
+        load_prompt_resource(
+            "agent.strategic_signals", cfg.prompt or STRATEGIC_SIGNALS_PROMPT
+        ),
         context.meeting_context_text,
         mode="live",
         speakers_text=context.speakers_text,
@@ -92,7 +96,9 @@ async def run_strategic_signals_cycle(
         )
         raise
     if is_current is not None and not is_current():
-        logger.info("[strategic_signals] dropping stale generated cycle before persistence")
+        logger.info(
+            "[strategic_signals] dropping stale generated cycle before persistence"
+        )
         return None
     synthesis = await _persist_synthesis(
         session_id=session_id,

@@ -5,7 +5,6 @@ from pathlib import Path
 from unittest import mock
 
 import numpy as np
-
 from app.services.audio_utils import convert_to_pcm16, resolve_ffmpeg
 from app.services.voice_enrollment import (
     MAX_ENROLLMENT_SECONDS,
@@ -99,14 +98,20 @@ class VoiceEnrollmentTests(unittest.IsolatedAsyncioTestCase):
         long = np.full(16000 * MAX_ENROLLMENT_SECONDS + 1, 1000, dtype=np.int16)
 
         with self.assertRaisesRegex(VoiceEnrollmentError, "at least 4 seconds"):
-            extract_enrollment_embedding(short.tobytes(), extractor=lambda *_: np.ones(2))
+            extract_enrollment_embedding(
+                short.tobytes(), extractor=lambda *_: np.ones(2)
+            )
         with self.assertRaisesRegex(VoiceEnrollmentError, "no longer than 15 seconds"):
-            extract_enrollment_embedding(long.tobytes(), extractor=lambda *_: np.ones(2))
+            extract_enrollment_embedding(
+                long.tobytes(), extractor=lambda *_: np.ones(2)
+            )
 
     def test_extract_rejects_silence_and_invalid_vectors(self):
         silence = np.zeros(16000 * MIN_ENROLLMENT_SECONDS, dtype=np.int16)
         with self.assertRaisesRegex(VoiceEnrollmentError, "audible speech"):
-            extract_enrollment_embedding(silence.tobytes(), extractor=lambda *_: np.ones(2))
+            extract_enrollment_embedding(
+                silence.tobytes(), extractor=lambda *_: np.ones(2)
+            )
 
         voiced = np.full(16000 * MIN_ENROLLMENT_SECONDS, 1000, dtype=np.int16)
         for invalid in (

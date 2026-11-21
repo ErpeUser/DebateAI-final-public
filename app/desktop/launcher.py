@@ -1,7 +1,6 @@
 """DebateAI desktop launcher: embedded Postgres + uvicorn + tray icon."""
 
 import ctypes
-from ctypes import wintypes
 import hashlib
 import json
 import logging
@@ -16,7 +15,8 @@ import time
 import urllib.error
 import urllib.request
 import webbrowser
-from datetime import datetime, timezone
+from ctypes import wintypes
+from datetime import UTC, datetime
 from pathlib import Path
 
 from debateai_identity import INSTANCE_HEADER, canonical_updater
@@ -44,7 +44,11 @@ def _guarantee_standard_streams() -> None:
     """
     for name in ("stdout", "stderr"):
         if getattr(sys, name, None) is None:
-            setattr(sys, name, open(os.devnull, "w", encoding="utf-8", errors="replace"))
+            setattr(
+                sys,
+                name,
+                open(os.devnull, "w", encoding="utf-8", errors="replace"),
+            )
         # __stdout__/__stderr__ stay None otherwise, and libraries fall back to them.
         if getattr(sys, f"__{name}__", None) is None:
             setattr(sys, f"__{name}__", getattr(sys, name))
@@ -58,13 +62,13 @@ _REPO_BACKEND = Path(__file__).resolve().parent.parent / "backend"
 if _REPO_BACKEND.exists():
     sys.path.insert(0, str(_REPO_BACKEND))
 
-from debateai_desktop.paths import app_data_dir, free_port, resource
+from debateai_desktop.chatgpt_web_login import run_chatgpt_web_login
 from debateai_desktop.gemini_web_bridge import GeminiWebBridge
 from debateai_desktop.gemini_web_login import run_gemini_web_login
-from debateai_desktop.chatgpt_web_login import run_chatgpt_web_login
-from debateai_desktop.pg import EmbeddedPostgres
 from debateai_desktop.lifecycle_ui import LifecycleSplash
 from debateai_desktop.ollama_lifecycle import ManagedOllama
+from debateai_desktop.paths import app_data_dir, free_port, resource
+from debateai_desktop.pg import EmbeddedPostgres
 from debateai_desktop.subscription_bridge import SubscriptionBridge
 from debateai_desktop.windows_console import (
     ConsoleWindowSuppressor,
@@ -80,6 +84,7 @@ def _set_env(name: str, value: str) -> None:
 
 def _env_value(name: str, default: str = "") -> str:
     return os.environ.get(name) or default
+
 
 install_hidden_subprocess_policy()
 
@@ -112,7 +117,11 @@ def _acquire_instance_guard(data_dir: Path):
         identity = str(Path(data_dir).resolve()).casefold().encode("utf-8")
         name = "Local\\DebateAILauncher-" + hashlib.sha256(identity).hexdigest()[:24]
         kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
-        kernel32.CreateMutexW.argtypes = [ctypes.c_void_p, ctypes.c_bool, ctypes.c_wchar_p]
+        kernel32.CreateMutexW.argtypes = [
+            ctypes.c_void_p,
+            ctypes.c_bool,
+            ctypes.c_wchar_p,
+        ]
         kernel32.CreateMutexW.restype = ctypes.c_void_p
         kernel32.CloseHandle.argtypes = [ctypes.c_void_p]
         kernel32.CloseHandle.restype = ctypes.c_bool
@@ -259,9 +268,7 @@ def _focus_process_window(process_id: int, *, hidden_only: bool = False) -> bool
     if sys.platform != "win32":
         return False
     user32 = ctypes.windll.user32
-    callback_type = ctypes.WINFUNCTYPE(
-        wintypes.BOOL, wintypes.HWND, wintypes.LPARAM
-    )
+    callback_type = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
     enum_windows = user32.EnumWindows
     # pywebview configures this shared ctypes function with its own callback
     # prototype. Rebind it before passing our callback so a prior WebView
@@ -311,9 +318,8 @@ def _focus_process_window(process_id: int, *, hidden_only: bool = False) -> bool
         if (
             owner.value == process_id
             and bool(user32.IsWindowVisible(hwnd))
-            and ".net-broadcasteventwindow" in (
-                f"{title_buffer.value}\n{class_buffer.value}".casefold()
-            )
+            and ".net-broadcasteventwindow"
+            in (f"{title_buffer.value}\n{class_buffer.value}".casefold())
         ):
             # Older builds could accidentally restore this WinForms framework
             # window while waiting for the real form. Hide it opportunistically
@@ -393,7 +399,9 @@ def _claim_owner_window_request(data_dir: Path) -> bool:
     except FileNotFoundError:
         return False
     except OSError:
-        logging.getLogger("launcher").exception("desktop window request could not be claimed")
+        logging.getLogger("launcher").exception(
+            "desktop window request could not be claimed"
+        )
         return False
 
 
@@ -421,10 +429,16 @@ def open_desktop_window(
         try:
             process = visible_popen(
                 _embedded_webview_command(url, title, width, height, on_top),
-                cwd=str(install_root() if getattr(sys, "frozen", False) else Path(__file__).resolve().parent),
+                cwd=str(
+                    install_root()
+                    if getattr(sys, "frozen", False)
+                    else Path(__file__).resolve().parent
+                ),
             )
         except OSError:
-            logging.getLogger("launcher").exception("embedded desktop window failed to start")
+            logging.getLogger("launcher").exception(
+                "embedded desktop window failed to start"
+            )
             return False
         _embedded_windows[slot] = process
         if not _wait_for_process_window(process):
@@ -515,10 +529,7 @@ def open_debate_overlay(port: int) -> bool:
 
 def instance_is_healthy(port: int, token: str) -> bool:
     def identified(response) -> bool:
-        return (
-            response.status == 200
-            and response.headers.get(INSTANCE_HEADER) == token
-        )
+        return response.status == 200 and response.headers.get(INSTANCE_HEADER) == token
 
     try:
         req = urllib.request.urlopen(readiness_url(port), timeout=2)
@@ -569,9 +580,7 @@ def wait_for_other_instance(
         time.sleep(interval)
 
 
-def wait_healthy(
-    port: int, timeout: float = 90.0, token: str | None = None
-) -> bool:
+def wait_healthy(port: int, timeout: float = 90.0, token: str | None = None) -> bool:
     if token is None:
         return False
     deadline = time.monotonic() + timeout
@@ -664,9 +673,10 @@ def _startup_retry_dialog(message: str) -> bool:
     try:
         if sys.platform == "win32":
             # MB_RETRYCANCEL | MB_ICONERROR; IDRETRY == 4.
-            return ctypes.windll.user32.MessageBoxW(
-                0, message, "Debate AI", 0x5 | 0x10
-            ) == 4
+            return (
+                ctypes.windll.user32.MessageBoxW(0, message, "Debate AI", 0x5 | 0x10)
+                == 4
+            )
     except Exception:
         pass
     _error_dialog(message)
@@ -723,8 +733,8 @@ def _claim_update_marker(data_dir: Path) -> bool:
         value = json.loads(marker.read_text(encoding="utf-8"))
         requested = datetime.strptime(
             value["requested_at"], "%Y-%m-%dT%H:%M:%SZ"
-        ).replace(tzinfo=timezone.utc)
-        age = (datetime.now(timezone.utc) - requested).total_seconds()
+        ).replace(tzinfo=UTC)
+        age = (datetime.now(UTC) - requested).total_seconds()
         if age < 0 or age >= 60:
             raise ValueError
         validate_plan(value, marker)
@@ -782,7 +792,14 @@ def _update_menu_label(port: int, token: str | None = None) -> str:
     notes = status.get("available_notes")
     if not isinstance(version, str) or not isinstance(notes, str):
         return "Nach Updates suchen"
-    title = next((line.strip().lstrip("#").strip() for line in notes.splitlines() if line.strip()), "")
+    title = next(
+        (
+            line.strip().lstrip("#").strip()
+            for line in notes.splitlines()
+            if line.strip()
+        ),
+        "",
+    )
     return f"Update {version}: {title[:60]}" if title else f"Update {version}"
 
 
@@ -869,9 +886,11 @@ def _run_tray(
             ),
             pystray.MenuItem(
                 (
-                    lambda _item: _update_menu_label(port, instance_token)
-                    if instance_token
-                    else "Nach Updates suchen"
+                    lambda _item: (
+                        _update_menu_label(port, instance_token)
+                        if instance_token
+                        else "Nach Updates suchen"
+                    )
                 ),
                 lambda _icon, _item: _check_for_updates(port, instance_token or ""),
             ),
@@ -968,10 +987,15 @@ def _configure_gemini_web_login(data_dir: Path) -> None:
 
 def _chatgpt_oracle_runtime(data_dir: Path) -> Path:
     """Find an explicitly installed Oracle runtime before an optional bundle."""
-    cli_relative = Path("node_modules") / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
+    cli_relative = (
+        Path("node_modules") / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
+    )
     configured = _env_value("DEBATEAI_CHATGPT_WEB_RUNTIME").strip()
     optional = Path(data_dir) / "optional" / "chatgpt_oracle"
-    candidates = ([Path(configured)] if configured else []) + [optional, resource("chatgpt_oracle")]
+    candidates = ([Path(configured)] if configured else []) + [
+        optional,
+        resource("chatgpt_oracle"),
+    ]
     for candidate in candidates:
         if candidate.joinpath(cli_relative).is_file():
             return candidate
@@ -987,7 +1011,15 @@ def _configure_chatgpt_web_login(data_dir: Path) -> None:
     else:
         candidate = shutil.which("node")
         node = Path(candidate) if candidate else bundled_node
-    cli = runtime / "node_modules" / "@steipete" / "oracle" / "dist" / "bin" / "oracle-cli.js"
+    cli = (
+        runtime
+        / "node_modules"
+        / "@steipete"
+        / "oracle"
+        / "dist"
+        / "bin"
+        / "oracle-cli.js"
+    )
     web_dir = Path(data_dir) / "chatgpt-web"
     for canonical, value in (
         ("DEBATEAI_CHATGPT_WEB_NODE", str(node)),
@@ -999,15 +1031,35 @@ def _configure_chatgpt_web_login(data_dir: Path) -> None:
         _set_env(canonical, value)
     if not os.environ.get("CHROME_PATH", "").strip() and sys.platform == "win32":
         for browser in (
-            Path(os.environ.get("PROGRAMFILES", "")) / "Google" / "Chrome" / "Application" / "chrome.exe",
-            Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Google" / "Chrome" / "Application" / "chrome.exe",
-            Path(os.environ.get("PROGRAMFILES(X86)", "")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
-            Path(os.environ.get("PROGRAMFILES", "")) / "Microsoft" / "Edge" / "Application" / "msedge.exe",
+            Path(os.environ.get("PROGRAMFILES", ""))
+            / "Google"
+            / "Chrome"
+            / "Application"
+            / "chrome.exe",
+            Path(os.environ.get("PROGRAMFILES(X86)", ""))
+            / "Google"
+            / "Chrome"
+            / "Application"
+            / "chrome.exe",
+            Path(os.environ.get("PROGRAMFILES(X86)", ""))
+            / "Microsoft"
+            / "Edge"
+            / "Application"
+            / "msedge.exe",
+            Path(os.environ.get("PROGRAMFILES", ""))
+            / "Microsoft"
+            / "Edge"
+            / "Application"
+            / "msedge.exe",
         ):
             if browser.is_file():
                 os.environ["CHROME_PATH"] = str(browser)
                 break
-    command = [sys.executable] if getattr(sys, "frozen", False) else [sys.executable, str(Path(__file__).resolve())]
+    command = (
+        [sys.executable]
+        if getattr(sys, "frozen", False)
+        else [sys.executable, str(Path(__file__).resolve())]
+    )
     _set_env("DEBATEAI_CHATGPT_WEB_LOGIN_COMMAND", json.dumps(command))
     _set_env("DEBATEAI_CHATGPT_WEB_LOGIN_RESULT", str(web_dir / "login-result.json"))
 
@@ -1016,9 +1068,7 @@ def _launch_requested_update(requested: bool, data_dir: Path, log) -> int:
     if not requested:
         return 0
     try:
-        _launch_update_helper(
-            data_dir, Path(_env_value("DEBATEAI_UPDATE_HELPER"))
-        )
+        _launch_update_helper(data_dir, Path(_env_value("DEBATEAI_UPDATE_HELPER")))
         return 0
     except Exception:
         log.exception("failed to start update helper")
@@ -1051,7 +1101,9 @@ def _cleanup_owned_runtime_files(data_dir: Path) -> None:
         data_dir / "updates" / "bin",
     ):
         if pattern.is_dir():
-            for path in pattern.rglob("*.new" if pattern.name == "subscription-bridge" else "*.tmp"):
+            for path in pattern.rglob(
+                "*.new" if pattern.name == "subscription-bridge" else "*.tmp"
+            ):
                 try:
                     path.unlink()
                 except OSError:
@@ -1114,9 +1166,8 @@ def _run_owned(headless: bool = False) -> int:
     port = existing_instance_port(data_dir)
     if port is not None:
         log.info("instance already running on port %s", port)
-        if not headless:
-            if not _request_owner_window(data_dir):
-                _open_system_browser(desktop_app_url(port))
+        if not headless and not _request_owner_window(data_dir):
+            _open_system_browser(desktop_app_url(port))
         return 0
 
     pg = EmbeddedPostgres(resource("pgsql"), data_dir)
@@ -1138,9 +1189,7 @@ def _run_owned(headless: bool = False) -> int:
         if not headless:
             lifecycle.set_detail("Lokale Datenbank wird gestartet ...")
         pg_port = _prepare_postgres(pg, pg_port, log)
-        pg_watch_stop, pg_watch_thread = _start_postgres_watchdog(
-            pg, pg_port, log
-        )
+        pg_watch_stop, pg_watch_thread = _start_postgres_watchdog(pg, pg_port, log)
         if not headless:
             lifecycle.set_progress(25, "Lokale Datenbank ist bereit")
     except Exception:
@@ -1148,13 +1197,10 @@ def _run_owned(headless: bool = False) -> int:
         # A remaining pidfile that we did not start or adopt may belong to
         # another launcher which has not published its healthy app port yet.
         foreign_postmaster = (
-            (pg.pgdata / "postmaster.pid").exists()
-            and pg.started_pid is None
-        )
+            pg.pgdata / "postmaster.pid"
+        ).exists() and pg.started_pid is None
         if foreign_postmaster:
-            log.warning(
-                "postmaster.pid belongs to another instance; not stopping it"
-            )
+            log.warning("postmaster.pid belongs to another instance; not stopping it")
             other_port = wait_for_other_instance(data_dir)
             if other_port is not None:
                 log.info("other instance is healthy on port %s", other_port)
@@ -1196,7 +1242,9 @@ def _run_owned(headless: bool = False) -> int:
     warm_thread = None
     bridge_thread = None
     if not headless:
-        lifecycle.set_progress(36, "Kernapp wird geoeffnet; Modelle laden im Hintergrund")
+        lifecycle.set_progress(
+            36, "Kernapp wird geoeffnet; Modelle laden im Hintergrund"
+        )
 
     listener = bind_app_socket()
     app_port = listener.getsockname()[1]
@@ -1249,7 +1297,9 @@ def _run_owned(headless: bool = False) -> int:
     try:
         log.info("starting app on port %s", app_port)
         if not headless:
-            lifecycle.set_progress(72, "Backend und Audiopipeline werden vorbereitet ...")
+            lifecycle.set_progress(
+                72, "Backend und Audiopipeline werden vorbereitet ..."
+            )
         thread.start()
 
         def warm_qwen() -> None:
@@ -1260,9 +1310,13 @@ def _run_owned(headless: bool = False) -> int:
         def start_subscription_bridge() -> None:
             readiness["subscription"] = bridge.start()
             if not readiness["subscription"]:
-                log.warning("subscription bridge unavailable; local Qwen remains active")
+                log.warning(
+                    "subscription bridge unavailable; local Qwen remains active"
+                )
 
-        warm_thread = threading.Thread(target=warm_qwen, name="qwen-warmup", daemon=True)
+        warm_thread = threading.Thread(
+            target=warm_qwen, name="qwen-warmup", daemon=True
+        )
         bridge_thread = threading.Thread(
             target=start_subscription_bridge,
             name="subscription-bridge-start",
@@ -1271,9 +1325,7 @@ def _run_owned(headless: bool = False) -> int:
         warm_thread.start()
         bridge_thread.start()
         lock.write_text(
-            json.dumps(
-                {"port": app_port, "pid": os.getpid(), "token": instance_token}
-            )
+            json.dumps({"port": app_port, "pid": os.getpid(), "token": instance_token})
         )
         if not wait_healthy(app_port, token=instance_token):
             log.error("app failed to become healthy; see postgres.log too")
@@ -1347,9 +1399,8 @@ def run(headless: bool = False) -> int:
 
     port = existing_instance_port(data_dir)
     if port is not None:
-        if not headless:
-            if not _request_owner_window(data_dir):
-                _open_system_browser(desktop_app_url(port))
+        if not headless and not _request_owner_window(data_dir):
+            _open_system_browser(desktop_app_url(port))
         return 0
 
     guard = _acquire_instance_guard(data_dir)
@@ -1361,9 +1412,8 @@ def run(headless: bool = False) -> int:
         try:
             port = wait_for_other_instance(data_dir, timeout=90.0)
             if port is not None:
-                if not headless:
-                    if not _request_owner_window(data_dir):
-                        _open_system_browser(desktop_app_url(port))
+                if not headless and not _request_owner_window(data_dir):
+                    _open_system_browser(desktop_app_url(port))
                 return 0
             # If the first launcher exited during startup, this invocation may
             # safely take over. It must never adopt and later stop that first
@@ -1393,13 +1443,15 @@ if __name__ == "__main__":
     if len(sys.argv) == 3 and sys.argv[1] == "--gemini-web-login":
         sys.exit(run_gemini_web_login(Path(sys.argv[2])))
     if len(sys.argv) == 7 and sys.argv[1] == "--embedded-webview":
-        sys.exit(run_embedded_webview(
-            sys.argv[2],
-            sys.argv[3],
-            int(sys.argv[4]),
-            int(sys.argv[5]),
-            sys.argv[6] == "1",
-        ))
+        sys.exit(
+            run_embedded_webview(
+                sys.argv[2],
+                sys.argv[3],
+                int(sys.argv[4]),
+                int(sys.argv[5]),
+                sys.argv[6] == "1",
+            )
+        )
     _headless = _env_value("DEBATEAI_HEADLESS") == "1"
     _result = run(headless=_headless)
     while _result == 2 and not _headless:

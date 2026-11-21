@@ -9,14 +9,20 @@ interface Props {
   onRefresh: () => void;
 }
 
-export default function DirectiveList({ sessionId, directives, onRefresh }: Props) {
+export default function DirectiveList({
+  sessionId,
+  directives,
+  onRefresh,
+}: Props) {
   const { confirm, toast } = useConfirm();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
 
   const handleToggle = async (directive: Directive) => {
     try {
-      await api.updateDirective(sessionId, directive.id, { active: !directive.active });
+      await api.updateDirective(sessionId, directive.id, {
+        active: !directive.active,
+      });
       onRefresh();
     } catch (err) {
       console.error("Failed to toggle directive:", err);
@@ -138,7 +144,9 @@ export default function DirectiveList({ sessionId, directives, onRefresh }: Prop
                     </button>
                   </div>
                 ) : (
-                  <p className="font-body text-sm text-brand-dark-gray">{d.text}</p>
+                  <p className="font-body text-sm text-brand-dark-gray">
+                    {d.text}
+                  </p>
                 )}
               </div>
 

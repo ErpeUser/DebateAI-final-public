@@ -5,8 +5,6 @@ import uuid
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from fastapi import HTTPException
-
 from app.models import Document
 from app.routers.documents import (
     LOCAL_EXTRACT_CHARS,
@@ -15,6 +13,7 @@ from app.routers.documents import (
 )
 from app.services import session_manager
 from app.services.privacy import LocalOnlyModeError
+from fastapi import HTTPException
 
 
 def _doc(**overrides) -> Document:
@@ -101,7 +100,9 @@ class GetDocumentSummariesTests(unittest.IsolatedAsyncioTestCase):
         doc = _doc(gemini_file_uri="")
         db = _db_returning([doc])
 
-        with patch.object(session_manager, "summarize_document", AsyncMock()) as summarize:
+        with patch.object(
+            session_manager, "summarize_document", AsyncMock()
+        ) as summarize:
             text = await session_manager.get_document_summaries(doc.session_id, db)
 
         self.assertEqual("", text)
@@ -121,9 +122,7 @@ class LocalExtractSummaryTests(unittest.TestCase):
 
     def test_excerpt_is_bounded_and_paragraph_aligned(self):
         big = ("word " * 900).strip()
-        excerpt = local_extract_summary(
-            f"lead paragraph\n\n{big}".encode(), "big.txt"
-        )
+        excerpt = local_extract_summary(f"lead paragraph\n\n{big}".encode(), "big.txt")
         self.assertEqual("lead paragraph", excerpt)
 
         single = "x" * (LOCAL_EXTRACT_CHARS * 2)
@@ -215,15 +214,15 @@ class SchemaWiringTests(unittest.TestCase):
     def test_migration_revisions_match_the_fleet_sequencing(self):
         source = (
             Path(__file__).resolve().parents[1]
-            / "alembic" / "versions" / "022_add_document_summaries.py"
+            / "alembic"
+            / "versions"
+            / "022_add_document_summaries.py"
         ).read_text()
         self.assertIn('revision = "022_document_summaries"', source)
         self.assertIn('down_revision = "021_signal_history"', source)
 
     def test_startup_patch_covers_both_columns(self):
-        source = (
-            Path(__file__).resolve().parents[1] / "app" / "main.py"
-        ).read_text()
+        source = (Path(__file__).resolve().parents[1] / "app" / "main.py").read_text()
         self.assertIn(
             "ALTER TABLE documents ADD COLUMN summary TEXT NOT NULL DEFAULT ''", source
         )

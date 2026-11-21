@@ -47,7 +47,8 @@ export default function DirectiveBar({
     // refuses storage still yields chat with zero indirection.
     let initial: Mode = "chat";
     try {
-      if (window.localStorage.getItem(MODE_STORAGE_KEY) === "directive") initial = "directive";
+      if (window.localStorage.getItem(MODE_STORAGE_KEY) === "directive")
+        initial = "directive";
     } catch {
       // A browser refusing storage is not a reason to break the bar.
     }
@@ -112,7 +113,10 @@ export default function DirectiveBar({
 
   return (
     <div className="border-t border-brand-light-gray-1 bg-surface/95 backdrop-blur-sm">
-      <form onSubmit={handleSubmit} className="flex items-center gap-2 px-4 py-2">
+      <form
+        onSubmit={handleSubmit}
+        className="flex items-center gap-2 px-4 py-2"
+      >
         <div className="flex flex-shrink-0 overflow-hidden rounded-lg border border-brand-light-gray-1">
           {modeButton("chat", DE.live.chat)}
           {modeButton("directive", DE.live.directive)}
@@ -139,7 +143,11 @@ export default function DirectiveBar({
                     : DE.live.directiveExample
             }
             disabled={disabled || (chatMode && askDisabled)}
-            aria-label={chatMode ? "Eine Frage zu diesem Gespräch stellen" : "Anweisung hinzufügen"}
+            aria-label={
+              chatMode
+                ? "Eine Frage zu diesem Gespräch stellen"
+                : "Anweisung hinzufügen"
+            }
             className="min-w-0 flex-1 bg-transparent font-body text-sm text-brand-dark-gray placeholder:text-brand-mid-gray focus:outline-none"
           />
           {asking && (
@@ -148,7 +156,10 @@ export default function DirectiveBar({
             </span>
           )}
           {text.trim() && !asking && (
-            <span className="flex-shrink-0 font-mono text-[10px] text-brand-mid-gray" aria-hidden="true">
+            <span
+              className="flex-shrink-0 font-mono text-[10px] text-brand-mid-gray"
+              aria-hidden="true"
+            >
               &#8629;
             </span>
           )}

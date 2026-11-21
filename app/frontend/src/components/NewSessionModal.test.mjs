@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./NewSessionModal.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./NewSessionModal.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "new-session-modal-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 

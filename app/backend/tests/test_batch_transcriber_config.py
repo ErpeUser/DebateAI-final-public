@@ -2,7 +2,6 @@ import math
 import unittest
 
 import numpy as np
-
 from app.services.batch_transcriber import BatchTranscriber
 
 
@@ -12,7 +11,9 @@ class BatchTranscriberConfigTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_transcribe_segment_uses_configured_model(self):
         fake_client = _FakeClient("this is transcribed speech")
-        transcriber = BatchTranscriber(model_id="gemini-test-transcriber", client=fake_client)
+        transcriber = BatchTranscriber(
+            model_id="gemini-test-transcriber", client=fake_client
+        )
 
         text = await transcriber.transcribe_segment(_speech_pcm())
 

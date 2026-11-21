@@ -5,14 +5,16 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import DebateClaimRecord, Session, Speaker, TranscriptEntry
+from app.services.agents.orchestrator import get_live_orchestrator
+from app.services.argument_graph import (
+    ArgumentGraph,
+    correct_source_assignment,
+    load_argument_graph,
+)
 from app.services.briefing_synthesis import agent_model_id
+from app.services.debate_contracts import DebateSource
 from app.services.debate_review import (
     DebateReview,
     apply_review_suggestion,
@@ -24,10 +26,11 @@ from app.services.debate_review import (
     save_debate_review,
 )
 from app.services.debate_settings import get_debate_settings, set_debate_settings
-from app.services.argument_graph import ArgumentGraph, correct_source_assignment, load_argument_graph
-from app.services.agents.orchestrator import get_live_orchestrator
-from app.services.debate_contracts import DebateSource
 from app.services.privacy import allows_local_only, get_local_only
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(
     prefix="/api/sessions/{session_id}/debate-review",
@@ -130,11 +133,13 @@ async def generate_review(
         graph=graph,
         samples=samples,
     )
-    review = review.model_copy(update={
-        "sources": collect_review_sources(samples),
-        "traces": traces,
-        "learning_notes": learning_notes,
-    })
+    review = review.model_copy(
+        update={
+            "sources": collect_review_sources(samples),
+            "traces": traces,
+            "learning_notes": learning_notes,
+        }
+    )
     await save_debate_review(db, session_id, review)
     await db.commit()
     return review
@@ -184,11 +189,13 @@ async def correct_source(
     review = await get_debate_review(db, session_id)
     if review is not None:
         review_sources = [
-            DebateSource.model_validate(source).model_copy(update={
-                "claim_relation": correction.relation,
-                "verification_status": correction.relation,
-                "affected_claim_ids": correction.affected_claim_ids,
-            })
+            DebateSource.model_validate(source).model_copy(
+                update={
+                    "claim_relation": correction.relation,
+                    "verification_status": correction.relation,
+                    "affected_claim_ids": correction.affected_claim_ids,
+                }
+            )
             if source.url.rstrip("/") == correction.source_url.rstrip("/")
             else source
             for source in review.sources

@@ -2,10 +2,12 @@ import unittest
 from types import SimpleNamespace
 
 import numpy as np
-
-from app.services.semantic_argument_memory import SemanticArgumentMemory
-from app.services.semantic_argument_memory import SemanticArgumentMatch, SemanticSearchResult
 from app.services.agents.orchestrator import AgentOrchestrator
+from app.services.semantic_argument_memory import (
+    SemanticArgumentMatch,
+    SemanticArgumentMemory,
+    SemanticSearchResult,
+)
 
 
 class _Memory(SemanticArgumentMemory):
@@ -15,7 +17,9 @@ class _Memory(SemanticArgumentMemory):
         self.ready = True
 
     def _embed(self, texts):
-        return [np.asarray(self._query_vectors[text], dtype=np.float32) for text in texts]
+        return [
+            np.asarray(self._query_vectors[text], dtype=np.float32) for text in texts
+        ]
 
 
 class SemanticArgumentMemoryTests(unittest.TestCase):
@@ -52,7 +56,9 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
         }
         return memory, query
 
-    def test_search_targets_keeps_negation_and_number_disagreement_topically_relevant(self):
+    def test_search_targets_keeps_negation_and_number_disagreement_topically_relevant(
+        self,
+    ):
         memory, query = self._memory()
 
         result = memory.search_targets(query, related_limit=4, conflict_limit=4)
@@ -62,11 +68,15 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
             {match.row["claim_id"] for match in result.related},
         )
 
-    def test_search_targets_marks_only_same_scope_disagreements_as_possible_conflicts(self):
+    def test_search_targets_marks_only_same_scope_disagreements_as_possible_conflicts(
+        self,
+    ):
         memory, query = self._memory()
 
         result = memory.search_targets(query, related_limit=4, conflict_limit=4)
-        conflicts = {match.row["claim_id"]: match for match in result.possible_conflicts}
+        conflicts = {
+            match.row["claim_id"]: match for match in result.possible_conflicts
+        }
 
         self.assertIn("negation", conflicts["claim-negation"].conflict_reasons)
         self.assertIn("number", conflicts["claim-number"].conflict_reasons)
@@ -79,14 +89,21 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
         result = memory.search_targets(query, related_limit=4, conflict_limit=4)
 
         self.assertTrue(result.possible_conflicts)
-        self.assertTrue(all(match.match_type == "possible_conflict" for match in result.possible_conflicts))
+        self.assertTrue(
+            all(
+                match.match_type == "possible_conflict"
+                for match in result.possible_conflicts
+            )
+        )
 
     def test_stale_claim_revision_cannot_replace_newer_claim_text(self):
         current_text = "Die Reform senkt die Kosten 2026 um 20 Prozent."
         stale_text = "Die Reform senkt die Kosten 2026 um 10 Prozent."
-        memory = _Memory({
-            stale_text: [0.0, 1.0],
-        })
+        memory = _Memory(
+            {
+                stale_text: [0.0, 1.0],
+            }
+        )
         memory._rows = {
             "claim-1": {
                 "claim_id": "claim-1",
@@ -94,16 +111,16 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
                 "revision": 2,
             }
         }
-        memory._vectors = {
-            "claim-1": np.asarray([1.0, 0.0], dtype=np.float32)
-        }
+        memory._vectors = {"claim-1": np.asarray([1.0, 0.0], dtype=np.float32)}
         memory.vector_dimension = 2
 
-        memory.upsert({
-            "claim_id": "claim-1",
-            "target_claim": stale_text,
-            "revision": 1,
-        })
+        memory.upsert(
+            {
+                "claim_id": "claim-1",
+                "target_claim": stale_text,
+                "revision": 1,
+            }
+        )
 
         self.assertEqual(current_text, memory._rows["claim-1"]["target_claim"])
         np.testing.assert_array_equal(
@@ -111,7 +128,9 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
             memory._vectors["claim-1"],
         )
 
-    def test_coach_context_labels_conflict_candidates_with_claim_and_original_span(self):
+    def test_coach_context_labels_conflict_candidates_with_claim_and_original_span(
+        self,
+    ):
         candidate = SemanticArgumentMatch(
             row={
                 "claim_id": "claim-older",
@@ -124,7 +143,9 @@ class SemanticArgumentMemoryTests(unittest.TestCase):
             conflict_reasons=("negation",),
         )
         memory = SimpleNamespace(
-            search_targets=lambda *_args, **_kwargs: SemanticSearchResult([], [candidate])
+            search_targets=lambda *_args, **_kwargs: SemanticSearchResult(
+                [], [candidate]
+            )
         )
         orchestrator = object.__new__(AgentOrchestrator)
         orchestrator.debate_settings = SimpleNamespace(performance_profile="balanced")

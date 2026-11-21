@@ -6,10 +6,8 @@ import json
 import uuid
 from datetime import UTC, datetime
 
-from pydantic import BaseModel, Field, field_validator
-
 from app.services.app_settings import get_app_setting, set_app_setting
-
+from pydantic import BaseModel, Field, field_validator
 
 SETTING_KEY = "debate.confirmed_good_answers"
 MAX_EXAMPLES = 24
@@ -95,7 +93,8 @@ async def save_good_debate_example(
         export_allowed=False,
     )
     deduplicated = [
-        item for item in examples
+        item
+        for item in examples
         if item.claim.casefold() != example.claim.casefold()
         or item.answer.casefold() != example.answer.casefold()
     ]
@@ -128,11 +127,17 @@ async def revoke_good_debate_example(
         corrections = list(example.corrections)
         if correction.strip():
             corrections.append(" ".join(correction.split())[:700])
-        updated.append(example.model_copy(update={
-            "revoked_at": now,
-            "factual_status": "corrected" if corrections else example.factual_status,
-            "corrections": corrections,
-        }))
+        updated.append(
+            example.model_copy(
+                update={
+                    "revoked_at": now,
+                    "factual_status": "corrected"
+                    if corrections
+                    else example.factual_status,
+                    "corrections": corrections,
+                }
+            )
+        )
         changed = True
     if changed:
         await set_app_setting(

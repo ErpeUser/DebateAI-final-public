@@ -7,8 +7,8 @@ fetch the evaluation-only models used by scripts/diarizer_ab.py.
 import argparse
 import hashlib
 import os
-from pathlib import Path
 import urllib.request
+from pathlib import Path
 
 MODELS_DIR = os.path.join(os.path.dirname(__file__), "..", "models")
 

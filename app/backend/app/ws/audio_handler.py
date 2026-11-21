@@ -1,23 +1,35 @@
 import json
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, WebSocket
-from sqlalchemy import func, select
-
+from app.config import settings as settings
 from app.database import async_session
-from app.models import AgentConfig, CallSegment, Question, Session, SessionAgentOverride, Speaker, TranscriptEntry
-from app.services.transcription_runtime import audio_lock_reason
-from app.services.debate_settings import get_debate_settings
-from app.services.pii.ws import RevealingWebSocket
-from app.services.pii import shield
+from app.models import (
+    AgentConfig,
+    CallSegment,
+    Question,
+    Session,
+    SessionAgentOverride,
+    Speaker,
+    TranscriptEntry,
+)
+from app.services import runtime_activity
 from app.services.agents.orchestrator import AgentOrchestrator, drain_progress_percent
-from app.services.privacy import admitted_model_ids
-from app.services.session_manager import get_active_directives, get_document_summaries, get_local_dossier_context, get_next_sequence
-from app.services.provisional_transcripts import finalize_provisional_segment
 from app.services.audio_store import SegmentAudioWriter
+from app.services.debate_settings import get_debate_settings
+from app.services.ordered_transcription import OrderedTranscriptionQueue
+from app.services.pii import shield
+from app.services.pii.ws import RevealingWebSocket
+from app.services.privacy import admitted_model_ids
+from app.services.provisional_transcripts import finalize_provisional_segment
+from app.services.session_manager import (
+    get_active_directives,
+    get_document_summaries,
+    get_local_dossier_context,
+    get_next_sequence,
+)
 from app.services.speaker_assignment import (
     auto_speaker_would_create_new_speaker,
     is_unknown_auto_speaker,
@@ -26,12 +38,12 @@ from app.services.speaker_assignment import (
     resolve_live_mic_speaker,
 )
 from app.services.speaker_ghost_filter import should_defer_new_speaker_segment
+from app.services.transcription_runtime import audio_lock_reason
 from app.services.turn_assembler import TurnAssembler
-from app.config import settings as settings
-from app.services.ordered_transcription import OrderedTranscriptionQueue
-from app.services import runtime_activity
 from app.ws.audio_persistence import (
     _append_audio_frames as _append_audio_frames,
+)
+from app.ws.audio_persistence import (
     _close_audio_writers,
     _flush_remaining_audio,
 )
@@ -40,22 +52,48 @@ from app.ws.audio_pipeline import (
     _transcription_failure_handler,
 )
 from app.ws.audio_runtime import (
-    _QueuedAudioFrame as _QueuedAudioFrame,
     _create_audio_processors,
-    _decode_audio_frame as _decode_audio_frame,
     _load_audio_runtime,
-    _new_speaker_registry as _new_speaker_registry,
-    _queued_speaker_auto_id as _queued_speaker_auto_id,
-    _receive_websocket_message as _receive_websocket_message,
-    _reconnect_audio_gateway as _reconnect_audio_gateway,
-    _record_audio_flow as _record_audio_flow,
-    _run_diarization_worker as _run_diarization_worker,
-    _send_gateway_audio as _send_gateway_audio,
     _send_status,
+)
+from app.ws.audio_runtime import (
+    _decode_audio_frame as _decode_audio_frame,
+)
+from app.ws.audio_runtime import (
+    _new_speaker_registry as _new_speaker_registry,
+)
+from app.ws.audio_runtime import (
+    _queued_speaker_auto_id as _queued_speaker_auto_id,
+)
+from app.ws.audio_runtime import (
+    _QueuedAudioFrame as _QueuedAudioFrame,
+)
+from app.ws.audio_runtime import (
+    _receive_websocket_message as _receive_websocket_message,
+)
+from app.ws.audio_runtime import (
+    _reconnect_audio_gateway as _reconnect_audio_gateway,
+)
+from app.ws.audio_runtime import (
+    _record_audio_flow as _record_audio_flow,
+)
+from app.ws.audio_runtime import (
+    _run_diarization_worker as _run_diarization_worker,
+)
+from app.ws.audio_runtime import (
+    _send_gateway_audio as _send_gateway_audio,
+)
+from app.ws.audio_runtime import (
     _split_track_established_after_frame as _split_track_established_after_frame,
+)
+from app.ws.audio_runtime import (
     _split_track_established_after_message as _split_track_established_after_message,
+)
+from app.ws.audio_runtime import (
     _stop_diarization_worker as _stop_diarization_worker,
 )
+from fastapi import APIRouter, WebSocket
+from sqlalchemy import func, select
 
 logger = logging.getLogger(__name__)
 
@@ -86,9 +124,13 @@ async def _load_agent_configs(db, session_id: uuid.UUID) -> dict[str, AgentConfi
     result = await db.execute(select(AgentConfig).order_by(AgentConfig.display_order))
     configs = {config.slug: config for config in result.scalars().all()}
     result = await db.execute(
-        select(SessionAgentOverride).where(SessionAgentOverride.session_id == session_id)
+        select(SessionAgentOverride).where(
+            SessionAgentOverride.session_id == session_id
+        )
     )
-    overrides = {override.agent_slug: override.enabled for override in result.scalars().all()}
+    overrides = {
+        override.agent_slug: override.enabled for override in result.scalars().all()
+    }
     for slug, config in configs.items():
         if slug in overrides:
             config._session_override = overrides[slug]
@@ -148,7 +190,9 @@ async def _would_create_new_speaker(
 
     async with async_session() as db:
         result = await db.execute(
-            select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+            select(Speaker)
+            .where(Speaker.session_id == session_id)
+            .order_by(Speaker.created_at)
         )
         speakers = list(result.scalars().all())
 
@@ -162,7 +206,9 @@ async def _should_defer_new_speaker(
     pcm_bytes: bytes,
     text: str,
 ) -> bool:
-    would_create = await _would_create_new_speaker(session_id, auto_id, auto_speaker_map)
+    would_create = await _would_create_new_speaker(
+        session_id, auto_id, auto_speaker_map
+    )
     return would_create and should_defer_new_speaker_segment(pcm_bytes, text)
 
 
@@ -251,7 +297,7 @@ async def _restore_session_after_refusal(session_id: uuid.UUID) -> str | None:
             session.state = prior
             if prior == "completed":
                 if session.ended_at is None:
-                    session.ended_at = datetime.now(timezone.utc)
+                    session.ended_at = datetime.now(UTC)
             else:
                 # The refused start never ran; undo the optimistic started_at.
                 session.started_at = None
@@ -288,7 +334,7 @@ async def _start_call_segment(
             id=segment_id,
             session_id=session_id,
             segment_number=segment_number,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
         db.add(segment)
         audio_writers = (
@@ -312,7 +358,7 @@ async def _start_call_segment(
 
         session.state = "active"
         if not session.started_at:
-            session.started_at = datetime.now(timezone.utc)
+            session.started_at = datetime.now(UTC)
         session.ended_at = None
 
         await db.commit()
@@ -335,11 +381,11 @@ async def _abort_call_start(
             if segment_id is not None:
                 segment = await db.get(CallSegment, segment_id)
                 if segment is not None and segment.ended_at is None:
-                    segment.ended_at = datetime.now(timezone.utc)
+                    segment.ended_at = datetime.now(UTC)
             session = await db.get(Session, session_id)
             if session is not None and session.state == "active":
                 session.state = "completed"
-                session.ended_at = session.ended_at or datetime.now(timezone.utc)
+                session.ended_at = session.ended_at or datetime.now(UTC)
             await db.commit()
     except Exception:
         logger.exception("Failed to clean up audio startup for session %s", session_id)
@@ -386,7 +432,9 @@ async def _finalize_call(
         speaker_prefix="mic_" if split_track_established else "",
     )
     if sys_diarizer is not None:
-        await _flush_remaining_audio(sys_diarizer, transcription_queue, speaker_prefix="sys_")
+        await _flush_remaining_audio(
+            sys_diarizer, transcription_queue, speaker_prefix="sys_"
+        )
     await transcription_queue.drain()
 
     async def _forward_drain_progress(event: dict[str, object]):
@@ -394,11 +442,7 @@ async def _finalize_call(
             websocket,
             "post_processing",
             str(event.get("message", "Post-processing call output...")),
-            **{
-                key: value
-                for key, value in event.items()
-                if key != "message"
-            },
+            **{key: value for key, value in event.items() if key != "message"},
         )
 
     if drain_mode == "minimal":
@@ -430,7 +474,9 @@ async def _finalize_call(
             )
         drain_result["session_insight_total"] = int(total_insights or 0)
     except Exception as e:
-        logger.warning(f"Failed to count session insights for the post-processing summary: {e}")
+        logger.warning(
+            f"Failed to count session insights for the post-processing summary: {e}"
+        )
     completion_message = "Post-processing complete"
     # Name the stages that degraded. The call finalizes either way, but silence
     # here is what made a failed briefing read as a stranded call: the user saw
@@ -478,7 +524,7 @@ async def _finalize_call(
             else None
         )
         if owned_segment and owned_segment.ended_at is None:
-            owned_segment.ended_at = datetime.now(timezone.utc)
+            owned_segment.ended_at = datetime.now(UTC)
             if audio_writers:
                 try:
                     for field, path in _close_audio_writers(
@@ -504,7 +550,7 @@ async def _finalize_call(
 
         if session and session.state == "active" and newer_open_segment_id is None:
             session.state = "completed"
-            session.ended_at = datetime.now(timezone.utc)
+            session.ended_at = datetime.now(UTC)
             completed_session = True
             # Keep the drain outcome with the session. The completion message
             # below only reaches a client that is still connected, and the run
@@ -552,6 +598,7 @@ def _create_transcript_emitter(
     # Also track speaker names for transcript buffer
     speaker_name_map: dict[str, str] = {}  # str(speaker.id) -> speaker.name
     speaker_type_map: dict[str, str] = {}  # str(speaker.id) -> team/external
+
     async def _resolve_auto_speaker(auto_id: str) -> str | None:
         """Map diarizer's auto-assigned IDs to DB Speaker rows."""
         if auto_id in auto_speaker_map:
@@ -559,11 +606,15 @@ def _create_transcript_emitter(
 
         async with async_session() as db:
             result = await db.execute(
-                select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+                select(Speaker)
+                .where(Speaker.session_id == session_id)
+                .order_by(Speaker.created_at)
             )
             speakers = list(result.scalars().all())
 
-        mapped_speaker = resolve_existing_auto_speaker(auto_id, auto_speaker_map, speakers)
+        mapped_speaker = resolve_existing_auto_speaker(
+            auto_id, auto_speaker_map, speakers
+        )
         if mapped_speaker:
             speaker_name_map[str(mapped_speaker.id)] = mapped_speaker.name
             speaker_type_map[str(mapped_speaker.id)] = mapped_speaker.speaker_type
@@ -576,7 +627,9 @@ def _create_transcript_emitter(
 
         # More speakers than registered — auto-create a new Speaker row
         color = _SPEAKER_COLORS[len(speakers) % len(_SPEAKER_COLORS)]
-        name_prefix = "Remote Participant" if auto_id.startswith("sys_") else "Participant"
+        name_prefix = (
+            "Remote Participant" if auto_id.startswith("sys_") else "Participant"
+        )
         async with async_session() as db:
             new_speaker = Speaker(
                 session_id=session_id,
@@ -598,7 +651,12 @@ def _create_transcript_emitter(
     ephemeral_sequence = 0
     turn_assembler = TurnAssembler()
 
-    async def _emit_transcript(speaker_auto_id: str, pcm_bytes: bytes, text: str, provisional_segment_id: str | None = None):
+    async def _emit_transcript(
+        speaker_auto_id: str,
+        pcm_bytes: bytes,
+        text: str,
+        provisional_segment_id: str | None = None,
+    ):
         """Persist an already-transcribed diarized segment in original audio order."""
         nonlocal ephemeral_sequence
         explicit_provisional_id = provisional_segment_id
@@ -613,14 +671,20 @@ def _create_transcript_emitter(
             text = await shield.protect_text(db, session_id, text)
             await db.commit()
         speaker_auto_id, split_track_mic = _normalize_speaker_auto_id(speaker_auto_id)
-        local_mic_speaker = resolve_live_mic_speaker(speaker_auto_id, speaker_rows, split_track_mic)
+        local_mic_speaker = resolve_live_mic_speaker(
+            speaker_auto_id, speaker_rows, split_track_mic
+        )
         if is_unknown_auto_speaker(speaker_auto_id):
             speaker_id, speaker_name, speaker_type = None, "Unknown", None
         elif local_mic_speaker is not None:
             # Keep the mic ID out of auto_speaker_map so remote ordering remains intact.
-            speaker_id, speaker_name, speaker_type = _speaker_identity(local_mic_speaker)
+            speaker_id, speaker_name, speaker_type = _speaker_identity(
+                local_mic_speaker
+            )
         else:
-            if await _should_defer_new_speaker(session_id, speaker_auto_id, auto_speaker_map, pcm_bytes, text):
+            if await _should_defer_new_speaker(
+                session_id, speaker_auto_id, auto_speaker_map, pcm_bytes, text
+            ):
                 logger.info(
                     "Keeping short new-speaker segment without durable speaker assignment: "
                     f"auto_id={speaker_auto_id} bytes={len(pcm_bytes)} text='{text[:80]}'"
@@ -628,7 +692,11 @@ def _create_transcript_emitter(
                 speaker_id, speaker_name, speaker_type = None, "Unknown", None
             else:
                 speaker_id = await _resolve_auto_speaker(speaker_auto_id)
-                speaker_name = speaker_name_map.get(speaker_id, "Unknown") if speaker_id else "Unknown"
+                speaker_name = (
+                    speaker_name_map.get(speaker_id, "Unknown")
+                    if speaker_id
+                    else "Unknown"
+                )
                 speaker_type = speaker_type_map.get(speaker_id) if speaker_id else None
 
         turn = turn_assembler.add(speaker_id, text)
@@ -670,7 +738,7 @@ def _create_transcript_emitter(
                 "id": f"live-{uuid.uuid4()}",
                 "session_id": str(session_id),
                 "text": text,
-                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "timestamp": datetime.now(UTC).isoformat(),
                 "sequence": ephemeral_sequence,
                 "speaker_id": speaker_id,
                 "utterance_id": turn.utterance_id,
@@ -688,14 +756,20 @@ def _create_transcript_emitter(
             speaker_type=speaker_type,
             utterance_id=turn.utterance_id,
             is_local_mic=split_track_mic,
-            **({"provisional_segment_id": explicit_provisional_id} if explicit_provisional_id else {}),
+            **(
+                {"provisional_segment_id": explicit_provisional_id}
+                if explicit_provisional_id
+                else {}
+            ),
         )
 
         try:
-            await websocket.send_json({
-                "type": "transcript",
-                "data": transcript_payload,
-            })
+            await websocket.send_json(
+                {
+                    "type": "transcript",
+                    "data": transcript_payload,
+                }
+            )
         except Exception:
             pass
         await _send_status(
@@ -744,7 +818,12 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
     async with async_session() as db:
         session = await db.get(Session, session_id)
         if not session:
-            await websocket.send_json({"type": "status", "data": {"state": "error", "message": "Session not found"}})
+            await websocket.send_json(
+                {
+                    "type": "status",
+                    "data": {"state": "error", "message": "Session not found"},
+                }
+            )
             await websocket.close()
             return
 
@@ -776,7 +855,9 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
 
         # Load speakers for agent context
         result = await db.execute(
-            select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+            select(Speaker)
+            .where(Speaker.session_id == session_id)
+            .order_by(Speaker.created_at)
         )
         speaker_rows = list(result.scalars().all())
         speakers_list = [_speaker_context(s) for s in speaker_rows]
@@ -784,9 +865,12 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
 
         agent_configs = await _load_agent_configs(db, session_id)
 
-        runtime_config, transcription_config, local_only, readiness = (
-            await _load_audio_runtime(db)
-        )
+        (
+            runtime_config,
+            transcription_config,
+            local_only,
+            readiness,
+        ) = await _load_audio_runtime(db)
         debate_config = await get_debate_settings(db)
 
     websocket.set_transcript_retention(debate_config.transcript_retention_enabled)
@@ -811,10 +895,12 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
         archive_audio=debate_config.audio_archive_enabled,
         retain_transcript=debate_config.transcript_retention_enabled,
     )
-    await websocket.send_json({
-        "type": "status",
-        "data": {"state": "connecting", "message": "Connecting to AI agents..."},
-    })
+    await websocket.send_json(
+        {
+            "type": "status",
+            "data": {"state": "connecting", "message": "Connecting to AI agents..."},
+        }
+    )
     await websocket.send_snapshot(after_sequence, after_epoch=after_epoch)
 
     # Track active (unanswered) questions for agent context
@@ -824,7 +910,11 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
     # each endpoint model costs a database read and the orchestrator's gate is
     # synchronous; with the mode off this is every configured model.
     admitted_models = await admitted_model_ids(
-        (cfg.model_id for cfg in agent_configs.values() if getattr(cfg, "model_id", "")),
+        (
+            cfg.model_id
+            for cfg in agent_configs.values()
+            if getattr(cfg, "model_id", "")
+        ),
         local_only,
     )
     # The dossier is deliberately stricter than the global privacy switch: it
@@ -897,7 +987,9 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
             # fewer inference calls.
             min_batch_bytes=(
                 _WHISPER_FINAL_CONTEXT_BYTES
-                if str(getattr(transcriber, "_model_id", "")).startswith("local-whisper")
+                if str(getattr(transcriber, "_model_id", "")).startswith(
+                    "local-whisper"
+                )
                 else 0
             ),
             max_batch_wait_seconds=_final_transcript_batch_wait_seconds(
@@ -929,7 +1021,10 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
             _finalize_call,
             streaming_transcriber=(
                 transcriber
-                if all(hasattr(transcriber, name) for name in ("feed_audio", "flush", "close"))
+                if all(
+                    hasattr(transcriber, name)
+                    for name in ("feed_audio", "flush", "close")
+                )
                 else None
             ),
             initial_segment_start=initial_segment_start,

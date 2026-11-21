@@ -3,7 +3,7 @@ import threading
 import unittest
 import uuid
 from collections import deque
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from time import monotonic
@@ -11,13 +11,12 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, call, patch
 
 import numpy as np
-
 from app.models import CallSegment, TranscriptEntry
 from app.services.agents.orchestrator import AgentOrchestrator
+from app.services.voice_enrollment import LOCAL_VOICE_PROFILE_ID
 from app.ws import audio_handler, audio_messages
 from app.ws.audio_pipeline import _AudioPipelineState
 from app.ws.audio_runtime import MAX_DIARIZATION_BACKLOG_BYTES, _QueuedAudioFrame
-from app.services.voice_enrollment import LOCAL_VOICE_PROFILE_ID
 
 
 class FakeSessionContext:
@@ -85,8 +84,12 @@ class AgentConfigLoadingTests(unittest.IsolatedAsyncioTestCase):
         db = SimpleNamespace(
             execute=AsyncMock(
                 side_effect=[
-                    SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [config])),
-                    SimpleNamespace(scalars=lambda: SimpleNamespace(all=lambda: [override])),
+                    SimpleNamespace(
+                        scalars=lambda: SimpleNamespace(all=lambda: [config])
+                    ),
+                    SimpleNamespace(
+                        scalars=lambda: SimpleNamespace(all=lambda: [override])
+                    ),
                 ]
             )
         )
@@ -137,7 +140,9 @@ class TranscriptRetentionContractTests(unittest.IsolatedAsyncioTestCase):
             if call.args[0].get("type") == "transcript"
         ]
         self.assertEqual(2, len(transcript_messages))
-        self.assertEqual([repeated, repeated], [msg["data"]["text"] for msg in transcript_messages])
+        self.assertEqual(
+            [repeated, repeated], [msg["data"]["text"] for msg in transcript_messages]
+        )
         self.assertEqual(2, orchestrator.feed_transcript.await_count)
 
     async def test_durable_final_atomically_supersedes_its_provisional_segment(self):
@@ -156,17 +161,24 @@ class TranscriptRetentionContractTests(unittest.IsolatedAsyncioTestCase):
         db.__aexit__ = AsyncMock(return_value=False)
         db.add = MagicMock()
         db.commit = AsyncMock()
+
         async def refresh_entry(entry):
             entry.id = entry.id or uuid.uuid4()
-            entry.timestamp = entry.timestamp or datetime.now(timezone.utc)
+            entry.timestamp = entry.timestamp or datetime.now(UTC)
 
         db.refresh = AsyncMock(side_effect=refresh_entry)
 
         with (
             patch("app.ws.audio_handler.async_session", return_value=db),
             patch("app.ws.audio_handler.get_next_sequence", AsyncMock(return_value=1)),
-            patch("app.ws.audio_handler.shield.protect_text", AsyncMock(return_value="Finaler Satz.")),
-            patch("app.ws.audio_handler.finalize_provisional_segment", AsyncMock(return_value=1)) as finalize,
+            patch(
+                "app.ws.audio_handler.shield.protect_text",
+                AsyncMock(return_value="Finaler Satz."),
+            ),
+            patch(
+                "app.ws.audio_handler.finalize_provisional_segment",
+                AsyncMock(return_value=1),
+            ) as finalize,
         ):
             emit = audio_handler._create_transcript_emitter(
                 session_id,
@@ -416,14 +428,15 @@ class DiarizationWorkerShutdownTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("system-diarizer", result)
         self.assertIsNone(queue.get_nowait())
         statuses = [
-            call.args[0]["data"]
-            for call in websocket.send_json.await_args_list
+            call.args[0]["data"] for call in websocket.send_json.await_args_list
         ]
         self.assertTrue(
             any(status["state"] == "post_processing" for status in statuses)
         )
 
-    async def test_shutdown_deadline_abandons_hung_worker_without_claiming_resource_free(self):
+    async def test_shutdown_deadline_abandons_hung_worker_without_claiming_resource_free(
+        self,
+    ):
         queue = asyncio.Queue()
         pending = deque([monotonic()])
         websocket = MagicMock(send_json=AsyncMock())
@@ -454,14 +467,15 @@ class DiarizationWorkerShutdownTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(cancelled.is_set())
         self.assertTrue(task.cancelled())
         statuses = [
-            call.args[0]["data"]
-            for call in websocket.send_json.await_args_list
+            call.args[0]["data"] for call in websocket.send_json.await_args_list
         ]
         self.assertTrue(any(status["state"] == "audio_gap" for status in statuses))
 
 
 class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
-    async def test_diarization_overflow_rejects_new_frame_without_dropping_accepted_audio(self):
+    async def test_diarization_overflow_rejects_new_frame_without_dropping_accepted_audio(
+        self,
+    ):
         websocket = MagicMock(send_json=AsyncMock())
         mixer = MagicMock()
         queue = asyncio.Queue()
@@ -498,12 +512,14 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         mixer = MagicMock()
         queue = asyncio.Queue(maxsize=1)
         pending = deque()
-        queue.put_nowait(_QueuedAudioFrame(
-            track=0,
-            pcm_bytes=b"\x00\x01",
-            split_track_established=False,
-            enqueued_at=monotonic(),
-        ))
+        queue.put_nowait(
+            _QueuedAudioFrame(
+                track=0,
+                pcm_bytes=b"\x00\x01",
+                split_track_established=False,
+                enqueued_at=monotonic(),
+            )
+        )
         state = _AudioPipelineState(last_audio_status_at=monotonic())
 
         accepted = await audio_messages._handle_audio_frame(
@@ -563,9 +579,7 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
                     MagicMock(send_json=AsyncMock()),
                     MagicMock(),
                     MagicMock(
-                        add=MagicMock(
-                            return_value=(b"mixed", b"mic", b"system")
-                        )
+                        add=MagicMock(return_value=(b"mixed", b"mic", b"system"))
                     ),
                     writers,
                     queue,
@@ -584,11 +598,14 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertEqual([True], gateway_saw_queued_frame)
         item = queue.get_nowait()
-        self.assertEqual((0, b"\x01\x02", False), (
-            item.track,
-            item.pcm_bytes,
-            item.split_track_established,
-        ))
+        self.assertEqual(
+            (0, b"\x01\x02", False),
+            (
+                item.track,
+                item.pcm_bytes,
+                item.split_track_established,
+            ),
+        )
         self.assertEqual(1, len(pending))
 
     async def test_gateway_queue_overload_is_visible_without_blocking_ingress(self):
@@ -612,21 +629,27 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertTrue(accepted)
         self.assertEqual(1, state.gateway_frames_dropped)
-        statuses = [call.args[0]["data"] for call in websocket.send_json.await_args_list]
-        self.assertTrue(any(item["state"] == "audio_gateway_overflow" for item in statuses))
+        statuses = [
+            call.args[0]["data"] for call in websocket.send_json.await_args_list
+        ]
+        self.assertTrue(
+            any(item["state"] == "audio_gateway_overflow" for item in statuses)
+        )
 
     async def test_native_buffer_overflow_reports_visible_stop_reason(self):
         session_id = uuid.uuid4()
         native_queue = asyncio.Queue()
-        native_queue.put_nowait({
-            "native_overflow": {
-                "state": "native_audio_overflow",
-                "max_audio_bytes": 128_000,
-                "queued_audio_bytes": 128_000,
-                "rejected_audio_bytes": 2,
-            },
-            "text": '{"type":"stop","drain_mode":"full","reason":"native_audio_overflow"}',
-        })
+        native_queue.put_nowait(
+            {
+                "native_overflow": {
+                    "state": "native_audio_overflow",
+                    "max_audio_bytes": 128_000,
+                    "queued_audio_bytes": 128_000,
+                    "rejected_audio_bytes": 2,
+                },
+                "text": '{"type":"stop","drain_mode":"full","reason":"native_audio_overflow"}',
+            }
+        )
         never = asyncio.Event()
 
         async def receive_forever():
@@ -643,13 +666,15 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
 
         async def worker(queue, *_args):
             self.assertIsNone(await queue.get())
-            return None
 
         finalize = AsyncMock()
         native_capture = MagicMock()
         native_capture.stop_session = AsyncMock(return_value={"active": False})
         with (
-            patch("app.ws.audio_pipeline.register_native_audio_session", return_value=native_queue),
+            patch(
+                "app.ws.audio_pipeline.register_native_audio_session",
+                return_value=native_queue,
+            ),
             patch("app.ws.audio_pipeline.unregister_native_audio_session"),
             patch("app.ws.audio_pipeline._run_diarization_worker", side_effect=worker),
             patch("app.ws.audio_pipeline.native_windows_audio", native_capture),
@@ -681,7 +706,11 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         events = []
         segment_id = uuid.uuid4()
         writers = {
-            track: MagicMock(append=MagicMock(side_effect=lambda pcm, track=track: events.append(track)))
+            track: MagicMock(
+                append=MagicMock(
+                    side_effect=lambda pcm, track=track: events.append(track)
+                )
+            )
             for track in ("mixed", "mic", "system")
         }
         websocket = MagicMock(
@@ -724,8 +753,14 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch("app.ws.audio_pipeline.TrackMixer", return_value=mixer),
             patch("app.ws.audio_pipeline._run_diarization_worker", side_effect=worker),
-            patch("app.ws.audio_pipeline._send_gateway_audio", side_effect=send_gateway),
-            patch("app.ws.audio_pipeline.native_windows_audio", native_capture, create=True),
+            patch(
+                "app.ws.audio_pipeline._send_gateway_audio", side_effect=send_gateway
+            ),
+            patch(
+                "app.ws.audio_pipeline.native_windows_audio",
+                native_capture,
+                create=True,
+            ),
         ):
             await audio_handler._run_audio_pipeline(
                 segment_id,
@@ -744,7 +779,9 @@ class AudioPipelineOrderingTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(["mixed", "mic", "system"], events[:3])
         self.assertIn("gateway", events)
-        self.assertLess(events.index(("worker", b"\x01\x02")), events.index("worker_stopped"))
+        self.assertLess(
+            events.index(("worker", b"\x01\x02")), events.index("worker_stopped")
+        )
         self.assertLess(events.index("worker_stopped"), events.index("finalize"))
 
 
@@ -752,14 +789,24 @@ class AudioFrameDecodingTests(unittest.TestCase):
     def test_reconnect_cursor_keeps_sequence_and_server_epoch_separate(self):
         parser = getattr(audio_handler, "_reconnect_cursor", None)
         self.assertIsNotNone(parser)
-        self.assertEqual((7, "epoch-a"), parser({
-            "after_sequence": "7",
-            "after_epoch": "epoch-a",
-        }))
-        self.assertEqual((0, ""), parser({
-            "after_sequence": "invalid",
-            "after_epoch": "",
-        }))
+        self.assertEqual(
+            (7, "epoch-a"),
+            parser(
+                {
+                    "after_sequence": "7",
+                    "after_epoch": "epoch-a",
+                }
+            ),
+        )
+        self.assertEqual(
+            (0, ""),
+            parser(
+                {
+                    "after_sequence": "invalid",
+                    "after_epoch": "",
+                }
+            ),
+        )
 
     def test_capture_id_survives_reconnect_and_changes_for_a_new_capture(self):
         from app.ws.audio_handler import _capture_id
@@ -810,7 +857,9 @@ class AudioFrameDecodingTests(unittest.TestCase):
         )
         self.assertTrue(established)
         queued = audio_handler._queued_speaker_auto_id("auto_1", 0, established)
-        self.assertEqual(("auto_1", True), audio_handler._normalize_speaker_auto_id(queued))
+        self.assertEqual(
+            ("auto_1", True), audio_handler._normalize_speaker_auto_id(queued)
+        )
         self.assertFalse(
             update_state({"type": "directive", "text": "keep going"}, False)
         )
@@ -823,10 +872,16 @@ class AudioFrameDecodingTests(unittest.TestCase):
 
         queued = audio_handler._queued_speaker_auto_id("auto_1", 0, True)
 
-        self.assertEqual(("auto_1", True), audio_handler._normalize_speaker_auto_id(queued))
+        self.assertEqual(
+            ("auto_1", True), audio_handler._normalize_speaker_auto_id(queued)
+        )
         mic_only = audio_handler._queued_speaker_auto_id("auto_1", 0, False)
-        self.assertEqual(("auto_1", True), audio_handler._normalize_speaker_auto_id(mic_only))
-        self.assertEqual("sys_auto_1", audio_handler._queued_speaker_auto_id("sys_auto_1", 1, True))
+        self.assertEqual(
+            ("auto_1", True), audio_handler._normalize_speaker_auto_id(mic_only)
+        )
+        self.assertEqual(
+            "sys_auto_1", audio_handler._queued_speaker_auto_id("sys_auto_1", 1, True)
+        )
 
 
 class AudioFlowAccountingTests(unittest.TestCase):
@@ -836,20 +891,28 @@ class AudioFlowAccountingTests(unittest.TestCase):
 
         self.assertEqual(
             (10.0, 0.0),
-            audio_handler._record_audio_flow(first_connection, track=0, byte_count=320_000),
+            audio_handler._record_audio_flow(
+                first_connection, track=0, byte_count=320_000
+            ),
         )
         self.assertIsNone(
-            audio_handler._record_audio_flow(second_connection, track=0, byte_count=160_000)
+            audio_handler._record_audio_flow(
+                second_connection, track=0, byte_count=160_000
+            )
         )
         self.assertEqual([160_000, 0], second_connection)
 
         split_connection = [0, 0]
         self.assertIsNone(
-            audio_handler._record_audio_flow(split_connection, track=0, byte_count=160_000)
+            audio_handler._record_audio_flow(
+                split_connection, track=0, byte_count=160_000
+            )
         )
         self.assertEqual(
             (5.0, 5.0),
-            audio_handler._record_audio_flow(split_connection, track=1, byte_count=160_000),
+            audio_handler._record_audio_flow(
+                split_connection, track=1, byte_count=160_000
+            ),
         )
 
 
@@ -945,7 +1008,9 @@ class StopDrainModeTests(unittest.TestCase):
     def test_stop_can_request_skip_analysis(self):
         self.assertEqual(
             "skip_analysis",
-            audio_handler._requested_drain_mode({"type": "stop", "drain": "skip_analysis"}),
+            audio_handler._requested_drain_mode(
+                {"type": "stop", "drain": "skip_analysis"}
+            ),
         )
 
     def test_unknown_or_minimal_drain_requests_fall_back_to_full(self):
@@ -953,7 +1018,9 @@ class StopDrainModeTests(unittest.TestCase):
             with self.subTest(requested=requested):
                 self.assertEqual(
                     "full",
-                    audio_handler._requested_drain_mode({"type": "stop", "drain": requested}),
+                    audio_handler._requested_drain_mode(
+                        {"type": "stop", "drain": requested}
+                    ),
                 )
 
 
@@ -966,7 +1033,9 @@ class FinalizeCallDrainModeTests(unittest.IsolatedAsyncioTestCase):
             "minimal": [],
         }
         orchestrator = MagicMock()
-        orchestrator.drain_stages = MagicMock(side_effect=lambda mode="full": list(plans[mode]))
+        orchestrator.drain_stages = MagicMock(
+            side_effect=lambda mode="full": list(plans[mode])
+        )
         orchestrator.graceful_drain = AsyncMock(
             return_value={
                 "transcript_available": True,
@@ -982,7 +1051,9 @@ class FinalizeCallDrainModeTests(unittest.IsolatedAsyncioTestCase):
         websocket = MagicMock()
         websocket.send_json = AsyncMock()
         session = SimpleNamespace(state="active", ended_at=None)
-        db = FakeSessionContext(session, last_segment_number=None, insight_total=insight_total)
+        db = FakeSessionContext(
+            session, last_segment_number=None, insight_total=insight_total
+        )
         transcription_queue = MagicMock()
         transcription_queue.drain = AsyncMock()
         transcription_queue.stats = {"jobs": 0, "emitted": 0, "failed": 0}
@@ -1046,10 +1117,14 @@ class FinalizeCallDrainModeTests(unittest.IsolatedAsyncioTestCase):
     async def test_skip_analysis_finalize_drains_without_late_stages(self):
         orchestrator = self._make_orchestrator(briefing=True)
 
-        statuses, session, _ = await self._run_finalize(orchestrator, drain_mode="skip_analysis")
+        statuses, session, _ = await self._run_finalize(
+            orchestrator, drain_mode="skip_analysis"
+        )
 
         orchestrator.graceful_drain.assert_awaited_once()
-        self.assertEqual("skip_analysis", orchestrator.graceful_drain.await_args.kwargs["mode"])
+        self.assertEqual(
+            "skip_analysis", orchestrator.graceful_drain.await_args.kwargs["mode"]
+        )
         first, last = statuses[0], statuses[-1]
         self.assertEqual(4, first["total_steps"])
         self.assertEqual(
@@ -1112,7 +1187,9 @@ class FinalizeCallDrainModeTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_minimal_finalize_survives_orchestrator_shutdown_failure(self):
         orchestrator = self._make_orchestrator(briefing=True)
-        orchestrator.close_all = AsyncMock(side_effect=RuntimeError("gateway close failed"))
+        orchestrator.close_all = AsyncMock(
+            side_effect=RuntimeError("gateway close failed")
+        )
 
         with self.assertLogs("app.ws.audio_handler", level="WARNING"):
             statuses, session, transcription_queue = await self._run_finalize(
@@ -1275,7 +1352,9 @@ class MinimalFinalizeAnalysisShutdownTests(unittest.IsolatedAsyncioTestCase):
 
     _ANALYST_INTERVAL = 0.02
 
-    def _build_live_orchestrator(self, analysis_calls: list) -> tuple[MagicMock, AgentOrchestrator]:
+    def _build_live_orchestrator(
+        self, analysis_calls: list
+    ) -> tuple[MagicMock, AgentOrchestrator]:
         def config(**overrides):
             base = {
                 "enabled": False,
@@ -1314,12 +1393,16 @@ class MinimalFinalizeAnalysisShutdownTests(unittest.IsolatedAsyncioTestCase):
         orchestrator.consolidated_agent.run_cycle = record_analysis_cycle
         return websocket, orchestrator
 
-    async def test_minimal_finalize_stops_analysis_before_slow_transcription_drain(self):
+    async def test_minimal_finalize_stops_analysis_before_slow_transcription_drain(
+        self,
+    ):
         analysis_calls: list = []
         websocket, orchestrator = self._build_live_orchestrator(analysis_calls)
         await orchestrator.start()
         self.addAsyncCleanup(AgentOrchestrator.close_all, orchestrator)
-        await orchestrator.feed_transcript("We are worried about rollout timing.", "Alice")
+        await orchestrator.feed_transcript(
+            "We are worried about rollout timing.", "Alice"
+        )
 
         # Sanity: while the call is live, the real interval analyst task fires.
         deadline = monotonic() + 2.0
@@ -1397,8 +1480,8 @@ class CallSegmentStartTests(unittest.IsolatedAsyncioTestCase):
         session_id = uuid.uuid4()
         session = SimpleNamespace(
             state="active",
-            started_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            ended_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ended_at=datetime(2026, 1, 2, tzinfo=UTC),
         )
         db = FakeSessionContext(session, last_segment_number=None)
 
@@ -1416,7 +1499,7 @@ class CallSegmentStartTests(unittest.IsolatedAsyncioTestCase):
         session_id = uuid.uuid4()
         session = SimpleNamespace(
             state="active",
-            started_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
             ended_at=None,
         )
         db = FakeSessionContext(session, last_segment_number=None)
@@ -1434,11 +1517,11 @@ class CallSegmentStartTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(hasattr(audio_handler, "_start_call_segment"))
         start_call_segment = audio_handler._start_call_segment
         session_id = uuid.uuid4()
-        original_started_at = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        original_started_at = datetime(2026, 1, 1, tzinfo=UTC)
         session = SimpleNamespace(
             state="completed",
             started_at=original_started_at,
-            ended_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+            ended_at=datetime(2026, 1, 2, tzinfo=UTC),
         )
         db = FakeSessionContext(session, last_segment_number=2)
         writers = [MagicMock(), MagicMock(), MagicMock()]
@@ -1488,8 +1571,8 @@ class CallSegmentStartTests(unittest.IsolatedAsyncioTestCase):
         session_id = uuid.uuid4()
         session = SimpleNamespace(
             state="completed",
-            started_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
-            ended_at=datetime(2026, 1, 2, tzinfo=timezone.utc),
+            started_at=datetime(2026, 1, 1, tzinfo=UTC),
+            ended_at=datetime(2026, 1, 2, tzinfo=UTC),
         )
         db = FakeSessionContext(session, last_segment_number=2)
 
@@ -1594,7 +1677,9 @@ class SegmentAudioPersistenceTests(unittest.TestCase):
             "system": MagicMock(close=MagicMock(return_value="audio/sys.wav")),
         }
 
-        paths = audio_handler._close_audio_writers(writers, split_track_established=True)
+        paths = audio_handler._close_audio_writers(
+            writers, split_track_established=True
+        )
 
         self.assertEqual(
             {
@@ -1685,7 +1770,7 @@ class RefusalRestoreTests(unittest.IsolatedAsyncioTestCase):
         return SimpleNamespace(
             state="active",
             ended_at=ended_at,
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
         )
 
     async def _restore(self, db):
@@ -1727,7 +1812,7 @@ class RefusalRestoreTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(session.ended_at)
 
     async def test_surviving_ended_at_restores_completed_without_probes(self):
-        session = self._active_session(ended_at=datetime.now(timezone.utc))
+        session = self._active_session(ended_at=datetime.now(UTC))
         db = FakeRestoreSessionContext(session, [None, None])
 
         restored = await self._restore(db)
@@ -1738,8 +1823,8 @@ class RefusalRestoreTests(unittest.IsolatedAsyncioTestCase):
     async def test_non_active_session_is_left_untouched(self):
         session = SimpleNamespace(
             state="completed",
-            ended_at=datetime.now(timezone.utc),
-            started_at=datetime.now(timezone.utc),
+            ended_at=datetime.now(UTC),
+            started_at=datetime.now(UTC),
         )
         db = FakeRestoreSessionContext(session, [None, None])
 
@@ -1784,7 +1869,9 @@ class TranscriptionReadinessGateTests(unittest.IsolatedAsyncioTestCase):
             reason="Transcription cannot run: no Google API key is configured.",
         )
 
-        refused = await audio_handler._refuse_unready_transcription(websocket, readiness)
+        refused = await audio_handler._refuse_unready_transcription(
+            websocket, readiness
+        )
 
         self.assertTrue(refused)
         websocket.close.assert_awaited_once()
@@ -1801,7 +1888,9 @@ class TranscriptionReadinessGateTests(unittest.IsolatedAsyncioTestCase):
             ready=True, model_id="local-whisper-base", provider="local"
         )
 
-        refused = await audio_handler._refuse_unready_transcription(websocket, readiness)
+        refused = await audio_handler._refuse_unready_transcription(
+            websocket, readiness
+        )
 
         self.assertFalse(refused)
         websocket.send_json.assert_not_awaited()

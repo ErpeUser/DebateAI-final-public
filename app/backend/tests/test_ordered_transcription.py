@@ -97,9 +97,7 @@ class OrderedTranscriptionQueueTests(unittest.IsolatedAsyncioTestCase):
                 await release_first_emit.wait()
 
         queue = OrderedTranscriptionQueue(transcribe=AsyncMock(), emit=emit)
-        first_task = asyncio.create_task(
-            queue.add_result("track_mic", b"one", "first")
-        )
+        first_task = asyncio.create_task(queue.add_result("track_mic", b"one", "first"))
         await asyncio.wait_for(first_emit_started.wait(), 0.2)
 
         second_task = asyncio.create_task(
@@ -126,7 +124,9 @@ class OrderedTranscriptionQueueTests(unittest.IsolatedAsyncioTestCase):
         async def emit(speaker_auto_id: str, pcm_bytes: bytes, text: str):
             emitted.append((speaker_auto_id, text))
 
-        queue = OrderedTranscriptionQueue(transcribe=transcribe, emit=emit, max_concurrency=3)
+        queue = OrderedTranscriptionQueue(
+            transcribe=transcribe, emit=emit, max_concurrency=3
+        )
         queue.add("auto_1", b"first")
         queue.add("auto_2", b"second")
         queue.add("auto_3", b"third")

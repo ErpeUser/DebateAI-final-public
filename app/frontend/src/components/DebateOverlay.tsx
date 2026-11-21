@@ -4,10 +4,18 @@ import type { DebateOverlaySnapshot } from "../services/api";
 import { shouldAcceptDebateOverlaySnapshot } from "../lib/debateOverlaySnapshot.mjs";
 import { DE } from "../i18n/de";
 
-const confidenceLabel = { high: "hoch", medium: "mittel", low: "vorsichtig" } as const;
+const confidenceLabel = {
+  high: "hoch",
+  medium: "mittel",
+  low: "vorsichtig",
+} as const;
 
 export default function DebateOverlay() {
-  const [snapshot, setSnapshot] = useState<DebateOverlaySnapshot>({ active: false, session_id: "", recommendation: null });
+  const [snapshot, setSnapshot] = useState<DebateOverlaySnapshot>({
+    active: false,
+    session_id: "",
+    recommendation: null,
+  });
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
@@ -16,9 +24,13 @@ export default function DebateOverlay() {
     const refresh = async () => {
       try {
         const next = await api.getDebateOverlaySnapshot();
-        if (!stopped) setSnapshot((current) => shouldAcceptDebateOverlaySnapshot(current, next) ? next : current);
+        if (!stopped)
+          setSnapshot((current) =>
+            shouldAcceptDebateOverlaySnapshot(current, next) ? next : current,
+          );
       } catch {
-        if (!stopped) setSnapshot({ active: false, session_id: "", recommendation: null });
+        if (!stopped)
+          setSnapshot({ active: false, session_id: "", recommendation: null });
       }
     };
     void refresh();
@@ -34,25 +46,34 @@ export default function DebateOverlay() {
   }, []);
 
   const recommendation = snapshot.recommendation;
-  const experimentalSelected = recommendation?.pipeline_mode === "experimental_debateai"
-    ? recommendation.strategy_options?.find((option) => option.id === recommendation.selected_strategy_id)
-    : undefined;
-  const primaryIsQuestion = recommendation?.pipeline_mode !== "experimental_debateai"
-    && recommendation?.primary_move === "question"
-    && Boolean(recommendation?.counter_question?.trim());
-  const answer = recommendation?.pipeline_mode === "experimental_debateai"
-    ? recommendation?.answer_now || ""
-    : primaryIsQuestion
-      ? recommendation?.counter_question || ""
-      : recommendation?.answer_now || recommendation?.counterargument || "";
-  const secondary = recommendation?.pipeline_mode === "experimental_debateai"
-    ? ""
-    : primaryIsQuestion
-      ? recommendation?.answer_now || recommendation?.counterargument || ""
-      : recommendation?.counter_question || "";
-  const primaryLabel = recommendation?.pipeline_mode === "experimental_debateai"
-    ? experimentalSelected?.title || "Sofortantwort"
-    : primaryIsQuestion ? "Gegenfrage" : "Sofortantwort";
+  const experimentalSelected =
+    recommendation?.pipeline_mode === "experimental_debateai"
+      ? recommendation.strategy_options?.find(
+          (option) => option.id === recommendation.selected_strategy_id,
+        )
+      : undefined;
+  const primaryIsQuestion =
+    recommendation?.pipeline_mode !== "experimental_debateai" &&
+    recommendation?.primary_move === "question" &&
+    Boolean(recommendation?.counter_question?.trim());
+  const answer =
+    recommendation?.pipeline_mode === "experimental_debateai"
+      ? recommendation?.answer_now || ""
+      : primaryIsQuestion
+        ? recommendation?.counter_question || ""
+        : recommendation?.answer_now || recommendation?.counterargument || "";
+  const secondary =
+    recommendation?.pipeline_mode === "experimental_debateai"
+      ? ""
+      : primaryIsQuestion
+        ? recommendation?.answer_now || recommendation?.counterargument || ""
+        : recommendation?.counter_question || "";
+  const primaryLabel =
+    recommendation?.pipeline_mode === "experimental_debateai"
+      ? experimentalSelected?.title || "Sofortantwort"
+      : primaryIsQuestion
+        ? "Gegenfrage"
+        : "Sofortantwort";
   const copyAnswer = async () => {
     if (!answer) return;
     await navigator.clipboard.writeText(answer);
@@ -64,69 +85,128 @@ export default function DebateOverlay() {
     <main className="min-h-screen bg-[#111318] p-4 text-white">
       <header className="mb-4 flex items-center justify-between border-b border-white/10 pb-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">Debate AI</p>
+          <p className="text-xs font-semibold uppercase tracking-[0.2em] text-emerald-400">
+            Debate AI
+          </p>
           <p className="mt-1 text-sm text-white/65">
-            {snapshot.active ? "Gespräch aktiv" : "Warte auf ein aktives Gespräch"}
+            {snapshot.active
+              ? "Gespräch aktiv"
+              : "Warte auf ein aktives Gespräch"}
           </p>
         </div>
-        <button type="button" onClick={() => window.close()} className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10">
+        <button
+          type="button"
+          onClick={() => window.close()}
+          className="rounded-lg border border-white/15 px-3 py-1.5 text-xs text-white/70 hover:bg-white/10"
+        >
           Schließen
         </button>
       </header>
 
       {!recommendation ? (
         <section className="rounded-2xl border border-white/10 bg-white/[0.04] p-5 text-sm leading-6 text-white/60">
-          Starte ein Gespräch im Hauptfenster. Die aktuelle Empfehlung erscheint hier automatisch.
+          Starte ein Gespräch im Hauptfenster. Die aktuelle Empfehlung erscheint
+          hier automatisch.
         </section>
       ) : (
         <div className="space-y-3">
           {recommendation.target_claim && (
             <section className="rounded-xl border border-white/10 bg-white/[0.04] p-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">Aktuelle Aussage</p>
-              <p className="text-sm leading-5 text-white/75">{recommendation.target_claim}</p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                Aktuelle Aussage
+              </p>
+              <p className="text-sm leading-5 text-white/75">
+                {recommendation.target_claim}
+              </p>
             </section>
           )}
 
-          <section aria-live="polite" aria-atomic="true" className="rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.08] p-4 shadow-lg shadow-black/20">
+          <section
+            aria-live="polite"
+            aria-atomic="true"
+            className="rounded-2xl border border-emerald-400/25 bg-emerald-400/[0.08] p-4 shadow-lg shadow-black/20"
+          >
             <div className="mb-2 flex items-center justify-between gap-3">
-              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">{primaryLabel}</p>
-              <button type="button" onClick={copyAnswer} disabled={!answer} className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/75 hover:bg-white/15 disabled:opacity-40">
+              <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">
+                {primaryLabel}
+              </p>
+              <button
+                type="button"
+                onClick={copyAnswer}
+                disabled={!answer}
+                className="rounded-lg bg-white/10 px-2.5 py-1 text-xs text-white/75 hover:bg-white/15 disabled:opacity-40"
+              >
                 {copied ? "Kopiert" : "Kopieren"}
               </button>
             </div>
-            <p className="text-[17px] font-medium leading-7 text-white">{answer || "Die Modellantwort wird gerade erzeugt …"}</p>
+            <p className="text-[17px] font-medium leading-7 text-white">
+              {answer || "Die Modellantwort wird gerade erzeugt …"}
+            </p>
           </section>
 
-          {recommendation.strategy_options && recommendation.strategy_options.length > 0 && (
-            <section className="space-y-1.5">
-              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
-                {recommendation.pipeline_mode === "experimental_debateai" ? "Weitere Antwortzüge" : "Drei aktuelle Optionen"}
-              </p>
-              {recommendation.strategy_options
-                .filter((option) => recommendation.pipeline_mode !== "experimental_debateai" || option.id !== recommendation.selected_strategy_id)
-                .map((option) => (
-                  <details key={option.id} className="rounded-xl border border-white/10 bg-white/[0.03] p-3">
-                    <summary className="cursor-pointer text-xs font-semibold text-white/80">{option.title}</summary>
-                    <p className="mt-1.5 text-sm leading-5 text-white/70">{option.text}</p>
-                    {option.example && <p className="mt-1 text-xs leading-5 text-white/60"><strong>Beispiel:</strong> {option.example}</p>}
-                    {option.rationale && <p className="mt-1 text-xs leading-5 text-white/60"><strong>Warum:</strong> {option.rationale}</p>}
-                  </details>
-                ))}
-            </section>
-          )}
+          {recommendation.strategy_options &&
+            recommendation.strategy_options.length > 0 && (
+              <section className="space-y-1.5">
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/45">
+                  {recommendation.pipeline_mode === "experimental_debateai"
+                    ? "Weitere Antwortzüge"
+                    : "Drei aktuelle Optionen"}
+                </p>
+                {recommendation.strategy_options
+                  .filter(
+                    (option) =>
+                      recommendation.pipeline_mode !==
+                        "experimental_debateai" ||
+                      option.id !== recommendation.selected_strategy_id,
+                  )
+                  .map((option) => (
+                    <details
+                      key={option.id}
+                      className="rounded-xl border border-white/10 bg-white/[0.03] p-3"
+                    >
+                      <summary className="cursor-pointer text-xs font-semibold text-white/80">
+                        {option.title}
+                      </summary>
+                      <p className="mt-1.5 text-sm leading-5 text-white/70">
+                        {option.text}
+                      </p>
+                      {option.example && (
+                        <p className="mt-1 text-xs leading-5 text-white/60">
+                          <strong>Beispiel:</strong> {option.example}
+                        </p>
+                      )}
+                      {option.rationale && (
+                        <p className="mt-1 text-xs leading-5 text-white/60">
+                          <strong>Warum:</strong> {option.rationale}
+                        </p>
+                      )}
+                    </details>
+                  ))}
+              </section>
+            )}
 
           {secondary && (
             <section className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-3">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300">{primaryIsQuestion ? "Sofortantwort" : "Gegenfrage"}</p>
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-[0.16em] text-sky-300">
+                {primaryIsQuestion ? "Sofortantwort" : "Gegenfrage"}
+              </p>
               <p className="text-sm leading-5 text-white/85">{secondary}</p>
             </section>
           )}
 
           <footer className="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-[11px] text-white/45">
-            <span>Sicherheit: {confidenceLabel[recommendation.confidence]}</span>
-            {recommendation.latency_ms != null && <span>{Math.round(recommendation.latency_ms)} ms</span>}
-            {recommendation.analysis_status === "analyzing" && <span>{DE.live.runtimeStatus.deepening}</span>}
-            {recommendation.analysis_status === "completed" && <span>{DE.live.runtimeStatus.deepeningComplete}</span>}
+            <span>
+              Sicherheit: {confidenceLabel[recommendation.confidence]}
+            </span>
+            {recommendation.latency_ms != null && (
+              <span>{Math.round(recommendation.latency_ms)} ms</span>
+            )}
+            {recommendation.analysis_status === "analyzing" && (
+              <span>{DE.live.runtimeStatus.deepening}</span>
+            )}
+            {recommendation.analysis_status === "completed" && (
+              <span>{DE.live.runtimeStatus.deepeningComplete}</span>
+            )}
           </footer>
         </div>
       )}

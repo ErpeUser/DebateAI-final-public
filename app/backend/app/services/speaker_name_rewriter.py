@@ -1,13 +1,12 @@
 import re
 import uuid
-from datetime import datetime, timezone
-from typing import Any, Iterable
-
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from collections.abc import Iterable
+from datetime import UTC, datetime
+from typing import Any
 
 from app.models import Question, Speaker
-
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 INSIGHT_SPEAKER_TEXT_FIELDS = (
     "question",
@@ -84,7 +83,7 @@ def rewrite_question_speaker_labels(
     if not changed_fields:
         return False
 
-    timestamp = now or datetime.now(timezone.utc)
+    timestamp = now or datetime.now(UTC)
     question.updated_at = timestamp
     question.revision_count = (question.revision_count or 0) + 1
     if enhanced:
@@ -128,7 +127,7 @@ async def rewrite_session_insight_labels_with_replacements(
     result = await db.execute(select(Question).where(Question.session_id == session_id))
     questions = list(result.scalars().all())
     changed_ids: set[str] = set()
-    timestamp = now or datetime.now(timezone.utc)
+    timestamp = now or datetime.now(UTC)
 
     for question in questions:
         if rewrite_question_speaker_labels(

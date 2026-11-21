@@ -41,6 +41,7 @@ def build_url() -> str | None:
 def binary_name() -> str:
     return "ffmpeg.exe" if sys.platform == "win32" else "ffmpeg"
 
+
 def download_payload(url: str) -> io.BytesIO:
     expected = SHA256_BY_URL.get(url)
     if expected is None:

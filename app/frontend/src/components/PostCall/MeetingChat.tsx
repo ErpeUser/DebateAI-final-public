@@ -6,7 +6,10 @@ import type { ModelInfo, Session } from "../../types";
 import * as api from "../../services/api";
 import { groupModels, optionLabel } from "../../lib/modelOptions";
 import { filterSessions, normalizeQuery } from "../../lib/sessionSearch";
-import { chatStorageKey, clearMeetingChatHistory } from "../../lib/meetingChatStorage";
+import {
+  chatStorageKey,
+  clearMeetingChatHistory,
+} from "../../lib/meetingChatStorage";
 import { SEARCH_HINT } from "../SearchHint";
 
 interface MeetingChatProps {
@@ -29,24 +32,30 @@ function loadHistory(sessionId: string): ChatMsg[] {
     if (!raw) return [];
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    return trimHistory(parsed.filter(
-      (message): message is ChatMsg =>
-        (message?.role === "user" || message?.role === "assistant") &&
-        typeof message?.content === "string",
-    ));
+    return trimHistory(
+      parsed.filter(
+        (message): message is ChatMsg =>
+          (message?.role === "user" || message?.role === "assistant") &&
+          typeof message?.content === "string",
+      ),
+    );
   } catch {
     return [];
   }
 }
 
 export default function MeetingChat({ session }: MeetingChatProps) {
-  const [messages, setMessages] = useState<ChatMsg[]>(() => loadHistory(session.id));
+  const [messages, setMessages] = useState<ChatMsg[]>(() =>
+    loadHistory(session.id),
+  );
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [allSessions, setAllSessions] = useState<Session[]>([]);
-  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set([session.id]));
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(
+    new Set([session.id]),
+  );
   const [search, setSearch] = useState("");
   const [searchFocused, setSearchFocused] = useState(false);
 
@@ -56,16 +65,24 @@ export default function MeetingChat({ session }: MeetingChatProps) {
   const threadRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    api.listSessions().then(setAllSessions).catch(() => {});
-    Promise.all([api.listModels(), api.listAgents()]).then(([m, agents]) => {
-      const textModels = m.filter((x) => x.supports_text && x.key_available !== false);
-      setModels(textModels);
-      const analyst = agents.find((a) => a.slug === "consolidated_analyst");
-      const preferred = analyst && textModels.some((x) => x.id === analyst.model_id)
-        ? analyst.model_id
-        : textModels[0]?.id || "";
-      setModelId(preferred);
-    }).catch(() => {});
+    api
+      .listSessions()
+      .then(setAllSessions)
+      .catch(() => {});
+    Promise.all([api.listModels(), api.listAgents()])
+      .then(([m, agents]) => {
+        const textModels = m.filter(
+          (x) => x.supports_text && x.key_available !== false,
+        );
+        setModels(textModels);
+        const analyst = agents.find((a) => a.slug === "consolidated_analyst");
+        const preferred =
+          analyst && textModels.some((x) => x.id === analyst.model_id)
+            ? analyst.model_id
+            : textModels[0]?.id || "";
+        setModelId(preferred);
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -80,7 +97,13 @@ export default function MeetingChat({ session }: MeetingChatProps) {
   }, [messages, session.id]);
 
   const groupSessions = useMemo(
-    () => allSessions.filter((s) => s.id !== session.id && session.group_id && s.group_id === session.group_id),
+    () =>
+      allSessions.filter(
+        (s) =>
+          s.id !== session.id &&
+          session.group_id &&
+          s.group_id === session.group_id,
+      ),
     [allSessions, session],
   );
 
@@ -97,28 +120,43 @@ export default function MeetingChat({ session }: MeetingChatProps) {
   const toggleSession = (id: string) => {
     setSelectedIds((prev) => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
       if (next.size === 0) next.add(session.id);
       return next;
     });
   };
 
   const selectedExtra = useMemo(
-    () => allSessions.filter((s) => selectedIds.has(s.id) && s.id !== session.id && !groupSessions.some((g) => g.id === s.id)),
+    () =>
+      allSessions.filter(
+        (s) =>
+          selectedIds.has(s.id) &&
+          s.id !== session.id &&
+          !groupSessions.some((g) => g.id === s.id),
+      ),
     [allSessions, selectedIds, groupSessions, session.id],
   );
 
   const handleSend = async () => {
     const question = input.trim();
     if (!question || busy || !modelId) return;
-    const nextMessages = trimHistory([...messages, { role: "user", content: question }]);
+    const nextMessages = trimHistory([
+      ...messages,
+      { role: "user", content: question },
+    ]);
     setMessages(nextMessages);
     setInput("");
     setBusy(true);
     setError(null);
     try {
       const res = await api.chat(modelId, [...selectedIds], nextMessages);
-      setMessages(trimHistory([...nextMessages, { role: "assistant", content: res.reply }]));
+      setMessages(
+        trimHistory([
+          ...nextMessages,
+          { role: "assistant", content: res.reply },
+        ]),
+      );
     } catch (err) {
       setError(err instanceof Error ? err.message : "Chat fehlgeschlagen");
       setMessages(messages); // roll back the optimistic user message
@@ -136,7 +174,10 @@ export default function MeetingChat({ session }: MeetingChatProps) {
   };
 
   const sessionCheckbox = (s: Session, removable = false) => (
-    <label key={s.id} className="flex items-center gap-1.5 cursor-pointer rounded-full border border-brand-light-gray-1 bg-surface px-2.5 py-1">
+    <label
+      key={s.id}
+      className="flex items-center gap-1.5 cursor-pointer rounded-full border border-brand-light-gray-1 bg-surface px-2.5 py-1"
+    >
       <input
         type="checkbox"
         checked={selectedIds.has(s.id)}
@@ -144,7 +185,10 @@ export default function MeetingChat({ session }: MeetingChatProps) {
         disabled={s.id === session.id && selectedIds.size === 1}
         className="h-3.5 w-3.5 rounded border-brand-light-gray-1 text-brand-teal"
       />
-      <span className="font-body text-xs text-brand-dark-gray">{s.name}{removable ? "" : ""}</span>
+      <span className="font-body text-xs text-brand-dark-gray">
+        {s.name}
+        {removable ? "" : ""}
+      </span>
     </label>
   );
 
@@ -153,7 +197,9 @@ export default function MeetingChat({ session }: MeetingChatProps) {
       {/* Scope picker */}
       <div className="border-b border-brand-light-gray-1 p-3">
         <div className="flex flex-wrap items-center gap-2">
-          <span className="font-body text-xs font-medium text-brand-gray">Gespräche:</span>
+          <span className="font-body text-xs font-medium text-brand-gray">
+            Gespräche:
+          </span>
           {sessionCheckbox(session)}
           {groupSessions.map((s) => sessionCheckbox(s))}
           {selectedExtra.map((s) => sessionCheckbox(s, true))}
@@ -163,7 +209,7 @@ export default function MeetingChat({ session }: MeetingChatProps) {
             onChange={(e) => setSearch(e.target.value)}
             onFocus={() => setSearchFocused(true)}
             onBlur={() => setSearchFocused(false)}
-              placeholder="Weitere Gespräche hinzufügen ..."
+            placeholder="Weitere Gespräche hinzufügen ..."
             aria-describedby="chat-scope-search-hint"
             className="w-44 rounded border border-brand-light-gray-1 bg-surface px-2 py-1 font-body text-xs text-brand-dark-gray focus:border-brand-teal"
           />
@@ -181,7 +227,9 @@ export default function MeetingChat({ session }: MeetingChatProps) {
             {groupModels(models).map((group) => (
               <optgroup key={group.provider} label={group.provider}>
                 {group.models.map((m) => (
-                  <option key={m.id} value={m.id}>{optionLabel(m)}</option>
+                  <option key={m.id} value={m.id}>
+                    {optionLabel(m)}
+                  </option>
                 ))}
               </optgroup>
             ))}
@@ -202,7 +250,10 @@ export default function MeetingChat({ session }: MeetingChatProps) {
             {searchResults.map((s) => (
               <button
                 key={s.id}
-                onClick={() => { toggleSession(s.id); setSearch(""); }}
+                onClick={() => {
+                  toggleSession(s.id);
+                  setSearch("");
+                }}
                 className="rounded-full border border-dashed border-brand-light-gray-1 px-2.5 py-1 font-body text-xs text-brand-mid-gray hover:border-brand-teal hover:text-brand-teal transition-colors"
               >
                 + {s.name}
@@ -216,11 +267,15 @@ export default function MeetingChat({ session }: MeetingChatProps) {
       <div ref={threadRef} className="flex-1 space-y-3 overflow-auto p-4">
         {messages.length === 0 && (
           <p className="py-10 text-center font-body text-sm text-brand-mid-gray">
-            Frage über Briefing, gespeicherte Erkenntnisse und Transkript der ausgewählten Gespräche hinweg.
+            Frage über Briefing, gespeicherte Erkenntnisse und Transkript der
+            ausgewählten Gespräche hinweg.
           </p>
         )}
         {messages.map((m, i) => (
-          <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
+          <div
+            key={i}
+            className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}
+          >
             <div
               className={`max-w-[88%] rounded-lg px-4 py-2.5 font-body text-sm leading-relaxed ${
                 m.role === "user"
@@ -234,11 +289,17 @@ export default function MeetingChat({ session }: MeetingChatProps) {
                     {m.content}
                   </ReactMarkdown>
                 </div>
-              ) : m.content}
+              ) : (
+                m.content
+              )}
             </div>
           </div>
         ))}
-        {busy && <p className="font-body text-xs text-brand-mid-gray">Antwort wird erstellt …</p>}
+        {busy && (
+          <p className="font-body text-xs text-brand-mid-gray">
+            Antwort wird erstellt …
+          </p>
+        )}
         {error && <p className="font-body text-xs text-red-600">{error}</p>}
       </div>
 
@@ -248,7 +309,9 @@ export default function MeetingChat({ session }: MeetingChatProps) {
           type="text"
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") handleSend(); }}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSend();
+          }}
           placeholder="Über diese Gespräche fragen …"
           disabled={busy}
           className="flex-1 rounded-lg border border-brand-light-gray-1 bg-surface px-3 py-2 font-body text-sm text-brand-dark-gray focus:border-brand-teal"

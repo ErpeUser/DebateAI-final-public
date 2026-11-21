@@ -7,16 +7,19 @@ import json
 import logging
 import uuid
 
+from app.database import get_db
+from app.models import KnowledgeRecord, KnowledgeSource, Session
+from app.services.knowledge_context import prepare_knowledge_record_embeddings
+from app.services.markdown_conversion import (
+    MarkdownConversionError,
+    convert_to_markdown,
+    file_extension,
+)
+from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.database import get_db
-from app.models import KnowledgeRecord, KnowledgeSource, Session
-from app.services.knowledge_context import prepare_knowledge_record_embeddings
-from app.services.markdown_conversion import MarkdownConversionError, convert_to_markdown, file_extension
-from app.services.upload_limits import UploadTooLarge, read_bounded_upload
 
 router = APIRouter(prefix="/api/sessions/{session_id}/dossier", tags=["dossier"])
 logger = logging.getLogger(__name__)
@@ -32,10 +35,14 @@ class DossierEntry(BaseModel):
 
 
 def _config(session_id: uuid.UUID) -> str:
-    return json.dumps({"kind": "session_dossier", "session_id": str(session_id), "local_only": True})
+    return json.dumps(
+        {"kind": "session_dossier", "session_id": str(session_id), "local_only": True}
+    )
 
 
-async def _source(db: AsyncSession, session_id: uuid.UUID, *, create: bool) -> KnowledgeSource | None:
+async def _source(
+    db: AsyncSession, session_id: uuid.UUID, *, create: bool
+) -> KnowledgeSource | None:
     result = await db.execute(select(KnowledgeSource))
     for source in result.scalars().all():
         try:
@@ -74,7 +81,9 @@ def _record_out(record: KnowledgeRecord) -> dict:
     if not isinstance(meta, dict):
         meta = {}
     return {
-        "id": str(record.id), "title": record.title, "body": record.body,
+        "id": str(record.id),
+        "title": record.title,
+        "body": record.body,
         "kind": meta.get("kind", "document"),
         "origin": meta.get("origin", record.title),
         "page_reference": meta.get("page_reference", ""),
@@ -103,7 +112,10 @@ async def read_dossier(session_id: uuid.UUID, db: AsyncSession = Depends(get_db)
         .where(KnowledgeRecord.source_id == source.id)
         .order_by(KnowledgeRecord.created_at)
     )
-    return {"source_id": str(source.id), "entries": [_record_out(row) for row in result.scalars().all()]}
+    return {
+        "source_id": str(source.id),
+        "entries": [_record_out(row) for row in result.scalars().all()],
+    }
 
 
 @router.post("/entries", status_code=201)
@@ -119,12 +131,15 @@ async def create_dossier_entry(
         source_id=source.id,
         title=body.title,
         body=body.body,
-        meta=json.dumps({
-            "kind": body.kind,
-            "origin": body.origin,
-            "page_reference": body.page_reference,
-            "independent_evidence": False,
-        }, ensure_ascii=False),
+        meta=json.dumps(
+            {
+                "kind": body.kind,
+                "origin": body.origin,
+                "page_reference": body.page_reference,
+                "independent_evidence": False,
+            },
+            ensure_ascii=False,
+        ),
     )
     db.add(record)
     await db.flush()
@@ -144,7 +159,9 @@ async def upload_dossier_file(
     try:
         content = await read_bounded_upload(file, max_bytes=MAX_DOSSIER_UPLOAD_BYTES)
     except UploadTooLarge as error:
-        raise HTTPException(413, "Dossier file exceeds the 25 MiB upload limit") from error
+        raise HTTPException(
+            413, "Dossier file exceeds the 25 MiB upload limit"
+        ) from error
     filename = file.filename or "Unterlage"
     try:
         markdown = convert_to_markdown(content, filename)
@@ -155,13 +172,17 @@ async def upload_dossier_file(
         source_id=source.id,
         title=filename,
         body=markdown[:100_000],
-        meta=json.dumps({
-            "kind": "document", "origin": filename,
-            "page_reference": page_reference,
-            "format": file_extension(filename),
-            "independent_evidence": True,
-            "local_only": True,
-        }, ensure_ascii=False),
+        meta=json.dumps(
+            {
+                "kind": "document",
+                "origin": filename,
+                "page_reference": page_reference,
+                "format": file_extension(filename),
+                "independent_evidence": True,
+                "local_only": True,
+            },
+            ensure_ascii=False,
+        ),
     )
     db.add(record)
     await db.flush()
@@ -190,6 +211,8 @@ async def delete_dossier(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     source = await _source(db, session_id, create=False)
     if source is None:
         return
-    await db.execute(delete(KnowledgeRecord).where(KnowledgeRecord.source_id == source.id))
+    await db.execute(
+        delete(KnowledgeRecord).where(KnowledgeRecord.source_id == source.id)
+    )
     await db.delete(source)
     await db.commit()

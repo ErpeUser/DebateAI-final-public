@@ -17,7 +17,6 @@ from app.services.agents.orchestrator import (
 from app.services.debate_research import research_claim
 from app.services.llm import provider_for
 
-
 CASES = (
     {
         "kind": "argumentation",
@@ -54,9 +53,11 @@ async def run_case(case: dict, qwen_model: str, analyst_model: str) -> dict:
         speakers=[],
     )
     qwen_ms = round((time.perf_counter() - started) * 1000, 1)
-    recommendation = qwen.latest_recommendation.model_copy(update={
-        "target_claim": qwen.latest_recommendation.target_claim or case["claim"],
-    })
+    recommendation = qwen.latest_recommendation.model_copy(
+        update={
+            "target_claim": qwen.latest_recommendation.target_claim or case["claim"],
+        }
+    )
 
     sources: list[DebateSource] = []
     if case["research_query"]:
@@ -85,10 +86,16 @@ async def run_case(case: dict, qwen_model: str, analyst_model: str) -> dict:
         sources=sources,
     )
     replaced = _materially_better_recommendation(recommendation, candidate)
-    adopted = candidate if replaced else candidate.model_copy(update={
-        "answer_now": recommendation.answer_now,
-        "counterargument": recommendation.counterargument,
-    })
+    adopted = (
+        candidate
+        if replaced
+        else candidate.model_copy(
+            update={
+                "answer_now": recommendation.answer_now,
+                "counterargument": recommendation.counterargument,
+            }
+        )
+    )
     return {
         "kind": case["kind"],
         "claim": case["claim"],
@@ -98,7 +105,9 @@ async def run_case(case: dict, qwen_model: str, analyst_model: str) -> dict:
             "answer": recommendation.answer_now,
         },
         "analyst": {
-            "provider": "Google" if provider_for(analyst_model) == "google" else "OpenAI",
+            "provider": "Google"
+            if provider_for(analyst_model) == "google"
+            else "OpenAI",
             "model": analyst_model,
             "latency_ms": analyst_ms,
             "prompt": prompt,
@@ -117,13 +126,14 @@ async def run_case(case: dict, qwen_model: str, analyst_model: str) -> dict:
 
 async def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--qwen-model", default="endpoint:german-debate-ollama:qwen3:4b")
+    parser.add_argument(
+        "--qwen-model", default="endpoint:german-debate-ollama:qwen3:4b"
+    )
     parser.add_argument("--analyst-model", default="gemini-3.8-flash")
     parser.add_argument("--output", required=True)
     args = parser.parse_args()
     cases = [
-        await run_case(case, args.qwen_model, args.analyst_model)
-        for case in CASES
+        await run_case(case, args.qwen_model, args.analyst_model) for case in CASES
     ]
     payload = {
         "generated_at": datetime.now(UTC).isoformat(),
@@ -133,7 +143,9 @@ async def main() -> int:
         json.dumps(payload, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    print(f"2 bestanden; Provider={cases[0]['analyst']['provider']} ({args.analyst_model})")
+    print(
+        f"2 bestanden; Provider={cases[0]['analyst']['provider']} ({args.analyst_model})"
+    )
     return 0
 
 

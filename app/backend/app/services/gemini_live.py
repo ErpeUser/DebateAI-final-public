@@ -1,13 +1,12 @@
 import logging
 
-from google import genai
-from google.genai import types
-from app.services.agents.prompt_resources import load_prompt_resource
-
 from app.config import settings
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.secrets import resolve_provider_key
 from app.services.token_usage import record_token_usage
 from app.services.transcription_language import language_code_or_none
+from google import genai
+from google.genai import types
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +65,9 @@ class GeminiLiveSession:
         self.client = None
         self.session = None
         self._context_manager = None
-        self._model = settings.GEMINI_MODEL if model_override is None else model_override
+        self._model = (
+            settings.GEMINI_MODEL if model_override is None else model_override
+        )
         self._session_id = session_id
         self._language = language_code_or_none(language)
         # The most recent usage_metadata of the turn in progress; see the
@@ -84,7 +85,13 @@ class GeminiLiveSession:
         return types.LiveConnectConfig(
             response_modalities=["AUDIO"],
             system_instruction=types.Content(
-                parts=[types.Part(text=load_prompt_resource("gemini_live_gateway", GATEWAY_SYSTEM_PROMPT))]
+                parts=[
+                    types.Part(
+                        text=load_prompt_resource(
+                            "gemini_live_gateway", GATEWAY_SYSTEM_PROMPT
+                        )
+                    )
+                ]
             ),
             input_audio_transcription=transcription,
         )
@@ -153,22 +160,33 @@ class GeminiLiveSession:
                     await self._flush_usage()
 
                 # --- input transcription (user speech -> text) ---
-                has_input_tx = hasattr(sc, 'input_transcription') and bool(sc.input_transcription)
+                has_input_tx = hasattr(sc, "input_transcription") and bool(
+                    sc.input_transcription
+                )
                 if has_input_tx:
                     text = getattr(sc.input_transcription, "text", None) or ""
-                    logger.info("Live input_transcription received (%d chars)", len(text))
+                    logger.info(
+                        "Live input_transcription received (%d chars)", len(text)
+                    )
                     if text and text.strip():
                         from app.services.batch_transcriber import _is_hallucination
+
                         if _is_hallucination(text):
-                            logger.info("Filtered hallucinated input transcription (%d chars)", len(text))
+                            logger.info(
+                                "Filtered hallucinated input transcription (%d chars)",
+                                len(text),
+                            )
                         else:
                             yield {"type": "transcript", "data": text}
 
                 # --- model turn parts (3.1 may bundle audio + text) ---
-                if hasattr(sc, 'model_turn') and sc.model_turn:
+                if hasattr(sc, "model_turn") and sc.model_turn:
                     for part in sc.model_turn.parts or []:
-                        if hasattr(part, 'text') and part.text and part.text.strip():
-                            logger.debug("Unexpected model text in gateway (%d chars)", len(part.text))
+                        if hasattr(part, "text") and part.text and part.text.strip():
+                            logger.debug(
+                                "Unexpected model text in gateway (%d chars)",
+                                len(part.text),
+                            )
                         # inline_data (audio) is intentionally ignored - gateway is silent
         finally:
             # The loop ends on disconnect, error, or the consumer stopping;

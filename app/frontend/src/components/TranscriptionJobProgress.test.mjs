@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./TranscriptionJobProgress.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./TranscriptionJobProgress.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "transcription-progress-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -63,8 +65,14 @@ test("a running transcription reports model, segments, entries, and cancellation
 });
 
 test("both entry points use the observable job flow", async () => {
-  for (const relative of ["./PostCall/CallAudioPanel.tsx", "./PreCall/TranscriptImport.tsx"]) {
-    const source = await readFile(fileURLToPath(new URL(relative, import.meta.url)), "utf8");
+  for (const relative of [
+    "./PostCall/CallAudioPanel.tsx",
+    "./PreCall/TranscriptImport.tsx",
+  ]) {
+    const source = await readFile(
+      fileURLToPath(new URL(relative, import.meta.url)),
+      "utf8",
+    );
     assert.match(source, /waitForTranscriptionJob/);
     assert.match(source, /TranscriptionJobProgress/);
     assert.match(source, /cancelTranscriptionJob/);

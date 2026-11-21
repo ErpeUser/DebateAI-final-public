@@ -7,13 +7,12 @@ import json
 import subprocess
 import sys
 import threading
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-
-from fastapi import APIRouter, HTTPException
 
 from app.services import chatgpt_web
 from app.services.identity import env_value
+from fastapi import APIRouter, HTTPException
 
 router = APIRouter(prefix="/api/chatgpt-web", tags=["chatgpt-web"])
 _login_process: subprocess.Popen | None = None
@@ -39,7 +38,7 @@ def _archive_dedicated_account(*, include_profile: bool) -> Path:
     home = Path(_setting("HOME"))
     profile = Path(_setting("PROFILE"))
     marker = Path(_setting("MARKER"))
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+    stamp = datetime.now(UTC).strftime("%Y%m%dT%H%M%S%fZ")
     archive = home / "account-backups" / stamp
     archive.mkdir(parents=True, exist_ok=False)
     moves = [(marker, archive / "verified.json")]
@@ -68,8 +67,14 @@ def _configuration() -> tuple[list[str], Path]:
     try:
         command = json.loads(raw_command)
     except json.JSONDecodeError as exc:
-        raise ValueError("Das lokale ChatGPT-Anmeldemodul ist ungueltig konfiguriert.") from exc
-    if not isinstance(command, list) or not command or not all(isinstance(part, str) and part for part in command):
+        raise ValueError(
+            "Das lokale ChatGPT-Anmeldemodul ist ungueltig konfiguriert."
+        ) from exc
+    if (
+        not isinstance(command, list)
+        or not command
+        or not all(isinstance(part, str) and part for part in command)
+    ):
         raise ValueError("Das lokale ChatGPT-Anmeldemodul ist ungueltig konfiguriert.")
     return command, Path(raw_result)
 
@@ -109,7 +114,8 @@ def _status(*, state: str = "idle", message: str = "") -> dict[str, object]:
         "research_status": chatgpt_web.research_status(),
         "login_available": bool(_setting("LOGIN_COMMAND")),
         "login_state": state,
-        "message": message or (
+        "message": message
+        or (
             "GPT-6 mit Extra High wurde in der ChatGPT-Oberflaeche bestaetigt und ist bereit."
             if ready
             else "Die ChatGPT-Auswahl konnte nicht mehr bestaetigt werden. Erneut anmelden."
@@ -133,7 +139,9 @@ async def start_login():
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     with _login_lock:
         if _login_process is not None and _login_process.poll() is None:
-            return _status(state="pending", message="Das ChatGPT-Anmeldefenster ist bereits offen.")
+            return _status(
+                state="pending", message="Das ChatGPT-Anmeldefenster ist bereits offen."
+            )
         if _login_process is not None:
             _login_process = None
             chatgpt_web.release_login()
@@ -150,16 +158,24 @@ async def start_login():
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
-                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0,
+                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                if sys.platform == "win32"
+                else 0,
             )
         except OSError as exc:
             _login_process = None
             chatgpt_web.release_login()
-            raise HTTPException(status_code=503, detail="Das ChatGPT-Anmeldefenster konnte nicht gestartet werden.") from exc
+            raise HTTPException(
+                status_code=503,
+                detail="Das ChatGPT-Anmeldefenster konnte nicht gestartet werden.",
+            ) from exc
         observer = asyncio.create_task(_observe_login(_login_process))
         _login_observers.add(observer)
         observer.add_done_callback(_login_observers.discard)
-    return _status(state="pending", message="Melde dich im geöffneten Browserfenster bei ChatGPT an. Danach startet die Funktionsprüfung automatisch.")
+    return _status(
+        state="pending",
+        message="Melde dich im geöffneten Browserfenster bei ChatGPT an. Danach startet die Funktionsprüfung automatisch.",
+    )
 
 
 @router.get("/login")
@@ -172,12 +188,16 @@ async def poll_login():
     with _login_lock:
         process = _login_process
         if process is not None and process.poll() is None:
-            return _status(state="pending", message="Die Anmeldung oder Funktionsprüfung läuft.")
+            return _status(
+                state="pending", message="Die Anmeldung oder Funktionsprüfung läuft."
+            )
         if result.is_file():
             try:
                 payload = json.loads(result.read_text(encoding="utf-8"))
             except (OSError, json.JSONDecodeError):
-                payload = {"error": "Die lokale Anmeldung lieferte ein ungueltiges Ergebnis."}
+                payload = {
+                    "error": "Die lokale Anmeldung lieferte ein ungueltiges Ergebnis."
+                }
             finally:
                 result.unlink(missing_ok=True)
             _login_process = None
@@ -187,15 +207,22 @@ async def poll_login():
         if process is not None:
             _login_process = None
             chatgpt_web.release_login()
-            return _status(state="error", message="Die Anmeldung wurde ohne bestaetigten GPT-6-Pro-Nachweis beendet.")
+            return _status(
+                state="error",
+                message="Die Anmeldung wurde ohne bestaetigten GPT-6-Pro-Nachweis beendet.",
+            )
     return _status()
 
 
 @router.post("/account/disconnect")
 async def disconnect_account():
     with _login_lock:
-        if (_login_process is not None and _login_process.poll() is None) or chatgpt_web.browser_busy():
-            raise HTTPException(status_code=409, detail="ChatGPT Web ist gerade beschaeftigt.")
+        if (
+            _login_process is not None and _login_process.poll() is None
+        ) or chatgpt_web.browser_busy():
+            raise HTTPException(
+                status_code=409, detail="ChatGPT Web ist gerade beschaeftigt."
+            )
         try:
             _archive_dedicated_account(include_profile=False)
         except (KeyError, OSError) as exc:
@@ -203,14 +230,20 @@ async def disconnect_account():
                 status_code=409,
                 detail="Die ChatGPT-Verbindung konnte nicht getrennt werden. Bitte das separate ChatGPT-Fenster schliessen und erneut versuchen.",
             ) from exc
-    return _status(message="Verbindung getrennt. Die lokale Sitzung bleibt fuer eine erneute Anmeldung erhalten.")
+    return _status(
+        message="Verbindung getrennt. Die lokale Sitzung bleibt fuer eine erneute Anmeldung erhalten."
+    )
 
 
 @router.post("/account/switch")
 async def switch_account():
     with _login_lock:
-        if (_login_process is not None and _login_process.poll() is None) or chatgpt_web.browser_busy():
-            raise HTTPException(status_code=409, detail="ChatGPT Web ist gerade beschaeftigt.")
+        if (
+            _login_process is not None and _login_process.poll() is None
+        ) or chatgpt_web.browser_busy():
+            raise HTTPException(
+                status_code=409, detail="ChatGPT Web ist gerade beschaeftigt."
+            )
         try:
             _archive_dedicated_account(include_profile=True)
         except (KeyError, OSError) as exc:

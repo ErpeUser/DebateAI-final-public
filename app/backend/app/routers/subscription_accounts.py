@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import asyncio
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.services import subscription_oauth
 from app.services.ai_config import ensure_gemini_cli_route
 from app.services.subscription_bridge import sync_subscription_bridge
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/subscription-accounts", tags=["subscription-accounts"])
 
@@ -19,11 +18,15 @@ def _provider_message(provider: str, model_values: list[str]) -> str:
     if provider == subscription_oauth.GEMINI_PROVIDER:
         selected = subscription_oauth.preferred_gemini_model(model_values)
         if selected:
-            return f"Google-OAuth ist aktiv; {selected} steht mit Denkstufe High bereit."
+            return (
+                f"Google-OAuth ist aktiv; {selected} steht mit Denkstufe High bereit."
+            )
         return "Google-OAuth ist aktiv, aber die Bridge meldet noch kein Gemini-Modell."
     if any(model.casefold().startswith("gpt-") for model in model_values):
         return "OpenAI-OAuth ist aktiv; die Modelle des neuen Kontos stehen bereit."
-    return "OpenAI-OAuth wurde abgeschlossen, aber die Bridge meldet noch kein GPT-Modell."
+    return (
+        "OpenAI-OAuth wurde abgeschlossen, aber die Bridge meldet noch kein GPT-Modell."
+    )
 
 
 async def _status(*, message: str = "", login_state: str = "idle") -> dict[str, object]:
@@ -45,7 +48,8 @@ async def _status(*, message: str = "", login_state: str = "idle") -> dict[str, 
             "ready": openai_ready,
         },
         "login_state": login_state,
-        "message": message or (
+        "message": message
+        or (
             "Gemini CLI und OpenAI koennen hier ohne API-Key per OAuth angemeldet werden."
         ),
     }
@@ -84,7 +88,9 @@ async def poll_login(
     except subscription_oauth.SubscriptionOAuthError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     if result["status"] == "wait":
-        return await _status(login_state="pending", message="Die Anmeldung wartet auf Bestaetigung.")
+        return await _status(
+            login_state="pending", message="Die Anmeldung wartet auf Bestaetigung."
+        )
     if result["status"] == "error":
         return await _status(
             login_state="error",

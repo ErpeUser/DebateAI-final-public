@@ -32,7 +32,8 @@ export function runsLocally(model: ModelInfo): boolean {
 export function recommendationFor(model: ModelInfo, role?: string) {
   if (!role) return undefined;
   return model.recommendations?.find(
-    (recommendation) => recommendation.role === role && recommendation.recommended
+    (recommendation) =>
+      recommendation.role === role && recommendation.recommended,
   );
 }
 

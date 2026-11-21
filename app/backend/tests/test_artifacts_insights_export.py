@@ -1,14 +1,13 @@
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from io import BytesIO
 from types import SimpleNamespace
 from unittest import IsolatedAsyncioTestCase
 from unittest.mock import AsyncMock, patch
 
-from openpyxl import load_workbook
-
 from app.routers import artifacts
 from app.routers.artifacts import export_insights, export_summary
+from openpyxl import load_workbook
 
 
 class _Result:
@@ -40,7 +39,9 @@ class _Db:
         self.expunged.append(row)
 
 
-def _speaker(name, *, role="", speaker_type="external", display_name="", display_enabled=False):
+def _speaker(
+    name, *, role="", speaker_type="external", display_name="", display_enabled=False
+):
     return SimpleNamespace(
         id=uuid.uuid4(),
         name=name,
@@ -48,11 +49,13 @@ def _speaker(name, *, role="", speaker_type="external", display_name="", display
         speaker_type=speaker_type,
         display_name=display_name,
         display_name_enabled=display_enabled,
-        created_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        created_at=datetime(2026, 8, 1, tzinfo=UTC),
     )
 
 
-def _question(text: str, *, enhanced: bool = False, item_type="observation", **overrides):
+def _question(
+    text: str, *, enhanced: bool = False, item_type="observation", **overrides
+):
     row = SimpleNamespace(
         item_type=item_type,
         lens_label="Discovery",
@@ -72,7 +75,7 @@ def _question(text: str, *, enhanced: bool = False, item_type="observation", **o
         enrichment_notes="",
         agent_source="consolidated_analyst",
         revision_count=1 if enhanced else 0,
-        created_at=datetime(2026, 8, 1, tzinfo=timezone.utc),
+        created_at=datetime(2026, 8, 1, tzinfo=UTC),
     )
     for key, value in overrides.items():
         setattr(row, key, value)
@@ -86,7 +89,12 @@ async def _workbook(db, **kwargs):
 
 
 def _cells(ws):
-    return [value for row in ws.iter_rows(values_only=True) for value in row if value is not None]
+    return [
+        value
+        for row in ws.iter_rows(values_only=True)
+        for value in row
+        if value is not None
+    ]
 
 
 def _joined(ws):
@@ -95,10 +103,12 @@ def _joined(ws):
 
 class InsightsExportTests(IsolatedAsyncioTestCase):
     async def test_export_contains_each_base_and_enhanced_insight_once(self):
-        db = _Db([
-            _question("Base insight", enhanced=False),
-            _question("Enhanced insight", enhanced=True),
-        ])
+        db = _Db(
+            [
+                _question("Base insight", enhanced=False),
+                _question("Enhanced insight", enhanced=True),
+            ]
+        )
 
         wb, response = await _workbook(db)
         rows = list(wb["Insights"].iter_rows(values_only=True))
@@ -122,15 +132,21 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
         db = _Db([_question("Base insight")])
         wb, _ = await _workbook(db)
 
-        self.assertEqual(["Summary", "Action Items", "Opportunities", "Insights"], wb.sheetnames)
+        self.assertEqual(
+            ["Summary", "Action Items", "Opportunities", "Insights"], wb.sheetnames
+        )
         self.assertEqual("Summary", wb.active.title)
-        self.assertEqual(18, len(list(wb["Insights"].iter_rows(values_only=True))[0]))
+        self.assertEqual(
+            18, len(next(iter(wb["Insights"].iter_rows(values_only=True))))
+        )
 
     async def test_the_summary_reports_the_mix_participants_and_what_is_open(self):
         alice = _speaker("Voice 1", role="CISO", speaker_type="external")
         db = _Db(
             [
-                _question("Migrate the estate", item_type="action_item", speaker_id=alice.id),
+                _question(
+                    "Migrate the estate", item_type="action_item", speaker_id=alice.id
+                ),
                 _question("Price is high", item_type="objection"),
                 _question("What is the timeline?", item_type="question"),
                 _question("Answered already", item_type="question", answered=True),
@@ -157,10 +173,12 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
         self.assertNotIn("Answered already", cells)
 
     async def test_dismissed_insights_stay_in_the_grid_and_out_of_the_summary(self):
-        db = _Db([
-            _question("Kept", item_type="action_item"),
-            _question("Rejected", item_type="action_item", dismissed=True),
-        ])
+        db = _Db(
+            [
+                _question("Kept", item_type="action_item"),
+                _question("Rejected", item_type="action_item", dismissed=True),
+            ]
+        )
         wb, _ = await _workbook(db)
 
         grid = _cells(wb["Insights"])
@@ -173,15 +191,17 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
         self.assertIn("1 captured", actions)
 
     async def test_the_opportunities_sheet_pairs_each_one_with_its_match(self):
-        db = _Db([
-            _question(
-                "Refresh the WAN",
-                item_type="opportunity",
-                offering_match="Cisco SD-WAN, managed",
-                enrichment_notes="Matched on the branch count",
-            ),
-            _question("Unclear need", item_type="opportunity"),
-        ])
+        db = _Db(
+            [
+                _question(
+                    "Refresh the WAN",
+                    item_type="opportunity",
+                    offering_match="Cisco SD-WAN, managed",
+                    enrichment_notes="Matched on the branch count",
+                ),
+                _question("Unclear need", item_type="opportunity"),
+            ]
+        )
         wb, _ = await _workbook(db)
         cells = _cells(wb["Opportunities"])
 
@@ -191,9 +211,17 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
         self.assertTrue(any("1 matched" in str(value) for value in cells))
 
     async def test_display_names_are_substituted_on_every_sheet(self):
-        renamed = _speaker("Voice 1", role="CISO", display_name="Dana Client", display_enabled=True)
+        renamed = _speaker(
+            "Voice 1", role="CISO", display_name="Dana Client", display_enabled=True
+        )
         db = _Db(
-            [_question("Voice 1 owns the migration", item_type="action_item", speaker_id=renamed.id)],
+            [
+                _question(
+                    "Voice 1 owns the migration",
+                    item_type="action_item",
+                    speaker_id=renamed.id,
+                )
+            ],
             speakers=[renamed],
         )
         wb, _ = await _workbook(db)
@@ -213,9 +241,9 @@ class InsightsExportTests(IsolatedAsyncioTestCase):
             "-1+1",
             "@SUM(1,1)",
             "\t=cmd|' /C calc'!A0",
-            " =HYPERLINK(\"https://attacker.invalid\")",
+            ' =HYPERLINK("https://attacker.invalid")',
             "=cmd|' /C calc'!A0",
-            "=WEBSERVICE(\"https://attacker.invalid\")",
+            '=WEBSERVICE("https://attacker.invalid")',
         )
         db = _Db(
             [
@@ -274,11 +302,17 @@ class RevealedExportTests(IsolatedAsyncioTestCase):
             self.assertNotIn("Sarah Connor", joined, sheet)
 
     async def test_reveal_reaches_the_summary_sheets_and_the_roster(self):
-        mapping = {"[PERSON_1]": "Sarah Connor", "[ORG_1]": "Cyberdyne", "[PERSON_2]": "Dana Client"}
+        mapping = {
+            "[PERSON_1]": "Sarah Connor",
+            "[ORG_1]": "Cyberdyne",
+            "[PERSON_2]": "Dana Client",
+        }
         recorded = []
 
         with (
-            patch.object(artifacts.vault, "reveal_map", new=AsyncMock(return_value=mapping)),
+            patch.object(
+                artifacts.vault, "reveal_map", new=AsyncMock(return_value=mapping)
+            ),
             patch.object(
                 artifacts.shield,
                 "record_reveal",
@@ -312,21 +346,27 @@ class _SummaryDb:
     else the document draws is a legitimate query.
     """
 
-    def __init__(self, session, questions=(), speakers=(), transcript=(), directives=()):
+    def __init__(
+        self, session, questions=(), speakers=(), transcript=(), directives=()
+    ):
         self.session = session
-        self._results = iter([
-            _Result(list(questions)),
-            _Result(list(speakers)),
-            _Result(list(transcript)),
-            _Result(list(directives)),
-        ])
+        self._results = iter(
+            [
+                _Result(list(questions)),
+                _Result(list(speakers)),
+                _Result(list(transcript)),
+                _Result(list(directives)),
+            ]
+        )
         self.queries = 0
 
     async def get(self, _model, _session_id):
         return self.session
 
     async def execute(self, query):
-        assert "session_syntheses" not in str(query), "briefing queried the synthesis directly"
+        assert "session_syntheses" not in str(query), (
+            "briefing queried the synthesis directly"
+        )
         self.queries += 1
         return next(self._results)
 
@@ -335,15 +375,15 @@ def _session(name="Client Review", meeting_type="client_sales"):
     return SimpleNamespace(
         name=name,
         meeting_type=meeting_type,
-        started_at=datetime(2026, 9, 2, 14, 2, tzinfo=timezone.utc),
-        ended_at=datetime(2026, 9, 2, 14, 59, tzinfo=timezone.utc),
+        started_at=datetime(2026, 9, 2, 14, 2, tzinfo=UTC),
+        ended_at=datetime(2026, 9, 2, 14, 59, tzinfo=UTC),
     )
 
 
 def _turn(text, speaker=None, minute=2):
     return SimpleNamespace(
         text=text,
-        timestamp=datetime(2026, 9, 2, 14, minute, tzinfo=timezone.utc),
+        timestamp=datetime(2026, 9, 2, 14, minute, tzinfo=UTC),
         speaker_id=speaker.id if speaker else None,
     )
 
@@ -351,17 +391,31 @@ def _turn(text, speaker=None, minute=2):
 def _synthesis(status="completed", **overrides):
     row = SimpleNamespace(
         status=status,
-        top_outcomes=[{
-            "title": "The renewal is a replacement",
-            "summary": "The MPLS contract ends in March and will not be renewed.",
-            "rationale": "Stated twice, unprompted.",
-        }],
+        top_outcomes=[
+            {
+                "title": "The renewal is a replacement",
+                "summary": "The MPLS contract ends in March and will not be renewed.",
+                "rationale": "Stated twice, unprompted.",
+            }
+        ],
         client_objectives=[{"title": "Exit MPLS cleanly"}],
         top_opportunities=[
-            {"title": "Managed SD-WAN", "summary": "40 branches", "owner": "Marcus", "status": "Qualifying"}
+            {
+                "title": "Managed SD-WAN",
+                "summary": "40 branches",
+                "owner": "Marcus",
+                "status": "Qualifying",
+            }
         ],
-        risks_blockers=[{"title": "No named decision owner", "summary": "The sponsor was not on the call."}],
-        action_plan=[{"title": "Confirm the branch count", "owner": "Marcus", "status": "Open"}],
+        risks_blockers=[
+            {
+                "title": "No named decision owner",
+                "summary": "The sponsor was not on the call.",
+            }
+        ],
+        action_plan=[
+            {"title": "Confirm the branch count", "owner": "Marcus", "status": "Open"}
+        ],
         unresolved_discovery_questions=[{"title": "Who owns the standard?"}],
         strategic_signals=[],
         clusters=[],
@@ -433,8 +487,12 @@ class BriefingExportTests(IsolatedAsyncioTestCase):
         db = _SummaryDb(
             _session(),
             questions=[
-                _question("Confirm the count", item_type="action_item", speaker_id=speaker.id),
-                _question("Who signs off?", item_type="question", speaker_id=speaker.id),
+                _question(
+                    "Confirm the count", item_type="action_item", speaker_id=speaker.id
+                ),
+                _question(
+                    "Who signs off?", item_type="question", speaker_id=speaker.id
+                ),
             ],
             speakers=[speaker],
             transcript=[_turn("We need to check that.", speaker)],
@@ -450,7 +508,12 @@ class BriefingExportTests(IsolatedAsyncioTestCase):
         self.assertIn("Still open", html)
         self.assertIn("Confirm the count", html)
         self.assertIn("Full transcript", html)
-        for marker in ('class="band"', 'class="lede"', 'class="colophon"', 'class="tally"'):
+        for marker in (
+            'class="band"',
+            'class="lede"',
+            'class="colophon"',
+            'class="tally"',
+        ):
             self.assertIn(marker, html)
 
     async def test_an_unusable_synthesis_falls_back_rather_than_rendering_empty(self):
@@ -467,7 +530,10 @@ class BriefingExportTests(IsolatedAsyncioTestCase):
         )
         html, response, _ = await _html(db, empty)
         self.assertIn("call record", html)
-        self.assertIn('filename="summary-Client_Review.html"', response.headers["content-disposition"])
+        self.assertIn(
+            'filename="summary-Client_Review.html"',
+            response.headers["content-disposition"],
+        )
 
     async def test_the_document_is_self_contained_and_prints(self):
         db = _SummaryDb(_session(), questions=[_question("Something")])
@@ -538,7 +604,11 @@ class RevealedBriefingTests(IsolatedAsyncioTestCase):
     async def test_revealed_values_cannot_introduce_html_markup(self):
         value = '<img src=x onerror="alert(1)"> & Team'
         with (
-            patch.object(artifacts.vault, "reveal_map", new=AsyncMock(return_value={"[PERSON_1]": value})),
+            patch.object(
+                artifacts.vault,
+                "reveal_map",
+                new=AsyncMock(return_value={"[PERSON_1]": value}),
+            ),
             patch.object(artifacts.shield, "record_reveal", new=AsyncMock()) as audit,
         ):
             html, _, _ = await _html(self._db(), _synthesis(), reveal=True)
@@ -565,10 +635,14 @@ class RevealedBriefingTests(IsolatedAsyncioTestCase):
                 ("[ORG_1]", "Cyberdyne"),
             ):
                 self.assertIn(token, text, f"{token} did not survive rendering")
-                text = text.replace(token, value_transform(value) if value_transform else value)
+                text = text.replace(
+                    token, value_transform(value) if value_transform else value
+                )
             return text
 
-        with patch.object(artifacts.shield, "reveal_text", new=AsyncMock(side_effect=fake_reveal)):
+        with patch.object(
+            artifacts.shield, "reveal_text", new=AsyncMock(side_effect=fake_reveal)
+        ):
             html, _, _ = await _html(self._db(), _synthesis(), reveal=True)
 
         self.assertIn("Sarah Connor", html)

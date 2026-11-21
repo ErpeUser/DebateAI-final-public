@@ -5,7 +5,6 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-
 GOOGLE_TEST_KEY = "AI" + "za" + ("x" * 32)  # Synthetic test value
 
 
@@ -42,19 +41,25 @@ class SecretsTests(unittest.IsolatedAsyncioTestCase):
         self.tmp.cleanup()
 
     async def test_round_trip_and_ciphertext_at_rest(self):
-        await self.secrets.set_secret(None, "credentials.google.api_key", "sk-test-secret-123")
+        await self.secrets.set_secret(
+            None, "credentials.google.api_key", "sk-test-secret-123"
+        )
         stored = self.store["credentials.google.api_key"]
         self.assertNotIn("sk-test-secret-123", stored)
         value = await self.secrets.get_secret(None, "credentials.google.api_key")
         self.assertEqual("sk-test-secret-123", value)
 
     async def test_unset_key_returns_empty(self):
-        self.assertEqual("", await self.secrets.get_secret(None, "credentials.openai.api_key"))
+        self.assertEqual(
+            "", await self.secrets.get_secret(None, "credentials.openai.api_key")
+        )
 
     async def test_empty_value_clears_secret(self):
         await self.secrets.set_secret(None, "credentials.google.api_key", "something")
         await self.secrets.set_secret(None, "credentials.google.api_key", "")
-        self.assertEqual("", await self.secrets.get_secret(None, "credentials.google.api_key"))
+        self.assertEqual(
+            "", await self.secrets.get_secret(None, "credentials.google.api_key")
+        )
 
     @unittest.skipIf(os.name == "nt", "POSIX mode bits are not meaningful on Windows")
     async def test_master_key_file_created_private(self):
@@ -68,21 +73,31 @@ class SecretsTests(unittest.IsolatedAsyncioTestCase):
         # Simulate a replaced master key: force regeneration with a fresh key.
         (Path(self.tmp.name) / "master.key").unlink()
         self.secrets._fernet = None
-        self.assertEqual("", await self.secrets.get_secret(None, "credentials.google.api_key"))
+        self.assertEqual(
+            "", await self.secrets.get_secret(None, "credentials.google.api_key")
+        )
 
     async def test_provider_key_prefers_stored_over_env(self):
         from app.config import settings
 
         with mock.patch.object(settings, "OPENAI_API_KEY", "env-openai-key"):
-            self.assertEqual("env-openai-key", await self.secrets.get_provider_key(None, "openai"))
-            await self.secrets.set_secret(None, "credentials.openai.api_key", "stored-openai-key")
-            self.assertEqual("stored-openai-key", await self.secrets.get_provider_key(None, "openai"))
+            self.assertEqual(
+                "env-openai-key", await self.secrets.get_provider_key(None, "openai")
+            )
+            await self.secrets.set_secret(
+                None, "credentials.openai.api_key", "stored-openai-key"
+            )
+            self.assertEqual(
+                "stored-openai-key", await self.secrets.get_provider_key(None, "openai")
+            )
 
     async def test_provider_key_google_env_fallback(self):
         from app.config import settings
 
         with mock.patch.object(settings, "GEMINI_API_KEY", "env-gemini-key"):
-            self.assertEqual("env-gemini-key", await self.secrets.get_provider_key(None, "google"))
+            self.assertEqual(
+                "env-gemini-key", await self.secrets.get_provider_key(None, "google")
+            )
 
     def test_mask_key_shows_only_the_last_four_characters(self):
         self.assertEqual("...wxyz", self.secrets.mask_key("AIzaSomethingLong-wxyz"))
@@ -94,24 +109,30 @@ class SecretsTests(unittest.IsolatedAsyncioTestCase):
         from app.services import redaction
 
         redaction.clear_registered_secrets()
-        await self.secrets.set_secret(None, "credentials.google.api_key", GOOGLE_TEST_KEY)
-        self.assertEqual(
-            "[redacted]", redaction.redact_text(GOOGLE_TEST_KEY)
+        await self.secrets.set_secret(
+            None, "credentials.google.api_key", GOOGLE_TEST_KEY
         )
+        self.assertEqual("[redacted]", redaction.redact_text(GOOGLE_TEST_KEY))
         redaction.clear_registered_secrets()
         # A fresh process only ever sees the ciphertext; reading it back must
         # register the plaintext too.
         await self.secrets.get_secret(None, "credentials.google.api_key")
-        self.assertIn("[redacted]", redaction.redact_text(f"key {GOOGLE_TEST_KEY} here"))
+        self.assertIn(
+            "[redacted]", redaction.redact_text(f"key {GOOGLE_TEST_KEY} here")
+        )
 
     def test_env_fallback_is_registered_for_log_redaction(self):
         from app.config import settings
         from app.services import redaction
 
         redaction.clear_registered_secrets()
-        with mock.patch.object(settings, "OPENAI_API_KEY", "plain-env-value-that-is-long"):
+        with mock.patch.object(
+            settings, "OPENAI_API_KEY", "plain-env-value-that-is-long"
+        ):
             self.secrets.env_provider_key("openai")
-        self.assertEqual("[redacted]", redaction.redact_text("plain-env-value-that-is-long"))
+        self.assertEqual(
+            "[redacted]", redaction.redact_text("plain-env-value-that-is-long")
+        )
 
 
 class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
@@ -139,11 +160,19 @@ class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
         # file format and upgrade path are exercised on every platform.
         return (
             mock.patch.object(self.secrets, "dpapi_available", lambda: True),
-            mock.patch.object(self.secrets, "_dpapi_protect", lambda data: b"wrapped:" + data[::-1]),
+            mock.patch.object(
+                self.secrets, "_dpapi_protect", lambda data: b"wrapped:" + data[::-1]
+            ),
             mock.patch.object(
                 self.secrets,
                 "_dpapi_unprotect",
-                lambda blob: blob[len(b"wrapped:"):][::-1] if blob.startswith(b"wrapped:") else (_ for _ in ()).throw(self.secrets.MasterKeyUnavailable("bad blob")),
+                lambda blob: (
+                    blob[len(b"wrapped:") :][::-1]
+                    if blob.startswith(b"wrapped:")
+                    else (_ for _ in ()).throw(
+                        self.secrets.MasterKeyUnavailable("bad blob")
+                    )
+                ),
             ),
         )
 
@@ -193,11 +222,15 @@ class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
         os.environ["CREDENTIALS_MASTER_KEY_PROTECTION"] = "dpapi"
 
         def broken(_data):
-            raise self.secrets.MasterKeyUnavailable("CryptProtectData failed (error 13)")
+            raise self.secrets.MasterKeyUnavailable(
+                "CryptProtectData failed (error 13)"
+            )
 
-        with mock.patch.object(self.secrets, "dpapi_available", lambda: True), \
-             mock.patch.object(self.secrets, "_dpapi_protect", broken), \
-             self.assertLogs("app.services.secrets", level="WARNING") as captured:
+        with (
+            mock.patch.object(self.secrets, "dpapi_available", lambda: True),
+            mock.patch.object(self.secrets, "_dpapi_protect", broken),
+            self.assertLogs("app.services.secrets", level="WARNING") as captured,
+        ):
             key = self.secrets._master_key()
         self.assertTrue(self.key_file.exists())
         self.assertEqual(key, self.key_file.read_bytes().strip())
@@ -206,7 +239,9 @@ class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
         # And the app is usable with it.
         self.secrets._fernet = None
         token = self.secrets.encrypt_value("sk-live-value-0123456789abcdef")
-        self.assertEqual("sk-live-value-0123456789abcdef", self.secrets.decrypt_value(token))
+        self.assertEqual(
+            "sk-live-value-0123456789abcdef", self.secrets.decrypt_value(token)
+        )
 
     def test_key_file_is_written_atomically(self):
         self.secrets._master_key()
@@ -227,8 +262,12 @@ class MasterKeyProtectionTests(unittest.IsolatedAsyncioTestCase):
             with self.subTest(content=content):
                 self.key_file.write_bytes(content)
                 self.secrets._fernet = None
-                with self.assertLogs("app.services.secrets", level="WARNING") as captured:
-                    value = self.secrets.decrypt_value("gAAAAAnot-a-real-token", "credentials.google.api_key")
+                with self.assertLogs(
+                    "app.services.secrets", level="WARNING"
+                ) as captured:
+                    value = self.secrets.decrypt_value(
+                        "gAAAAAnot-a-real-token", "credentials.google.api_key"
+                    )
                 self.assertEqual("", value)
                 output = "\n".join(captured.output)
                 self.assertIn("master.key", output)

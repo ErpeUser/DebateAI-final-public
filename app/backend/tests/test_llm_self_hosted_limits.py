@@ -10,14 +10,14 @@ import unittest
 from unittest import mock
 
 import httpx
-
 from app.config import settings
 from app.services import llm
+from app.services.agents.objection_handler import LiveDebateResponse
+from app.services.briefing_synthesis import BriefLensOutput
 from app.services.llm import LLMReplyTruncated
 from app.services.llm_endpoint import OpenAIEndpoint
+
 from tests.test_briefing_provider_routing import FakeHTTPX, _chat_response
-from app.services.briefing_synthesis import BriefLensOutput
-from app.services.agents.objection_handler import LiveDebateResponse
 
 SELF_HOSTED = "endpoint:lm-studio:qwen3.5-4b"
 OLLAMA_DEBATE = "endpoint:german-debate-ollama:qwen3:4b"
@@ -33,9 +33,7 @@ class RequestLimitTests(unittest.TestCase):
     def test_a_hosted_model_keeps_the_short_timeout(self):
         self.assertEqual(settings.LLM_TIMEOUT_SECONDS, llm._request_timeout(HOSTED))
         # A stuck cloud call must still fail reasonably fast.
-        self.assertLess(
-            llm._request_timeout(HOSTED), llm._request_timeout(SELF_HOSTED)
-        )
+        self.assertLess(llm._request_timeout(HOSTED), llm._request_timeout(SELF_HOSTED))
 
     def test_the_local_timeout_actually_covers_a_slow_briefing(self):
         # The observed failure was a ReadTimeout at 120 s on one lens.
@@ -272,9 +270,7 @@ class GenerationLimitParityTests(unittest.TestCase):
             settings.OLLAMA_DEBATE_ECONOMY_NUM_CTX,
             controls["options"]["num_ctx"],
         )
-        self.assertLess(
-            controls["options"]["num_ctx"], settings.OLLAMA_DEBATE_NUM_CTX
-        )
+        self.assertLess(controls["options"]["num_ctx"], settings.OLLAMA_DEBATE_NUM_CTX)
 
     def test_unknown_ollama_model_does_not_receive_qwen_thinking_control(self):
         controls = llm._ollama_debate_controls(
@@ -343,14 +339,18 @@ class TruncatedJsonCallTests(unittest.IsolatedAsyncioTestCase):
         self.enterContext(
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k"))
         )
-        self.enterContext(mock.patch.object(llm, "record_token_usage", mock.AsyncMock()))
+        self.enterContext(
+            mock.patch.object(llm, "record_token_usage", mock.AsyncMock())
+        )
         self.enterContext(
             mock.patch.object(
                 llm,
                 "resolve_endpoint",
                 mock.AsyncMock(
                     return_value=OpenAIEndpoint(
-                        base_url="http://localhost:1234/v1", model="qwen3.5-4b", api_key=""
+                        base_url="http://localhost:1234/v1",
+                        model="qwen3.5-4b",
+                        api_key="",
                     )
                 ),
             )
@@ -372,7 +372,10 @@ class TruncatedJsonCallTests(unittest.IsolatedAsyncioTestCase):
                 # Well-formed JSON right up to the cut, which is exactly why the
                 # raw decode error was so misleading.
                 "choices": [
-                    {"message": {"content": '{"notes": "part'}, "finish_reason": "length"}
+                    {
+                        "message": {"content": '{"notes": "part'},
+                        "finish_reason": "length",
+                    }
                 ],
                 "usage": {},
             },
@@ -474,7 +477,6 @@ class TruncatedJsonCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("none", fake.posts[0]["json"]["reasoning_effort"])
         self.assertNotIn("reasoning_effort", fake.posts[1]["json"])
 
-
     async def test_rejected_budget_is_not_replayed_after_optional_limits_fallback(self):
         request = httpx.Request("POST", "http://localhost:1234/v1/chat/completions")
         refusal = httpx.Response(
@@ -507,14 +509,18 @@ class OutputBudgetNegotiationTests(unittest.IsolatedAsyncioTestCase):
         self.enterContext(
             mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k"))
         )
-        self.enterContext(mock.patch.object(llm, "record_token_usage", mock.AsyncMock()))
+        self.enterContext(
+            mock.patch.object(llm, "record_token_usage", mock.AsyncMock())
+        )
         self.enterContext(
             mock.patch.object(
                 llm,
                 "resolve_endpoint",
                 mock.AsyncMock(
                     return_value=OpenAIEndpoint(
-                        base_url="http://localhost:1234/v1", model="qwen3.5-4b", api_key=""
+                        base_url="http://localhost:1234/v1",
+                        model="qwen3.5-4b",
+                        api_key="",
                     )
                 ),
             )
@@ -533,7 +539,11 @@ class OutputBudgetNegotiationTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_the_budget_is_halved_until_the_server_accepts_it(self):
         fake = FakeHTTPX(
-            [self._context_refusal(), self._context_refusal(), _chat_response('{"notes": "ok"}')]
+            [
+                self._context_refusal(),
+                self._context_refusal(),
+                _chat_response('{"notes": "ok"}'),
+            ]
         )
         self.enterContext(mock.patch.object(llm.httpx, "AsyncClient", fake))
 
@@ -566,12 +576,15 @@ class OutputBudgetNegotiationTests(unittest.IsolatedAsyncioTestCase):
         # Three posts, not four: the second call starts at the learned budget.
         self.assertEqual(3, len(fake.posts))
         self.assertEqual(
-            settings.LLM_SELF_HOSTED_MAX_TOKENS // 2, fake.posts[2]["json"]["max_tokens"]
+            settings.LLM_SELF_HOSTED_MAX_TOKENS // 2,
+            fake.posts[2]["json"]["max_tokens"],
         )
 
     async def test_an_unrelated_400_is_not_mistaken_for_a_budget_problem(self):
         request = httpx.Request("POST", "http://localhost:1234/v1/chat/completions")
-        broken = httpx.Response(400, request=request, json={"error": "model not loaded"})
+        broken = httpx.Response(
+            400, request=request, json={"error": "model not loaded"}
+        )
         fake = FakeHTTPX([broken])
         self.enterContext(mock.patch.object(llm.httpx, "AsyncClient", fake))
 

@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 
-const source = await readFile(new URL("./PrivacyModeCard.tsx", import.meta.url), "utf8");
+const source = await readFile(
+  new URL("./PrivacyModeCard.tsx", import.meta.url),
+  "utf8",
+);
 
 // The Privacy First review panel painted a fixed cream ground in both themes
 // while its item titles and details used the semantic brand tokens, which go
@@ -12,13 +15,15 @@ const source = await readFile(new URL("./PrivacyModeCard.tsx", import.meta.url),
 const GROUND = /\bbg-(?:amber|red|emerald|green|blue|yellow)-(?:50|100)\b/;
 
 function classNames(text) {
-  return [...text.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)]
-    .map((match) => match[1] ?? match[2]);
+  return [...text.matchAll(/className=(?:"([^"]*)"|\{`([^`]*)`\})/g)].map(
+    (match) => match[1] ?? match[2],
+  );
 }
 
 test("every fixed light ground in this card declares a dark counterpart", () => {
-  const offenders = classNames(source)
-    .filter((value) => GROUND.test(value) && !/\bdark:bg-/.test(value));
+  const offenders = classNames(source).filter(
+    (value) => GROUND.test(value) && !/\bdark:bg-/.test(value),
+  );
   assert.deepEqual(offenders, [], "a light ground with no dark variant");
 });
 

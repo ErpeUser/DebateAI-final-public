@@ -6,8 +6,8 @@ respond is still open. Each finding pairs an immediate suggested reply
 (micro) with the underlying concern and strategic angle (macro).
 """
 
-import json
 import hashlib
+import json
 import logging
 import re
 import uuid
@@ -15,23 +15,25 @@ from collections import deque
 from collections.abc import Awaitable, Callable
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field, ValidationError, field_validator
-
 from app.services.agents.activity import classify_error
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.prompts import (
     DEBATE_RECOMMENDATION_PROMPT,
     OBJECTION_HANDLER_PROMPT,
 )
-from app.services.ai_config import reasoning_effort
-from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.speaker_context import (
     build_speaker_aliases,
     format_speakers_list,
     resolve_speaker_reference,
 )
-from app.services.llm import generate_json
-from app.services.meeting_context import build_meeting_context_text, format_prompt_layers
+from app.services.ai_config import reasoning_effort
 from app.services.debate_contracts import AtomicClaim, DebateSource, LogicalRelation
+from app.services.llm import generate_json
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    format_prompt_layers,
+)
+from pydantic import BaseModel, Field, ValidationError, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -97,9 +99,12 @@ def deep_analysis_reasoning_effort(model_id: str) -> str:
         # The selected adapter maps this OpenAI field to Gemini Web's visible
         # Low/Medium/High selector and reports the resolved response model.
         fallback = "high"
-    if model_id.startswith("endpoint:subscription-ai:") and wire_model.startswith("gpt-6"):
+    if model_id.startswith("endpoint:subscription-ai:") and wire_model.startswith(
+        "gpt-6"
+    ):
         fallback = "xhigh"
     return reasoning_effort(model_id, fallback)
+
 
 def build_deep_analysis_prompt(
     *,
@@ -119,8 +124,13 @@ def build_deep_analysis_prompt(
             passage = " ".join(source.passage.split())[:360]
             source_lines.append(f"- {source.title[:120]}: {passage}")
         elif source.title:
-            source_lines.append(f"- {source.title[:120]}: Quelle gefunden, aber noch nicht gelesen")
-    evidence = "\n".join(source_lines) or "(keine gelesenen Quellen; nichts als belegt ausgeben)"
+            source_lines.append(
+                f"- {source.title[:120]}: Quelle gefunden, aber noch nicht gelesen"
+            )
+    evidence = (
+        "\n".join(source_lines)
+        or "(keine gelesenen Quellen; nichts als belegt ausgeben)"
+    )
     template = load_prompt_resource(prompt_name, _DEEP_ANALYSIS_PROMPT_TEMPLATE)
     values = {
         "claim": claim[:700],
@@ -213,7 +223,12 @@ class DebateRecommendation(BaseModel):
     needs_research: bool = False
     research_query: str = ""
     research_status: Literal[
-        "idle", "searching", "completed", "unavailable", "blocked_by_privacy", "cancelled"
+        "idle",
+        "searching",
+        "completed",
+        "unavailable",
+        "blocked_by_privacy",
+        "cancelled",
     ] = "idle"
     research_alert: str = ""
     sources: list[DebateSource] = Field(default_factory=list)
@@ -247,13 +262,15 @@ class DebateRecommendation(BaseModel):
         return _limit_spoken_words(value, 14, question=True)
 
 
-
-
 def _experimental_option_title(kind: str, claim: str, text: str) -> str:
     """Create a compact claim-aware title when the model omitted one."""
     normalized_claim = " ".join((claim or "").split()).strip(" .!?")
     if kind == "example" and normalized_claim:
-        return (normalized_claim[:42] + " …") if len(normalized_claim) > 42 else normalized_claim
+        return (
+            (normalized_claim[:42] + " …")
+            if len(normalized_claim) > 42
+            else normalized_claim
+        )
     labels = {
         "contradiction": "Nicht pauschal",
         "example": "Konkretes Gegenbeispiel",
@@ -263,17 +280,23 @@ def _experimental_option_title(kind: str, claim: str, text: str) -> str:
     return labels.get(kind, "Weitere Reaktion")
 
 
-def _experimental_fallback_text(kind: str, recommendation: DebateRecommendation) -> tuple[str, str]:
+def _experimental_fallback_text(
+    kind: str, recommendation: DebateRecommendation
+) -> tuple[str, str]:
     """Always provide a safe speakable text and an explicit example."""
-    claim = " ".join(recommendation.target_claim.split()).strip()
     if kind == "contradiction":
         text = recommendation.counterargument or recommendation.answer_now
         example = "Beispiel: Ein Ausnahmefall kann dieselbe Pauschalaussage widerlegen."
     elif kind == "example":
         text = recommendation.analogy or recommendation.counterargument
-        example = text or "Beispiel: Prüfe dieselbe Aussage an einem konkreten Gegenfall."
+        example = (
+            text or "Beispiel: Prüfe dieselbe Aussage an einem konkreten Gegenfall."
+        )
     elif kind == "counter_question":
-        text = recommendation.counter_question or "Gilt derselbe Maßstab auch für den Gegenfall?"
+        text = (
+            recommendation.counter_question
+            or "Gilt derselbe Maßstab auch für den Gegenfall?"
+        )
         example = "Beispiel: Vergleiche den behaupteten Fall mit einer klaren Ausnahme."
     else:
         text = recommendation.answer_now or recommendation.counterargument
@@ -284,15 +307,25 @@ def _experimental_fallback_text(kind: str, recommendation: DebateRecommendation)
             if kind != "counter_question"
             else "Gilt derselbe Maßstab auch für den Gegenfall?"
         )
-    return " ".join(text.split()), example if claim or example else example
+    return " ".join(text.split()), example
 
 
-def normalize_standard_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
+def normalize_standard_strategies(
+    recommendation: DebateRecommendation,
+) -> list[dict[str, Any]]:
     """Return three distinct, speakable options for the default live path."""
     candidates = (
-        ("answer", "Sofortantwort", recommendation.answer_now or recommendation.counterargument),
+        (
+            "answer",
+            "Sofortantwort",
+            recommendation.answer_now or recommendation.counterargument,
+        ),
         ("counter_question", "Gegenfrage", recommendation.counter_question),
-        ("example", "Konkreter Gegenfall", recommendation.analogy or recommendation.counterargument),
+        (
+            "example",
+            "Konkreter Gegenfall",
+            recommendation.analogy or recommendation.counterargument,
+        ),
     )
     existing = {
         str(item.get("kind") or "").strip(): item
@@ -314,24 +347,26 @@ def normalize_standard_strategies(recommendation: DebateRecommendation) -> list[
         if folded in seen_text:
             continue
         seen_text.add(folded)
-        options.append({
-            "id": str(item.get("id") or f"standard_{kind}"),
-            "kind": kind,
-            "title": str(item.get("title") or title),
-            "text": text,
-            "example": " ".join(str(item.get("example") or "").split()),
-            "rationale": " ".join(str(item.get("rationale") or "").split()),
-            "source_ids": list(item.get("source_ids") or []),
-            "confidence": str(item.get("confidence") or recommendation.confidence),
-            "speakable": kind in {"answer", "counter_question"},
-            "selected": False,
-            "rank": len(options) + 1,
-            "claim_id": recommendation.claim_id,
-            "claim_revision": recommendation.claim_revision,
-            "transcript_revision": recommendation.transcript_revision,
-            "generation_id": recommendation.generation_id,
-            "provisional": recommendation.provisional,
-        })
+        options.append(
+            {
+                "id": str(item.get("id") or f"standard_{kind}"),
+                "kind": kind,
+                "title": str(item.get("title") or title),
+                "text": text,
+                "example": " ".join(str(item.get("example") or "").split()),
+                "rationale": " ".join(str(item.get("rationale") or "").split()),
+                "source_ids": list(item.get("source_ids") or []),
+                "confidence": str(item.get("confidence") or recommendation.confidence),
+                "speakable": kind in {"answer", "counter_question"},
+                "selected": False,
+                "rank": len(options) + 1,
+                "claim_id": recommendation.claim_id,
+                "claim_revision": recommendation.claim_revision,
+                "transcript_revision": recommendation.transcript_revision,
+                "generation_id": recommendation.generation_id,
+                "provisional": recommendation.provisional,
+            }
+        )
     while len(options) < 3:
         fallback_kind = ("context", "evidence", "tradeoff")[len(options) - 0]
         text = (
@@ -344,28 +379,32 @@ def normalize_standard_strategies(recommendation: DebateRecommendation) -> list[
         if text.casefold() in seen_text:
             break
         seen_text.add(text.casefold())
-        options.append({
-            "id": f"standard_{fallback_kind}",
-            "kind": fallback_kind,
-            "title": fallback_kind.capitalize(),
-            "text": text,
-            "example": "",
-            "rationale": "Lokaler, faktenfreier Fallback für eine unvollständige Modellantwort.",
-            "source_ids": [],
-            "confidence": recommendation.confidence,
-            "speakable": True,
-            "selected": False,
-            "rank": len(options) + 1,
-            "claim_id": recommendation.claim_id,
-            "claim_revision": recommendation.claim_revision,
-            "transcript_revision": recommendation.transcript_revision,
-            "generation_id": recommendation.generation_id,
-            "provisional": recommendation.provisional,
-        })
+        options.append(
+            {
+                "id": f"standard_{fallback_kind}",
+                "kind": fallback_kind,
+                "title": fallback_kind.capitalize(),
+                "text": text,
+                "example": "",
+                "rationale": "Lokaler, faktenfreier Fallback für eine unvollständige Modellantwort.",
+                "source_ids": [],
+                "confidence": recommendation.confidence,
+                "speakable": True,
+                "selected": False,
+                "rank": len(options) + 1,
+                "claim_id": recommendation.claim_id,
+                "claim_revision": recommendation.claim_revision,
+                "transcript_revision": recommendation.transcript_revision,
+                "generation_id": recommendation.generation_id,
+                "provisional": recommendation.provisional,
+            }
+        )
     return options[:3]
 
 
-def normalize_experimental_strategies(recommendation: DebateRecommendation) -> list[dict[str, Any]]:
+def normalize_experimental_strategies(
+    recommendation: DebateRecommendation,
+) -> list[dict[str, Any]]:
     """Return exactly four versioned moves with a safe example contract."""
     existing = recommendation.strategy_options or []
     by_kind: dict[str, dict[str, Any]] = {}
@@ -382,7 +421,10 @@ def normalize_experimental_strategies(recommendation: DebateRecommendation) -> l
         by_kind[kind] = {
             "id": str(item.get("id") or kind),
             "kind": kind,
-            "title": str(item.get("title") or _experimental_option_title(kind, recommendation.target_claim, text)),
+            "title": str(
+                item.get("title")
+                or _experimental_option_title(kind, recommendation.target_claim, text)
+            ),
             "text": text,
             "example": " ".join(str(item.get("example") or "").split()),
             "rationale": " ".join(str(item.get("rationale") or "").split()),
@@ -396,7 +438,9 @@ def normalize_experimental_strategies(recommendation: DebateRecommendation) -> l
             current = {
                 "id": f"{kind}_fallback",
                 "kind": kind,
-                "title": _experimental_option_title(kind, recommendation.target_claim, text),
+                "title": _experimental_option_title(
+                    kind, recommendation.target_claim, text
+                ),
                 "text": text,
                 "example": example,
                 "rationale": "Sichere lokale Fallback-Formulierung, weil der Modellzug unvollständig war.",
@@ -406,19 +450,24 @@ def normalize_experimental_strategies(recommendation: DebateRecommendation) -> l
             by_kind[kind] = current
         else:
             current["example"] = current.get("example") or example
-            current["rationale"] = current.get("rationale") or "Aus dem aktuellen Claim und Kontext abgeleitet."
+            current["rationale"] = (
+                current.get("rationale")
+                or "Aus dem aktuellen Claim und Kontext abgeleitet."
+            )
     options = []
     for rank, kind in enumerate(order, start=1):
         item = dict(by_kind[kind])
-        item.update({
-            "selected": False,
-            "rank": rank,
-            "claim_id": recommendation.claim_id,
-            "claim_revision": recommendation.claim_revision,
-            "transcript_revision": recommendation.transcript_revision,
-            "generation_id": recommendation.generation_id,
-            "provisional": recommendation.provisional,
-        })
+        item.update(
+            {
+                "selected": False,
+                "rank": rank,
+                "claim_id": recommendation.claim_id,
+                "claim_revision": recommendation.claim_revision,
+                "transcript_revision": recommendation.transcript_revision,
+                "generation_id": recommendation.generation_id,
+                "provisional": recommendation.provisional,
+            }
+        )
         options.append(item)
     return options
 
@@ -441,7 +490,11 @@ def build_atomic_claims(
         folded_to_original.extend([original_index] * len(character.casefold()))
 
     def original_span(folded_start: int, folded_end: int) -> tuple[int, int]:
-        if folded_start < 0 or folded_end <= folded_start or folded_start >= len(folded_to_original):
+        if (
+            folded_start < 0
+            or folded_end <= folded_start
+            or folded_start >= len(folded_to_original)
+        ):
             return -1, -1
         start = folded_to_original[folded_start]
         last = min(folded_end, len(folded_to_original)) - 1
@@ -453,7 +506,9 @@ def build_atomic_claims(
     covered: list[tuple[int, int]] = []
     search_from = 0
     for point in candidates:
-        folded_start = folded_original.find(point.casefold(), search_from) if original else -1
+        folded_start = (
+            folded_original.find(point.casefold(), search_from) if original else -1
+        )
         if folded_start < 0 and original:
             folded_start = folded_original.find(point.casefold())
         start, end = original_span(folded_start, folded_start + len(point.casefold()))
@@ -487,7 +542,13 @@ def build_atomic_claims(
 
     # Exact source spans come first. If the model returned paraphrases as well,
     # they remain useful grouped interpretations but never displace coverage.
-    pieces.sort(key=lambda item: (item[1] < 0, item[1] if item[1] >= 0 else 10**9, item[0].casefold()))
+    pieces.sort(
+        key=lambda item: (
+            item[1] < 0,
+            item[1] if item[1] >= 0 else 10**9,
+            item[0].casefold(),
+        )
+    )
     deduped: list[tuple[str, int, int, bool]] = []
     seen = set()
     for piece in pieces:
@@ -521,7 +582,18 @@ def build_atomic_claims(
             "",
         )
         temporal_scope = next(
-            (term for term in ("heute", "gestern", "morgen", "früher", "derzeit", "künftig") if term in folded),
+            (
+                term
+                for term in (
+                    "heute",
+                    "gestern",
+                    "morgen",
+                    "früher",
+                    "derzeit",
+                    "künftig",
+                )
+                if term in folded
+            ),
             "",
         )
         condition_match = re.search(
@@ -530,19 +602,22 @@ def build_atomic_claims(
             re.IGNORECASE,
         )
         stable_seed = f"{parent_claim_id}\0{start}\0{end}\0{point.casefold()}"
-        claims.append(AtomicClaim(
-            id="atomic-" + hashlib.sha256(stable_seed.encode("utf-8")).hexdigest()[:20],
-            parent_claim_id=parent_claim_id,
-            text=point,
-            start=start,
-            end=end,
-            speaker_id=speaker_id,
-            negated=bool(re.search(r"\b(nicht|kein|keine|nie|niemals)\b", folded)),
-            quantifier=quantifier,
-            temporal_scope=temporal_scope,
-            condition=(condition_match.group(0).strip() if condition_match else ""),
-            grouped=grouped or len(deduped) == 1,
-        ))
+        claims.append(
+            AtomicClaim(
+                id="atomic-"
+                + hashlib.sha256(stable_seed.encode("utf-8")).hexdigest()[:20],
+                parent_claim_id=parent_claim_id,
+                text=point,
+                start=start,
+                end=end,
+                speaker_id=speaker_id,
+                negated=bool(re.search(r"\b(nicht|kein|keine|nie|niemals)\b", folded)),
+                quantifier=quantifier,
+                temporal_scope=temporal_scope,
+                condition=(condition_match.group(0).strip() if condition_match else ""),
+                grouped=grouped or len(deduped) == 1,
+            )
+        )
     return claims
 
 
@@ -582,9 +657,7 @@ def _has_any_guidance(recommendation: DebateRecommendation) -> bool:
             recommendation.analogy,
             recommendation.open_question,
         )
-    ) or any(
-        follow_up.question.strip() for follow_up in recommendation.follow_ups
-    )
+    ) or any(follow_up.question.strip() for follow_up in recommendation.follow_ups)
 
 
 def _compact_live_context(value: str) -> str:
@@ -665,12 +738,53 @@ def _analogy_instruction(required: bool) -> str:
     name = "analogy.required" if required else "analogy.optional"
     return load_prompt_resource(name, _ANALOGY_INSTRUCTION_DEFAULTS[required])
 
+
 _FOCUS_STOPWORDS = {
-    "aber", "also", "auch", "bisschen", "dann", "das", "dass", "denn",
-    "der", "die", "doch", "ein", "eine", "einem", "einen", "einer", "es",
-    "halt", "hier", "ich", "ist", "ja", "kann", "mal", "mehr", "mich",
-    "mir", "nicht", "noch", "nur", "oder", "schon", "sehr", "sie", "so",
-    "und", "vom", "von", "war", "was", "wie", "wir", "wird", "zu", "zum",
+    "aber",
+    "also",
+    "auch",
+    "bisschen",
+    "dann",
+    "das",
+    "dass",
+    "denn",
+    "der",
+    "die",
+    "doch",
+    "ein",
+    "eine",
+    "einem",
+    "einen",
+    "einer",
+    "es",
+    "halt",
+    "hier",
+    "ich",
+    "ist",
+    "ja",
+    "kann",
+    "mal",
+    "mehr",
+    "mich",
+    "mir",
+    "nicht",
+    "noch",
+    "nur",
+    "oder",
+    "schon",
+    "sehr",
+    "sie",
+    "so",
+    "und",
+    "vom",
+    "von",
+    "war",
+    "was",
+    "wie",
+    "wir",
+    "wird",
+    "zu",
+    "zum",
 }
 
 
@@ -748,7 +862,9 @@ class ObjectionHandlerAgent:
         style_focus: Literal["balanced", "natural", "concise", "evidence"] = "balanced",
         recommendation_only: bool = False,
     ):
-        self._model = DEFAULT_OBJECTION_MODEL if model_override is None else model_override
+        self._model = (
+            DEFAULT_OBJECTION_MODEL if model_override is None else model_override
+        )
         self._prompt_resource_name: str | None = None
         built_in_prompt = prompt_override in {
             None,
@@ -807,7 +923,8 @@ class ObjectionHandlerAgent:
         directives: list[str],
         speakers: list[dict],
         support_context: str = "",
-        on_model_partial: Callable[[DebateRecommendation], Awaitable[None]] | None = None,
+        on_model_partial: Callable[[DebateRecommendation], Awaitable[None]]
+        | None = None,
         resource_profile: Literal["balanced", "economy"] = "balanced",
     ) -> list[dict]:
         """Execute one fast scan. Returns list of objection insight dicts."""
@@ -820,7 +937,11 @@ class ObjectionHandlerAgent:
             }
             return []
         live_directives = [" ".join(d.split())[:240] for d in directives[-4:]]
-        directives_text = "\n".join(f"- {d}" for d in live_directives) if live_directives else "(No directives set)"
+        directives_text = (
+            "\n".join(f"- {d}" for d in live_directives)
+            if live_directives
+            else "(No directives set)"
+        )
         aliases = build_speaker_aliases(speakers)
         speakers_text = format_speakers_list(speakers, aliases)
         valid_speaker_ids = {str(s["id"]) for s in speakers if s.get("id")}
@@ -885,17 +1006,23 @@ class ObjectionHandlerAgent:
             *,
             stream_first_answer: bool = False,
         ) -> ObjectionHandlerOutput:
-            schema = LiveDebateResponse if self._recommendation_only else ObjectionHandlerOutput
+            schema = (
+                LiveDebateResponse
+                if self._recommendation_only
+                else ObjectionHandlerOutput
+            )
 
             async def publish_partial(answer_now: str) -> None:
                 if on_model_partial is None:
                     return
-                await on_model_partial(DebateRecommendation(
-                    answer_now=answer_now,
-                    target_claim=latest_turn,
-                    confidence="low",
-                    provisional=True,
-                ))
+                await on_model_partial(
+                    DebateRecommendation(
+                        answer_now=answer_now,
+                        target_claim=latest_turn,
+                        confidence="low",
+                        provisional=True,
+                    )
+                )
 
             generated = await generate_json(
                 self._model,
@@ -1067,11 +1194,13 @@ class ObjectionHandlerAgent:
             if source.retrieval_status == "read" and source.passage.strip()
         ]
         if not readable_sources:
-            return recommendation.model_copy(update={
-                "needs_research": False,
-                "research_status": "completed",
-                "sources": sources,
-            })
+            return recommendation.model_copy(
+                update={
+                    "needs_research": False,
+                    "research_status": "completed",
+                    "sources": sources,
+                }
+            )
         source_payload = [source.model_dump() for source in readable_sources]
         prompt = (
             "Ueberarbeite die folgende Live-Debattenempfehlung anhand der "
@@ -1108,7 +1237,9 @@ class ObjectionHandlerAgent:
         )
         default_research_instruction = prompt.split("\n\nBisherige Empfehlung:", 1)[0]
         prompt = (
-            load_prompt_resource("research_source_refinement", default_research_instruction)
+            load_prompt_resource(
+                "research_source_refinement", default_research_instruction
+            )
             + f"\n\nBisherige Empfehlung:\n{json.dumps(recommendation.model_dump(), ensure_ascii=False)}"
             + f"\n\nQuellen:\n{json.dumps(source_payload, ensure_ascii=False)}"
         )
@@ -1118,9 +1249,13 @@ class ObjectionHandlerAgent:
             "answer_now, counterargument und counter_question muessen sofort "
             "aussprechbar sein."
         )
-        system = load_prompt_resource(
-            "research_source_system", default_system
-        ) + "\n\n" + _mode_instruction(self._debate_mode) + "\n\n" + _style_instruction(self._style_focus)
+        system = (
+            load_prompt_resource("research_source_system", default_system)
+            + "\n\n"
+            + _mode_instruction(self._debate_mode)
+            + "\n\n"
+            + _style_instruction(self._style_focus)
+        )
         try:
             refined = await generate_json(
                 model_override or self._model,
@@ -1153,19 +1288,27 @@ class ObjectionHandlerAgent:
         assessed_by_url = {
             source.url: source
             for source in refined.sources
-            if source.url and source.claim_relation in {"supports", "contradicts", "unclear"}
+            if source.url
+            and source.claim_relation in {"supports", "contradicts", "unclear"}
         }
         assessed_sources = []
         for source in sources:
             assessment = assessed_by_url.get(source.url)
-            relation = assessment.claim_relation if assessment else source.claim_relation
-            assessed_sources.append(source.model_copy(update={
-                "claim_relation": relation,
-                "verification_status": (
-                    relation if relation in {"supports", "contradicts"}
-                    else source.verification_status
-                ),
-            }))
+            relation = (
+                assessment.claim_relation if assessment else source.claim_relation
+            )
+            assessed_sources.append(
+                source.model_copy(
+                    update={
+                        "claim_relation": relation,
+                        "verification_status": (
+                            relation
+                            if relation in {"supports", "contradicts"}
+                            else source.verification_status
+                        ),
+                    }
+                )
+            )
         return refined.model_copy(
             update={
                 **preserve_when_omitted,
@@ -1207,9 +1350,7 @@ class ObjectionHandlerAgent:
             "deep_reanalysis": "Prüfe den entscheidenden Argumentzweig erneut in voller Tiefe, weil neues Material, ein schwerer Widerspruch oder eine ausdrückliche Tiefenanalyse vorliegt.",
         }
         phase = analysis_phase if analysis_phase in phase_defaults else "follow_up"
-        prompt += "\n\n" + load_prompt_resource(
-            f"phase.{phase}", phase_defaults[phase]
-        )
+        prompt += "\n\n" + load_prompt_resource(f"phase.{phase}", phase_defaults[phase])
         analysis = await generate_json(
             model_id,
             prompt,
@@ -1240,8 +1381,7 @@ class ObjectionHandlerAgent:
         for item in items:
             if not isinstance(item, dict):
                 logger.warning(
-                    "[objection_handler] dropped item: expected object "
-                    "(entry_type=%s)",
+                    "[objection_handler] dropped item: expected object (entry_type=%s)",
                     type(item).__name__,
                 )
                 continue
@@ -1253,15 +1393,17 @@ class ObjectionHandlerAgent:
                     text,
                 )
                 continue
-            valid.append({
-                "item_type": "objection",
-                "question": text.strip(),
-                "rationale": _compose_rationale(item),
-                "source_context": item.get("source_context", "") or "",
-                "speaker_id": _normalize_speaker_id(
-                    item.get("speaker_id"), valid_speaker_ids, aliases
-                ),
-                "agent_source": "objection_handler",
-            })
+            valid.append(
+                {
+                    "item_type": "objection",
+                    "question": text.strip(),
+                    "rationale": _compose_rationale(item),
+                    "source_context": item.get("source_context", "") or "",
+                    "speaker_id": _normalize_speaker_id(
+                        item.get("speaker_id"), valid_speaker_ids, aliases
+                    ),
+                    "agent_source": "objection_handler",
+                }
+            )
 
         return valid

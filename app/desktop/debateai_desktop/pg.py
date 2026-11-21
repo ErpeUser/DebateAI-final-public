@@ -1,19 +1,18 @@
 """Lifecycle management for the bundled zonky.io PostgreSQL binaries."""
 
-import os
 import asyncio
+import ctypes
+import os
 import secrets
-import stat
 import shutil
 import socket
+import stat
 import subprocess
 import sys
 import time
-import ctypes
 from pathlib import Path
 
 from debateai_desktop.windows_console import hidden_startupinfo
-
 
 DB_ROLE = "debateai"
 _LEGACY_DB_ROLE = "backchannel"
@@ -84,8 +83,7 @@ class EmbeddedPostgres:
                     # process on Windows. The start timestamp prevents adopting
                     # a stale pidfile from an older instance.
                     valid_pid = postmaster_pid > 0 and (
-                        started_at is None
-                        or postmaster_started_at >= started_at - 2
+                        started_at is None or postmaster_started_at >= started_at - 2
                     )
                 else:
                     valid_pid = postmaster_pid == process.pid
@@ -123,7 +121,9 @@ class EmbeddedPostgres:
     def adopt_running(self, port: int) -> None:
         """Take lifecycle ownership of this app's already-running cluster."""
         if self.running_port() != port:
-            raise RuntimeError("embedded postgres is not reachable on its recorded port")
+            raise RuntimeError(
+                "embedded postgres is not reachable on its recorded port"
+            )
         pid = self._postmaster_pid()
         if pid is None:
             raise RuntimeError("embedded postgres has no valid postmaster pid")
@@ -136,9 +136,12 @@ class EmbeddedPostgres:
             process = subprocess.Popen(
                 [
                     str(self.bin / "postgres"),
-                    "-D", str(self.pgdata),
-                    "-p", str(port),
-                    "-c", "listen_addresses=127.0.0.1",
+                    "-D",
+                    str(self.pgdata),
+                    "-p",
+                    str(port),
+                    "-c",
+                    "listen_addresses=127.0.0.1",
                 ],
                 stdin=subprocess.DEVNULL,
                 stdout=server_log,
@@ -175,6 +178,7 @@ class EmbeddedPostgres:
     def _run(self, cmd: list) -> None:
         proc = subprocess.run(
             cmd,
+            check=False,
             capture_output=True,
             text=True,
             creationflags=_windows_creation_flags(),
@@ -182,9 +186,7 @@ class EmbeddedPostgres:
         )
         if proc.returncode != 0:
             detail = (proc.stderr or "").strip() or (proc.stdout or "").strip()
-            raise RuntimeError(
-                f"{cmd[0]} failed (exit {proc.returncode}): {detail}"
-            )
+            raise RuntimeError(f"{cmd[0]} failed (exit {proc.returncode}): {detail}")
 
     def _grant_windows_acl(self) -> None:
         # ponytail: GH runners / admin users - postgres re-execs with a
@@ -197,6 +199,7 @@ class EmbeddedPostgres:
             return
         subprocess.run(
             ["icacls", str(self.root), "/grant", f"{user}:(OI)(CI)F", "/T", "/Q"],
+            check=False,
             capture_output=True,
             creationflags=_windows_creation_flags(),
             startupinfo=hidden_startupinfo(),
@@ -218,8 +221,11 @@ class EmbeddedPostgres:
         reparse = getattr(identity, "st_file_attributes", 0) & getattr(
             stat, "FILE_ATTRIBUTE_REPARSE_POINT", 0
         )
-        if (reparse or self.pgdata.is_symlink()
-                or getattr(self.pgdata, "is_junction", lambda: False)()):
+        if (
+            reparse
+            or self.pgdata.is_symlink()
+            or getattr(self.pgdata, "is_junction", lambda: False)()
+        ):
             raise RuntimeError(
                 "Refusing to initialize a linked PostgreSQL data path; explicit recovery is required"
             )
@@ -232,15 +238,22 @@ class EmbeddedPostgres:
             )
         self.password()
         self._grant_windows_acl()
-        self._run([
-            str(self.bin / "initdb"),
-            "-D", str(self.pgdata),
-            "-U", "debateai",
-            "-A", "scram-sha-256",
-            "--pwfile", str(self.pwfile),
-            "--no-locale",
-            "-E", "UTF8",
-        ])
+        self._run(
+            [
+                str(self.bin / "initdb"),
+                "-D",
+                str(self.pgdata),
+                "-U",
+                "debateai",
+                "-A",
+                "scram-sha-256",
+                "--pwfile",
+                str(self.pwfile),
+                "--no-locale",
+                "-E",
+                "UTF8",
+            ]
+        )
         if self.pgdata.is_dir():
             self.role_marker.write_text("debateai\n", encoding="ascii")
         self.initialized_here = True
@@ -256,10 +269,32 @@ class EmbeddedPostgres:
         env = os.environ.copy()
         env["PGPASSWORD"] = self.password()
         base = [str(psql), "-h", "127.0.0.1", "-p", str(port), "-d", "postgres"]
-        probe = subprocess.run([*base, "-U", DB_ROLE, "-c", "SELECT 1"], capture_output=True, text=True, env=env, creationflags=_windows_creation_flags(), startupinfo=hidden_startupinfo())
+        probe = subprocess.run(
+            [*base, "-U", DB_ROLE, "-c", "SELECT 1"],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+            creationflags=_windows_creation_flags(),
+            startupinfo=hidden_startupinfo(),
+        )
         if probe.returncode == 0:
             return
-        migrate = subprocess.run([*base, "-U", _LEGACY_DB_ROLE, "-c", f'ALTER ROLE "{_LEGACY_DB_ROLE}" RENAME TO "{DB_ROLE}"'], capture_output=True, text=True, env=env, creationflags=_windows_creation_flags(), startupinfo=hidden_startupinfo())
+        migrate = subprocess.run(
+            [
+                *base,
+                "-U",
+                _LEGACY_DB_ROLE,
+                "-c",
+                f'ALTER ROLE "{_LEGACY_DB_ROLE}" RENAME TO "{DB_ROLE}"',
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+            env=env,
+            creationflags=_windows_creation_flags(),
+            startupinfo=hidden_startupinfo(),
+        )
         if migrate.returncode != 0:
             detail = (migrate.stderr or migrate.stdout or probe.stderr).strip()
             raise RuntimeError(f"postgres role migration failed: {detail}")
@@ -324,6 +359,7 @@ class EmbeddedPostgres:
             return
         status = subprocess.run(
             [str(self.bin / "pg_ctl"), "-D", str(self.pgdata), "status"],
+            check=False,
             capture_output=True,
             creationflags=_windows_creation_flags(),
             startupinfo=hidden_startupinfo(),
@@ -346,12 +382,16 @@ class EmbeddedPostgres:
             proc = subprocess.run(
                 [
                     str(self.bin / "pg_ctl"),
-                    "-D", str(self.pgdata),
-                    "-o", f"-p {port} -c listen_addresses=127.0.0.1",
-                    "-l", str(self.log),
+                    "-D",
+                    str(self.pgdata),
+                    "-o",
+                    f"-p {port} -c listen_addresses=127.0.0.1",
+                    "-l",
+                    str(self.log),
                     "-w",
                     "start",
                 ],
+                check=False,
                 stdin=subprocess.DEVNULL,
                 stdout=subprocess.DEVNULL,
                 stderr=err,
@@ -371,9 +411,7 @@ class EmbeddedPostgres:
                 tail = "\n".join(lines[-20:])
             except OSError:
                 pass
-            raise RuntimeError(
-                f"pg_ctl start failed (exit {proc.returncode}): {tail}"
-            )
+            raise RuntimeError(f"pg_ctl start failed (exit {proc.returncode}): {tail}")
 
     def stop(self) -> None:
         if not (self.pgdata / "postmaster.pid").exists():
@@ -387,17 +425,20 @@ class EmbeddedPostgres:
             # Another instance's postmaster took over the cluster after
             # ours went away; stopping it would yank its database away.
             return
-        self._run([
-            str(self.bin / "pg_ctl"),
-            "-D", str(self.pgdata),
-            "-m", "fast",
-            "-w",
-            "stop",
-        ])
+        self._run(
+            [
+                str(self.bin / "pg_ctl"),
+                "-D",
+                str(self.pgdata),
+                "-m",
+                "fast",
+                "-w",
+                "stop",
+            ]
+        )
 
     def database_url(self, port: int) -> str:
         # token_hex passwords are URL-safe by construction.
         return (
-            f"postgresql+asyncpg://debateai:{self.password()}"
-            f"@127.0.0.1:{port}/postgres"
+            f"postgresql+asyncpg://debateai:{self.password()}@127.0.0.1:{port}/postgres"
         )

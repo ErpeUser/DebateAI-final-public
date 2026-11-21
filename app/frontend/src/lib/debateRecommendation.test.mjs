@@ -1,13 +1,15 @@
 import assert from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import { createRequire } from "node:module";
 import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const sourcePath = fileURLToPath(new URL("./debateRecommendation.ts", import.meta.url));
+const sourcePath = fileURLToPath(
+  new URL("./debateRecommendation.ts", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "debate-reducer-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -19,7 +21,9 @@ await build({
   outfile: outputPath,
 });
 
-const { emptyDebateState, reduceDebateUpdate } = createRequire(import.meta.url)(outputPath);
+const { emptyDebateState, reduceDebateUpdate } = createRequire(import.meta.url)(
+  outputPath,
+);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
@@ -46,14 +50,22 @@ const recommendation = (revision, answer = `Antwort ${revision}`) => ({
 });
 
 test("newest revision replaces the visible recommendation", () => {
-  const first = reduceDebateUpdate(emptyDebateState("call-1"), "call-1", recommendation(1));
+  const first = reduceDebateUpdate(
+    emptyDebateState("call-1"),
+    "call-1",
+    recommendation(1),
+  );
   const second = reduceDebateUpdate(first, "call-1", recommendation(2));
 
   assert.equal(second.recommendation.answer_now, "Antwort 2");
 });
 
 test("an older result cannot overwrite newer guidance", () => {
-  const current = reduceDebateUpdate(emptyDebateState("call-1"), "call-1", recommendation(4));
+  const current = reduceDebateUpdate(
+    emptyDebateState("call-1"),
+    "call-1",
+    recommendation(4),
+  );
   const stale = reduceDebateUpdate(current, "call-1", recommendation(3));
 
   assert.equal(stale, current);
@@ -61,7 +73,11 @@ test("an older result cannot overwrite newer guidance", () => {
 });
 
 test("same-revision research refinement replaces the immediate draft", () => {
-  const current = reduceDebateUpdate(emptyDebateState("call-1"), "call-1", recommendation(2));
+  const current = reduceDebateUpdate(
+    emptyDebateState("call-1"),
+    "call-1",
+    recommendation(2),
+  );
   const refined = reduceDebateUpdate(current, "call-1", {
     ...recommendation(2, "Antwort mit Quelle"),
     research_status: "completed",
@@ -71,7 +87,11 @@ test("same-revision research refinement replaces the immediate draft", () => {
 });
 
 test("starting a different websocket call clears the prior recommendation", () => {
-  const previous = reduceDebateUpdate(emptyDebateState("call-1"), "call-1", recommendation(5));
+  const previous = reduceDebateUpdate(
+    emptyDebateState("call-1"),
+    "call-1",
+    recommendation(5),
+  );
   const reset = emptyDebateState("call-2");
 
   assert.equal(previous.recommendation.revision, 5);

@@ -4,27 +4,42 @@
 Default view condenses the 16k-file native runtime and noisy generated
 dependency trees. Use --full to see every file, including the runtime.
 """
+
 from __future__ import annotations
 
 import argparse
-from datetime import datetime
 import os
+from datetime import datetime
 from pathlib import Path
 
 from generated_paths import ensure_output_path
 
 ROOT = Path(__file__).resolve().parents[2]
-SKIP = {"__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
-        "node_modules", ".git", ".venv", ".release-venv"}
+SKIP = {
+    "__pycache__",
+    ".pytest_cache",
+    ".mypy_cache",
+    ".ruff_cache",
+    "node_modules",
+    ".git",
+    ".venv",
+    ".release-venv",
+}
 HEAVY = {"runtime/DebateAI/_internal"}
 
 
 def scan_stats(path: Path) -> tuple[int, int]:
     count, total_bytes = 0, 0
     for base, dirs, files in os.walk(path, followlinks=False):
-        dirs[:] = [d for d in dirs if not (Path(base) / d).is_symlink()
-                   and not (hasattr(Path(base) / d, "is_junction")
-                            and (Path(base) / d).is_junction())]
+        dirs[:] = [
+            d
+            for d in dirs
+            if not (Path(base) / d).is_symlink()
+            and not (
+                hasattr(Path(base) / d, "is_junction")
+                and (Path(base) / d).is_junction()
+            )
+        ]
         for filename in files:
             try:
                 item = Path(base) / filename
@@ -79,7 +94,8 @@ def render(*, max_depth: int, max_entries: int, full: bool) -> str:
             last = idx == len(shown) - 1 and suppressed == 0
             connector = "└── " if last else "├── "
             is_link = entry.is_symlink() or (
-                hasattr(entry, "is_junction") and entry.is_junction())
+                hasattr(entry, "is_junction") and entry.is_junction()
+            )
             directory = entry.is_dir() and not is_link
             text = entry.name + ("/" if directory else "")
             rel = entry.relative_to(ROOT).as_posix()
@@ -100,7 +116,9 @@ def render(*, max_depth: int, max_entries: int, full: bool) -> str:
     gitfile = ROOT / ".git"
     if gitfile.is_file():
         try:
-            lines.append(f"[.git-Verweis: {gitfile.read_text(encoding='utf-8-sig').strip()}]")
+            lines.append(
+                f"[.git-Verweis: {gitfile.read_text(encoding='utf-8-sig').strip()}]"
+            )
         except OSError:
             pass
     lines.extend(["```", ""])
@@ -111,18 +129,21 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--depth", type=int, default=4)
     parser.add_argument("--limit", type=int, default=16)
-    parser.add_argument("--full", action="store_true",
-                        help="Include hidden caches and all runtime files")
     parser.add_argument(
-        "--output", type=Path,
+        "--full",
+        action="store_true",
+        help="Include hidden caches and all runtime files",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
         default=None,
         help="Optional report path below DebateAI_Generated/reports/provenance",
     )
     args = parser.parse_args()
     if args.depth < 1 or args.limit < 1:
         parser.error("--depth and --limit must be positive")
-    output = render(max_depth=args.depth, max_entries=args.limit,
-                    full=args.full)
+    output = render(max_depth=args.depth, max_entries=args.limit, full=args.full)
     if args.output:
         target = ensure_output_path(args.output, "provenance")
         target.write_text(output, encoding="utf-8")
@@ -132,8 +153,12 @@ def main() -> int:
             print(output)
         except UnicodeEncodeError:
             # Windows PowerShell may use CP1252 instead of UTF-8.
-            ascii_tree = (output.replace("├", "+").replace("└", "\\\\")
-                          .replace("│", "|").replace("─", "-"))
+            ascii_tree = (
+                output.replace("├", "+")
+                .replace("└", "\\\\")
+                .replace("│", "|")
+                .replace("─", "-")
+            )
             print(ascii_tree.encode("ascii", "backslashreplace").decode("ascii"))
     return 0
 

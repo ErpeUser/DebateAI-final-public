@@ -16,8 +16,9 @@ import zipfile
 from contextlib import contextmanager
 from pathlib import Path, PurePosixPath
 
-
 ROOT = Path(__file__).resolve().parents[2]
+REPO_ROOT = ROOT.parent
+GENERATED_BUILD = REPO_ROOT / "DebateAI_Generated" / "build"
 for source in (ROOT, ROOT / "backend", ROOT / "desktop"):
     if str(source) not in sys.path:
         sys.path.insert(0, str(source))
@@ -37,10 +38,9 @@ from app.services.update_signing import (
 )
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from updater import apply_update, instance_is_healthy
 from debateai_identity import canonical_updater
 from desktop.scripts.smoke_test import dump_logs, stop_process
-
+from updater import apply_update, instance_is_healthy
 
 VERSION = "v999.0.0"
 PRIVATE_KEY = bytes(range(32))
@@ -75,9 +75,13 @@ def signed_descriptor(archive: Path, platform_id: str) -> tuple[dict, dict]:
         },
     }
     signed = sign_platform_manifest(manifest, KEY_ID, PRIVATE_KEY)
-    public = Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY).public_key().public_bytes(
-        serialization.Encoding.Raw,
-        serialization.PublicFormat.Raw,
+    public = (
+        Ed25519PrivateKey.from_private_bytes(PRIVATE_KEY)
+        .public_key()
+        .public_bytes(
+            serialization.Encoding.Raw,
+            serialization.PublicFormat.Raw,
+        )
     )
     keys = {
         "active": KEY_ID,
@@ -100,11 +104,13 @@ def archive_links(archive: Path, platform_id: str) -> list[tuple[str, str, bool]
             for member in source.infolist():
                 mode = (member.external_attr >> 16) & 0xFFFF
                 if stat.S_ISLNK(mode):
-                    links.append((
-                        member.filename,
-                        source.read(member).decode("utf-8"),
-                        False,
-                    ))
+                    links.append(
+                        (
+                            member.filename,
+                            source.read(member).decode("utf-8"),
+                            False,
+                        )
+                    )
     return links
 
 
@@ -112,7 +118,9 @@ def assert_links(stage: Path, links: list[tuple[str, str, bool]]) -> None:
     for name, target, hard in links:
         path = stage / PurePosixPath(name)
         if hard:
-            if not path.exists() or not os.path.samefile(path, stage / PurePosixPath(target)):
+            if not path.exists() or not os.path.samefile(
+                path, stage / PurePosixPath(target)
+            ):
                 raise RuntimeError(f"hard link was not preserved: {name}")
         elif not path.is_symlink() or os.readlink(path) != target:
             raise RuntimeError(f"symbolic link was not preserved: {name}")
@@ -163,11 +171,13 @@ def stop(process: GracefulProcess) -> None:
 def temporary_directory():
     # Resolve so plan paths survive the updater's symlink refusal on macOS,
     # where the runner TMPDIR sits under the /var -> /private/var symlink.
-    smoke_parent = ROOT / "build" / "native-smoke"
+    smoke_parent = GENERATED_BUILD / "native-smoke"
     smoke_parent.mkdir(parents=True, exist_ok=True)
     created = smoke_parent / f"DebateAI Pruefung \u00e4 {uuid.uuid4().hex}"
     created.mkdir()
-    root = created.absolute() if sys.platform == "win32" else created.resolve(strict=True)
+    root = (
+        created.absolute() if sys.platform == "win32" else created.resolve(strict=True)
+    )
     try:
         yield root
     finally:
@@ -182,20 +192,22 @@ def temporary_directory():
 
 
 def ready(service: UpdateService, descriptor: dict) -> None:
-    service._state.update({
-        "state": "ready",
-        "available_version": VERSION,
-        "available_notes": descriptor["release_notes"],
-        "published_at": descriptor["published_at"],
-        "highest_seen_version": VERSION,
-        "highest_seen_published_at": descriptor["published_at"],
-        "filename": descriptor["asset"]["filename"],
-        "size": descriptor["asset"]["size"],
-        "downloaded": descriptor["asset"]["size"],
-        "checked_at": "2099-01-01T00:00:00Z",
-        "error": "",
-        "blocked_reason": "",
-    })
+    service._state.update(
+        {
+            "state": "ready",
+            "available_version": VERSION,
+            "available_notes": descriptor["release_notes"],
+            "published_at": descriptor["published_at"],
+            "highest_seen_version": VERSION,
+            "highest_seen_published_at": descriptor["published_at"],
+            "filename": descriptor["asset"]["filename"],
+            "size": descriptor["asset"]["size"],
+            "downloaded": descriptor["asset"]["size"],
+            "checked_at": "2099-01-01T00:00:00Z",
+            "error": "",
+            "blocked_reason": "",
+        }
+    )
     with service._lock:
         service._save_locked()
 
@@ -235,7 +247,11 @@ def apply_success(
     )
     if result != 0 or marker.exists() or not processes:
         state_path = app_data / "updates" / "state.json"
-        state = state_path.read_text(encoding="utf-8") if state_path.is_file() else "missing"
+        state = (
+            state_path.read_text(encoding="utf-8")
+            if state_path.is_file()
+            else "missing"
+        )
         dump_logs(app_data)
         raise RuntimeError(
             "native update swap failed "
@@ -303,8 +319,12 @@ def kill_processes(processes: list[GracefulProcess]) -> None:
 def stop_test_postgres(install: Path, app_data: Path) -> None:
     """Stop only the isolated smoke cluster after every launcher has exited."""
     pidfile = app_data / "pgdata" / "postmaster.pid"
-    pg_ctl = install / "_internal" / "pgsql" / "bin" / (
-        "pg_ctl.exe" if sys.platform == "win32" else "pg_ctl"
+    pg_ctl = (
+        install
+        / "_internal"
+        / "pgsql"
+        / "bin"
+        / ("pg_ctl.exe" if sys.platform == "win32" else "pg_ctl")
     )
     if not pidfile.is_file() or not pg_ctl.is_file():
         return
@@ -325,7 +345,7 @@ def run(archive: Path, platform_id: str) -> None:
     links = archive_links(archive, platform_id)
 
     with temporary_directory() as root:
-        app_data = ROOT / "build" / "native-smoke-data" / uuid.uuid4().hex
+        app_data = GENERATED_BUILD / "native-smoke-data" / uuid.uuid4().hex
         app_data.mkdir(parents=True)
         install = root / ROOT_NAMES[platform_id]
         launcher = Path(LAUNCHERS[platform_id])

@@ -7,9 +7,8 @@ import sys
 from dataclasses import asdict, dataclass
 from typing import Literal
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.services.app_settings import get_app_setting, set_app_setting
+from sqlalchemy.ext.asyncio import AsyncSession
 
 SETTING_KEY = "debate.copilot.settings"
 RESEARCH_COOLDOWNS = {"never": 0, "low": 180, "normal": 60, "often": 20}
@@ -21,31 +20,43 @@ PerformanceProfile = Literal["balanced", "economy"]
 
 PROFILE_DEFINITIONS = {
     "factual": {
-        "id": "factual", "name": "Sachlich",
+        "id": "factual",
+        "name": "Sachlich",
         "description": "Belege, faire Einordnung und eine klare Schlussfolgerung.",
-        "mode": "persuasive", "style_focus": "evidence",
-        "research_frequency": "normal", "always_analogy": False,
+        "mode": "persuasive",
+        "style_focus": "evidence",
+        "research_frequency": "normal",
+        "always_analogy": False,
         "playbook_term": "beweislast",
     },
     "concise": {
-        "id": "concise", "name": "Knapp",
+        "id": "concise",
+        "name": "Knapp",
         "description": "Eine direkte Hauptantwort ohne Einleitung oder Wiederholung.",
-        "mode": "persuasive", "style_focus": "concise",
-        "research_frequency": "low", "always_analogy": False,
+        "mode": "persuasive",
+        "style_focus": "concise",
+        "research_frequency": "low",
+        "always_analogy": False,
         "playbook_term": "widerlegen",
     },
     "socratic": {
-        "id": "socratic", "name": "Sokratisch",
+        "id": "socratic",
+        "name": "Sokratisch",
         "description": "Die engste Frage legt Prämisse und Beweislast offen.",
-        "mode": "persuasive", "style_focus": "natural",
-        "research_frequency": "low", "always_analogy": False,
+        "mode": "persuasive",
+        "style_focus": "natural",
+        "research_frequency": "low",
+        "always_analogy": False,
         "playbook_term": "gegenfrage",
     },
     "confrontational": {
-        "id": "confrontational", "name": "Konfrontativ",
+        "id": "confrontational",
+        "name": "Konfrontativ",
         "description": "Direkt und druckvoll in der Sache, ohne persönlichen Angriff.",
-        "mode": "forceful", "style_focus": "concise",
-        "research_frequency": "normal", "always_analogy": False,
+        "mode": "forceful",
+        "style_focus": "concise",
+        "research_frequency": "normal",
+        "always_analogy": False,
         "playbook_term": "offensiv",
     },
 }
@@ -124,9 +135,11 @@ def _from_json(raw: str) -> DebateSettings:
         profile_id = ""
     if not isinstance(frequency, str):
         frequency = ""
-    if not isinstance(memory_threshold, (int, float)) or isinstance(memory_threshold, bool):
-        memory_threshold = fallback.memory_similarity_threshold
-    elif not 0.1 <= float(memory_threshold) <= 0.95:
+    if (
+        not isinstance(memory_threshold, (int, float))
+        or isinstance(memory_threshold, bool)
+        or not 0.1 <= float(memory_threshold) <= 0.95
+    ):
         memory_threshold = fallback.memory_similarity_threshold
     return DebateSettings(
         mode=mode if mode in ("persuasive", "forceful") else fallback.mode,
@@ -135,42 +148,55 @@ def _from_json(raw: str) -> DebateSettings:
             if pipeline_mode in ("standard", "experimental_debateai")
             else fallback.pipeline_mode
         ),
-        research_enabled=enabled if isinstance(enabled, bool) else fallback.research_enabled,
+        research_enabled=enabled
+        if isinstance(enabled, bool)
+        else fallback.research_enabled,
         research_frequency=(
-            frequency if frequency in RESEARCH_COOLDOWNS else fallback.research_frequency
+            frequency
+            if frequency in RESEARCH_COOLDOWNS
+            else fallback.research_frequency
         ),
-        always_analogy=analogy if isinstance(analogy, bool) else fallback.always_analogy,
+        always_analogy=analogy
+        if isinstance(analogy, bool)
+        else fallback.always_analogy,
         style_focus=(
             style_focus
             if style_focus in ("balanced", "natural", "concise", "evidence")
             else fallback.style_focus
         ),
         voice_commands_enabled=(
-            voice_commands if isinstance(voice_commands, bool)
+            voice_commands
+            if isinstance(voice_commands, bool)
             else fallback.voice_commands_enabled
         ),
         argument_memory_enabled=(
-            argument_memory if isinstance(argument_memory, bool)
+            argument_memory
+            if isinstance(argument_memory, bool)
             else fallback.argument_memory_enabled
         ),
         transcript_retention_enabled=(
-            transcript_retention if isinstance(transcript_retention, bool)
+            transcript_retention
+            if isinstance(transcript_retention, bool)
             else fallback.transcript_retention_enabled
         ),
         audio_archive_enabled=(
-            audio_archive if isinstance(audio_archive, bool)
+            audio_archive
+            if isinstance(audio_archive, bool)
             else fallback.audio_archive_enabled
         ),
         session_retrieval_enabled=(
-            session_retrieval if isinstance(session_retrieval, bool)
+            session_retrieval
+            if isinstance(session_retrieval, bool)
             else fallback.session_retrieval_enabled
         ),
         learning_examples_enabled=(
-            learning_examples if isinstance(learning_examples, bool)
+            learning_examples
+            if isinstance(learning_examples, bool)
             else fallback.learning_examples_enabled
         ),
         graph_recording_enabled=(
-            graph_recording if isinstance(graph_recording, bool)
+            graph_recording
+            if isinstance(graph_recording, bool)
             else fallback.graph_recording_enabled
         ),
         memory_similarity_threshold=float(memory_threshold),
@@ -223,14 +249,16 @@ def debate_profiles() -> list[dict]:
             ),
             "",
         )
-        profiles.append({
-            **value,
-            "profile_directive": directive,
-            "resources": [
-                f"mode.{value['mode']}",
-                f"style.{value['style_focus']}",
-                "phase.automatic",
-                "playbooks.json",
-            ],
-        })
+        profiles.append(
+            {
+                **value,
+                "profile_directive": directive,
+                "resources": [
+                    f"mode.{value['mode']}",
+                    f"style.{value['style_focus']}",
+                    "phase.automatic",
+                    "playbooks.json",
+                ],
+            }
+        )
     return profiles

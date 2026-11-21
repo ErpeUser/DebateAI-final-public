@@ -4,7 +4,6 @@ import tempfile
 import unittest
 from pathlib import Path
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SPEC = (ROOT / "desktop" / "debateai.spec").read_text()
 WORKFLOW = (ROOT.parent / ".github" / "workflows" / "desktop-release.yml").read_text()
@@ -99,9 +98,7 @@ def _blocks(text, indent):
     A block runs from its key line to the line before the next key at the same
     indentation, so a job block holds that whole job and nothing else.
     """
-    header = re.compile(
-        r"^" + " " * indent + r"([A-Za-z0-9_-]+):[ \t]*$", re.MULTILINE
-    )
+    header = re.compile(r"^" + " " * indent + r"([A-Za-z0-9_-]+):[ \t]*$", re.MULTILINE)
     matches = list(header.finditer(text))
     blocks = {}
     for index, match in enumerate(matches):
@@ -115,7 +112,7 @@ def _jobs():
 
 
 def _job(role, platform):
-    return _jobs()["%s-%s" % (role, platform)]
+    return _jobs()[f"{role}-{platform}"]
 
 
 def _triggers_and_inputs():
@@ -125,7 +122,9 @@ def _triggers_and_inputs():
 
 
 class ReleaseContractTests(unittest.TestCase):
-    def test_release_build_uses_pinned_oracle_node_and_correct_linux_checkout_paths(self):
+    def test_release_build_uses_pinned_oracle_node_and_correct_linux_checkout_paths(
+        self,
+    ):
         for value in (
             "node-version: 24.21.0",
             "--file controller/app/desktop/Dockerfile.release-linux",
@@ -134,21 +133,33 @@ class ReleaseContractTests(unittest.TestCase):
             self.assertIn(value, WORKFLOW)
         self.assertNotIn("node-version: 24\n", WORKFLOW)
         self.assertIn('"v24.21.0"', BUILD_SCRIPT)
-        self.assertIn("ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32", BUILD_SCRIPT)
+        self.assertIn(
+            "ba4e6d110e8c1592a1ecd390f6b05f3da124b13871a5be62b341a07a853c6c32",
+            BUILD_SCRIPT,
+        )
 
     def test_current_tag_layout_is_used_for_build_and_verified_asset_handoff(self):
         for platform in NATIVE_PLATFORMS:
             build = _job("build", platform)
             self.assertIn("working-directory: source/app/frontend", build)
             self.assertIn("-r source/app/backend/requirements.txt", build)
-            self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], build)
-        self.assertIn("--output type=local,dest=linux-output \\\n            source/app\n", _job("build", "linux"))
+            self.assertIn(
+                "../../controller/release-assets/" + PLATFORMS[platform]["archive"],
+                build,
+            )
+        self.assertIn(
+            "--output type=local,dest=linux-output \\\n            source/app\n",
+            _job("build", "linux"),
+        )
         self.assertIn("COPY ai/ ai/", LINUX_DOCKERFILE)
         for platform in PLATFORMS:
             publish = _job("publish", platform)
             self.assertIn("ref: ${{ inputs.expected_commit }}", publish)
             self.assertIn("working-directory: source/app", publish)
-            self.assertIn("../../controller/release-assets/" + PLATFORMS[platform]["archive"], publish)
+            self.assertIn(
+                "../../controller/release-assets/" + PLATFORMS[platform]["archive"],
+                publish,
+            )
 
     def test_tag_verification_resolves_spec_from_source_working_directory(self):
         verify_blocks = re.findall(
@@ -158,8 +169,8 @@ class ReleaseContractTests(unittest.TestCase):
         )
         self.assertEqual(len(verify_blocks), 3)
         for block in verify_blocks:
-            self.assertIn('[[ -f app/desktop/debateai.spec ]]', block)
-            self.assertNotIn('[[ -f desktop/debateai.spec ]]', block)
+            self.assertIn("[[ -f app/desktop/debateai.spec ]]", block)
+            self.assertNotIn("[[ -f desktop/debateai.spec ]]", block)
 
     def test_tag_verification_path_resolves_against_source_checkout(self):
         with tempfile.TemporaryDirectory() as root:
@@ -172,13 +183,24 @@ class ReleaseContractTests(unittest.TestCase):
 
     def test_local_coordinator_is_tag_pinned_progressive_and_failure_isolated(self):
         for value in (
-            "SupportsShouldProcess", "worktree add --detach", "^{commit}",
-            "taggerdate", "Get-ReleasePublicationState", "Remove-StaleMacArtifacts",
-            "workflow run desktop-release.yml", "correlation_id", "displayTitle",
+            "SupportsShouldProcess",
+            "worktree add --detach",
+            "^{commit}",
+            "taggerdate",
+            "Get-ReleasePublicationState",
+            "Remove-StaleMacArtifacts",
+            "workflow run desktop-release.yml",
+            "correlation_id",
+            "displayTitle",
             "Build-WindowsRelease",
-            "Build-LinuxRelease", "publish_release_platform.ps1",
-            "DebateAI-windows-x64.zip", "DebateAI-linux-x64.tar.gz",
-            "run watch", "release view", "$failures", "finally",
+            "Build-LinuxRelease",
+            "publish_release_platform.ps1",
+            "DebateAI-windows-x64.zip",
+            "DebateAI-linux-x64.tar.gz",
+            "run watch",
+            "release view",
+            "$failures",
+            "finally",
         ):
             self.assertIn(value, COORDINATOR)
         main = COORDINATOR[COORDINATOR.index("$localPending") :]
@@ -189,9 +211,13 @@ class ReleaseContractTests(unittest.TestCase):
 
     def test_linux_release_container_builds_smokes_and_exports_one_tarball(self):
         for value in (
-            "FROM node:24", "npm ci", "npm run build", "FROM python:3.12",
+            "FROM node:24",
+            "npm ci",
+            "npm run build",
+            "FROM python:3.12",
             "binutils",
-            "pip install", "download_models.py",
+            "pip install",
+            "download_models.py",
             "rm -rf desktop/pgsql && python desktop/scripts/download_pg.py",
             "python -m PyInstaller desktop/debateai.spec",
             "COPY --from=controller smoke_test.py",
@@ -239,14 +265,14 @@ class ReleaseContractTests(unittest.TestCase):
 
         jobs = _jobs()
         expected = sorted(
-            "%s-%s" % (role, platform) for platform in PLATFORMS for role in JOB_ROLES
+            f"{role}-{platform}" for platform in PLATFORMS for role in JOB_ROLES
         )
         self.assertEqual(sorted(jobs), expected)
         order = list(jobs)
         for platform, spec in PLATFORMS.items():
             with self.subTest(platform=platform):
                 build, publish, cleanup = (
-                    jobs["%s-%s" % (role, platform)] for role in JOB_ROLES
+                    jobs[f"{role}-{platform}"] for role in JOB_ROLES
                 )
                 self.assertLess(
                     order.index("build-" + platform), order.index("publish-" + platform)
@@ -256,17 +282,19 @@ class ReleaseContractTests(unittest.TestCase):
                     order.index("cleanup-" + platform),
                 )
                 self.assertIn(
-                    "if: ${{ contains(inputs.platforms, '%s') }}" % spec["id"], build
+                    "if: ${{{{ contains(inputs.platforms, '{}') }}}}".format(
+                        spec["id"]
+                    ),
+                    build,
                 )
-                self.assertIn("needs: build-%s\n" % platform, publish)
-                self.assertIn("needs: [build-%s, publish-%s]" % (platform, platform), cleanup)
+                self.assertIn(f"needs: build-{platform}\n", publish)
+                self.assertIn(f"needs: [build-{platform}, publish-{platform}]", cleanup)
                 self.assertIn(
-                    "if: ${{ always() && needs.build-%s.result == 'success' }}"
-                    % platform,
+                    f"if: ${{{{ always() && needs.build-{platform}.result == 'success' }}}}",
                     cleanup,
                 )
-                self.assertIn("runs-on: %s\n" % spec["runner"], build)
-                self.assertIn("runs-on: %s\n" % spec["runner"], publish)
+                self.assertIn("runs-on: {}\n".format(spec["runner"]), build)
+                self.assertIn("runs-on: {}\n".format(spec["runner"]), publish)
                 self.assertIn("runs-on: ubuntu-latest\n", cleanup)
         self.assertNotIn("contents: write", WORKFLOW)
         self.assertNotIn("retention-days:", WORKFLOW)
@@ -310,9 +338,11 @@ class ReleaseContractTests(unittest.TestCase):
                 )
                 self.assertEqual(publish.count("publish_release_platform.ps1"), 1)
                 self.assertIn("-SigningMode Remote", publish)
-                self.assertIn("-PlatformId %s " % spec["id"], publish)
+                self.assertIn("-PlatformId {} ".format(spec["id"]), publish)
                 self.assertIn(
-                    "-AssetPath ../../controller/release-assets/%s " % spec["archive"],
+                    "-AssetPath ../../controller/release-assets/{} ".format(
+                        spec["archive"]
+                    ),
                     publish,
                 )
 
@@ -341,7 +371,7 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertIn("GH_TOKEN: ${{ github.token }}", cleanup)
                 # Nothing but the job's own script runs with actions: write.
                 self.assertNotIn("uses:", cleanup)
-                self.assertIn("needs: [build-%s, publish-%s]" % (platform, platform), cleanup)
+                self.assertIn(f"needs: [build-{platform}, publish-{platform}]", cleanup)
                 self.assertIn("always()", cleanup)
 
     def test_every_build_is_tag_pinned_smoked_and_exactly_handed_off(self):
@@ -368,9 +398,11 @@ class ReleaseContractTests(unittest.TestCase):
                     "published_at: ${{ steps.release.outputs.published_at }}",
                     "cache_key: ${{ steps.handoff.outputs.cache_key }}",
                     "bundle_sha256: ${{ steps.handoff.outputs.bundle_sha256 }}",
-                    'cache_key="debateai-%s-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}'
-                    '-${EXPECTED_COMMIT}-${bundle_sha256}"' % platform,
-                    "path: controller/release-assets/%s" % spec["archive"],
+                    (
+                        f'cache_key="debateai-{platform}-${{GITHUB_RUN_ID}}-${{GITHUB_RUN_ATTEMPT}}'
+                        '-${EXPECTED_COMMIT}-${bundle_sha256}"'
+                    ),
+                    "path: controller/release-assets/{}".format(spec["archive"]),
                     "key: ${{ steps.handoff.outputs.cache_key }}",
                 ) + spec["build_steps"]:
                     with self.subTest(value=value):
@@ -383,24 +415,24 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertEqual(publish.count("uses: actions/cache/restore@"), 1)
                 self.assertNotIn("actions/cache/save@", publish)
                 self.assertIn(
-                    "path: controller/release-assets/%s" % spec["archive"], publish
+                    "path: controller/release-assets/{}".format(spec["archive"]),
+                    publish,
                 )
                 self.assertIn(
-                    "key: ${{ needs.build-%s.outputs.cache_key }}" % platform, publish
+                    f"key: ${{{{ needs.build-{platform}.outputs.cache_key }}}}",
+                    publish,
                 )
                 self.assertIn("fail-on-cache-miss: true", publish)
                 self.assertNotIn("restore-keys:", publish)
                 self.assertIn(
-                    "BUNDLE_SHA256: ${{ needs.build-%s.outputs.bundle_sha256 }}"
-                    % platform,
+                    f"BUNDLE_SHA256: ${{{{ needs.build-{platform}.outputs.bundle_sha256 }}}}",
                     publish,
                 )
                 self.assertIn(
-                    "PUBLISHED_AT: ${{ needs.build-%s.outputs.published_at }}"
-                    % platform,
+                    f"PUBLISHED_AT: ${{{{ needs.build-{platform}.outputs.published_at }}}}",
                     publish,
                 )
-                digest_check = 'echo "$BUNDLE_SHA256  release-assets/%s" | %s' % (
+                digest_check = 'echo "$BUNDLE_SHA256  release-assets/{}" | {}'.format(
                     spec["archive"],
                     spec["digest_check"],
                 )
@@ -424,7 +456,7 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertIn("always()", cleanup)
                 self.assertIn("actions/caches", cleanup)
                 self.assertIn(
-                    "CACHE_KEY: ${{ needs.build-%s.outputs.cache_key }}" % platform,
+                    f"CACHE_KEY: ${{{{ needs.build-{platform}.outputs.cache_key }}}}",
                     cleanup,
                 )
                 self.assertIn("actions/caches/$cache_id", cleanup)
@@ -437,7 +469,6 @@ class ReleaseContractTests(unittest.TestCase):
 
     def test_linux_bundle_collects_the_xorg_tray_backend(self):
         self.assertIn('hidden.append("pystray._xorg")', SPEC)
-
 
     def test_owner_migration_is_validated_and_opt_in_for_latest(self):
         for value in (
@@ -548,8 +579,9 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn("include_oracle =", SPEC)
         self.assertEqual(1, SPEC.count("if include_oracle:"))
         windows_hidden = SPEC[
-            SPEC.index('if sys.platform == "win32":'):
-            SPEC.index('elif sys.platform == "darwin":')
+            SPEC.index('if sys.platform == "win32":') : SPEC.index(
+                'elif sys.platform == "darwin":'
+            )
         ]
         self.assertIn('hidden.append("pystray._win32")', windows_hidden)
         self.assertIn('hidden.append("pyaudiowpatch")', windows_hidden)
@@ -559,7 +591,9 @@ class ReleaseContractTests(unittest.TestCase):
         self.assertIn('repo / "desktop" / "updater.py"', SPEC)
         self.assertIn('name="DebateAIUpdater"', SPEC)
         self.assertRegex(SPEC, r"updater_exe\s*=\s*EXE\(")
-        updater_block = SPEC[SPEC.index("updater_exe = EXE("):SPEC.index("coll = COLLECT")]
+        updater_block = SPEC[
+            SPEC.index("updater_exe = EXE(") : SPEC.index("coll = COLLECT")
+        ]
         self.assertNotIn("exclude_binaries=True", updater_block)
         self.assertRegex(SPEC, r"COLLECT\(\s*exe,\s*updater_exe,")
         self.assertIn('release_signing_keys.json"), "."', SPEC)
@@ -595,8 +629,10 @@ class ReleaseContractTests(unittest.TestCase):
                 self.assertLess(archive, smoke)
                 self.assertLess(smoke, handoff)
                 self.assertIn(
-                    "smoke_update_archive.py --platform %s --archive "
-                    "../../controller/release-assets/%s" % (spec["id"], spec["archive"]),
+                    "smoke_update_archive.py --platform {} --archive "
+                    "../../controller/release-assets/{}".format(
+                        spec["id"], spec["archive"]
+                    ),
                     build,
                 )
         linux_build = _job("build", "linux")
@@ -609,7 +645,10 @@ class ReleaseContractTests(unittest.TestCase):
 
 class NodeBundleLicenseContractTests(unittest.TestCase):
     def test_sortformer_dependencies_are_collected_for_local_desktop_builds(self):
-        self.assertIn('for _optional_package in ("torch", "torchvision", "torchaudio", "cuda", "lightning", "lightning_fabric", "nemo")', SPEC)
+        self.assertIn(
+            'for _optional_package in ("torch", "torchvision", "torchaudio", "cuda", "lightning", "lightning_fabric", "nemo")',
+            SPEC,
+        )
         self.assertIn("collect_all(", SPEC)
 
     def test_local_rebuild_includes_chatgpt_web_oracle(self):
@@ -641,7 +680,7 @@ class NodeBundleLicenseContractTests(unittest.TestCase):
         attrs = (ROOT.parent / ".gitattributes").read_text(encoding="utf-8")
         self.assertIn("app/desktop/chatgpt_oracle/node/LICENSE.node text eol=lf", attrs)
         self.assertIn('"LICENSE.node"', SPEC)
-        self.assertIn('Copy-Item -LiteralPath $nodeCommand.Source', WORKFLOW)
+        self.assertIn("Copy-Item -LiteralPath $nodeCommand.Source", WORKFLOW)
 
 
 if __name__ == "__main__":

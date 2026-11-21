@@ -14,10 +14,9 @@ as 500s.
 import logging
 
 import httpx
+from app.services.redaction import redact_text
 from fastapi import HTTPException
 from google.genai import errors as genai_errors
-
-from app.services.redaction import redact_text
 
 logger = logging.getLogger(__name__)
 

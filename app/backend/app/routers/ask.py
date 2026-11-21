@@ -9,26 +9,32 @@ answer as an insight instead of returning a chat reply.
 import time
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
-from app.models import Document, Question, Session, SessionSynthesis, Speaker, TranscriptEntry
+from app.models import (
+    Document,
+    Question,
+    Session,
+    SessionSynthesis,
+    Speaker,
+    TranscriptEntry,
+)
 from app.schemas import QuestionOut
-from app.services.pii import shield
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.custom_endpoints import endpoint_model_entry
 from app.services.live_chat_context import (
     LIVE_SYSTEM_PROMPT,
     build_live_prompt,
     format_live_insights,
 )
-from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.llm import generate_text, provider_for, registry_entry
+from app.services.pii import shield
 from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
 from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_to_http
 from app.services.session_manager import get_active_directives
+from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel, Field
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions", tags=["ask"])
 
@@ -73,7 +79,9 @@ def build_asked_row(
         session_id=session_id,
         item_type=ASK_ITEM_TYPE,
         question=question,
-        rationale=f"Answered by {model_name} in {elapsed_seconds:.1f}s" if model_name else "",
+        rationale=f"Answered by {model_name} in {elapsed_seconds:.1f}s"
+        if model_name
+        else "",
         answer_summary=answer,
         answered=True,
         starred=True,
@@ -86,7 +94,9 @@ async def load_live_context(session_id: uuid.UUID, db: AsyncSession) -> dict:
     if not session:
         raise HTTPException(404, f"Session not found: {session_id}")
 
-    speakers_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+    speakers_result = await db.execute(
+        select(Speaker).where(Speaker.session_id == session_id)
+    )
     speaker_names = {str(s.id): s.name for s in speakers_result.scalars().all()}
 
     entries_result = await db.execute(
@@ -147,7 +157,9 @@ async def load_live_context(session_id: uuid.UUID, db: AsyncSession) -> dict:
         "meeting_type": session.meeting_type or "general",
         "meeting_context": session.meeting_context or "",
         "directives": await get_active_directives(session_id, db),
-        "documents": [(row.filename, row.summary or "") for row in documents_result.all()],
+        "documents": [
+            (row.filename, row.summary or "") for row in documents_result.all()
+        ],
         "insights": format_live_insights(insights, speaker_names),
         "signals": signals,
         "lines": lines,
@@ -156,9 +168,13 @@ async def load_live_context(session_id: uuid.UUID, db: AsyncSession) -> dict:
 
 @router.post("/{session_id}/ask", response_model=QuestionOut)
 async def ask(session_id: uuid.UUID, body: AskIn, db: AsyncSession = Depends(get_db)):
-    entry = registry_entry(body.model_id) or await endpoint_model_entry(db, body.model_id)
+    entry = registry_entry(body.model_id) or await endpoint_model_entry(
+        db, body.model_id
+    )
     if not entry or not entry.get("supports_text"):
-        raise HTTPException(400, f"Model {body.model_id} does not support text generation")
+        raise HTTPException(
+            400, f"Model {body.model_id} does not support text generation"
+        )
 
     if await is_local_only() and not await allows_local_only(body.model_id):
         raise LocalOnlyModeError("asking the call a question", body.model_id)
@@ -190,7 +206,9 @@ async def ask(session_id: uuid.UUID, body: AskIn, db: AsyncSession = Depends(get
 
     answer = answer.strip()
     if not answer:
-        raise HTTPException(502, "The model returned an empty answer. Try again or pick another model.")
+        raise HTTPException(
+            502, "The model returned an empty answer. Try again or pick another model."
+        )
     answer = clamp_answer(answer)
 
     row = build_asked_row(

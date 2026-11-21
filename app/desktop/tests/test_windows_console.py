@@ -4,11 +4,10 @@ import time
 import unittest
 from unittest.mock import patch
 
-import debateai_desktop.windows_console as windows_console
-
+from debateai_desktop import windows_console
 from debateai_desktop.windows_console import (
-    _windows_process_tree,
     ConsoleWindowSuppressor,
+    _windows_process_tree,
     expand_managed_pids,
     hidden_startupinfo,
     is_console_window_class,
@@ -28,25 +27,31 @@ class WindowsConsoleSuppressorTests(unittest.TestCase):
 
         options = policy({"creationflags": 8}, platform="win32")
 
-        self.assertTrue(options["creationflags"] & __import__("subprocess").CREATE_NO_WINDOW)
+        self.assertTrue(
+            options["creationflags"] & __import__("subprocess").CREATE_NO_WINDOW
+        )
         self.assertTrue(
             options["startupinfo"].dwFlags
             & __import__("subprocess").STARTF_USESHOWWINDOW
         )
 
     def test_visible_gui_child_bypasses_the_hidden_process_policy(self):
-        with patch.object(windows_console, "_ORIGINAL_POPEN", return_value="child") as popen:
-            child = windows_console.visible_popen(["DebateAI.exe", "--embedded-webview"])
+        with patch.object(
+            windows_console, "_ORIGINAL_POPEN", return_value="child"
+        ) as popen:
+            child = windows_console.visible_popen(
+                ["DebateAI.exe", "--embedded-webview"]
+            )
 
         self.assertEqual("child", child)
         popen.assert_called_once_with(["DebateAI.exe", "--embedded-webview"])
 
     def test_tracks_new_descendants_and_keeps_live_orphans(self):
         processes = {
-            100: 1,     # launcher
-            200: 999,   # managed child whose original parent already exited
-            300: 200,   # new descendant of that managed child
-            400: 999,   # unrelated process
+            100: 1,  # launcher
+            200: 999,  # managed child whose original parent already exited
+            300: 200,  # new descendant of that managed child
+            400: 999,  # unrelated process
         }
 
         managed = expand_managed_pids({100, 200, 500}, 100, processes)
@@ -67,7 +72,9 @@ class WindowsConsoleSuppressorTests(unittest.TestCase):
     def test_hidden_startupinfo_requests_no_initial_window(self):
         startupinfo = hidden_startupinfo()
         self.assertEqual(0, startupinfo.wShowWindow)
-        self.assertTrue(startupinfo.dwFlags & __import__("subprocess").STARTF_USESHOWWINDOW)
+        self.assertTrue(
+            startupinfo.dwFlags & __import__("subprocess").STARTF_USESHOWWINDOW
+        )
 
     @unittest.skipUnless(sys.platform == "win32", "Windows event hook")
     def test_event_hook_thread_starts_and_stops_cleanly(self):

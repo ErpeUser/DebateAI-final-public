@@ -31,9 +31,10 @@ export function useSpeechRecognition() {
 
   const INTERIM_TIMEOUT_MS = 3000; // Promote interim to final after 3s without update
 
-  function createRecognizer(): any {
+  const createRecognizer = useCallback((): any => {
     const SpeechRecognition =
-      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      (window as any).SpeechRecognition ||
+      (window as any).webkitSpeechRecognition;
     if (!SpeechRecognition) return null;
 
     const recognition = new SpeechRecognition();
@@ -42,9 +43,9 @@ export function useSpeechRecognition() {
     recognition.lang = "en-US";
     recognition.maxAlternatives = 1;
     return recognition;
-  }
+  }, []);
 
-  function flushInterim() {
+  const flushInterim = useCallback(() => {
     const text = lastInterimRef.current.trim();
     if (text && text.length > 2) {
       onTranscriptRef.current?.({
@@ -59,9 +60,9 @@ export function useSpeechRecognition() {
       clearTimeout(interimTimerRef.current);
       interimTimerRef.current = null;
     }
-  }
+  }, []);
 
-  function resetInterimTimer() {
+  const resetInterimTimer = useCallback(() => {
     if (interimTimerRef.current) {
       clearTimeout(interimTimerRef.current);
     }
@@ -71,112 +72,118 @@ export function useSpeechRecognition() {
         flushInterim();
       }
     }, INTERIM_TIMEOUT_MS);
-  }
+  }, [flushInterim]);
 
-  function wireRecognizer(recognition: any, label: string) {
-    recognition.onresult = (event: any) => {
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const result = event.results[i];
-        const text = result[0].transcript.trim();
-        if (!text) continue;
+  const wireRecognizer = useCallback(
+    (recognition: any, label: string) => {
+      recognition.onresult = (event: any) => {
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const result = event.results[i];
+          const text = result[0].transcript.trim();
+          if (!text) continue;
 
-        if (result.isFinal) {
-          // Clear any pending interim since we got a final
-          lastInterimRef.current = "";
-          if (interimTimerRef.current) {
-            clearTimeout(interimTimerRef.current);
-            interimTimerRef.current = null;
+          if (result.isFinal) {
+            // Clear any pending interim since we got a final
+            lastInterimRef.current = "";
+            if (interimTimerRef.current) {
+              clearTimeout(interimTimerRef.current);
+              interimTimerRef.current = null;
+            }
+
+            onTranscriptRef.current?.({
+              text,
+              isFinal: true,
+              timestamp: new Date().toISOString(),
+            });
+          } else {
+            // Track interim text and emit for live display
+            lastInterimRef.current = text;
+            lastInterimTimeRef.current = Date.now();
+            resetInterimTimer();
+
+            onTranscriptRef.current?.({
+              text,
+              isFinal: false,
+              timestamp: new Date().toISOString(),
+            });
           }
-
-          onTranscriptRef.current?.({
-            text,
-            isFinal: true,
-            timestamp: new Date().toISOString(),
-          });
-        } else {
-          // Track interim text and emit for live display
-          lastInterimRef.current = text;
-          lastInterimTimeRef.current = Date.now();
-          resetInterimTimer();
-
-          onTranscriptRef.current?.({
-            text,
-            isFinal: false,
-            timestamp: new Date().toISOString(),
-          });
         }
+      };
+
+      recognition.onerror = (event: any) => {
+        if (event.error === "no-speech" || event.error === "aborted") return;
+        console.warn(`[${label}] Speech recognition error:`, event.error);
+      };
+
+      recognition.onend = () => {
+        if (!activeRef.current) return;
+
+        // Save any unflushed interim text before restart
+        if (lastInterimRef.current.trim().length > 2) {
+          flushInterim();
+        }
+
+        // Restart with a slight delay
+        setTimeout(() => {
+          if (!activeRef.current) return;
+          try {
+            recognition.start();
+          } catch {
+            // Already running or other issue — try creating a fresh one
+            try {
+              const fresh = createRecognizer();
+              if (fresh) {
+                wireRecognizer(fresh, label);
+                fresh.start();
+                if (label === "primary") primaryRef.current = fresh;
+                else backupRef.current = fresh;
+              }
+            } catch {
+              console.warn(`[${label}] Failed to restart speech recognition`);
+            }
+          }
+        }, 100);
+      };
+    },
+    [createRecognizer, flushInterim, resetInterimTimer],
+  );
+
+  const startListening = useCallback(
+    (onTranscript: (t: SpeechTranscript) => void) => {
+      onTranscriptRef.current = onTranscript;
+      activeRef.current = true;
+      lastInterimRef.current = "";
+
+      const primary = createRecognizer();
+      if (!primary) {
+        console.warn("Speech Recognition API not available");
+        return;
       }
-    };
 
-    recognition.onerror = (event: any) => {
-      if (event.error === "no-speech" || event.error === "aborted") return;
-      console.warn(`[${label}] Speech recognition error:`, event.error);
-    };
+      wireRecognizer(primary, "primary");
+      primary.start();
+      primaryRef.current = primary;
 
-    recognition.onend = () => {
-      if (!activeRef.current) return;
-
-      // Save any unflushed interim text before restart
-      if (lastInterimRef.current.trim().length > 2) {
-        flushInterim();
-      }
-
-      // Restart with a slight delay
+      // Start backup recognizer with a delay to cover restart gaps
       setTimeout(() => {
         if (!activeRef.current) return;
-        try {
-          recognition.start();
-        } catch {
-          // Already running or other issue — try creating a fresh one
+        const backup = createRecognizer();
+        if (backup) {
+          wireRecognizer(backup, "backup");
           try {
-            const fresh = createRecognizer();
-            if (fresh) {
-              wireRecognizer(fresh, label);
-              fresh.start();
-              if (label === "primary") primaryRef.current = fresh;
-              else backupRef.current = fresh;
-            }
+            backup.start();
+            backupRef.current = backup;
           } catch {
-            console.warn(`[${label}] Failed to restart speech recognition`);
+            // Chrome may not allow two simultaneous — that's okay, primary handles it
+            backupRef.current = null;
           }
         }
-      }, 100);
-    };
-  }
+      }, 500);
 
-  const startListening = useCallback((onTranscript: (t: SpeechTranscript) => void) => {
-    onTranscriptRef.current = onTranscript;
-    activeRef.current = true;
-    lastInterimRef.current = "";
-
-    const primary = createRecognizer();
-    if (!primary) {
-      console.warn("Speech Recognition API not available");
-      return;
-    }
-
-    wireRecognizer(primary, "primary");
-    primary.start();
-    primaryRef.current = primary;
-
-    // Start backup recognizer with a delay to cover restart gaps
-    setTimeout(() => {
-      if (!activeRef.current) return;
-      const backup = createRecognizer();
-      if (backup) {
-        wireRecognizer(backup, "backup");
-        try {
-          backup.start();
-          backupRef.current = backup;
-        } catch {
-          // Chrome may not allow two simultaneous — that's okay, primary handles it
-          backupRef.current = null;
-        }
-      }
-    }, 500);
-
-    setIsListening(true);
-  }, []);
+      setIsListening(true);
+    },
+    [createRecognizer, wireRecognizer],
+  );
 
   const stopListening = useCallback(() => {
     activeRef.current = false;
@@ -187,11 +194,15 @@ export function useSpeechRecognition() {
     }
 
     if (primaryRef.current) {
-      try { primaryRef.current.stop(); } catch {}
+      try {
+        primaryRef.current.stop();
+      } catch {}
       primaryRef.current = null;
     }
     if (backupRef.current) {
-      try { backupRef.current.stop(); } catch {}
+      try {
+        backupRef.current.stop();
+      } catch {}
       backupRef.current = null;
     }
     if (interimTimerRef.current) {
@@ -200,7 +211,7 @@ export function useSpeechRecognition() {
     }
 
     setIsListening(false);
-  }, []);
+  }, [flushInterim]);
 
   return { startListening, stopListening, isListening };
 }

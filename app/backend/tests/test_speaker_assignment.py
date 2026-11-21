@@ -6,9 +6,9 @@ from app.models import Speaker
 from app.services.speaker_assignment import (
     auto_speaker_would_create_new_speaker,
     is_unknown_auto_speaker,
+    load_live_mic_voice_embedding,
     resolve_existing_auto_speaker,
     resolve_live_mic_speaker,
-    load_live_mic_voice_embedding,
 )
 from app.services.voice_enrollment import LOCAL_VOICE_PROFILE_ID
 
@@ -59,9 +59,7 @@ class SpeakerAssignmentTests(unittest.TestCase):
         )
 
     def test_enrolled_mic_only_voice_requires_exactly_one_user(self):
-        self.assertIsNone(
-            resolve_live_mic_speaker(LOCAL_VOICE_PROFILE_ID, [], False)
-        )
+        self.assertIsNone(resolve_live_mic_speaker(LOCAL_VOICE_PROFILE_ID, [], False))
         self.assertIsNone(
             resolve_live_mic_speaker(
                 LOCAL_VOICE_PROFILE_ID,
@@ -98,7 +96,9 @@ class SpeakerAssignmentTests(unittest.TestCase):
         participant = _speaker("Speaker 2", False)
         auto_speaker_map: dict[str, str] = {}
 
-        resolved = resolve_existing_auto_speaker("auto_1", auto_speaker_map, [user, participant])
+        resolved = resolve_existing_auto_speaker(
+            "auto_1", auto_speaker_map, [user, participant]
+        )
 
         self.assertEqual(participant.id, resolved.id)
         self.assertEqual(str(participant.id), auto_speaker_map["auto_1"])

@@ -1,21 +1,20 @@
 import asyncio
+import json
 import unittest
 import uuid
-import json
 from types import SimpleNamespace
 
 import numpy as np
-from sqlalchemy.dialects import postgresql
-
 from app.services.knowledge_context import (
     FastEmbedContextIndex,
     KnowledgeSection,
     build_postgres_fts_statement,
     prepare_knowledge_record_embeddings,
     retrieve_knowledge_record_context,
-    select_knowledge_record_context,
     select_context_sections,
+    select_knowledge_record_context,
 )
+from sqlalchemy.dialects import postgresql
 
 
 class _EmbeddingModel:
@@ -34,13 +33,17 @@ class KnowledgeContextTests(unittest.TestCase):
         query = "Wie sinkt der CO2-Ausstoss?"
         sections = [
             KnowledgeSection("lexical", "### Worttreffer\nCO2 wird nur erwaehnt."),
-            KnowledgeSection("semantic", "### Wirkung\nWeniger Emissionen durch Waermepumpen."),
+            KnowledgeSection(
+                "semantic", "### Wirkung\nWeniger Emissionen durch Waermepumpen."
+            ),
         ]
-        model = _EmbeddingModel({
-            query: [0.0, 1.0],
-            sections[0].text: [1.0, 0.0],
-            sections[1].text: [0.0, 1.0],
-        })
+        model = _EmbeddingModel(
+            {
+                query: [0.0, 1.0],
+                sections[0].text: [1.0, 0.0],
+                sections[1].text: [0.0, 1.0],
+            }
+        )
         index = FastEmbedContextIndex(model=model, model_version="test-model@1")
 
         ranking = index.semantic_ranking(sections, query, limit=1)
@@ -48,7 +51,9 @@ class KnowledgeContextTests(unittest.TestCase):
         self.assertEqual(["semantic"], ranking)
 
     def test_large_context_fuses_postgres_and_fastembed_rankings(self):
-        sections = [f"### Thema {index}\nAllgemeiner Inhalt {index}." for index in range(9)]
+        sections = [
+            f"### Thema {index}\nAllgemeiner Inhalt {index}." for index in range(9)
+        ]
         sections.append("### Preismodell\nDie Kosten betragen zehn Euro.")
         query = "Was ist der Preis?"
         vectors = {query: [0.0, 1.0]}
@@ -67,15 +72,19 @@ class KnowledgeContextTests(unittest.TestCase):
         self.assertIn("Preismodell", selected)
         self.assertIn("Kosten", selected)
 
-    def test_embedding_cache_reuses_only_matching_model_dimension_and_content_hash(self):
+    def test_embedding_cache_reuses_only_matching_model_dimension_and_content_hash(
+        self,
+    ):
         query = "Frage"
         original = KnowledgeSection("record-1", "### Titel\nAlter Inhalt")
         changed = KnowledgeSection("record-1", "### Titel\nNeuer Inhalt")
-        model = _EmbeddingModel({
-            query: [1.0, 0.0],
-            original.text: [1.0, 0.0],
-            changed.text: [0.0, 1.0],
-        })
+        model = _EmbeddingModel(
+            {
+                query: [1.0, 0.0],
+                original.text: [1.0, 0.0],
+                changed.text: [0.0, 1.0],
+            }
+        )
         index = FastEmbedContextIndex(model=model, model_version="test-model@1")
 
         index.semantic_ranking([original], query, limit=1)
@@ -98,10 +107,12 @@ class KnowledgeContextTests(unittest.TestCase):
             "Kosten fuer Waermepumpen",
             limit=7,
         )
-        sql = str(statement.compile(
-            dialect=postgresql.dialect(),
-            compile_kwargs={"literal_binds": True},
-        )).casefold()
+        sql = str(
+            statement.compile(
+                dialect=postgresql.dialect(),
+                compile_kwargs={"literal_binds": True},
+            )
+        ).casefold()
 
         self.assertIn("to_tsvector", sql)
         self.assertIn("websearch_to_tsquery", sql)
@@ -122,14 +133,18 @@ class KnowledgeContextTests(unittest.TestCase):
         )
         rendered = "### Dossierquelle [local document; private/local; origin: Studie.pdf]\nWaermepumpen verringern Emissionen."
         first_model = _EmbeddingModel({query: [0.0, 1.0], rendered: [0.0, 1.0]})
-        first_index = FastEmbedContextIndex(model=first_model, model_version="test-model@1")
+        first_index = FastEmbedContextIndex(
+            model=first_model, model_version="test-model@1"
+        )
 
         selected = select_knowledge_record_context(
             [record], query, lexical_ranking=[], index=first_index
         )
         stored = json.loads(record.meta)
         second_model = _EmbeddingModel({query: [0.0, 1.0]})
-        second_index = FastEmbedContextIndex(model=second_model, model_version="test-model@1")
+        second_index = FastEmbedContextIndex(
+            model=second_model, model_version="test-model@1"
+        )
         selected_again = select_knowledge_record_context(
             [record], query, lexical_ranking=[], index=second_index
         )
@@ -147,11 +162,13 @@ class KnowledgeContextTests(unittest.TestCase):
             title="Dossierquelle",
             body="Waermepumpen verringern Emissionen.",
             active=True,
-            meta=json.dumps({
-                "origin": "Studie.pdf",
-                "page_reference": "S. 12-13",
-                "independent_evidence": True,
-            }),
+            meta=json.dumps(
+                {
+                    "origin": "Studie.pdf",
+                    "page_reference": "S. 12-13",
+                    "independent_evidence": True,
+                }
+            ),
         )
         rendered = (
             "### Dossierquelle [local document; private/local; "
@@ -172,8 +189,11 @@ class KnowledgeContextTests(unittest.TestCase):
     def test_record_selection_excludes_inactive_or_unapproved_input(self):
         query = "Frage"
         inactive = SimpleNamespace(
-            id=uuid.uuid4(), title="Geloescht", body="Darf nicht erscheinen",
-            active=False, meta="{}",
+            id=uuid.uuid4(),
+            title="Geloescht",
+            body="Darf nicht erscheinen",
+            active=False,
+            meta="{}",
         )
 
         selected = select_knowledge_record_context(
@@ -191,7 +211,9 @@ class KnowledgeContextTests(unittest.TestCase):
     def test_import_embedding_preparation_reuses_hash_and_refreshes_changed_body(self):
         record = SimpleNamespace(
             id=uuid.UUID("33333333-3333-3333-3333-333333333333"),
-            title="Unterlage", body="Erste Fassung", active=True,
+            title="Unterlage",
+            body="Erste Fassung",
+            active=True,
             meta=json.dumps({"origin": "Unterlage.txt"}),
         )
         first_render = (
@@ -199,10 +221,12 @@ class KnowledgeContextTests(unittest.TestCase):
             "private/local; origin: Unterlage.txt]\nErste Fassung"
         )
         second_render = first_render.replace("Erste Fassung", "Zweite Fassung")
-        model = _EmbeddingModel({
-            first_render: [1.0, 0.0],
-            second_render: [0.0, 1.0],
-        })
+        model = _EmbeddingModel(
+            {
+                first_render: [1.0, 0.0],
+                second_render: [0.0, 1.0],
+            }
+        )
         index = FastEmbedContextIndex(model=model, model_version="test-model@1")
 
         self.assertEqual(1, prepare_knowledge_record_embeddings([record], index=index))
@@ -241,32 +265,38 @@ class KnowledgeContextTests(unittest.TestCase):
                 return _Rows()
 
         db = _Db()
-        selected = asyncio.run(retrieve_knowledge_record_context(
-            db,
-            [record],
-            query,
-            index=FastEmbedContextIndex(
-                model=_EmbeddingModel({query: [0.0, 1.0], rendered: [0.0, 1.0]}),
-                model_version="test-model@1",
-            ),
-        ))
+        selected = asyncio.run(
+            retrieve_knowledge_record_context(
+                db,
+                [record],
+                query,
+                index=FastEmbedContextIndex(
+                    model=_EmbeddingModel({query: [0.0, 1.0], rendered: [0.0, 1.0]}),
+                    model_version="test-model@1",
+                ),
+            )
+        )
 
         self.assertEqual(1, db.execute_count)
         self.assertIn("Waermepumpen", selected)
 
     def test_small_context_preserves_author_order(self):
         value = "### Erste\nA\n\n### Zweite\nB"
-        self.assertTrue(select_context_sections(value, "Zweite").startswith("### Erste"))
+        self.assertTrue(
+            select_context_sections(value, "Zweite").startswith("### Erste")
+        )
 
     def test_small_context_uses_semantic_ranking_when_an_index_is_available(self):
         first = "### Worttreffer\nDie Unterlage nennt nur das Thema."
         second = "### Wirkung\nWaermepumpen senken den Energieverbrauch."
         query = "Wie sinkt der Verbrauch?"
-        model = _EmbeddingModel({
-            query: [0.0, 1.0],
-            first: [1.0, 0.0],
-            second: [0.0, 1.0],
-        })
+        model = _EmbeddingModel(
+            {
+                query: [0.0, 1.0],
+                first: [1.0, 0.0],
+                second: [0.0, 1.0],
+            }
+        )
 
         selected = select_context_sections(
             f"{first}\n\n{second}",

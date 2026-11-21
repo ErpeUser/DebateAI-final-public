@@ -1,4 +1,10 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { Speaker, TranscriptEntry } from "../../types";
 import { findTranscriptMatches, highlightParts } from "./transcriptSearch";
 
@@ -11,8 +17,13 @@ interface TranscriptPanelProps {
 
 /** Stable React identity for live entries; array indexes change when a
  * provisional row is replaced or a persisted row is inserted. */
-export function transcriptEntryKey(entry: TranscriptEntry, index: number): string {
-  return entry.id || `${entry.timestamp}:${entry.speaker_id || "live"}:${index}`;
+export function transcriptEntryKey(
+  entry: TranscriptEntry,
+  index: number,
+): string {
+  return (
+    entry.id || `${entry.timestamp}:${entry.speaker_id || "live"}:${index}`
+  );
 }
 
 const PANEL_ID = "live-transcription-panel";
@@ -20,7 +31,12 @@ const PANEL_ID = "live-transcription-panel";
 const GHOST_BUTTON =
   "flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal focus:ring-2 focus:ring-brand-teal-light disabled:opacity-40 disabled:hover:bg-transparent disabled:hover:text-brand-mid-gray";
 
-export default function TranscriptPanel({ transcripts, speakers, collapsed = false, onToggleCollapse }: TranscriptPanelProps) {
+export default function TranscriptPanel({
+  transcripts,
+  speakers,
+  collapsed = false,
+  onToggleCollapse,
+}: TranscriptPanelProps) {
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const shouldAutoScrollRef = useRef(true);
@@ -87,7 +103,9 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
   function gotoMatch(delta: number) {
     const m = matchesRef.current;
     if (!m.length) return;
-    setCurrent((value) => (Math.min(value, m.length - 1) + delta + m.length) % m.length);
+    setCurrent(
+      (value) => (Math.min(value, m.length - 1) + delta + m.length) % m.length,
+    );
   }
 
   function handlePanelKeyDown(event: KeyboardEvent<HTMLElement>) {
@@ -119,13 +137,20 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
   function formatTimestamp(ts: string): string {
     try {
       const date = new Date(ts);
-      return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+      return date.toLocaleTimeString([], {
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+      });
     } catch {
       return ts;
     }
   }
 
-  function speakerLabel(entry: TranscriptEntry, speaker: Speaker | null): string {
+  function speakerLabel(
+    entry: TranscriptEntry,
+    speaker: Speaker | null,
+  ): string {
     if (speaker) {
       return speaker.display_name && speaker.display_name_enabled
         ? speaker.display_name
@@ -134,7 +159,10 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
     return entry.id ? "Unbekannt" : "Live";
   }
 
-  function speakerColor(entry: TranscriptEntry, speaker: Speaker | null): string {
+  function speakerColor(
+    entry: TranscriptEntry,
+    speaker: Speaker | null,
+  ): string {
     if (speaker) return speaker.color;
     return entry.id ? "#64748b" : "#2dd4bf";
   }
@@ -162,8 +190,19 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
           title="Live-Transkript anzeigen"
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-md text-brand-mid-gray transition-colors hover:bg-brand-light-gray-2 hover:text-brand-teal focus:ring-2 focus:ring-brand-teal-light"
         >
-          <svg className="h-4 w-4 -rotate-90 md:rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
-            <path strokeLinecap="round" strokeLinejoin="round" d="m15 19-7-7 7-7" />
+          <svg
+            className="h-4 w-4 -rotate-90 md:rotate-0"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+            aria-hidden="true"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="m15 19-7-7 7-7"
+            />
           </svg>
         </button>
         <span className="font-display text-xs font-semibold uppercase tracking-wide text-brand-teal md:[writing-mode:vertical-rl]">
@@ -179,7 +218,11 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
   }
 
   return (
-    <div className="flex h-full flex-col" id={PANEL_ID} onKeyDown={handlePanelKeyDown}>
+    <div
+      className="flex h-full flex-col"
+      id={PANEL_ID}
+      onKeyDown={handlePanelKeyDown}
+    >
       <div className="flex items-start justify-between gap-2 border-b border-brand-light-gray-1 px-4 pb-3">
         {searchOpen ? (
           <div className="-mt-1 flex min-w-0 flex-1 items-center gap-1.5">
@@ -196,8 +239,15 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
               aria-label="Live-Transkript durchsuchen"
               className="min-w-0 flex-1 rounded-md border border-brand-light-gray-1 bg-surface px-2 py-1 font-body text-sm text-brand-dark-gray placeholder:text-brand-mid-gray focus:border-brand-teal focus:outline-none"
             />
-            <span aria-live="polite" className="flex-shrink-0 font-mono text-[11px] tabular-nums text-brand-mid-gray">
-              {matches.length > 0 ? `${currentClamped + 1}/${matches.length}` : searchActive ? "0" : ""}
+            <span
+              aria-live="polite"
+              className="flex-shrink-0 font-mono text-[11px] tabular-nums text-brand-mid-gray"
+            >
+              {matches.length > 0
+                ? `${currentClamped + 1}/${matches.length}`
+                : searchActive
+                  ? "0"
+                  : ""}
             </span>
             <button
               type="button"
@@ -207,8 +257,19 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
               aria-label="Vorheriger Treffer"
               className={GHOST_BUTTON}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m18 15-6-6-6 6" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m18 15-6-6-6 6"
+                />
               </svg>
             </button>
             <button
@@ -219,8 +280,19 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
               aria-label="Nächster Treffer"
               className={GHOST_BUTTON}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="m6 9 6 6 6-6"
+                />
               </svg>
             </button>
             <button
@@ -230,8 +302,19 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
               aria-label="Transkriptsuche schließen"
               className={GHOST_BUTTON}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18 18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
@@ -248,7 +331,14 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
                 aria-label="Live-Transkript durchsuchen"
                 className={GHOST_BUTTON}
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
+                <svg
+                  className="h-4 w-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
                   <circle cx="11" cy="11" r="7" />
                   <path strokeLinecap="round" d="m20 20-3.5-3.5" />
                 </svg>
@@ -262,8 +352,19 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
                   title="Live-Transkription ausblenden"
                   className={GHOST_BUTTON}
                 >
-                  <svg className="h-4 w-4 rotate-90 md:rotate-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2} aria-hidden="true">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="m9 5 7 7-7 7" />
+                  <svg
+                    className="h-4 w-4 rotate-90 md:rotate-0"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="m9 5 7 7-7 7"
+                    />
                   </svg>
                 </button>
               )}
@@ -290,11 +391,18 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
               const isMarker = entry.text.startsWith("---");
               const interim = isLastInterim(i);
               const provisional = Boolean(entry.provisional);
-              const isCurrentMatch = searchActive && matches.length > 0 && matches[currentClamped] === i;
+              const isCurrentMatch =
+                searchActive &&
+                matches.length > 0 &&
+                matches[currentClamped] === i;
 
               if (isMarker) {
                 return (
-                  <div key={transcriptEntryKey(entry, i)} data-entry-index={i} className="text-center py-2">
+                  <div
+                    key={transcriptEntryKey(entry, i)}
+                    data-entry-index={i}
+                    className="text-center py-2"
+                  >
                     <span className="text-xs font-medium text-brand-amber bg-orange-50 px-3 py-1 rounded-full">
                       {entry.text}
                     </span>
@@ -302,7 +410,9 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
                 );
               }
 
-              const speaker = entry.speaker_id ? speakers.find((s) => s.id === entry.speaker_id) : null;
+              const speaker = entry.speaker_id
+                ? speakers.find((s) => s.id === entry.speaker_id)
+                : null;
               const label = speakerLabel(entry, speaker ?? null);
               const color = speakerColor(entry, speaker ?? null);
 
@@ -311,7 +421,9 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
                   key={transcriptEntryKey(entry, i)}
                   data-entry-index={i}
                   className={`${interim ? "opacity-50" : ""} ${
-                    isCurrentMatch ? "-mx-2 rounded-md bg-brand-teal/5 px-2 py-1 ring-1 ring-brand-teal/20" : ""
+                    isCurrentMatch
+                      ? "-mx-2 rounded-md bg-brand-teal/5 px-2 py-1 ring-1 ring-brand-teal/20"
+                      : ""
                   }`}
                 >
                   <span className="mr-2 font-mono text-xs text-brand-mid-gray">
@@ -324,13 +436,20 @@ export default function TranscriptPanel({ transcripts, speakers, collapsed = fal
                   >
                     {label}
                   </span>
-                  <span className={`font-body text-sm leading-relaxed ${
-                    interim || provisional ? "text-brand-mid-gray italic" : "text-brand-dark-gray"
-                  }`}>
+                  <span
+                    className={`font-body text-sm leading-relaxed ${
+                      interim || provisional
+                        ? "text-brand-mid-gray italic"
+                        : "text-brand-dark-gray"
+                    }`}
+                  >
                     {searchActive && matchSet.has(i)
                       ? highlightParts(entry.text, query).map((part, k) =>
                           part.hit ? (
-                            <mark key={k} className="rounded-sm bg-amber-200 text-brand-dark-gray">
+                            <mark
+                              key={k}
+                              className="rounded-sm bg-amber-200 text-brand-dark-gray"
+                            >
                               {part.text}
                             </mark>
                           ) : (

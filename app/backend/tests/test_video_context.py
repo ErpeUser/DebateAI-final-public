@@ -2,7 +2,6 @@ import json
 from datetime import UTC, datetime
 
 import pytest
-
 from app.services.video_context import (
     CheckpointStore,
     ErrorKind,
@@ -16,8 +15,14 @@ from app.services.video_context import (
 
 
 def test_error_kinds_are_distinct_and_rollover_is_limited_to_context_failures():
-    assert classify_error("HTTP 413 request entity too large") is ErrorKind.MESSAGE_TOO_LARGE
-    assert classify_error("maximum context length is 128k tokens") is ErrorKind.CONTEXT_FULL
+    assert (
+        classify_error("HTTP 413 request entity too large")
+        is ErrorKind.MESSAGE_TOO_LARGE
+    )
+    assert (
+        classify_error("maximum context length is 128k tokens")
+        is ErrorKind.CONTEXT_FULL
+    )
     assert classify_error("429 rate limit exceeded") is ErrorKind.RATE_LIMIT
     assert classify_error("please log in to continue") is ErrorKind.PROVIDER_ACCESS
     assert classify_error("browser_busy") is ErrorKind.BROWSER_BUSY
@@ -39,7 +44,10 @@ def test_segment_context_respects_token_budget_and_has_stable_ids_and_overlap():
     assert first == second
     assert len(first) > 1
     assert all(chunk.token_estimate <= 28 for chunk in first)
-    assert any(first[index].text.splitlines()[-1] in first[index + 1].text for index in range(len(first) - 1))
+    assert any(
+        first[index].text.splitlines()[-1] in first[index + 1].text
+        for index in range(len(first) - 1)
+    )
     assert all(chunk.chunk_id and chunk.start_ts is not None for chunk in first)
 
 
@@ -51,7 +59,9 @@ def test_validate_response_rejects_malformed_and_truncated_payloads():
         validate_response({"answer": "partial", "finish_reason": "length"})
 
 
-def test_checkpoint_store_and_merge_are_deterministic_and_do_not_persist_secrets(tmp_path):
+def test_checkpoint_store_and_merge_are_deterministic_and_do_not_persist_secrets(
+    tmp_path,
+):
     store = CheckpointStore(tmp_path / "checkpoint.json")
     timestamp = datetime(2026, 1, 2, tzinfo=UTC)
     checkpoint = {
@@ -66,13 +76,25 @@ def test_checkpoint_store_and_merge_are_deterministic_and_do_not_persist_secrets
     assert loaded["completed"] == ["a"]
     assert "api_key" not in loaded
     assert "sk-secret" not in json.dumps(loaded)
-    merged = merge_checkpoints(loaded, {"chunks": [{"chunk_id": "a", "text": "one"}, {"chunk_id": "b", "text": "two"}], "completed": ["b"], "responses": {"a": "answer"}})
+    merged = merge_checkpoints(
+        loaded,
+        {
+            "chunks": [
+                {"chunk_id": "a", "text": "one"},
+                {"chunk_id": "b", "text": "two"},
+            ],
+            "completed": ["b"],
+            "responses": {"a": "answer"},
+        },
+    )
     assert [chunk["chunk_id"] for chunk in merged["chunks"]] == ["a", "b"]
     assert merged["completed"] == ["a", "b"]
 
 
 @pytest.mark.asyncio
-async def test_context_rollover_only_for_context_errors_and_resumes_from_checkpoint(tmp_path):
+async def test_context_rollover_only_for_context_errors_and_resumes_from_checkpoint(
+    tmp_path,
+):
     from app.services.video_context import CheckpointStore, run_with_context_rollover
 
     calls = []

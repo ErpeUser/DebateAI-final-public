@@ -8,7 +8,7 @@ import subprocess
 import sys
 import threading
 from ctypes import wintypes
-
+from typing import ClassVar
 
 _CONSOLE_WINDOW_CLASSES = {
     "ConsoleWindowClass",
@@ -96,8 +96,9 @@ def expand_managed_pids(
 
 
 if sys.platform == "win32":
+
     class _ProcessEntry32W(ctypes.Structure):
-        _fields_ = [
+        _fields_: ClassVar[list[tuple[str, object]]] = [
             ("dwSize", wintypes.DWORD),
             ("cntUsage", wintypes.DWORD),
             ("th32ProcessID", wintypes.DWORD),
@@ -117,9 +118,15 @@ def _windows_process_tree() -> dict[int, int]:
     kernel32 = ctypes.windll.kernel32
     kernel32.CreateToolhelp32Snapshot.argtypes = [wintypes.DWORD, wintypes.DWORD]
     kernel32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
-    kernel32.Process32FirstW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ProcessEntry32W)]
+    kernel32.Process32FirstW.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(_ProcessEntry32W),
+    ]
     kernel32.Process32FirstW.restype = wintypes.BOOL
-    kernel32.Process32NextW.argtypes = [wintypes.HANDLE, ctypes.POINTER(_ProcessEntry32W)]
+    kernel32.Process32NextW.argtypes = [
+        wintypes.HANDLE,
+        ctypes.POINTER(_ProcessEntry32W),
+    ]
     kernel32.Process32NextW.restype = wintypes.BOOL
     kernel32.CloseHandle.argtypes = [wintypes.HANDLE]
     kernel32.CloseHandle.restype = wintypes.BOOL
@@ -146,7 +153,10 @@ def _hide_console_window(hwnd, managed_pids: set[int]) -> bool:
     if sys.platform != "win32" or not managed_pids or not hwnd:
         return False
     user32 = ctypes.windll.user32
-    user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+    user32.GetWindowThreadProcessId.argtypes = [
+        wintypes.HWND,
+        ctypes.POINTER(wintypes.DWORD),
+    ]
     user32.GetWindowThreadProcessId.restype = wintypes.DWORD
     user32.GetClassNameW.argtypes = [wintypes.HWND, wintypes.LPWSTR, ctypes.c_int]
     user32.GetClassNameW.restype = ctypes.c_int

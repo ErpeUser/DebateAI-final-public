@@ -61,17 +61,19 @@ test("stays silent with no details or nothing to report", async () => {
 });
 
 test("a saved drain summary survives a mid-drain disconnect", async () => {
-  const { parseSavedDrainSummary, formatPostProcessingSummary } = await import(
-    "./postProcessingSummary.ts"
-  );
+  const { parseSavedDrainSummary, formatPostProcessingSummary } =
+    await import("./postProcessingSummary.ts");
 
   const saved = parseSavedDrainSummary(
     JSON.stringify({
-      message: "Post-processing complete, but 1 analysis stage failed (call briefing)",
+      message:
+        "Post-processing complete, but 1 analysis stage failed (call briefing)",
       insights_saved: 3,
       synthesizer_ops: 0,
       opportunity_ops: 0,
-      stage_errors: [{ stage: "call_briefing", detail: "hit its output limit" }],
+      stage_errors: [
+        { stage: "call_briefing", detail: "hit its output limit" },
+      ],
     }),
   );
 

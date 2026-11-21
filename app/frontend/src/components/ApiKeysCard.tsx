@@ -37,7 +37,9 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
   const [credentials, setCredentials] = useState<CredentialInfo[]>([]);
   const [inputs, setInputs] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState<string | null>(null);
-  const [results, setResults] = useState<Record<string, { ok: boolean; message: string }>>({});
+  const [results, setResults] = useState<
+    Record<string, { ok: boolean; message: string }>
+  >({});
 
   const load = useCallback(async () => {
     try {
@@ -48,7 +50,9 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
     }
   }, []);
 
-  useEffect(() => { load(); }, [load]);
+  useEffect(() => {
+    load();
+  }, [load]);
 
   const setResult = (provider: string, ok: boolean, message: string) =>
     setResults((prev) => ({ ...prev, [provider]: { ok, message } }));
@@ -64,7 +68,11 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
       await load();
       onChanged?.();
     } catch (err) {
-      setResult(provider, false, describeKeyError(err, "Speichern fehlgeschlagen"));
+      setResult(
+        provider,
+        false,
+        describeKeyError(err, "Speichern fehlgeschlagen"),
+      );
     } finally {
       setBusy(null);
     }
@@ -100,7 +108,11 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
       await load();
       onChanged?.();
     } catch (err) {
-      setResult(provider, false, describeKeyError(err, "Entfernen fehlgeschlagen"));
+      setResult(
+        provider,
+        false,
+        describeKeyError(err, "Entfernen fehlgeschlagen"),
+      );
     } finally {
       setBusy(null);
     }
@@ -108,17 +120,24 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
 
   return (
     <div className="rounded-xl bg-surface p-5 shadow-sm">
-      <h3 className="font-display text-base font-bold text-brand-dark-gray">Cloud-Anbieterzugänge</h3>
+      <h3 className="font-display text-base font-bold text-brand-dark-gray">
+        Cloud-Anbieterzugänge
+      </h3>
       <p className="mt-1 mb-4 font-body text-xs text-brand-gray leading-relaxed">
-        Arbeitsbereichsschlüssel werden verschlüsselt gespeichert und von allen Agenten verwendet. Umgebungsvariablen bleiben als Rückfall verfügbar.
-        Selbst gehostete Server werden weiter unten eingerichtet und benötigen normalerweise keinen Schlüssel.
+        Arbeitsbereichsschlüssel werden verschlüsselt gespeichert und von allen
+        Agenten verwendet. Umgebungsvariablen bleiben als Rückfall verfügbar.
+        Selbst gehostete Server werden weiter unten eingerichtet und benötigen
+        normalerweise keinen Schlüssel.
       </p>
       <div className="space-y-4">
         {credentials.map((cred) => {
           const isBusy = busy === cred.provider;
           const result = results[cred.provider];
           return (
-            <div key={cred.provider} className={`transition-opacity ${isBusy ? "opacity-70" : ""}`}>
+            <div
+              key={cred.provider}
+              className={`transition-opacity ${isBusy ? "opacity-70" : ""}`}
+            >
               <div className="flex items-center gap-2 mb-1">
                 <label className="font-body text-xs font-medium text-brand-gray">
                   {PROVIDER_LABELS[cred.provider] || cred.provider}
@@ -135,8 +154,14 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
                     )}
                     <span
                       className="inline-flex rounded-full px-2 py-0.5 text-[10px] font-medium text-white"
-                      style={{ backgroundColor: cred.connected ? "#72d54a" : "#ff9e16" }}
-                      title={cred.connected ? "Dieser Schlüssel hat den Verbindungstest bestanden" : "Mit Test prüfen; nicht bestätigte fehlerhafte Schlüssel deaktivieren die Modelle dieses Anbieters"}
+                      style={{
+                        backgroundColor: cred.connected ? "#72d54a" : "#ff9e16",
+                      }}
+                      title={
+                        cred.connected
+                          ? "Dieser Schlüssel hat den Verbindungstest bestanden"
+                          : "Mit Test prüfen; nicht bestätigte fehlerhafte Schlüssel deaktivieren die Modelle dieses Anbieters"
+                      }
                     >
                       {cred.connected ? "Verbunden" : "Nicht geprüft"}
                     </span>
@@ -163,9 +188,18 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
                   autoComplete="new-password"
                   spellCheck={false}
                   aria-label={`${PROVIDER_LABELS[cred.provider] || cred.provider} API-Schlüssel`}
-                  placeholder={cred.configured ? "Schlüssel ersetzen ..." : "API-Schlüssel einfügen ..."}
+                  placeholder={
+                    cred.configured
+                      ? "Schlüssel ersetzen ..."
+                      : "API-Schlüssel einfügen ..."
+                  }
                   value={inputs[cred.provider] || ""}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, [cred.provider]: e.target.value }))}
+                  onChange={(e) =>
+                    setInputs((prev) => ({
+                      ...prev,
+                      [cred.provider]: e.target.value,
+                    }))
+                  }
                   className="w-full max-w-md rounded border border-brand-light-gray-1 bg-surface px-3 py-1.5 font-mono text-sm text-brand-dark-gray focus:border-brand-teal"
                 />
                 <button
@@ -193,7 +227,9 @@ export default function ApiKeysCard({ onChanged }: ApiKeysCardProps) {
                 )}
               </div>
               {result && (
-                <p className={`mt-1 font-body text-xs ${result.ok ? "text-brand-teal" : "text-red-600"}`}>
+                <p
+                  className={`mt-1 font-body text-xs ${result.ok ? "text-brand-teal" : "text-red-600"}`}
+                >
                   {result.message}
                 </p>
               )}

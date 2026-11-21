@@ -1,19 +1,17 @@
 import asyncio
 import os
 
+from app.database import get_db
+from app.models import Session
+from app.services import runtime_activity
+from app.services.request_guard import instance_token_matches
+from app.services.update_service import UpdateService, get_update_service
 from fastapi import APIRouter, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-
-from app.database import get_db
-from app.models import Session
-from app.services import runtime_activity
-from app.services.request_guard import instance_token_matches
-from app.services.update_service import UpdateService, get_update_service
-
 
 router = APIRouter(prefix="/api/updates", tags=["updates"])
 
@@ -63,7 +61,7 @@ def configure_app(app: FastAPI) -> None:
 def require_instance_token(
     request: Request,
     token: str | None = Header(default=None, alias="X-DebateAI-Instance"),
-    ) -> None:
+) -> None:
     expected = os.environ.get("DEBATEAI_INSTANCE_TOKEN", "")
     supplied = request.headers.getlist("x-debateai-instance")
     if len(supplied) != 1 or not instance_token_matches(token, expected):
@@ -120,9 +118,7 @@ async def apply_update(
     accepted = False
     try:
         active = await db.scalar(
-            select(func.count())
-            .select_from(Session)
-            .where(Session.state == "active")
+            select(func.count()).select_from(Session).where(Session.state == "active")
         )
         if active:
             raise HTTPException(409, "Finish the active call before installing.")

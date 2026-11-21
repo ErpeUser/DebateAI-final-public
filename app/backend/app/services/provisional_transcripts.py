@@ -4,14 +4,12 @@ from __future__ import annotations
 
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-
-from sqlalchemy import func, select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.models import ProvisionalTranscriptRevision, Session, TranscriptDiscardAudit
 from app.services.pii import shield
-
+from sqlalchemy import func, select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 # A streaming ASR backend can send many append hypotheses for one logical
 # segment. Keep both the human-visible character count and the encoded byte
@@ -129,9 +127,7 @@ def materialize_revision_text(
     if mode not in _PROVISIONAL_MODES:
         return None
     text = (
-        f"{previous_text}{incoming_text}"
-        if mode == "append"
-        else incoming_text.strip()
+        f"{previous_text}{incoming_text}" if mode == "append" else incoming_text.strip()
     )
     return text if _within_provisional_limits(text) else None
 
@@ -171,10 +167,7 @@ async def persist_provisional_revision(
         return await discard("invalid_segment_revision")
 
     incoming_text = str(data.get("text") or "")
-    if (
-        not incoming_text.strip()
-        or not _within_provisional_limits(incoming_text)
-    ):
+    if not incoming_text.strip() or not _within_provisional_limits(incoming_text):
         return await discard("invalid_text")
 
     mode = str(data.get("mode") or "replace").strip().lower()
@@ -196,7 +189,11 @@ async def persist_provisional_revision(
     if (
         (data.get("audio_start_sample") is not None and start_sample is None)
         or (data.get("audio_end_sample") is not None and end_sample is None)
-        or (start_sample is not None and end_sample is not None and end_sample < start_sample)
+        or (
+            start_sample is not None
+            and end_sample is not None
+            and end_sample < start_sample
+        )
     ):
         return await discard("invalid_audio_span")
     sample_rate = _bounded_optional_int(
@@ -223,7 +220,9 @@ async def persist_provisional_revision(
         )
     ).scalar_one_or_none()
     if existing is not None:
-        await record_discarded_segment(db, session_id, data, reason="duplicate_revision")
+        await record_discarded_segment(
+            db, session_id, data, reason="duplicate_revision"
+        )
         return PersistedProvisionalRevision(existing, False)
 
     latest = (
@@ -261,7 +260,9 @@ async def persist_provisional_revision(
         mode,
     )
     if text is None:
-        await record_discarded_segment(db, session_id, data, reason="materialization_limit")
+        await record_discarded_segment(
+            db, session_id, data, reason="materialization_limit"
+        )
         return PersistedProvisionalRevision(latest, False)
 
     row = ProvisionalTranscriptRevision(
@@ -309,7 +310,7 @@ async def finalize_provisional_segment(
             ProvisionalTranscriptRevision.segment_id == segment_id,
             ProvisionalTranscriptRevision.finalized_at.is_(None),
         )
-        .values(finalized_at=datetime.now(timezone.utc))
+        .values(finalized_at=datetime.now(UTC))
     )
     return int(result.rowcount or 0)
 

@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
@@ -37,15 +37,19 @@ class EnhancedDismissOperationTests(unittest.IsolatedAsyncioTestCase):
         question = _question(session_id, "Validate managed SIEM fit")
         fake_session = FakeSessionContext([question])
 
-        with patch("app.services.insight_refiner.async_session", return_value=fake_session):
+        with patch(
+            "app.services.insight_refiner.async_session", return_value=fake_session
+        ):
             applied = await _apply_operations(
                 session_id,
-                [{
-                    "op": "elevate",
-                    "id": str(question.id),
-                    "new_type": "observation",
-                    "reason": "Corrected speaker context shows this was account-team framing.",
-                }],
+                [
+                    {
+                        "op": "elevate",
+                        "id": str(question.id),
+                        "new_type": "observation",
+                        "reason": "Corrected speaker context shows this was account-team framing.",
+                    }
+                ],
                 [question],
                 agent_source="speaker_context_enhancer",
                 enhanced=True,
@@ -64,14 +68,18 @@ class EnhancedDismissOperationTests(unittest.IsolatedAsyncioTestCase):
         question = _question(session_id, "Outdated opportunity")
         fake_session = FakeSessionContext([question])
 
-        with patch("app.services.insight_refiner.async_session", return_value=fake_session):
+        with patch(
+            "app.services.insight_refiner.async_session", return_value=fake_session
+        ):
             applied = await _apply_operations(
                 session_id,
-                [{
-                    "op": "dismiss",
-                    "id": str(question.id),
-                    "reason": "Corrected speaker context shows this was internal framing.",
-                }],
+                [
+                    {
+                        "op": "dismiss",
+                        "id": str(question.id),
+                        "reason": "Corrected speaker context shows this was internal framing.",
+                    }
+                ],
                 [question],
                 agent_source="speaker_context_enhancer",
                 enhanced=True,
@@ -94,17 +102,21 @@ class EnhancedDismissOperationTests(unittest.IsolatedAsyncioTestCase):
         question.source_context = "Context: Participant 1 stated the commitment."
         fake_session = FakeSessionContext([question])
 
-        with patch("app.services.insight_refiner.async_session", return_value=fake_session):
+        with patch(
+            "app.services.insight_refiner.async_session", return_value=fake_session
+        ):
             applied = await _apply_operations(
                 session_id,
-                [{
-                    "op": "adjust",
-                    "id": str(question.id),
-                    "new_text": "Michael to revise the document",
-                    "new_rationale": "Michael owns the action.",
-                    "new_source_context": "Context: Michael stated the commitment.",
-                    "reason": "Speaker name was corrected.",
-                }],
+                [
+                    {
+                        "op": "adjust",
+                        "id": str(question.id),
+                        "new_text": "Michael to revise the document",
+                        "new_rationale": "Michael owns the action.",
+                        "new_source_context": "Context: Michael stated the commitment.",
+                        "reason": "Speaker name was corrected.",
+                    }
+                ],
                 [question],
                 agent_source="speaker_context_enhancer",
                 enhanced=True,
@@ -113,10 +125,15 @@ class EnhancedDismissOperationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, len(applied))
         self.assertEqual("Michael to revise the document", question.question)
         self.assertEqual("Michael owns the action.", question.rationale)
-        self.assertEqual("Context: Michael stated the commitment.", question.source_context)
+        self.assertEqual(
+            "Context: Michael stated the commitment.", question.source_context
+        )
         self.assertTrue(question.enhanced)
         self.assertEqual("Michael owns the action.", applied[0]["ws_data"]["rationale"])
-        self.assertEqual("Context: Michael stated the commitment.", applied[0]["ws_data"]["source_context"])
+        self.assertEqual(
+            "Context: Michael stated the commitment.",
+            applied[0]["ws_data"]["source_context"],
+        )
 
     async def test_enhanced_merge_marks_removed_insight_traceably_dismissed(self):
         session_id = uuid4()
@@ -124,16 +141,20 @@ class EnhancedDismissOperationTests(unittest.IsolatedAsyncioTestCase):
         remove = _question(session_id, "Duplicate insight")
         fake_session = FakeSessionContext([keep, remove])
 
-        with patch("app.services.insight_refiner.async_session", return_value=fake_session):
+        with patch(
+            "app.services.insight_refiner.async_session", return_value=fake_session
+        ):
             applied = await _apply_operations(
                 session_id,
-                [{
-                    "op": "merge",
-                    "keep_id": str(keep.id),
-                    "remove_id": str(remove.id),
-                    "merged_text": "Merged insight",
-                    "reason": "Corrected speaker context makes these duplicates.",
-                }],
+                [
+                    {
+                        "op": "merge",
+                        "keep_id": str(keep.id),
+                        "remove_id": str(remove.id),
+                        "merged_text": "Merged insight",
+                        "reason": "Corrected speaker context makes these duplicates.",
+                    }
+                ],
                 [keep, remove],
                 agent_source="speaker_context_enhancer",
                 enhanced=True,
@@ -159,7 +180,7 @@ def _question(session_id, text):
         question=text,
         rationale="",
         source_context="",
-        created_at=datetime.now(timezone.utc),
+        created_at=datetime.now(UTC),
         dismissed=False,
         enhanced=False,
         revision_count=0,

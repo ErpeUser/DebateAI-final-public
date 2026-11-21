@@ -8,28 +8,32 @@ import hashlib
 import json
 import logging
 import uuid
-from datetime import datetime, timedelta, timezone
-
-from pydantic import BaseModel
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
+from datetime import UTC, datetime, timedelta
 
 from app.config import settings
-from app.services.llm import generate_json
 from app.database import async_session
 from app.models import Question, Session, Speaker, TranscriptEntry
-from app.services.agents.prompts import PRINCIPAL_AGENT_PROMPT
 from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.agents.prompts import PRINCIPAL_AGENT_PROMPT
 from app.services.agents.signal_insights import SIGNAL_ITEM_TYPES
 from app.services.agents.speaker_context import (
-    speaker_to_dict as _speaker_dict,
     build_speaker_aliases,
     format_speakers_list,
     format_transcript_segment,
     normalize_speaker_type,
 )
+from app.services.agents.speaker_context import (
+    speaker_to_dict as _speaker_dict,
+)
 from app.services.insight_refiner import _apply_operations
-from app.services.meeting_context import build_meeting_context_text, format_prompt_layers
+from app.services.llm import generate_json
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    format_prompt_layers,
+)
+from pydantic import BaseModel
+from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +99,7 @@ def clear_synthesizer_state(session_id: uuid.UUID) -> None:
 def _touched_at(q: Question) -> datetime | None:
     stamp = q.updated_at or q.created_at
     if stamp is not None and stamp.tzinfo is None:
-        return stamp.replace(tzinfo=timezone.utc)
+        return stamp.replace(tzinfo=UTC)
     return stamp
 
 
@@ -152,7 +156,9 @@ def _full_record(q: Question) -> dict:
     if q.starred:
         item["starred"] = True
     if q.enrichment_notes:
-        item["enrichment_notes"] = _truncate_tail(q.enrichment_notes, _ENRICHMENT_NOTE_CHARS)
+        item["enrichment_notes"] = _truncate_tail(
+            q.enrichment_notes, _ENRICHMENT_NOTE_CHARS
+        )
     return item
 
 
@@ -180,7 +186,7 @@ def _build_insights_json(
     sending an unbounded JSON array to ChatGPT Web.
     """
     window = max(0, int(getattr(settings, "SYNTHESIZER_WORKING_SET_SECONDS", 600)))
-    cutoff = (now or datetime.now(timezone.utc)) - timedelta(seconds=window)
+    cutoff = (now or datetime.now(UTC)) - timedelta(seconds=window)
     items = [
         _full_record(q) if _in_working_set(q, cutoff) else _stub_record(q)
         for q in questions
@@ -227,24 +233,31 @@ def _format_transcript_entries(
     lines = []
     for entry in entries:
         speaker = _speaker_dict(entry.speaker) if entry.speaker else None
-        lines.append(format_transcript_segment(
-            entry.text,
-            speaker.get("name") if speaker else "Unknown",
-            speaker_id=str(entry.speaker_id) if entry.speaker_id else None,
-            speaker_type=speaker.get("speaker_type") if speaker else None,
-            alias=(aliases or {}).get(str(entry.speaker_id or "")),
-        ))
+        lines.append(
+            format_transcript_segment(
+                entry.text,
+                speaker.get("name") if speaker else "Unknown",
+                speaker_id=str(entry.speaker_id) if entry.speaker_id else None,
+                speaker_type=speaker.get("speaker_type") if speaker else None,
+                alias=(aliases or {}).get(str(entry.speaker_id or "")),
+            )
+        )
     return "\n".join(lines) if lines else "(No transcript yet)"
 
 
-async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | None = None, prompt_override: str | None = None) -> list[dict]:
+async def run_synthesizer_cycle(
+    session_id: uuid.UUID,
+    model_override: str | None = None,
+    prompt_override: str | None = None,
+) -> list[dict]:
     """Execute one synthesizer cycle. Returns list of applied operations."""
     async with async_session() as db:
         session = await db.get(Session, session_id)
         meeting_context_text = build_meeting_context_text(session)
 
         result = await db.execute(
-            select(Question).where(
+            select(Question)
+            .where(
                 Question.session_id == session_id,
                 Question.dismissed.is_(False),
                 # The operator's own live-chat Q&A is a private read, not
@@ -280,10 +293,16 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
         # derived from. Ordered by created_at like every other loader, so a
         # rebuilt orchestrator on a resumed call produces the same map.
         roster = (
-            await db.execute(
-                select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+            (
+                await db.execute(
+                    select(Speaker)
+                    .where(Speaker.session_id == session_id)
+                    .order_by(Speaker.created_at)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         roster_dicts = [_speaker_dict(s) for s in roster]
         aliases = build_speaker_aliases(roster_dicts)
         speaker_legend = format_speakers_list(roster_dicts, aliases)
@@ -295,7 +314,7 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
     # The transcript is deliberately part of this fingerprint because the
     # synthesizer detects answers spoken after an insight was created.
     fingerprint = hashlib.sha256(
-        f"{insights_json}\x00{transcript_text}".encode("utf-8")
+        f"{insights_json}\x00{transcript_text}".encode()
     ).hexdigest()
     if _last_fingerprints.get(session_id) == fingerprint:
         logger.debug("[synthesizer] corpus and transcript unchanged, skipping cycle")
@@ -337,6 +356,8 @@ async def run_synthesizer_cycle(session_id: uuid.UUID, model_override: str | Non
 
     # Do not mark this corpus as processed until the database operations commit.
     # A transient commit failure must leave the fingerprint retryable.
-    applied = await _apply_operations(session_id, ops, questions, agent_source="synthesizer")
+    applied = await _apply_operations(
+        session_id, ops, questions, agent_source="synthesizer"
+    )
     _last_fingerprints[session_id] = fingerprint
     return applied

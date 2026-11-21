@@ -1,26 +1,31 @@
 import asyncio
 import logging
-import uuid
 import os
+import uuid
 from collections.abc import Callable
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.database import async_session, get_db
-from app.services.office_archive import OfficeArchiveError, preflight_office_archive
 from app.models import CallSegment, Speaker, TranscriptEntry
-from app.services.pii import shield
+from app.services import runtime_activity, transcription_jobs
 from app.services.audio_store import SegmentAudioWriter
-from app.services.batch_transcriber import TranscriptionError
-from app.services.file_parsing import parse_docx, parse_markdown, parse_text, safe_upload_filename
 from app.services.audio_utils import convert_to_pcm16
-from app.services.local_transcriber import create_transcriber
+from app.services.batch_transcriber import TranscriptionError
 from app.services.diarizer_factory import create_diarizer
-from app.services.diarizer_runtime import DiarizerRuntimeConfig, get_diarizer_runtime_config
+from app.services.diarizer_runtime import (
+    DiarizerRuntimeConfig,
+    get_diarizer_runtime_config,
+)
 from app.services.diarizer_selection import flush_diarizer_segments
+from app.services.file_parsing import (
+    parse_docx,
+    parse_markdown,
+    parse_text,
+    safe_upload_filename,
+)
+from app.services.local_transcriber import create_transcriber
+from app.services.office_archive import OfficeArchiveError, preflight_office_archive
+from app.services.pii import shield
 from app.services.session_manager import get_next_sequence
 from app.services.speaker_assignment import (
     auto_speaker_would_create_new_speaker,
@@ -28,10 +33,12 @@ from app.services.speaker_assignment import (
     resolve_existing_auto_speaker,
     resolve_live_mic_speaker,
 )
-from app.services.speaker_ghost_filter import should_defer_new_speaker_segment
 from app.services.speaker_diarizer import DiarizedSegment, SpeakerRegistry
+from app.services.speaker_ghost_filter import should_defer_new_speaker_segment
 from app.services.transcription_runtime import get_transcription_runtime_config
-from app.services import runtime_activity, transcription_jobs
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, UploadFile
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -65,13 +72,17 @@ def should_defer_import_speaker_assignment(
     pcm_bytes: bytes,
     text: str,
 ) -> bool:
-    return import_segment_would_create_new_speaker(auto_id, auto_speaker_map, speakers) and should_defer_new_speaker_segment(
+    return import_segment_would_create_new_speaker(
+        auto_id, auto_speaker_map, speakers
+    ) and should_defer_new_speaker_segment(
         pcm_bytes,
         text,
     )
 
 
-async def _persist_import_audio(pcm_data: bytes, session_id: uuid.UUID, db: AsyncSession) -> None:
+async def _persist_import_audio(
+    pcm_data: bytes, session_id: uuid.UUID, db: AsyncSession
+) -> None:
     """Store imported audio as a call segment WAV so it can be replayed/re-transcribed."""
     result = await db.execute(
         select(CallSegment.segment_number)
@@ -83,8 +94,16 @@ async def _persist_import_audio(pcm_data: bytes, session_id: uuid.UUID, db: Asyn
     writer = SegmentAudioWriter(session_id, seg_num)
     writer.append(pcm_data)
     rel_path = writer.close()
-    now = datetime.now(timezone.utc)
-    db.add(CallSegment(session_id=session_id, segment_number=seg_num, started_at=now, ended_at=now, audio_path=rel_path))
+    now = datetime.now(UTC)
+    db.add(
+        CallSegment(
+            session_id=session_id,
+            segment_number=seg_num,
+            started_at=now,
+            ended_at=now,
+            audio_path=rel_path,
+        )
+    )
     await db.flush()
 
 
@@ -98,11 +117,13 @@ async def _diarize_pcm(
     for offset in range(0, len(pcm_data), chunk_size):
         if cancel_check:
             cancel_check()
-        chunk = pcm_data[offset:offset + chunk_size]
+        chunk = pcm_data[offset : offset + chunk_size]
         emitted = await asyncio.to_thread(diarizer.feed_audio, chunk)
         for segment in emitted:
             if segment.start_sample is None:
-                segment.start_sample = max(0, offset + len(chunk) - len(segment.pcm_bytes)) // 2
+                segment.start_sample = (
+                    max(0, offset + len(chunk) - len(segment.pcm_bytes)) // 2
+                )
             segments.append(segment)
     if cancel_check:
         cancel_check()
@@ -163,7 +184,9 @@ async def _persist_diarized_segments(
         mapped_speaker = (
             None
             if local_speaker or unknown_speaker
-            else resolve_existing_auto_speaker(seg.speaker_id, auto_speaker_map, speakers)
+            else resolve_existing_auto_speaker(
+                seg.speaker_id, auto_speaker_map, speakers
+            )
         )
         if local_speaker:
             speaker_id_str = str(local_speaker.id)
@@ -226,10 +249,16 @@ async def _transcribe_audio_diarized(
         await _persist_import_audio(pcm_data, session_id, db)
 
     if runtime_config is None:
-        runtime_config = await get_diarizer_runtime_config(db, probe_sortformer=probe_sortformer)
+        runtime_config = await get_diarizer_runtime_config(
+            db, probe_sortformer=probe_sortformer
+        )
     if registry is None:
-        registry = SpeakerRegistry(threshold=runtime_config.speaker_similarity_threshold)
-    diarizer = create_diarizer(runtime_config.effective_live_diarizer, registry=registry)
+        registry = SpeakerRegistry(
+            threshold=runtime_config.speaker_similarity_threshold
+        )
+    diarizer = create_diarizer(
+        runtime_config.effective_live_diarizer, registry=registry
+    )
     transcription_config = await get_transcription_runtime_config(db)
     transcriber = create_transcriber(
         model_id or transcription_config.batch_model_id,
@@ -238,7 +267,9 @@ async def _transcribe_audio_diarized(
     )
 
     result = await db.execute(
-        select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+        select(Speaker)
+        .where(Speaker.session_id == session_id)
+        .order_by(Speaker.created_at)
     )
     speakers = list(result.scalars().all())
 
@@ -279,8 +310,12 @@ async def _transcribe_split_audio_diarized(
 ) -> int:
     mic_pcm = await asyncio.to_thread(convert_to_pcm16, mic_file_bytes, "wav")
     system_pcm = await asyncio.to_thread(convert_to_pcm16, system_file_bytes, "wav")
-    mic_diarizer = create_diarizer(runtime_config.effective_live_diarizer, registry=mic_registry)
-    system_diarizer = create_diarizer(runtime_config.effective_live_diarizer, registry=remote_registry)
+    mic_diarizer = create_diarizer(
+        runtime_config.effective_live_diarizer, registry=mic_registry
+    )
+    system_diarizer = create_diarizer(
+        runtime_config.effective_live_diarizer, registry=remote_registry
+    )
     transcription_config = await get_transcription_runtime_config(db)
     transcriber = create_transcriber(
         model_id or transcription_config.batch_model_id,
@@ -288,7 +323,9 @@ async def _transcribe_split_audio_diarized(
         language=transcription_config.language,
     )
     result = await db.execute(
-        select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+        select(Speaker)
+        .where(Speaker.session_id == session_id)
+        .order_by(Speaker.created_at)
     )
     speakers = list(result.scalars().all())
 
@@ -301,13 +338,22 @@ async def _transcribe_split_audio_diarized(
     for pcm, diarizer, local_track, speaker_map in tracks:
         for segment in await _diarize_pcm(pcm, diarizer, cancel_check):
             ordered_segments.append(
-                (segment.start_sample or 0, emitted_order, segment, local_track, speaker_map)
+                (
+                    segment.start_sample or 0,
+                    emitted_order,
+                    segment,
+                    local_track,
+                    speaker_map,
+                )
             )
             emitted_order += 1
 
     ordered_segments.sort(key=lambda item: (item[0], item[1]))
     count = await _persist_diarized_segments(
-        [(segment, local_track, speaker_map) for _, _, segment, local_track, speaker_map in ordered_segments],
+        [
+            (segment, local_track, speaker_map)
+            for _, _, segment, local_track, speaker_map in ordered_segments
+        ],
         session_id,
         db,
         transcriber,
@@ -395,8 +441,7 @@ async def import_transcript(
     # PII vault writes may retry/rollback on token collisions. Finish all of
     # that work before taking the per-session transcript sequence lock.
     protected_segments = [
-        await shield.protect_text(db, session_id, text)
-        for text in segments
+        await shield.protect_text(db, session_id, text) for text in segments
     ]
     count = 0
     for text in protected_segments:

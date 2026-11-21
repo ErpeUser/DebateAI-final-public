@@ -1,6 +1,12 @@
 import { useState } from "react";
 import type { Question, Speaker } from "../../types";
-import { presentTypes, typeColor, typeGroupLabel, typeLabel, visibleEnrichmentNotes } from "../../utils/insightTypes";
+import {
+  presentTypes,
+  typeColor,
+  typeGroupLabel,
+  typeLabel,
+  visibleEnrichmentNotes,
+} from "../../utils/insightTypes";
 
 // "all", an item_type slug (built-in or custom lens type), or "dismissed".
 // "enhanced" is added only after the session's explicit enhancement pass.
@@ -16,10 +22,20 @@ interface QuestionSummaryProps {
 }
 
 function speakerLabel(speaker: Speaker): string {
-  return speaker.display_name && speaker.display_name_enabled ? speaker.display_name : speaker.name;
+  return speaker.display_name && speaker.display_name_enabled
+    ? speaker.display_name
+    : speaker.name;
 }
 
-function SummaryCard({ question, speakers, showEnhanced }: { question: Question; speakers: Speaker[]; showEnhanced: boolean }) {
+function SummaryCard({
+  question,
+  speakers,
+  showEnhanced,
+}: {
+  question: Question;
+  speakers: Speaker[];
+  showEnhanced: boolean;
+}) {
   const itemType = question.item_type || "question";
   const cardColor = typeColor(itemType);
   const attributedSpeaker = question.speaker_id
@@ -50,7 +66,8 @@ function SummaryCard({ question, speakers, showEnhanced }: { question: Question;
         <div className="flex-1 space-y-2">
           {/* Badges row */}
           <div className="flex items-center gap-2">
-            {(itemType !== "question" || (question.lens_label && question.lens_label.trim())) && (
+            {(itemType !== "question" ||
+              (question.lens_label && question.lens_label.trim())) && (
               <span
                 className="inline-flex items-center rounded-full px-2 py-0.5 font-body text-xs font-medium text-brand-dark-gray"
                 style={{ backgroundColor: `${cardColor}15` }}
@@ -79,7 +96,9 @@ function SummaryCard({ question, speakers, showEnhanced }: { question: Question;
                 style={{ backgroundColor: attributedSpeaker.color }}
                 title={`Zugeordnet zu ${speakerLabel(attributedSpeaker)}`}
               >
-                <span className="truncate">{speakerLabel(attributedSpeaker)}</span>
+                <span className="truncate">
+                  {speakerLabel(attributedSpeaker)}
+                </span>
               </span>
             )}
             {question.needs_followup && (
@@ -89,22 +108,32 @@ function SummaryCard({ question, speakers, showEnhanced }: { question: Question;
             )}
           </div>
 
-          <p className="text-sm font-semibold text-brand-dark-gray">{question.question}</p>
+          <p className="text-sm font-semibold text-brand-dark-gray">
+            {question.question}
+          </p>
           <p className="text-sm text-brand-gray">{question.rationale}</p>
 
           {question.source_context && (
             <div className="rounded-md bg-brand-light-gray-2 px-3 py-2">
               <p className="text-xs text-brand-mid-gray">
-                <span className="font-medium">Kontext:</span> {question.source_context}
+                <span className="font-medium">Kontext:</span>{" "}
+                {question.source_context}
               </p>
             </div>
           )}
 
           {enrichmentNotes.length > 0 && (
             <div className="rounded-md border border-brand-teal-light/20 bg-brand-teal-light/5 px-3 py-2">
-              <p className="font-body text-xs font-semibold text-brand-teal-light">Präzisierungshinweise</p>
+              <p className="font-body text-xs font-semibold text-brand-teal-light">
+                Präzisierungshinweise
+              </p>
               {enrichmentNotes.map((note, index) => (
-                <p key={index} className="mt-0.5 font-body text-xs text-brand-gray">{note}</p>
+                <p
+                  key={index}
+                  className="mt-0.5 font-body text-xs text-brand-gray"
+                >
+                  {note}
+                </p>
               ))}
             </div>
           )}
@@ -121,7 +150,9 @@ function SummaryCard({ question, speakers, showEnhanced }: { question: Question;
           {/* Follow-up question */}
           {question.needs_followup && question.followup_question && (
             <div className="rounded-md border border-[#f59e0b]/30 bg-[#f59e0b]/10 px-3 py-2">
-              <p className="font-body text-xs font-medium text-[#f59e0b]">Rückfrage:</p>
+              <p className="font-body text-xs font-medium text-[#f59e0b]">
+                Rückfrage:
+              </p>
               <p className="mt-0.5 font-body text-sm text-brand-dark-gray">
                 {question.followup_question}
               </p>
@@ -133,7 +164,15 @@ function SummaryCard({ question, speakers, showEnhanced }: { question: Question;
   );
 }
 
-function SectionHeader({ label, color, count }: { label: string; color: string; count: number }) {
+function SectionHeader({
+  label,
+  color,
+  count,
+}: {
+  label: string;
+  color: string;
+  count: number;
+}) {
   return (
     <h3 className="flex items-center gap-2 font-display text-sm font-semibold uppercase tracking-wide text-brand-dark-gray">
       <span
@@ -141,7 +180,10 @@ function SectionHeader({ label, color, count }: { label: string; color: string; 
         style={{ backgroundColor: color }}
       />
       {label}
-      <span className="rounded-full px-2 py-0.5 text-xs font-medium text-brand-dark-gray" style={{ backgroundColor: `${color}15` }}>
+      <span
+        className="rounded-full px-2 py-0.5 text-xs font-medium text-brand-dark-gray"
+        style={{ backgroundColor: `${color}15` }}
+      >
         {count}
       </span>
     </h3>
@@ -174,18 +216,28 @@ function StatCard({
     >
       <p className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-brand-mid-gray">
         {dotColor && (
-          <span className="inline-block h-2 w-2 rounded-full" style={{ backgroundColor: dotColor }} />
+          <span
+            className="inline-block h-2 w-2 rounded-full"
+            style={{ backgroundColor: dotColor }}
+          />
         )}
         {label}
       </p>
-      <p className={`mt-1 font-display text-2xl font-bold tabular-nums ${isActive ? "text-brand-teal" : "text-brand-dark-gray"}`}>
+      <p
+        className={`mt-1 font-display text-2xl font-bold tabular-nums ${isActive ? "text-brand-teal" : "text-brand-dark-gray"}`}
+      >
         {count}
       </p>
     </button>
   );
 }
 
-export default function QuestionSummary({ questions, speakers, showEnhanced = false, initialFilter = "all" }: QuestionSummaryProps) {
+export default function QuestionSummary({
+  questions,
+  speakers,
+  showEnhanced = false,
+  initialFilter = "all",
+}: QuestionSummaryProps) {
   const [showDismissed, setShowDismissed] = useState(false);
   const [filter, setFilter] = useState<FilterType>(initialFilter);
 
@@ -205,22 +257,29 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
   // Sub-groups within questions
   const qNeedsFollowup = questionItems.filter((q) => q.needs_followup);
   const qStarred = questionItems.filter((q) => q.starred && !q.needs_followup);
-  const qAnswered = questionItems.filter((q) => q.answered && !q.starred && !q.needs_followup);
-  const qUnanswered = questionItems.filter((q) => !q.answered && !q.starred && !q.needs_followup);
+  const qAnswered = questionItems.filter(
+    (q) => q.answered && !q.starred && !q.needs_followup,
+  );
+  const qUnanswered = questionItems.filter(
+    (q) => !q.answered && !q.starred && !q.needs_followup,
+  );
 
   const handleFilterClick = (type: FilterType) => {
     setFilter(filter === type ? "all" : type);
   };
 
   // Determine what sections to show based on filter
-  const showType = (t: string) => filter === "all" || filter === t || filter === "enhanced";
+  const showType = (t: string) =>
+    filter === "all" || filter === t || filter === "enhanced";
   const sectionTypes = types.filter((t) => t !== "question");
   const showQuestions = showType("question");
   const showDismissedSection = filter === "all" || filter === "dismissed";
   const filteredEmpty =
     filter !== "all" &&
     filter !== "dismissed" &&
-    (filter === "enhanced" ? enhanced.length === 0 : byType(visibleActive, filter).length === 0);
+    (filter === "enhanced"
+      ? enhanced.length === 0
+      : byType(visibleActive, filter).length === 0);
 
   return (
     <div className="space-y-6">
@@ -263,9 +322,18 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
         if (!showType(t) || items.length === 0) return null;
         return (
           <section key={t} className="space-y-3">
-            <SectionHeader label={typeGroupLabel(t, items)} color={typeColor(t)} count={items.length} />
+            <SectionHeader
+              label={typeGroupLabel(t, items)}
+              color={typeColor(t)}
+              count={items.length}
+            />
             {items.map((q) => (
-              <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+              <SummaryCard
+                key={q.id}
+                question={q}
+                speakers={speakers}
+                showEnhanced={showEnhanced}
+              />
             ))}
           </section>
         );
@@ -274,7 +342,11 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
       {/* Questions with sub-groups */}
       {showQuestions && questionItems.length > 0 && (
         <section className="space-y-4">
-          <SectionHeader label={typeGroupLabel("question", questionItems)} color={typeColor("question")} count={questionItems.length} />
+          <SectionHeader
+            label={typeGroupLabel("question", questionItems)}
+            color={typeColor("question")}
+            count={questionItems.length}
+          />
 
           {qNeedsFollowup.length > 0 && (
             <div className="space-y-3">
@@ -282,7 +354,12 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
                 Rückfrage nötig
               </h4>
               {qNeedsFollowup.map((q) => (
-                <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+                <SummaryCard
+                  key={q.id}
+                  question={q}
+                  speakers={speakers}
+                  showEnhanced={showEnhanced}
+                />
               ))}
             </div>
           )}
@@ -293,7 +370,12 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
                 Markiert
               </h4>
               {qStarred.map((q) => (
-                <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+                <SummaryCard
+                  key={q.id}
+                  question={q}
+                  speakers={speakers}
+                  showEnhanced={showEnhanced}
+                />
               ))}
             </div>
           )}
@@ -304,7 +386,12 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
                 Beantwortet
               </h4>
               {qAnswered.map((q) => (
-                <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+                <SummaryCard
+                  key={q.id}
+                  question={q}
+                  speakers={speakers}
+                  showEnhanced={showEnhanced}
+                />
               ))}
             </div>
           )}
@@ -315,7 +402,12 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
                 Unbeantwortet
               </h4>
               {qUnanswered.map((q) => (
-                <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+                <SummaryCard
+                  key={q.id}
+                  question={q}
+                  speakers={speakers}
+                  showEnhanced={showEnhanced}
+                />
               ))}
             </div>
           )}
@@ -336,7 +428,11 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
               stroke="currentColor"
               strokeWidth={2}
             >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 5l7 7-7 7"
+              />
             </svg>
             Verworfen ({dismissed.length})
           </button>
@@ -344,7 +440,12 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
           {showDismissed && (
             <div className="mt-3 space-y-3 opacity-60">
               {dismissed.map((q) => (
-                <SummaryCard key={q.id} question={q} speakers={speakers} showEnhanced={showEnhanced} />
+                <SummaryCard
+                  key={q.id}
+                  question={q}
+                  speakers={speakers}
+                  showEnhanced={showEnhanced}
+                />
               ))}
             </div>
           )}
@@ -354,7 +455,9 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
       {/* Empty state */}
       {questions.length === 0 && (
         <div className="rounded-xl bg-surface p-10 text-center shadow-sm">
-          <p className="text-brand-mid-gray">In dieser Sitzung wurden keine Erkenntnisse erzeugt.</p>
+          <p className="text-brand-mid-gray">
+            In dieser Sitzung wurden keine Erkenntnisse erzeugt.
+          </p>
         </div>
       )}
 
@@ -362,7 +465,14 @@ export default function QuestionSummary({ questions, speakers, showEnhanced = fa
       {questions.length > 0 && filteredEmpty && (
         <div className="rounded-xl bg-surface p-10 text-center shadow-sm">
           <p className="text-brand-mid-gray">
-            In diesem Gespräch wurden keine {filter === "enhanced" ? "verbesserten Einträge" : typeGroupLabel(filter, byType(active, filter)).toLowerCase()} erfasst.
+            In diesem Gespräch wurden keine{" "}
+            {filter === "enhanced"
+              ? "verbesserten Einträge"
+              : typeGroupLabel(
+                  filter,
+                  byType(active, filter),
+                ).toLowerCase()}{" "}
+            erfasst.
           </p>
         </div>
       )}

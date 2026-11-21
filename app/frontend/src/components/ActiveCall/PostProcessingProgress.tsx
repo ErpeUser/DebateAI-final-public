@@ -38,7 +38,11 @@ function clampProgress(value: number): number {
   return Math.max(0, Math.min(100, value));
 }
 
-function stepState(stepIndex: number, currentStep: number, active: boolean): "done" | "active" | "pending" {
+function stepState(
+  stepIndex: number,
+  currentStep: number,
+  active: boolean,
+): "done" | "active" | "pending" {
   const stepNumber = stepIndex + 1;
   if (!active && currentStep >= stepNumber) return "done";
   if (currentStep > stepNumber) return "done";
@@ -46,11 +50,19 @@ function stepState(stepIndex: number, currentStep: number, active: boolean): "do
   return "pending";
 }
 
-export default function PostProcessingProgress({ progress }: PostProcessingProgressProps) {
+export default function PostProcessingProgress({
+  progress,
+}: PostProcessingProgressProps) {
   const percent = clampProgress(progress.progress);
-  const currentStep = Math.max(0, Math.min(progress.totalSteps, progress.currentStep));
+  const currentStep = Math.max(
+    0,
+    Math.min(progress.totalSteps, progress.currentStep),
+  );
   const summary = formatPostProcessingSummary(progress.details);
-  const stepIds = progress.steps && progress.steps.length > 0 ? progress.steps : DEFAULT_STEP_IDS;
+  const stepIds =
+    progress.steps && progress.steps.length > 0
+      ? progress.steps
+      : DEFAULT_STEP_IDS;
 
   return (
     <section className="border-b border-brand-light-gray-1 bg-surface px-6 py-4">
@@ -63,9 +75,13 @@ export default function PostProcessingProgress({ progress }: PostProcessingProgr
                 Nachbearbeitung
               </h2>
             </div>
-            <p className="mt-1 font-body text-sm text-brand-gray">{progress.message}</p>
+            <p className="mt-1 font-body text-sm text-brand-gray">
+              {progress.message}
+            </p>
             {summary && (
-              <p className="mt-1 font-body text-xs text-brand-mid-gray">{summary}</p>
+              <p className="mt-1 font-body text-xs text-brand-mid-gray">
+                {summary}
+              </p>
             )}
           </div>
           <div className="font-mono text-sm font-semibold tabular-nums text-brand-dark-gray">
@@ -80,7 +96,9 @@ export default function PostProcessingProgress({ progress }: PostProcessingProgr
           />
         </div>
 
-        <div className={`mt-3 grid grid-cols-1 gap-2 ${GRID_COLS[stepIds.length] ?? "sm:grid-cols-5"}`}>
+        <div
+          className={`mt-3 grid grid-cols-1 gap-2 ${GRID_COLS[stepIds.length] ?? "sm:grid-cols-5"}`}
+        >
           {stepIds.map((stepId, index) => {
             const state = stepState(index, currentStep, progress.active);
             return (
@@ -103,7 +121,9 @@ export default function PostProcessingProgress({ progress }: PostProcessingProgr
                         : "bg-brand-mid-gray"
                   }`}
                 />
-                <span className="min-w-0 truncate font-body text-xs font-medium">{STEP_LABELS[stepId] ?? stepId}</span>
+                <span className="min-w-0 truncate font-body text-xs font-medium">
+                  {STEP_LABELS[stepId] ?? stepId}
+                </span>
               </div>
             );
           })}

@@ -170,7 +170,9 @@ class DebateSettingsTests(unittest.IsolatedAsyncioTestCase):
             return value
 
         with (
-            mock.patch.object(router, "get_debate_settings", mock.AsyncMock(return_value=current)),
+            mock.patch.object(
+                router, "get_debate_settings", mock.AsyncMock(return_value=current)
+            ),
             mock.patch.object(router, "set_debate_settings", save),
         ):
             payload = await router.update_debate_settings(

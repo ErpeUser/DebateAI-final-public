@@ -1,12 +1,11 @@
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.database import get_db
 from app.models import Question
 from app.schemas import QuestionOut, QuestionUpdate
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/sessions/{session_id}/questions", tags=["questions"])
 
@@ -28,7 +27,10 @@ async def list_questions(
 
 @router.patch("/{question_id}", response_model=QuestionOut)
 async def update_question(
-    session_id: uuid.UUID, question_id: uuid.UUID, body: QuestionUpdate, db: AsyncSession = Depends(get_db)
+    session_id: uuid.UUID,
+    question_id: uuid.UUID,
+    body: QuestionUpdate,
+    db: AsyncSession = Depends(get_db),
 ):
     question = await db.get(Question, question_id)
     if not question or question.session_id != session_id:

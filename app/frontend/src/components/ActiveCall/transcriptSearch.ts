@@ -5,7 +5,10 @@ import type { TranscriptEntry } from "../../types";
 // unit-testable without rendering.
 
 // Indices of the transcript entries whose text contains the query.
-export function findTranscriptMatches(transcripts: TranscriptEntry[], query: string): number[] {
+export function findTranscriptMatches(
+  transcripts: TranscriptEntry[],
+  query: string,
+): number[] {
   const q = query.trim().toLowerCase();
   if (!q) return [];
   const hits: number[] = [];
@@ -30,5 +33,8 @@ export function highlightParts(text: string, query: string): HighlightPart[] {
   return text
     .split(new RegExp(`(${escaped})`, "ig"))
     .filter((part) => part !== "")
-    .map((part) => ({ text: part, hit: part.toLowerCase() === q.toLowerCase() }));
+    .map((part) => ({
+      text: part,
+      hit: part.toLowerCase() === q.toLowerCase(),
+    }));
 }

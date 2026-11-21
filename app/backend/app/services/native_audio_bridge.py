@@ -6,13 +6,10 @@ import asyncio
 import json
 import uuid
 
-
 _PCM_BYTES_PER_SECOND_PER_TRACK = 16_000 * 2
 _BUFFER_SECONDS = 2
 _TRACKS = 2
-_MAX_BUFFERED_PCM_BYTES = (
-    _PCM_BYTES_PER_SECOND_PER_TRACK * _BUFFER_SECONDS * _TRACKS
-)
+_MAX_BUFFERED_PCM_BYTES = _PCM_BYTES_PER_SECOND_PER_TRACK * _BUFFER_SECONDS * _TRACKS
 
 
 def _pcm_bytes(message: dict) -> int:
@@ -69,19 +66,23 @@ def enqueue_native_message(queue: asyncio.Queue[dict], message: dict) -> bool:
             return False
         if queue.queued_audio_bytes + pcm_bytes > queue.max_audio_bytes:
             queue.overflow_signaled = True
-            queue.put_nowait({
-                "native_overflow": {
-                    "state": "native_audio_overflow",
-                    "max_audio_bytes": queue.max_audio_bytes,
-                    "queued_audio_bytes": queue.queued_audio_bytes,
-                    "rejected_audio_bytes": pcm_bytes,
-                },
-                "text": json.dumps({
-                    "type": "stop",
-                    "drain_mode": "full",
-                    "reason": "native_audio_overflow",
-                }),
-            })
+            queue.put_nowait(
+                {
+                    "native_overflow": {
+                        "state": "native_audio_overflow",
+                        "max_audio_bytes": queue.max_audio_bytes,
+                        "queued_audio_bytes": queue.queued_audio_bytes,
+                        "rejected_audio_bytes": pcm_bytes,
+                    },
+                    "text": json.dumps(
+                        {
+                            "type": "stop",
+                            "drain_mode": "full",
+                            "reason": "native_audio_overflow",
+                        }
+                    ),
+                }
+            )
             return False
     elif queue.full():
         return False

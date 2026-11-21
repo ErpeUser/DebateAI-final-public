@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
 """Inspect the DebateAI worktree without requiring or creating Generated."""
+
 from __future__ import annotations
 
 import argparse
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -40,6 +41,8 @@ RESOURCES = {
     "build_venv": GENERATED / "dependencies/python/release-venv",
     "build_release_bundle": GENERATED / "build/releases/DebateAI",
     "build_release_archive": GENERATED / "build/releases/DebateAI-windows-x64.zip",
+    "build_native_smoke": GENERATED / "build/native-smoke",
+    "build_native_smoke_data": GENERATED / "build/native-smoke-data",
     "build_recovery": GENERATED / "build/recovery",
     "npm_cache": GENERATED / "cache/npm",
     "pip_cache": GENERATED / "cache/pip",
@@ -48,8 +51,16 @@ RESOURCES = {
 # Only recreate scratch/output directories. Do not resurrect obsolete
 # generated copies of source, configs, git history or user databases.
 GENERATED_DIRS = (
-    "dependencies/python", "build", "cache", "downloads", "logs",
-    "reports/provenance", "reports/screenshots", "tmp",
+    "dependencies/python",
+    "build",
+    "build/native-smoke",
+    "build/native-smoke-data",
+    "cache",
+    "downloads",
+    "logs",
+    "reports/provenance",
+    "reports/screenshots",
+    "tmp",
 )
 
 
@@ -84,20 +95,26 @@ def collect(*, source_only: bool = False) -> dict:
         RESOURCES["source_desktop"],
     ]
     if not source_only:
-        required.extend((
-            RESOURCES["runtime_executable"],
-            RESOURCES["runtime_updater"],
-            RESOURCES["runtime_internal"],
-        ))
+        required.extend(
+            (
+                RESOURCES["runtime_executable"],
+                RESOURCES["runtime_updater"],
+                RESOURCES["runtime_internal"],
+            )
+        )
     return {
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "timestamp_utc": datetime.now(UTC).isoformat(),
         "root": str(ROOT),
         "generated_exists": GENERATED.exists(),
         "source_only": source_only,
         "runtime_independent_of_generated": not BUNDLE.is_relative_to(GENERATED),
-        "git_independent_of_generated": not git.resolve().is_relative_to(GENERATED.resolve()),
-        "references": {name: {"path": str(path), "exists": path.exists()}
-                       for name, path in references.items()},
+        "git_independent_of_generated": not git.resolve().is_relative_to(
+            GENERATED.resolve()
+        ),
+        "references": {
+            name: {"path": str(path), "exists": path.exists()}
+            for name, path in references.items()
+        },
         "essential_missing": [str(p) for p in required if not p.exists()],
         "note": "Reference map, not copies. Optional resources absent in source mode can be rebuilt.",
     }
@@ -105,14 +122,24 @@ def collect(*, source_only: bool = False) -> dict:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--initialize", action="store_true",
-                        help="Recreate only expendable build/cache directories")
-    parser.add_argument("--strict", action="store_true",
-                        help="Fail if essential paths are missing")
-    parser.add_argument("--source-only", action="store_true",
-                        help="CI/source checkout: do not require an installed binary")
-    parser.add_argument("--write-report", action="store_true",
-                        help="Write an ephemeral JSON inventory into Generated")
+    parser.add_argument(
+        "--initialize",
+        action="store_true",
+        help="Recreate only expendable build/cache directories",
+    )
+    parser.add_argument(
+        "--strict", action="store_true", help="Fail if essential paths are missing"
+    )
+    parser.add_argument(
+        "--source-only",
+        action="store_true",
+        help="CI/source checkout: do not require an installed binary",
+    )
+    parser.add_argument(
+        "--write-report",
+        action="store_true",
+        help="Write an ephemeral JSON inventory into Generated",
+    )
     args = parser.parse_args()
     if args.initialize:
         for item in GENERATED_DIRS:
@@ -124,11 +151,14 @@ def main() -> int:
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(output + "\n", encoding="utf-8")
     print(output)
-    return int(args.strict and (
-        bool(report["essential_missing"])
-        or not report["git_independent_of_generated"]
-        or not report["runtime_independent_of_generated"]
-    ))
+    return int(
+        args.strict
+        and (
+            bool(report["essential_missing"])
+            or not report["git_independent_of_generated"]
+            or not report["runtime_independent_of_generated"]
+        )
+    )
 
 
 if __name__ == "__main__":

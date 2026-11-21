@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentPath = fileURLToPath(new URL("./PostCallView.tsx", import.meta.url));
+const componentPath = fileURLToPath(
+  new URL("./PostCallView.tsx", import.meta.url),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "post-call-view-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -39,7 +41,9 @@ await build({
   outfile: outputPath,
 });
 
-const { render, renderBriefing, renderOverview } = createRequire(import.meta.url)(outputPath);
+const { render, renderBriefing, renderOverview } = createRequire(
+  import.meta.url,
+)(outputPath);
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
@@ -80,20 +84,34 @@ test("enhanced sessions offer one unified Insights Excel download", () => {
     onRefreshSynthesis: async () => {},
     onRenameSession: async () => {},
   });
-  const hrefs = [...markup.matchAll(/href="([^"]*questions-export[^"]*)"/g)]
-    .map((match) => match[1]);
+  const hrefs = [
+    ...markup.matchAll(/href="([^"]*questions-export[^"]*)"/g),
+  ].map((match) => match[1]);
 
-  assert.deepEqual(hrefs, ["/api/sessions/session-1/artifacts/questions-export"]);
+  assert.deepEqual(hrefs, [
+    "/api/sessions/session-1/artifacts/questions-export",
+  ]);
   assert.doesNotMatch(markup, /Enhanced Insights \(Excel\)/);
 });
 
 test("post-call overview uses German navigation and metric labels", () => {
   const markup = renderOverview(overviewProps());
 
-  for (const label of ["Zusagen", "Offene Punkte", "Chancen", "Risiken", "Geschätzte Kosten", "Redeanteile", "Gesprächsverlauf"]) {
+  for (const label of [
+    "Zusagen",
+    "Offene Punkte",
+    "Chancen",
+    "Risiken",
+    "Geschätzte Kosten",
+    "Redeanteile",
+    "Gesprächsverlauf",
+  ]) {
     assert.match(markup, new RegExp(label));
   }
-  assert.doesNotMatch(markup, /Commitments|Open loops|Opportunities|Est\. spend|Participation|Call rhythm/);
+  assert.doesNotMatch(
+    markup,
+    /Commitments|Open loops|Opportunities|Est\. spend|Participation|Call rhythm/,
+  );
 });
 
 test("briefing item metadata is safe and ordered in hero and section rows", () => {
@@ -103,8 +121,24 @@ test("briefing item metadata is safe and ordered in hero and section rows", () =
     synthesis: {
       id: "synthesis-1",
       status: "completed",
-      top_outcomes: [{ title: "Hero title", summary: "Hero summary", rationale: "Hero reason", owner, status: "Completed" }],
-      action_plan: [{ title: "Section title", summary: "Section summary", rationale: "Section reason", owner, status: "Pending" }],
+      top_outcomes: [
+        {
+          title: "Hero title",
+          summary: "Hero summary",
+          rationale: "Hero reason",
+          owner,
+          status: "Completed",
+        },
+      ],
+      action_plan: [
+        {
+          title: "Section title",
+          summary: "Section summary",
+          rationale: "Section reason",
+          owner,
+          status: "Pending",
+        },
+      ],
       risks_blockers: [],
       client_objectives: [],
       top_opportunities: [],
@@ -124,15 +158,24 @@ test("briefing item metadata is safe and ordered in hero and section rows", () =
     ["Section title", "Pending", "Section summary"],
   ]) {
     const titleAt = markup.indexOf(title);
-    const item = markup.slice(markup.lastIndexOf("<li", titleAt), markup.indexOf("</li>", titleAt));
-    assert.ok(item.indexOf(title) < item.indexOf(status) && item.indexOf(status) < item.indexOf(owner) && item.indexOf(owner) < item.indexOf(summary), `${status} and owner should share the title row`);
+    const item = markup.slice(
+      markup.lastIndexOf("<li", titleAt),
+      markup.indexOf("</li>", titleAt),
+    );
+    assert.ok(
+      item.indexOf(title) < item.indexOf(status) &&
+        item.indexOf(status) < item.indexOf(owner) &&
+        item.indexOf(owner) < item.indexOf(summary),
+      `${status} and owner should share the title row`,
+    );
     assert.match(item, new RegExp(`${summary}</p><div class="mt-1\\.5">`));
   }
 });
 
 // --- Overview worksheet ------------------------------------------------
 
-const at = (minutes) => new Date(Date.UTC(2026, 8, 1, 20, minutes)).toISOString();
+const at = (minutes) =>
+  new Date(Date.UTC(2026, 8, 1, 20, minutes)).toISOString();
 
 const overviewSession = {
   id: "session-2",
@@ -169,12 +212,18 @@ const insight = (id, item_type, question, extra = {}) => ({
 });
 
 const overviewQuestions = () => [
-  ...Array.from({ length: 8 }, (_, i) => insight(`a-${i}`, "action_item", `Commitment ${i}`)),
+  ...Array.from({ length: 8 }, (_, i) =>
+    insight(`a-${i}`, "action_item", `Commitment ${i}`),
+  ),
   insight("q-1", "question", "What is the budget ceiling?"),
   insight("q-2", "question", "Who owns the rollout?", { answered: true }),
-  insight("p-1", "opportunity", "Digital twin showcase", { offering_match: "Twin" }),
+  insight("p-1", "opportunity", "Digital twin showcase", {
+    offering_match: "Twin",
+  }),
   insight("s-1", "signal", "Engineering defensiveness", { lens_label: "Risk" }),
-  insight("s-2", "signal", "Remind Patrick on positioning", { lens_label: "Action Cue" }),
+  insight("s-2", "signal", "Remind Patrick on positioning", {
+    lens_label: "Action Cue",
+  }),
 ];
 
 const overviewSynthesis = () => ({
@@ -182,12 +231,30 @@ const overviewSynthesis = () => ({
   session_id: "session-2",
   mode: "post_call",
   status: "completed",
-  top_outcomes: [{ title: "Agreed on a Q4 pilot", summary: "Two sites over ninety days", rationale: "" }],
+  top_outcomes: [
+    {
+      title: "Agreed on a Q4 pilot",
+      summary: "Two sites over ninety days",
+      rationale: "",
+    },
+  ],
   client_objectives: [],
   top_opportunities: [],
-  risks_blockers: [{ title: "Procurement freeze", summary: "Until the new fiscal year", owner: "Drew", status: "Blocked" }],
+  risks_blockers: [
+    {
+      title: "Procurement freeze",
+      summary: "Until the new fiscal year",
+      owner: "Drew",
+      status: "Blocked",
+    },
+  ],
   action_plan: [
-    { title: "Send the pricing deck", summary: "Rephrased by the arbiter", owner: "Maya", status: "Pending" },
+    {
+      title: "Send the pricing deck",
+      summary: "Rephrased by the arbiter",
+      owner: "Maya",
+      status: "Pending",
+    },
     { title: "Loop in procurement", summary: "Before the SOW", owner: "Drew" },
   ],
   unresolved_discovery_questions: [],
@@ -208,15 +275,49 @@ const overviewProps = (overrides = {}) => ({
   session: overviewSession,
   questions: overviewQuestions(),
   transcripts: [
-    { text: "one two three four five six", timestamp: at(1), speaker_id: "sp-a" },
+    {
+      text: "one two three four five six",
+      timestamp: at(1),
+      speaker_id: "sp-a",
+    },
     { text: "seven eight", timestamp: at(2), speaker_id: "sp-b" },
   ],
   directives: [],
   documents: [],
-  segments: [{ id: "seg-1", session_id: "session-2", segment_number: 1, started_at: at(0), ended_at: at(34) }],
+  segments: [
+    {
+      id: "seg-1",
+      session_id: "session-2",
+      segment_number: 1,
+      started_at: at(0),
+      ended_at: at(34),
+    },
+  ],
   speakers: [
-    { id: "sp-a", session_id: "session-2", name: "Patrick", role: "", color: "#123456", is_user: false, speaker_type: "external", display_name: "", display_name_enabled: false, created_at: at(0) },
-    { id: "sp-b", session_id: "session-2", name: "Me", role: "", color: "#654321", is_user: true, speaker_type: "team", display_name: "", display_name_enabled: false, created_at: at(0) },
+    {
+      id: "sp-a",
+      session_id: "session-2",
+      name: "Patrick",
+      role: "",
+      color: "#123456",
+      is_user: false,
+      speaker_type: "external",
+      display_name: "",
+      display_name_enabled: false,
+      created_at: at(0),
+    },
+    {
+      id: "sp-b",
+      session_id: "session-2",
+      name: "Me",
+      role: "",
+      color: "#654321",
+      is_user: true,
+      speaker_type: "team",
+      display_name: "",
+      display_name_enabled: false,
+      created_at: at(0),
+    },
   ],
   synthesis: overviewSynthesis(),
   signalHistoryCount: 0,
@@ -232,7 +333,9 @@ const overviewProps = (overrides = {}) => ({
 });
 
 const tile = (markup, label) => {
-  const match = markup.match(new RegExp(`${label}</p><p[^>]*>([^<]*)</p><p[^>]*>([^<]*)</p>`));
+  const match = markup.match(
+    new RegExp(`${label}</p><p[^>]*>([^<]*)</p><p[^>]*>([^<]*)</p>`),
+  );
   assert.ok(match, `tile ${label} not found`);
   return { value: match[1], sub: match[2] };
 };
@@ -241,12 +344,19 @@ test("the review tabs are a German tablist with Uebersicht selected first", () =
   const markup = render(overviewProps());
 
   assert.match(markup, /role="tablist" aria-label="Nachbereitung"/);
-  const selected = [...markup.matchAll(/<button[^>]*role="tab"[^>]*aria-selected="true"[^>]*>([^<]*)/g)].map((m) => m[1].trim());
+  const selected = [
+    ...markup.matchAll(
+      /<button[^>]*role="tab"[^>]*aria-selected="true"[^>]*>([^<]*)/g,
+    ),
+  ].map((m) => m[1].trim());
   assert.deepEqual(selected, ["Übersicht"]);
   // Roving tabindex: only the selected tab is in the Tab order.
   assert.equal((markup.match(/role="tab"[^>]*tabindex="0"/g) || []).length, 1);
   assert.equal((markup.match(/role="tab"[^>]*tabindex="-1"/g) || []).length, 9);
-  assert.match(markup, /role="tabpanel" id="post-call-panel-overview" aria-labelledby="post-call-tab-overview"/);
+  assert.match(
+    markup,
+    /role="tabpanel" id="post-call-panel-overview" aria-labelledby="post-call-tab-overview"/,
+  );
   assert.match(markup, /Argumente<span[^>]*>\(13\)<\/span>/);
   assert.match(markup, />Argumentbaum</);
   assert.ok(markup.indexOf(">Übersicht<") < markup.indexOf(">Auswertung<"));
@@ -268,23 +378,38 @@ test("with a briefing, tiles count briefing rows and each list says where the li
   const markup = render(overviewProps());
 
   // Commitments: the two plan steps, not the eight live action items.
-  assert.deepEqual(tile(markup, "Zusagen"), { value: "2", sub: "Aus der Auswertung" });
+  assert.deepEqual(tile(markup, "Zusagen"), {
+    value: "2",
+    sub: "Aus der Auswertung",
+  });
   assert.match(markup, /Send the pricing deck/);
   assert.match(markup, /Loop in procurement/);
   assert.match(markup, /8 Aufgaben in Argumenten/);
   // Open loops: the briefing has none, so the live questions are the source.
-  assert.deepEqual(tile(markup, "Offene Punkte"), { value: "1", sub: "Aus Argumenten" });
+  assert.deepEqual(tile(markup, "Offene Punkte"), {
+    value: "1",
+    sub: "Aus Argumenten",
+  });
   assert.match(markup, /What is the budget ceiling\?/);
   assert.doesNotMatch(markup, /Who owns the rollout\?/);
   assert.match(markup, /1 offen von 2 Fragen in Argumenten/);
   // Opportunities: no briefing rows, so the live opportunity with its match.
-  assert.deepEqual(tile(markup, "Chancen"), { value: "1", sub: "Aus Argumenten" });
+  assert.deepEqual(tile(markup, "Chancen"), {
+    value: "1",
+    sub: "Aus Argumenten",
+  });
   assert.match(markup, /Digital twin showcase/);
   assert.match(markup, /Passendes Material gefunden/);
   // Risks: the briefing blocker, with the live risk share of current signals.
-  assert.deepEqual(tile(markup, "Risiken"), { value: "1", sub: "Aus der Auswertung" });
+  assert.deepEqual(tile(markup, "Risiken"), {
+    value: "1",
+    sub: "Aus der Auswertung",
+  });
   assert.match(markup, /Procurement freeze/);
-  assert.match(markup, /1 von 2 aktuellen strategischen Signalen in Argumenten/);
+  assert.match(
+    markup,
+    /1 von 2 aktuellen strategischen Signalen in Argumenten/,
+  );
   assert.doesNotMatch(markup, /Engineering defensiveness/);
 });
 
@@ -299,7 +424,10 @@ test("briefing statuses carry the Briefing's tone on Overview rows", () => {
   assert.match(row, /Procurement freeze/);
   // "Pending" is an open item: amber mark, quiet text.
   const pendingAt = markup.indexOf(">Pending<");
-  assert.match(markup.slice(markup.lastIndexOf("<li", pendingAt), pendingAt), /bg-brand-amber/);
+  assert.match(
+    markup.slice(markup.lastIndexOf("<li", pendingAt), pendingAt),
+    /bg-brand-amber/,
+  );
   assert.match(markup, /Maya/);
 });
 
@@ -307,27 +435,40 @@ test("the lists share one sheet with small-caps headings instead of six boxed pa
   const markup = render(overviewProps());
 
   // Four list headings in the Briefing's small-caps style, none with an icon.
-  const headings = markup.match(/<h3 class="font-display text-\[11px\] font-semibold uppercase tracking-\[0\.12em\] text-brand-mid-gray">(Zusagen|Offene Punkte|Chancen|Risiken)<\/h3>/g) || [];
+  const headings =
+    markup.match(
+      /<h3 class="font-display text-\[11px\] font-semibold uppercase tracking-\[0\.12em\] text-brand-mid-gray">(Zusagen|Offene Punkte|Chancen|Risiken)<\/h3>/g,
+    ) || [];
   assert.equal(headings.length, 4);
   // Boxed treatment only for the two measured panels and the sheet itself
   // (the session card above the tabs is outside the panel).
   const panel = markup.slice(markup.indexOf('role="tabpanel"'));
-  const boxes = panel.match(/rounded-xl bg-surface p(x-5 py-6|-5|-6) shadow-sm/g) || [];
+  const boxes =
+    panel.match(/rounded-xl bg-surface p(x-5 py-6|-5|-6) shadow-sm/g) || [];
   assert.equal(boxes.length, 4, "headline, list sheet, participation, rhythm");
   assert.match(markup, /aria-labelledby="overview-participation"/);
   assert.match(markup, /aria-labelledby="overview-rhythm"/);
   assert.match(markup, /Redeanteil nach Wörtern: Patrick 75%, Me 25%/);
-  assert.match(markup, /Höchste Aktivität zwischen Minute 5 und 10 mit 13 Argumenten/);
+  assert.match(
+    markup,
+    /Höchste Aktivität zwischen Minute 5 und 10 mit 13 Argumenten/,
+  );
 });
 
 test("without a briefing, tiles count live insights, lists cap, and links say how many are in Insights", () => {
   const markup = render(overviewProps({ synthesis: null }));
 
-  assert.deepEqual(tile(markup, "Zusagen"), { value: "8", sub: "Aus Argumenten" });
+  assert.deepEqual(tile(markup, "Zusagen"), {
+    value: "8",
+    sub: "Aus Argumenten",
+  });
   assert.match(markup, /Commitment 5/);
   assert.doesNotMatch(markup, /Commitment 6/);
   assert.match(markup, /8 Aufgaben in Argumenten/);
-  assert.deepEqual(tile(markup, "Risiken"), { value: "1", sub: "Aus Argumenten" });
+  assert.deepEqual(tile(markup, "Risiken"), {
+    value: "1",
+    sub: "Aus Argumenten",
+  });
   assert.match(markup, /Engineering defensiveness/);
   assert.doesNotMatch(markup, /Remind Patrick on positioning/);
   assert.match(markup, /Zahlen aus den erfassten Daten/);
@@ -336,7 +477,10 @@ test("without a briefing, tiles count live insights, lists cap, and links say ho
 test("the cost tile shows the skeleton only while loading and says when usage is unavailable", () => {
   // The usage request starts at mount, so the first paint is the skeleton.
   const loading = render(overviewProps());
-  assert.match(loading, /Geschätzte Kosten<\/p><p[^>]*><span[^>]*animate-pulse[^>]*><\/span><\/p><p[^>]*>Verbrauch wird geladen<\/p>/);
+  assert.match(
+    loading,
+    /Geschätzte Kosten<\/p><p[^>]*><span[^>]*animate-pulse[^>]*><\/span><\/p><p[^>]*>Verbrauch wird geladen<\/p>/,
+  );
 
   const unavailable = renderOverview({
     ...overviewProps(),
@@ -346,7 +490,10 @@ test("the cost tile shows the skeleton only while loading and says when usage is
     modelPricing: null,
     onNavigate: noop,
   });
-  assert.deepEqual(tile(unavailable, "Geschätzte Kosten"), { value: "-", sub: "Verbrauch nicht verfügbar" });
+  assert.deepEqual(tile(unavailable, "Geschätzte Kosten"), {
+    value: "-",
+    sub: "Verbrauch nicht verfügbar",
+  });
   assert.doesNotMatch(unavailable, /animate-pulse/);
 });
 
@@ -361,7 +508,10 @@ test("an analysis error shows under the headline even once insights exist", () =
     analyzeError: "Analysis finished, but the briefing failed: quota exceeded",
   });
 
-  assert.match(markup, /role="alert"[^>]*>Analysis finished, but the briefing failed: quota exceeded</);
+  assert.match(
+    markup,
+    /role="alert"[^>]*>Analysis finished, but the briefing failed: quota exceeded</,
+  );
   assert.ok(markup.indexOf("quota exceeded") < markup.indexOf(">Zusagen</p>"));
 });
 
@@ -377,10 +527,12 @@ test("a transcript with no analysis gets an Analyze nudge instead of empty lists
 });
 
 test("a session whose insights were all dismissed is not offered Analyze again", () => {
-  const markup = render(overviewProps({
-    questions: overviewQuestions().map((q) => ({ ...q, dismissed: true })),
-    synthesis: null,
-  }));
+  const markup = render(
+    overviewProps({
+      questions: overviewQuestions().map((q) => ({ ...q, dismissed: true })),
+      synthesis: null,
+    }),
+  );
 
   assert.doesNotMatch(markup, /Transkript analysieren/);
   assert.doesNotMatch(markup, /Noch nichts analysiert/);
@@ -388,7 +540,15 @@ test("a session whose insights were all dismissed is not offered Analyze again",
 });
 
 test("an empty session says so plainly without an Analyze button", () => {
-  const markup = render(overviewProps({ questions: [], synthesis: null, transcripts: [], segments: [], session: { ...overviewSession, started_at: null, ended_at: null } }));
+  const markup = render(
+    overviewProps({
+      questions: [],
+      synthesis: null,
+      transcripts: [],
+      segments: [],
+      session: { ...overviewSession, started_at: null, ended_at: null },
+    }),
+  );
 
   assert.match(markup, /Es wurde auch kein Transkript aufgezeichnet/);
   assert.doesNotMatch(markup, /Transkript analysieren/);
@@ -396,15 +556,37 @@ test("an empty session says so plainly without an Analyze button", () => {
 });
 
 test("completion notes use the accent tokens and announce as status; the export menu is a real menu", () => {
-  const markup = render(overviewProps({
-    postProcessing: { active: false, state: "completed", stage: "", message: "Post-processing complete", currentStep: 3, totalSteps: 3, progress: 1, startedAt: null, completedAt: null, confirmed: true },
-  }));
+  const markup = render(
+    overviewProps({
+      postProcessing: {
+        active: false,
+        state: "completed",
+        stage: "",
+        message: "Post-processing complete",
+        currentStep: 3,
+        totalSteps: 3,
+        progress: 1,
+        startedAt: null,
+        completedAt: null,
+        confirmed: true,
+      },
+    }),
+  );
 
-  assert.match(markup, /role="status" class="rounded-lg border border-brand-teal\/30 bg-brand-teal\/10/);
+  assert.match(
+    markup,
+    /role="status" class="rounded-lg border border-brand-teal\/30 bg-brand-teal\/10/,
+  );
   assert.doesNotMatch(markup, /bg-green-50/);
-  assert.match(markup, /aria-haspopup="menu" aria-expanded="false" aria-controls="post-call-export-menu"/);
+  assert.match(
+    markup,
+    /aria-haspopup="menu" aria-expanded="false" aria-controls="post-call-export-menu"/,
+  );
   assert.match(markup, /id="post-call-export-menu" role="menu"/);
-  assert.equal((markup.match(/role="menuitem" tabindex="-1"/g) || []).length, 3);
+  assert.equal(
+    (markup.match(/role="menuitem" tabindex="-1"/g) || []).length,
+    3,
+  );
   assert.match(markup, /transition-opacity/);
   assert.doesNotMatch(markup, /transition-all[^"]*z-10/);
 });

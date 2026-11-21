@@ -17,19 +17,33 @@ class SharedSpeakerSerializationTests(unittest.TestCase):
 
     def test_serialization_keeps_the_prompt_schema(self):
         row = SimpleNamespace(
-            id=42, name="Analyst", role="Lead", speaker_type="team",
-            display_name="Dana", display_name_enabled=False,
+            id=42,
+            name="Analyst",
+            role="Lead",
+            speaker_type="team",
+            display_name="Dana",
+            display_name_enabled=False,
         )
-        self.assertEqual(speaker_to_dict(row), {
-            "id": "42", "name": "Analyst", "role": "Lead",
-            "speaker_type": "team", "display_name": "Dana",
-            "display_name_enabled": False,
-        })
+        self.assertEqual(
+            speaker_to_dict(row),
+            {
+                "id": "42",
+                "name": "Analyst",
+                "role": "Lead",
+                "speaker_type": "team",
+                "display_name": "Dana",
+                "display_name_enabled": False,
+            },
+        )
 
     def test_empty_optional_names_are_not_modified(self):
         row = SimpleNamespace(
-            id="s-1", name=None, role=None, speaker_type=None,
-            display_name=None, display_name_enabled=None,
+            id="s-1",
+            name=None,
+            role=None,
+            speaker_type=None,
+            display_name=None,
+            display_name_enabled=None,
         )
         result = speaker_to_dict(row)
         self.assertEqual(result["id"], "s-1")

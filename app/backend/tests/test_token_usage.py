@@ -6,19 +6,36 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
-from fastapi import HTTPException
-
 from app.main import _add_thinking_token_column
 from app.routers.sessions import get_token_usage
 from app.services import token_usage
 from app.services.token_usage import UsageCounts
+from fastapi import HTTPException
 
 
-def counts(input_tokens, output_tokens, thinking=0, total=None, seconds=0.0, cached=0, audio_in=0, audio_out=0):
+def counts(
+    input_tokens,
+    output_tokens,
+    thinking=0,
+    total=None,
+    seconds=0.0,
+    cached=0,
+    audio_in=0,
+    audio_out=0,
+):
     """UsageCounts with the total synthesized unless given, for terse asserts."""
     if total is None:
         total = input_tokens + output_tokens + thinking
-    return UsageCounts(input_tokens, output_tokens, thinking, total, seconds, cached, audio_in, audio_out)
+    return UsageCounts(
+        input_tokens,
+        output_tokens,
+        thinking,
+        total,
+        seconds,
+        cached,
+        audio_in,
+        audio_out,
+    )
 
 
 class _Modality(str, Enum):
@@ -52,7 +69,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(counts(12, 5), token_usage.normalize_usage(gemini))
         self.assertEqual(
             counts(8, 3),
-            token_usage.normalize_usage({"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11}),
+            token_usage.normalize_usage(
+                {"prompt_tokens": 8, "completion_tokens": 3, "total_tokens": 11}
+            ),
         )
         self.assertEqual(
             counts(7, 2),
@@ -61,7 +80,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
 
     def test_result_stays_positionally_compatible(self):
         # Readers that index 0..4 predate the slices and must keep working.
-        normalized = token_usage.normalize_usage({"input_tokens": 7, "output_tokens": 2})
+        normalized = token_usage.normalize_usage(
+            {"input_tokens": 7, "output_tokens": 2}
+        )
         self.assertEqual((7, 2, 0, 9, 0.0), normalized[:5])
         self.assertEqual(7, normalized.input_tokens)
         self.assertEqual(0, normalized.cached_input_tokens)
@@ -88,7 +109,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
     def test_synthesized_total_includes_thinking(self):
         self.assertEqual(
             counts(10, 4, 6, 20),
-            token_usage.normalize_usage({"input_tokens": 10, "output_tokens": 4, "thoughts_token_count": 6}),
+            token_usage.normalize_usage(
+                {"input_tokens": 10, "output_tokens": 4, "thoughts_token_count": 6}
+            ),
         )
 
     def test_captures_openai_nested_reasoning_tokens(self):
@@ -138,7 +161,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             total_token_count=5100,
             cached_content_token_count=4096,
         )
-        self.assertEqual(counts(5000, 100, cached=4096), token_usage.normalize_usage(gemini))
+        self.assertEqual(
+            counts(5000, 100, cached=4096), token_usage.normalize_usage(gemini)
+        )
 
     def test_captures_gemini_live_audio_output(self):
         # The live gateway answers in audio; the Live API names the output
@@ -147,7 +172,10 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             prompt_token_count=640,
             response_token_count=25,
             total_token_count=665,
-            prompt_tokens_details=[_modality_count(_Modality.AUDIO, 600), _modality_count(_Modality.TEXT, 40)],
+            prompt_tokens_details=[
+                _modality_count(_Modality.AUDIO, 600),
+                _modality_count(_Modality.TEXT, 40),
+            ],
             response_tokens_details=[_modality_count(_Modality.AUDIO, 25)],
         )
         self.assertEqual(
@@ -165,7 +193,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
                 {"modality": "TEXT", "token_count": 20},
             ],
         }
-        self.assertEqual(counts(100, 10, audio_in=80), token_usage.normalize_usage(gemini))
+        self.assertEqual(
+            counts(100, 10, audio_in=80), token_usage.normalize_usage(gemini)
+        )
 
     def test_captures_openai_cached_and_audio_slices(self):
         chat = {
@@ -190,7 +220,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             "input_token_details": {"text_tokens": 4, "audio_tokens": 96},
             "output_tokens": 10,
         }
-        self.assertEqual(counts(100, 10, 0, 110, audio_in=96), token_usage.normalize_usage(realtime))
+        self.assertEqual(
+            counts(100, 10, 0, 110, audio_in=96), token_usage.normalize_usage(realtime)
+        )
 
     def test_captures_openai_responses_api_cached_tokens(self):
         responses = {
@@ -199,7 +231,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             "input_tokens_details": {"cached_tokens": 256},
             "output_tokens_details": {"reasoning_tokens": 8},
         }
-        self.assertEqual(counts(400, 20, 8, cached=256), token_usage.normalize_usage(responses))
+        self.assertEqual(
+            counts(400, 20, 8, cached=256), token_usage.normalize_usage(responses)
+        )
 
     def test_slices_are_clamped_to_their_side(self):
         # A slice larger than the count it is part of would price more cached
@@ -212,7 +246,10 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             "prompt_tokens_details": {"cached_tokens": 50, "audio_tokens": 50},
             "completion_tokens_details": {"audio_tokens": 9},
         }
-        self.assertEqual(counts(10, 3, cached=10, audio_in=0, audio_out=3), token_usage.normalize_usage(odd))
+        self.assertEqual(
+            counts(10, 3, cached=10, audio_in=0, audio_out=3),
+            token_usage.normalize_usage(odd),
+        )
 
     def test_cached_and_audio_input_are_clamped_jointly(self):
         # Both are slices of the same input count, so their sum can never
@@ -225,7 +262,10 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
             "cached_content_token_count": 800,
             "prompt_tokens_details": [{"modality": "AUDIO", "token_count": 900}],
         }
-        self.assertEqual(counts(1000, 10, cached=800, audio_in=200), token_usage.normalize_usage(gemini))
+        self.assertEqual(
+            counts(1000, 10, cached=800, audio_in=200),
+            token_usage.normalize_usage(gemini),
+        )
 
     def test_slices_alone_do_not_make_an_empty_payload_recordable(self):
         # Modality details without any count are not usage.
@@ -245,7 +285,9 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
         """
         self.assertEqual(
             counts(0, 0, seconds=4.5),
-            token_usage.normalize_usage({"type": "duration", "seconds": 4.5}, "audio_gateway"),
+            token_usage.normalize_usage(
+                {"type": "duration", "seconds": 4.5}, "audio_gateway"
+            ),
         )
 
     def test_duration_is_not_truncated_to_whole_seconds(self):
@@ -258,18 +300,38 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
         token_usage._warned_usage_sources.clear()
         self.addCleanup(token_usage._warned_usage_sources.clear)
         with mock.patch.object(token_usage.logger, "warning") as warning:
-            token_usage.normalize_usage({"type": "duration", "seconds": 2.0}, "audio_gateway")
+            token_usage.normalize_usage(
+                {"type": "duration", "seconds": 2.0}, "audio_gateway"
+            )
         warning.assert_not_called()
 
     def test_zero_duration_is_still_dropped(self):
         # A silent stretch bills nothing; writing a row per empty event would
         # be noise, not signal.
-        self.assertIsNone(token_usage.normalize_usage({"type": "duration", "seconds": 0}))
+        self.assertIsNone(
+            token_usage.normalize_usage({"type": "duration", "seconds": 0})
+        )
 
     def test_duration_billed_rows_reach_the_summary(self):
         rows = [
-            SimpleNamespace(source="audio_gateway", model_id="gpt-live-transcribe", input_tokens=0, output_tokens=0, thinking_tokens=0, total_tokens=0, audio_seconds=120.0),
-            SimpleNamespace(source="consolidated_analyst", model_id="gpt-5.6-luna", input_tokens=20, output_tokens=4, thinking_tokens=0, total_tokens=24, audio_seconds=0.0),
+            SimpleNamespace(
+                source="audio_gateway",
+                model_id="gpt-live-transcribe",
+                input_tokens=0,
+                output_tokens=0,
+                thinking_tokens=0,
+                total_tokens=0,
+                audio_seconds=120.0,
+            ),
+            SimpleNamespace(
+                source="consolidated_analyst",
+                model_id="gpt-5.6-luna",
+                input_tokens=20,
+                output_tokens=4,
+                thinking_tokens=0,
+                total_tokens=24,
+                audio_seconds=0.0,
+            ),
         ]
         summary = token_usage.summarize_usage(rows)
         self.assertEqual(120.0, summary["audio_seconds"])
@@ -282,7 +344,17 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(0, by_source["audio_gateway"]["total_tokens"])
 
     def test_legacy_rows_without_audio_column_summarize_as_zero(self):
-        rows = [SimpleNamespace(source="analyze", model_id="gemini-pro", input_tokens=6, output_tokens=2, thinking_tokens=0, total_tokens=8, audio_seconds=None)]
+        rows = [
+            SimpleNamespace(
+                source="analyze",
+                model_id="gemini-pro",
+                input_tokens=6,
+                output_tokens=2,
+                thinking_tokens=0,
+                total_tokens=8,
+                audio_seconds=None,
+            )
+        ]
         self.assertEqual(0.0, token_usage.summarize_usage(rows)["audio_seconds"])
 
     # --- recording ---
@@ -323,23 +395,57 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
                     "candidates_token_count": 20,
                     "total_token_count": 1050,
                     "cached_content_token_count": 0,
-                    "prompt_tokens_details": [{"modality": "AUDIO", "token_count": 1000}],
+                    "prompt_tokens_details": [
+                        {"modality": "AUDIO", "token_count": 1000}
+                    ],
                 },
             )
         self.assertEqual(1, len(added))
         row = added[0]
         self.assertEqual(session_id, row.session_id)
-        self.assertEqual((1030, 20, 0, 1050), (row.input_tokens, row.output_tokens, row.thinking_tokens, row.total_tokens))
-        self.assertEqual((0, 1000, 0), (row.cached_input_tokens, row.audio_input_tokens, row.audio_output_tokens))
+        self.assertEqual(
+            (1030, 20, 0, 1050),
+            (
+                row.input_tokens,
+                row.output_tokens,
+                row.thinking_tokens,
+                row.total_tokens,
+            ),
+        )
+        self.assertEqual(
+            (0, 1000, 0),
+            (row.cached_input_tokens, row.audio_input_tokens, row.audio_output_tokens),
+        )
         db.commit.assert_awaited_once()
 
     # --- summary ---
 
     def test_summarizes_by_source_and_model(self):
         rows = [
-            SimpleNamespace(source="batch_transcriber", model_id="gemini-flash", input_tokens=10, output_tokens=2, thinking_tokens=0, total_tokens=12),
-            SimpleNamespace(source="batch_transcriber", model_id="gemini-flash", input_tokens=5, output_tokens=1, thinking_tokens=0, total_tokens=6),
-            SimpleNamespace(source="consolidated_analyst", model_id="gemini-pro", input_tokens=20, output_tokens=4, thinking_tokens=9, total_tokens=33),
+            SimpleNamespace(
+                source="batch_transcriber",
+                model_id="gemini-flash",
+                input_tokens=10,
+                output_tokens=2,
+                thinking_tokens=0,
+                total_tokens=12,
+            ),
+            SimpleNamespace(
+                source="batch_transcriber",
+                model_id="gemini-flash",
+                input_tokens=5,
+                output_tokens=1,
+                thinking_tokens=0,
+                total_tokens=6,
+            ),
+            SimpleNamespace(
+                source="consolidated_analyst",
+                model_id="gemini-pro",
+                input_tokens=20,
+                output_tokens=4,
+                thinking_tokens=9,
+                total_tokens=33,
+            ),
         ]
         summary = token_usage.summarize_usage(rows)
         self.assertEqual(51, summary["total_tokens"])
@@ -351,7 +457,10 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
                 (item["source"], item["model_id"]): item["total_tokens"]
                 for item in summary["by_source"]
             },
-            {("batch_transcriber", "gemini-flash"): 18, ("consolidated_analyst", "gemini-pro"): 33},
+            {
+                ("batch_transcriber", "gemini-flash"): 18,
+                ("consolidated_analyst", "gemini-pro"): 33,
+            },
         )
         self.assertEqual(
             {item["model_id"]: item["total_tokens"] for item in summary["by_model"]},
@@ -360,32 +469,117 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
 
     def test_summary_carries_the_slices_through_every_level(self):
         rows = [
-            SimpleNamespace(source="batch_transcriber", model_id="gemini-2.5-flash", input_tokens=1030, output_tokens=20, thinking_tokens=0, total_tokens=1050, audio_seconds=0.0, cached_input_tokens=0, audio_input_tokens=1000, audio_output_tokens=0),
-            SimpleNamespace(source="batch_transcriber", model_id="gemini-2.5-flash", input_tokens=530, output_tokens=10, thinking_tokens=0, total_tokens=540, audio_seconds=0.0, cached_input_tokens=0, audio_input_tokens=500, audio_output_tokens=0),
-            SimpleNamespace(source="synthesizer", model_id="gemini-2.5-flash", input_tokens=5000, output_tokens=100, thinking_tokens=0, total_tokens=5100, audio_seconds=0.0, cached_input_tokens=4096, audio_input_tokens=0, audio_output_tokens=0),
-            SimpleNamespace(source="audio_gateway", model_id="gemini-live", input_tokens=640, output_tokens=25, thinking_tokens=0, total_tokens=665, audio_seconds=0.0, cached_input_tokens=0, audio_input_tokens=600, audio_output_tokens=25),
+            SimpleNamespace(
+                source="batch_transcriber",
+                model_id="gemini-2.5-flash",
+                input_tokens=1030,
+                output_tokens=20,
+                thinking_tokens=0,
+                total_tokens=1050,
+                audio_seconds=0.0,
+                cached_input_tokens=0,
+                audio_input_tokens=1000,
+                audio_output_tokens=0,
+            ),
+            SimpleNamespace(
+                source="batch_transcriber",
+                model_id="gemini-2.5-flash",
+                input_tokens=530,
+                output_tokens=10,
+                thinking_tokens=0,
+                total_tokens=540,
+                audio_seconds=0.0,
+                cached_input_tokens=0,
+                audio_input_tokens=500,
+                audio_output_tokens=0,
+            ),
+            SimpleNamespace(
+                source="synthesizer",
+                model_id="gemini-2.5-flash",
+                input_tokens=5000,
+                output_tokens=100,
+                thinking_tokens=0,
+                total_tokens=5100,
+                audio_seconds=0.0,
+                cached_input_tokens=4096,
+                audio_input_tokens=0,
+                audio_output_tokens=0,
+            ),
+            SimpleNamespace(
+                source="audio_gateway",
+                model_id="gemini-live",
+                input_tokens=640,
+                output_tokens=25,
+                thinking_tokens=0,
+                total_tokens=665,
+                audio_seconds=0.0,
+                cached_input_tokens=0,
+                audio_input_tokens=600,
+                audio_output_tokens=25,
+            ),
         ]
         summary = token_usage.summarize_usage(rows)
-        self.assertEqual((4096, 2100, 25), (summary["cached_input_tokens"], summary["audio_input_tokens"], summary["audio_output_tokens"]))
+        self.assertEqual(
+            (4096, 2100, 25),
+            (
+                summary["cached_input_tokens"],
+                summary["audio_input_tokens"],
+                summary["audio_output_tokens"],
+            ),
+        )
         by_source = {item["source"]: item for item in summary["by_source"]}
         self.assertEqual(1500, by_source["batch_transcriber"]["audio_input_tokens"])
         self.assertEqual(4096, by_source["synthesizer"]["cached_input_tokens"])
         self.assertEqual(25, by_source["audio_gateway"]["audio_output_tokens"])
         by_model = {item["model_id"]: item for item in summary["by_model"]}
         # Slices merge across sources for the same model, like the counts do.
-        self.assertEqual((4096, 1500), (by_model["gemini-2.5-flash"]["cached_input_tokens"], by_model["gemini-2.5-flash"]["audio_input_tokens"]))
+        self.assertEqual(
+            (4096, 1500),
+            (
+                by_model["gemini-2.5-flash"]["cached_input_tokens"],
+                by_model["gemini-2.5-flash"]["audio_input_tokens"],
+            ),
+        )
 
     def test_legacy_rows_without_thinking_column_summarize_as_zero(self):
         # Rows written before the column existed arrive as NULL from the driver.
-        rows = [SimpleNamespace(source="analyze", model_id="gemini-pro", input_tokens=6, output_tokens=2, thinking_tokens=None, total_tokens=8)]
+        rows = [
+            SimpleNamespace(
+                source="analyze",
+                model_id="gemini-pro",
+                input_tokens=6,
+                output_tokens=2,
+                thinking_tokens=None,
+                total_tokens=8,
+            )
+        ]
         summary = token_usage.summarize_usage(rows)
         self.assertEqual(0, summary["thinking_tokens"])
         self.assertEqual(8, summary["total_tokens"])
 
     def test_legacy_rows_without_slice_columns_summarize_as_zero(self):
-        rows = [SimpleNamespace(source="analyze", model_id="gemini-pro", input_tokens=6, output_tokens=2, thinking_tokens=0, total_tokens=8, cached_input_tokens=None, audio_input_tokens=None, audio_output_tokens=None)]
+        rows = [
+            SimpleNamespace(
+                source="analyze",
+                model_id="gemini-pro",
+                input_tokens=6,
+                output_tokens=2,
+                thinking_tokens=0,
+                total_tokens=8,
+                cached_input_tokens=None,
+                audio_input_tokens=None,
+                audio_output_tokens=None,
+            )
+        ]
         summary = token_usage.summarize_usage(rows)
-        self.assertEqual((0, 0, 0), (summary["cached_input_tokens"], summary["audio_input_tokens"], summary["audio_output_tokens"]))
+        self.assertEqual(
+            (0, 0, 0),
+            (
+                summary["cached_input_tokens"],
+                summary["audio_input_tokens"],
+                summary["audio_output_tokens"],
+            ),
+        )
 
     def test_empty_summary_is_zero(self):
         self.assertEqual(
@@ -405,8 +599,12 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
         )
 
     async def test_recording_failure_never_escapes(self):
-        with mock.patch.object(token_usage, "async_session", side_effect=RuntimeError("db unavailable")), \
-             mock.patch.object(token_usage.logger, "exception"):
+        with (
+            mock.patch.object(
+                token_usage, "async_session", side_effect=RuntimeError("db unavailable")
+            ),
+            mock.patch.object(token_usage.logger, "exception"),
+        ):
             await token_usage.record_token_usage(
                 uuid.uuid4(),
                 "consolidated_analyst",
@@ -417,17 +615,28 @@ class TokenUsageTests(unittest.IsolatedAsyncioTestCase):
     async def test_missing_usage_is_not_written(self):
         session_factory = mock.MagicMock()
         with mock.patch.object(token_usage, "async_session", session_factory):
-            await token_usage.record_token_usage(uuid.uuid4(), "chat", "gemini-pro", None)
+            await token_usage.record_token_usage(
+                uuid.uuid4(), "chat", "gemini-pro", None
+            )
         session_factory.assert_not_called()
 
     async def test_malformed_provider_usage_never_escapes(self):
         with mock.patch.object(token_usage.logger, "exception"):
             await token_usage.record_token_usage(
-                uuid.uuid4(), "audio_gateway", "provider-model", {"input_tokens": "unknown"}
+                uuid.uuid4(),
+                "audio_gateway",
+                "provider-model",
+                {"input_tokens": "unknown"},
             )
 
     async def test_endpoint_returns_persisted_summary(self):
-        row = SimpleNamespace(source="analyze", model_id="gemini-pro", input_tokens=6, output_tokens=2, total_tokens=8)
+        row = SimpleNamespace(
+            source="analyze",
+            model_id="gemini-pro",
+            input_tokens=6,
+            output_tokens=2,
+            total_tokens=8,
+        )
         result = mock.MagicMock()
         result.scalars.return_value.all.return_value = [row]
         db = mock.AsyncMock()
@@ -459,19 +668,35 @@ class TokenUsageSchemaPatchTests(unittest.TestCase):
         return statements
 
     def test_startup_patch_adds_the_slice_columns(self):
-        statements = self._run_patch({"input_tokens", "output_tokens", "thinking_tokens", "audio_seconds"})
+        statements = self._run_patch(
+            {"input_tokens", "output_tokens", "thinking_tokens", "audio_seconds"}
+        )
         self.assertEqual(3, len(statements))
-        for column in ("cached_input_tokens", "audio_input_tokens", "audio_output_tokens"):
+        for column in (
+            "cached_input_tokens",
+            "audio_input_tokens",
+            "audio_output_tokens",
+        ):
             self.assertTrue(
-                any(f"ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0" in statement for statement in statements),
+                any(
+                    f"ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0" in statement
+                    for statement in statements
+                ),
                 column,
             )
 
     def test_startup_patch_is_a_no_op_once_present(self):
-        statements = self._run_patch({
-            "input_tokens", "output_tokens", "thinking_tokens", "audio_seconds",
-            "cached_input_tokens", "audio_input_tokens", "audio_output_tokens",
-        })
+        statements = self._run_patch(
+            {
+                "input_tokens",
+                "output_tokens",
+                "thinking_tokens",
+                "audio_seconds",
+                "cached_input_tokens",
+                "audio_input_tokens",
+                "audio_output_tokens",
+            }
+        )
         self.assertEqual([], statements)
 
     def test_startup_patch_skips_a_missing_table(self):
@@ -483,7 +708,12 @@ class TokenUsageSchemaPatchTests(unittest.TestCase):
     def _load_migration():
         # Loaded by path: the installed alembic package shadows the repo's
         # alembic/ directory on the import path.
-        path = Path(__file__).resolve().parents[1] / "alembic" / "versions" / "025_token_usage_modality_columns.py"
+        path = (
+            Path(__file__).resolve().parents[1]
+            / "alembic"
+            / "versions"
+            / "025_token_usage_modality_columns.py"
+        )
         spec = importlib.util.spec_from_file_location("migration_025_token_usage", path)
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -495,9 +725,14 @@ class TokenUsageSchemaPatchTests(unittest.TestCase):
         self.assertEqual("024_token_usage_audio_seconds", migration.down_revision)
         inspector = mock.MagicMock()
         inspector.get_table_names.return_value = ["token_usage"]
-        inspector.get_columns.return_value = [{"name": "input_tokens"}, {"name": "audio_input_tokens"}]
-        with mock.patch.object(migration, "op") as op, \
-             mock.patch.object(migration.sa, "inspect", return_value=inspector):
+        inspector.get_columns.return_value = [
+            {"name": "input_tokens"},
+            {"name": "audio_input_tokens"},
+        ]
+        with (
+            mock.patch.object(migration, "op") as op,
+            mock.patch.object(migration.sa, "inspect", return_value=inspector),
+        ):
             migration.upgrade()
         added = [call.args[1].name for call in op.add_column.call_args_list]
         # The one column the startup patch already created is left alone.
@@ -510,8 +745,10 @@ class TokenUsageSchemaPatchTests(unittest.TestCase):
         migration = self._load_migration()
         inspector = mock.MagicMock()
         inspector.get_table_names.return_value = []
-        with mock.patch.object(migration, "op") as op, \
-             mock.patch.object(migration.sa, "inspect", return_value=inspector):
+        with (
+            mock.patch.object(migration, "op") as op,
+            mock.patch.object(migration.sa, "inspect", return_value=inspector),
+        ):
             migration.upgrade()
             migration.downgrade()
         op.add_column.assert_not_called()

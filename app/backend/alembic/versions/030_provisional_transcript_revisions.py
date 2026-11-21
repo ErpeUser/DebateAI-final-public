@@ -5,7 +5,6 @@ Revises: 029_unique_transcript_sequence
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "030_provisional_transcript_revisions"
@@ -15,7 +14,10 @@ depends_on = None
 
 
 def upgrade():
-    if "provisional_transcript_revisions" in sa.inspect(op.get_bind()).get_table_names():
+    if (
+        "provisional_transcript_revisions"
+        in sa.inspect(op.get_bind()).get_table_names()
+    ):
         return
     op.create_table(
         "provisional_transcript_revisions",
@@ -24,8 +26,12 @@ def upgrade():
         sa.Column("segment_id", sa.String(length=128), nullable=False),
         sa.Column("revision", sa.Integer(), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
-        sa.Column("mode", sa.String(length=16), nullable=False, server_default="replace"),
-        sa.Column("track_id", sa.String(length=32), nullable=False, server_default="mixed"),
+        sa.Column(
+            "mode", sa.String(length=16), nullable=False, server_default="replace"
+        ),
+        sa.Column(
+            "track_id", sa.String(length=32), nullable=False, server_default="mixed"
+        ),
         sa.Column("audio_start_sample", sa.Integer(), nullable=True),
         sa.Column("audio_end_sample", sa.Integer(), nullable=True),
         sa.Column("sample_rate", sa.Integer(), nullable=False, server_default="16000"),
@@ -48,7 +54,10 @@ def upgrade():
 
 
 def downgrade():
-    if "provisional_transcript_revisions" not in sa.inspect(op.get_bind()).get_table_names():
+    if (
+        "provisional_transcript_revisions"
+        not in sa.inspect(op.get_bind()).get_table_names()
+    ):
         return
     op.drop_index(
         "ix_provisional_transcript_revisions_session_id",

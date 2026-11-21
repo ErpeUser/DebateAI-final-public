@@ -12,7 +12,9 @@ _lock = threading.Lock()
 _active: dict[str, int] = {}
 _shutdown_deadline: float | None = None
 _exclusive_token: object | None = None
-_activity_owner: ContextVar[object | None] = ContextVar("diagnostic_owner", default=None)
+_activity_owner: ContextVar[object | None] = ContextVar(
+    "diagnostic_owner", default=None
+)
 
 
 def _expire_shutdown() -> None:
@@ -27,8 +29,13 @@ def track(name: str):
         _expire_shutdown()
         if _shutdown_deadline is not None:
             raise ShutdownReserved("Update installation is starting.")
-        if _exclusive_token is not None and _activity_owner.get() is not _exclusive_token:
-            raise ShutdownReserved("A diagnostic job is running; retry after it has drained.")
+        if (
+            _exclusive_token is not None
+            and _activity_owner.get() is not _exclusive_token
+        ):
+            raise ShutdownReserved(
+                "A diagnostic job is running; retry after it has drained."
+            )
         _active[name] = _active.get(name, 0) + 1
     try:
         yield
@@ -85,7 +92,9 @@ def exclusive(name: str):
     with _lock:
         _expire_shutdown()
         if _active or _shutdown_deadline is not None or _exclusive_token is not None:
-            raise ShutdownReserved("Finish the active call, job or update before calibration.")
+            raise ShutdownReserved(
+                "Finish the active call, job or update before calibration."
+            )
         owner = object()
         _exclusive_token = owner
         _active[name] = 1

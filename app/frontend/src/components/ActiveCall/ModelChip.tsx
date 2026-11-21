@@ -1,6 +1,12 @@
 import { useEffect, useRef, useState } from "react";
 import type { ModelInfo } from "../../types";
-import { groupModels, optionLabel, optionState, recommendationFor, runsLocally } from "../../lib/modelOptions";
+import {
+  groupModels,
+  optionLabel,
+  optionState,
+  recommendationFor,
+  runsLocally,
+} from "../../lib/modelOptions";
 import { DE } from "../../i18n/de";
 
 interface ModelChipProps {
@@ -18,20 +24,31 @@ interface ModelChipProps {
  * and while open. The admission rules come from lib/modelOptions so this agrees
  * with every other picker in the app about what Privacy First allows.
  */
-export default function ModelChip({ models, value, localOnly, onChange, role }: ModelChipProps) {
+export default function ModelChip({
+  models,
+  value,
+  localOnly,
+  onChange,
+  role,
+}: ModelChipProps) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement | null>(null);
   const buttonRef = useRef<HTMLButtonElement | null>(null);
 
   const selected = models.find((m) => m.id === value);
   const selectedStatus = selected
-    ? runsLocally(selected) ? DE.live.runtimeStatus.localReady : DE.live.runtimeStatus.ready
-    : localOnly ? DE.live.runtimeStatus.localOnly : DE.live.runtimeStatus.signInRequired;
+    ? runsLocally(selected)
+      ? DE.live.runtimeStatus.localReady
+      : DE.live.runtimeStatus.ready
+    : localOnly
+      ? DE.live.runtimeStatus.localOnly
+      : DE.live.runtimeStatus.signInRequired;
 
   useEffect(() => {
     if (!open) return;
     function handlePointerDown(event: MouseEvent) {
-      if (ref.current && !ref.current.contains(event.target as Node)) setOpen(false);
+      if (ref.current && !ref.current.contains(event.target as Node))
+        setOpen(false);
     }
     function handleKey(event: KeyboardEvent) {
       if (event.key === "Escape") {
@@ -55,7 +72,11 @@ export default function ModelChip({ models, value, localOnly, onChange, role }: 
         onClick={() => setOpen((o) => !o)}
         aria-haspopup="listbox"
         aria-expanded={open}
-        title={selected ? `${DE.live.modelPicker.title}: ${selected.name}` : DE.live.modelPicker.title}
+        title={
+          selected
+            ? `${DE.live.modelPicker.title}: ${selected.name}`
+            : DE.live.modelPicker.title
+        }
         className={`flex items-center gap-1.5 rounded border px-1.5 py-0.5 font-mono text-[10px] transition-colors ${
           open
             ? "border-brand-light-gray-1 bg-surface text-brand-gray"
@@ -64,7 +85,9 @@ export default function ModelChip({ models, value, localOnly, onChange, role }: 
       >
         <span
           className={`h-1.5 w-1.5 flex-shrink-0 rounded-full ${
-            selected && runsLocally(selected) ? "bg-brand-teal" : "border border-brand-amber"
+            selected && runsLocally(selected)
+              ? "bg-brand-teal"
+              : "border border-brand-amber"
           }`}
           aria-hidden="true"
         />
@@ -110,7 +133,11 @@ export default function ModelChip({ models, value, localOnly, onChange, role }: 
                     role="option"
                     aria-selected={model.id === value}
                     disabled={locked}
-                    title={locked ? `${optionLabel(model, role)}${suffix}` : optionLabel(model, role)}
+                    title={
+                      locked
+                        ? `${optionLabel(model, role)}${suffix}`
+                        : optionLabel(model, role)
+                    }
                     onClick={() => {
                       onChange(model.id);
                       setOpen(false);
@@ -142,7 +169,9 @@ export default function ModelChip({ models, value, localOnly, onChange, role }: 
                     )}
                     {locked && (
                       <span className="flex-shrink-0 font-mono text-[9px] uppercase text-brand-mid-gray">
-                        {suffix.includes("api key") ? DE.live.runtimeStatus.signInRequired : DE.live.runtimeStatus.localOnly}
+                        {suffix.includes("api key")
+                          ? DE.live.runtimeStatus.signInRequired
+                          : DE.live.runtimeStatus.localOnly}
                       </span>
                     )}
                   </button>

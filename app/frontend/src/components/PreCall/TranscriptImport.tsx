@@ -36,7 +36,9 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
     setStatus("");
     try {
       const result = await api.importTranscript(sessionId, file);
-      setStatus(`${result.imported} Abschnitte aus ${result.filename} importiert`);
+      setStatus(
+        `${result.imported} Abschnitte aus ${result.filename} importiert`,
+      );
       onImported?.();
     } catch (err: any) {
       setStatus(`Fehler: ${err.message}`);
@@ -59,19 +61,31 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
       setJob(queued);
       setLoading(false);
       setStatus("");
-      const result = await api.waitForTranscriptionJob(sessionId, queued, setJob, 1000, controller.signal);
+      const result = await api.waitForTranscriptionJob(
+        sessionId,
+        queued,
+        setJob,
+        1000,
+        controller.signal,
+      );
       if (controller.signal.aborted) return;
       if (result.status === "completed") {
-        setStatus(`${result.entries} Transkripteinträge aus ${result.filename} importiert.`);
+        setStatus(
+          `${result.entries} Transkripteinträge aus ${result.filename} importiert.`,
+        );
         onImported?.();
       } else if (result.status === "canceled") {
-        setStatus("Audioimport abgebrochen. Es wurde kein Teiltranskript gespeichert.");
+        setStatus(
+          "Audioimport abgebrochen. Es wurde kein Teiltranskript gespeichert.",
+        );
       } else {
         setStatus(`Fehler: ${result.error || "Audioimport fehlgeschlagen."}`);
       }
     } catch (err: unknown) {
       if (controller.signal.aborted) return;
-      setStatus(`Fehler: ${err instanceof Error ? err.message : "Audioimport fehlgeschlagen."}`);
+      setStatus(
+        `Fehler: ${err instanceof Error ? err.message : "Audioimport fehlgeschlagen."}`,
+      );
     } finally {
       if (!controller.signal.aborted) setLoading(false);
       if (pollAbortRef.current === controller) pollAbortRef.current = null;
@@ -83,7 +97,9 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
     try {
       setJob(await api.cancelTranscriptionJob(sessionId, "audio_import"));
     } catch (err) {
-      setStatus(`Fehler: ${err instanceof Error ? err.message : "Audioimport konnte nicht abgebrochen werden."}`);
+      setStatus(
+        `Fehler: ${err instanceof Error ? err.message : "Audioimport konnte nicht abgebrochen werden."}`,
+      );
     }
   };
 
@@ -141,13 +157,17 @@ export default function TranscriptImport({ sessionId, onImported }: Props) {
 
       {/* Status message */}
       {(loading || status) && (
-        <div role="status" aria-live="polite" className={`rounded-lg px-4 py-2 text-sm font-body ${
-          loading
-            ? "bg-brand-teal/10 text-brand-teal"
+        <div
+          role="status"
+          aria-live="polite"
+          className={`rounded-lg px-4 py-2 text-sm font-body ${
+            loading
+              ? "bg-brand-teal/10 text-brand-teal"
               : status.startsWith("Fehler")
-              ? "bg-red-50 text-red-600"
-              : "bg-green-50 text-green-700"
-        }`}>
+                ? "bg-red-50 text-red-600"
+                : "bg-green-50 text-green-700"
+          }`}
+        >
           {loading && !status.startsWith("Fehler") ? (
             <span className="flex items-center gap-2">
               <span className="inline-block h-3 w-3 animate-spin rounded-full border-2 border-brand-teal border-t-transparent" />

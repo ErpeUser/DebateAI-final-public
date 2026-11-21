@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import sys
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
-import sys
 
 SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "video_eval_autotune.py"
 sys.path.insert(0, str(SCRIPT.parent))
@@ -18,8 +18,28 @@ spec.loader.exec_module(module)
 class ControlledAutotuneTests(unittest.TestCase):
     def _rows(self):
         return [
-            {"case_id": "fixed-1", "split": "fixed", "metrics": {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}},
-            {"case_id": "holdout-1", "split": "holdout", "metrics": {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}},
+            {
+                "case_id": "fixed-1",
+                "split": "fixed",
+                "metrics": {
+                    "naturalness": 0.7,
+                    "factuality": 0.9,
+                    "argument_strength": 0.7,
+                    "source_honesty": 0.9,
+                    "latency_ms": 100,
+                },
+            },
+            {
+                "case_id": "holdout-1",
+                "split": "holdout",
+                "metrics": {
+                    "naturalness": 0.7,
+                    "factuality": 0.9,
+                    "argument_strength": 0.7,
+                    "source_honesty": 0.9,
+                    "latency_ms": 100,
+                },
+            },
         ]
 
     def test_load_evaluation_rows_requires_same_case_contract(self):
@@ -31,22 +51,40 @@ class ControlledAutotuneTests(unittest.TestCase):
         self.assertEqual("fixed-1", rows[0].case_id)
 
     def test_controlled_decision_is_reportable_and_does_not_apply_by_default(self):
-        baseline = module.load_evaluation_results_from_payload({"results": self._rows()})
-        candidate = module.load_evaluation_results_from_payload({"results": [
-            {**row, "metrics": {**row["metrics"], "naturalness": .8 if row["split"] == "fixed" else .7}}
-            for row in self._rows()
-        ]})
+        baseline = module.load_evaluation_results_from_payload(
+            {"results": self._rows()}
+        )
+        candidate = module.load_evaluation_results_from_payload(
+            {
+                "results": [
+                    {
+                        **row,
+                        "metrics": {
+                            **row["metrics"],
+                            "naturalness": 0.8 if row["split"] == "fixed" else 0.7,
+                        },
+                    }
+                    for row in self._rows()
+                ]
+            }
+        )
         report = module.build_optimization_report(baseline, candidate)
         self.assertTrue(report["decision"]["approved"])
         self.assertEqual("proposal_only", report["activation"]["status"])
         self.assertFalse(report["activation"]["applied"])
 
     def test_apply_requires_explicit_auto_flag(self):
-        baseline = module.load_evaluation_results_from_payload({"results": self._rows()})
-        candidate = module.load_evaluation_results_from_payload({"results": [
-            {**row, "metrics": {**row["metrics"], "naturalness": .8}}
-            for row in self._rows()
-        ]})
+        baseline = module.load_evaluation_results_from_payload(
+            {"results": self._rows()}
+        )
+        candidate = module.load_evaluation_results_from_payload(
+            {
+                "results": [
+                    {**row, "metrics": {**row["metrics"], "naturalness": 0.8}}
+                    for row in self._rows()
+                ]
+            }
+        )
         with TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "prompt.txt").write_text("old", encoding="utf-8")

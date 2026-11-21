@@ -9,12 +9,13 @@ adjust, create, dismiss, and merge.
 
 import logging
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from app.database import async_session
 from app.models import Question
 
 logger = logging.getLogger(__name__)
+
 
 async def _apply_operations(
     session_id: uuid.UUID,
@@ -48,7 +49,7 @@ async def _apply_operations_in_db(
     """Apply operations in the caller's transaction."""
     q_map = {str(q.id): q for q in questions}
     applied = []
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     handlers = {
         "answer": _apply_answer_operation,
         "enrich": _apply_enrich_operation,
@@ -128,7 +129,9 @@ def _reason_note(prefix: str, reason: str) -> str:
     return f"{prefix}: {reason}" if reason else prefix
 
 
-def _update_payload(op: dict, q: Question, ws_type: str = "insight_updated", **extra) -> dict:
+def _update_payload(
+    op: dict, q: Question, ws_type: str = "insight_updated", **extra
+) -> dict:
     return {
         **op,
         **extra,
@@ -138,7 +141,9 @@ def _update_payload(op: dict, q: Question, ws_type: str = "insight_updated", **e
     }
 
 
-async def _apply_answer_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_answer_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     target_id = op.get("id")
     if target_id not in q_map:
         return []
@@ -165,16 +170,20 @@ async def _apply_answer_operation(db, session_id, op, q_map, agent_source, enhan
         )
         db.add(followup)
         await db.flush()
-        applied.append({
-            "op": "create",
-            "applied": True,
-            "ws_type": "question",
-            "ws_data": _question_ws_payload(followup, is_followup=True),
-        })
+        applied.append(
+            {
+                "op": "create",
+                "applied": True,
+                "ws_type": "question",
+                "ws_data": _question_ws_payload(followup, is_followup=True),
+            }
+        )
     return applied
 
 
-async def _apply_enrich_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_enrich_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     target_id = op.get("id")
     if target_id not in q_map:
         return []
@@ -192,10 +201,17 @@ async def _apply_enrich_operation(db, session_id, op, q_map, agent_source, enhan
     return [_update_payload(op, q)]
 
 
-async def _apply_elevate_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_elevate_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     target_id = op.get("id")
     new_type = op.get("new_type", "")
-    if target_id not in q_map or new_type not in ("question", "observation", "opportunity", "action_item"):
+    if target_id not in q_map or new_type not in (
+        "question",
+        "observation",
+        "opportunity",
+        "action_item",
+    ):
         return []
     q = await db.get(Question, uuid.UUID(target_id))
     if not q:
@@ -231,13 +247,17 @@ async def _apply_elevate_operation(db, session_id, op, q_map, agent_source, enha
     q.item_type = new_type
     q.lens_label = ""  # lens provenance no longer matches after a type change
     _mark_revised(q, now, enhanced)
-    _append_note(q, _reason_note(f"Elevated from {old_type} to {new_type}", op.get("reason", "")))
+    _append_note(
+        q, _reason_note(f"Elevated from {old_type} to {new_type}", op.get("reason", ""))
+    )
     payload = _update_payload(op, q, ws_type="insight_elevated", old_type=old_type)
     payload["ws_data"] = {**payload["ws_data"], "old_type": old_type}
     return [payload]
 
 
-async def _apply_adjust_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_adjust_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     target_id = op.get("id")
     if target_id not in q_map:
         return []
@@ -268,7 +288,12 @@ def _adjust_field_updates(op: dict) -> dict[str, str]:
         "rationale": ("new_rationale", "rationale"),
         "source_context": ("new_source_context", "source_context"),
         "answer_summary": ("new_answer_summary", "answer_summary"),
-        "followup_question": ("new_followup_question", "new_followup", "followup_question", "followup"),
+        "followup_question": (
+            "new_followup_question",
+            "new_followup",
+            "followup_question",
+            "followup",
+        ),
         "offering_match": ("new_offering_match", "offering_match"),
     }
     updates: dict[str, str] = {}
@@ -283,7 +308,9 @@ def _adjust_field_updates(op: dict) -> dict[str, str]:
     return updates
 
 
-async def _apply_create_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_create_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     question_text = op.get("question", "")
     if not question_text:
         return []
@@ -302,7 +329,9 @@ async def _apply_create_operation(db, session_id, op, q_map, agent_source, enhan
     return [_update_payload(op, q, ws_type="question")]
 
 
-async def _apply_dismiss_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_dismiss_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     target_id = op.get("id")
     if target_id not in q_map:
         return []
@@ -317,7 +346,9 @@ async def _apply_dismiss_operation(db, session_id, op, q_map, agent_source, enha
     return [_update_payload(op, q)]
 
 
-async def _apply_merge_operation(db, session_id, op, q_map, agent_source, enhanced, now):
+async def _apply_merge_operation(
+    db, session_id, op, q_map, agent_source, enhanced, now
+):
     keep_id = op.get("keep_id")
     remove_id = op.get("remove_id")
     if keep_id not in q_map or remove_id not in q_map:

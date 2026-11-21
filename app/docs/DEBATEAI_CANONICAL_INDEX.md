@@ -15,6 +15,7 @@ requirement.
 - [Architecture](architecture.md) — current frontend, backend and WebSocket boundaries.
 - [Configuration](configuration.md) — canonical `DEBATEAI_*` variables and explicitly configured update endpoints.
 - [Desktop release and recovery](releasing.md) — current build, signing, update and recovery procedures.
+- [Workspace layout](workspace-layout.md) — source, runtime and generated-workspace boundaries.
 - [Identity decoupling design](identity-decoupling-design.md) — canonical runtime and safe legacy-data migration.
 
 ## Historical and migration-only records

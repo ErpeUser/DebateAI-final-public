@@ -1,11 +1,10 @@
 """Knowledge adapter over KnowledgeRecord rows (collection and files sources)."""
 
-from sqlalchemy import select
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.models import KnowledgeRecord, KnowledgeSource
 from app.services.adapter_contracts import AdapterContract
 from app.services.knowledge.base import char_budget, truncate_to_budget
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 def render_records(records: list[KnowledgeRecord]) -> str:

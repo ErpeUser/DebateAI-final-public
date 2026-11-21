@@ -26,5 +26,8 @@ class ReplayCallStatusTests(IsolatedAsyncioTestCase):
             await replay_call._drain_server_messages(FakeWebSocket(), {})
 
         self.assertTrue(
-            any("diarization_overflow" in str(call) for call in print_mock.call_args_list)
+            any(
+                "diarization_overflow" in str(call)
+                for call in print_mock.call_args_list
+            )
         )

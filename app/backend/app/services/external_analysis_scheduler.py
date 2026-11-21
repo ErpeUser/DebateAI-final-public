@@ -10,7 +10,6 @@ from dataclasses import dataclass
 from enum import IntEnum
 from typing import Generic, TypeVar
 
-
 T = TypeVar("T")
 
 
@@ -161,7 +160,9 @@ class ExternalAnalysisScheduler:
             for job in self._all_jobs()
             if job.context.session_id == session_id
         ]
-        return sum(self.cancel_generation(generation_id) for generation_id in generation_ids)
+        return sum(
+            self.cancel_generation(generation_id) for generation_id in generation_ids
+        )
 
     def _ensure_workers(self) -> None:
         if self._workers:
@@ -286,14 +287,18 @@ class ExternalAnalysisScheduler:
                 return
             if not job.is_current():
                 job.result.set_exception(
-                    ExternalAnalysisSuperseded("Analysis context changed before delivery")
+                    ExternalAnalysisSuperseded(
+                        "Analysis context changed before delivery"
+                    )
                 )
             else:
                 job.result.set_result(value)
         except TimeoutError:
             if not job.result.done():
                 job.result.set_exception(
-                    ExternalAnalysisDeadline("Analysis exceeded its end-to-end deadline")
+                    ExternalAnalysisDeadline(
+                        "Analysis exceeded its end-to-end deadline"
+                    )
                 )
         except asyncio.CancelledError:
             if not job.result.done():

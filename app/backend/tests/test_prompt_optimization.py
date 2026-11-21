@@ -1,8 +1,7 @@
 import json
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
-from unittest.mock import patch
 
 from app.services.prompt_optimization import (
     EvaluationResult,
@@ -16,12 +15,52 @@ from app.services.prompt_optimization import (
 class PromptOptimizationEvaluationTests(unittest.TestCase):
     def test_holdout_regression_blocks_candidate_even_when_fixed_cases_improve(self):
         baseline = [
-            EvaluationResult("fixed-1", "fixed", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}),
-            EvaluationResult("holdout-1", "holdout", {"naturalness": .8, "factuality": .9, "argument_strength": .8, "source_honesty": .9, "latency_ms": 100}),
+            EvaluationResult(
+                "fixed-1",
+                "fixed",
+                {
+                    "naturalness": 0.7,
+                    "factuality": 0.9,
+                    "argument_strength": 0.7,
+                    "source_honesty": 0.9,
+                    "latency_ms": 100,
+                },
+            ),
+            EvaluationResult(
+                "holdout-1",
+                "holdout",
+                {
+                    "naturalness": 0.8,
+                    "factuality": 0.9,
+                    "argument_strength": 0.8,
+                    "source_honesty": 0.9,
+                    "latency_ms": 100,
+                },
+            ),
         ]
         candidate = [
-            EvaluationResult("fixed-1", "fixed", {"naturalness": .9, "factuality": .9, "argument_strength": .9, "source_honesty": .9, "latency_ms": 100}),
-            EvaluationResult("holdout-1", "holdout", {"naturalness": .4, "factuality": .7, "argument_strength": .4, "source_honesty": .6, "latency_ms": 100}),
+            EvaluationResult(
+                "fixed-1",
+                "fixed",
+                {
+                    "naturalness": 0.9,
+                    "factuality": 0.9,
+                    "argument_strength": 0.9,
+                    "source_honesty": 0.9,
+                    "latency_ms": 100,
+                },
+            ),
+            EvaluationResult(
+                "holdout-1",
+                "holdout",
+                {
+                    "naturalness": 0.4,
+                    "factuality": 0.7,
+                    "argument_strength": 0.4,
+                    "source_honesty": 0.6,
+                    "latency_ms": 100,
+                },
+            ),
         ]
         decision = compare_evaluations(baseline, candidate)
         self.assertFalse(decision.approved)
@@ -44,12 +83,52 @@ class PromptOptimizationStoreTests(unittest.TestCase):
             store = PromptOptimizationStore(root)
             policy = OptimizationPolicy()
             baseline = [
-                EvaluationResult("case-1", "fixed", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}),
-                EvaluationResult("holdout-1", "holdout", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}),
+                EvaluationResult(
+                    "case-1",
+                    "fixed",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                ),
+                EvaluationResult(
+                    "holdout-1",
+                    "holdout",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                ),
             ]
             candidate = [
-                EvaluationResult("case-1", "fixed", {"naturalness": .8, "factuality": .9, "argument_strength": .8, "source_honesty": .9, "latency_ms": 100}),
-                EvaluationResult("holdout-1", "holdout", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100}),
+                EvaluationResult(
+                    "case-1",
+                    "fixed",
+                    {
+                        "naturalness": 0.8,
+                        "factuality": 0.9,
+                        "argument_strength": 0.8,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                ),
+                EvaluationResult(
+                    "holdout-1",
+                    "holdout",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                ),
             ]
             result = store.apply(
                 prompt_name="answer",
@@ -61,21 +140,51 @@ class PromptOptimizationStoreTests(unittest.TestCase):
                 approved_by_user=True,
             )
             self.assertEqual("applied", result["status"])
-            self.assertEqual("new prompt", prompt_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(
+                "new prompt", prompt_path.read_text(encoding="utf-8").strip()
+            )
             self.assertEqual(candidate_digest("new prompt"), result["candidate_hash"])
-            state = json.loads((root / "optimization-state.json").read_text(encoding="utf-8"))
+            state = json.loads(
+                (root / "optimization-state.json").read_text(encoding="utf-8")
+            )
             self.assertEqual("answer", state["active"]["prompt_name"])
             restored = store.rollback("answer")
             self.assertEqual("rolled_back", restored["status"])
-            self.assertEqual("old prompt", prompt_path.read_text(encoding="utf-8").strip())
+            self.assertEqual(
+                "old prompt", prompt_path.read_text(encoding="utf-8").strip()
+            )
 
     def test_auto_apply_requires_explicit_enable_and_rejects_holdout_failure(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
             (root / "answer.txt").write_text("old", encoding="utf-8")
             store = PromptOptimizationStore(root)
-            baseline = [EvaluationResult("case-1", "holdout", {"naturalness": .8, "factuality": .9, "argument_strength": .8, "source_honesty": .9, "latency_ms": 100})]
-            candidate = [EvaluationResult("case-1", "holdout", {"naturalness": .4, "factuality": .4, "argument_strength": .4, "source_honesty": .4, "latency_ms": 100})]
+            baseline = [
+                EvaluationResult(
+                    "case-1",
+                    "holdout",
+                    {
+                        "naturalness": 0.8,
+                        "factuality": 0.9,
+                        "argument_strength": 0.8,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
+            candidate = [
+                EvaluationResult(
+                    "case-1",
+                    "holdout",
+                    {
+                        "naturalness": 0.4,
+                        "factuality": 0.4,
+                        "argument_strength": 0.4,
+                        "source_honesty": 0.4,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
             with self.assertRaisesRegex(ValueError, "explicit"):
                 store.apply(
                     prompt_name="answer",
@@ -103,11 +212,33 @@ class PromptOptimizationStoreTests(unittest.TestCase):
     def test_invalid_prompt_placeholder_is_rejected_before_activation(self):
         with TemporaryDirectory() as temp:
             root = Path(temp)
-            (root / "debate_deep_v1.txt").write_text("{claim} {own_position} {relevant_context} {evidence}", encoding="utf-8")
+            (root / "debate_deep_v1.txt").write_text(
+                "{claim} {own_position} {relevant_context} {evidence}", encoding="utf-8"
+            )
             store = PromptOptimizationStore(root)
-            base = [EvaluationResult("case", "holdout", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100})]
+            base = [
+                EvaluationResult(
+                    "case",
+                    "holdout",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
             with self.assertRaisesRegex(ValueError, "platzhalter"):
-                store.apply("debate_deep_v1", "{claim} {unknown}", "bad", base, base, OptimizationPolicy(), approved_by_user=True)
+                store.apply(
+                    "debate_deep_v1",
+                    "{claim} {unknown}",
+                    "bad",
+                    base,
+                    base,
+                    OptimizationPolicy(),
+                    approved_by_user=True,
+                )
 
     def test_regression_automatically_rolls_back_the_active_candidate(self):
         with TemporaryDirectory() as temp:
@@ -115,10 +246,54 @@ class PromptOptimizationStoreTests(unittest.TestCase):
             path = root / "answer.txt"
             path.write_text("old", encoding="utf-8")
             store = PromptOptimizationStore(root)
-            baseline = [EvaluationResult("holdout", "holdout", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100})]
-            improved = [EvaluationResult("holdout", "holdout", {"naturalness": .8, "factuality": .9, "argument_strength": .8, "source_honesty": .9, "latency_ms": 100})]
-            store.apply("answer", "candidate", "test", baseline, improved, OptimizationPolicy(), approved_by_user=True)
-            regressed = [EvaluationResult("holdout", "holdout", {"naturalness": .3, "factuality": .4, "argument_strength": .3, "source_honesty": .4, "latency_ms": 100})]
+            baseline = [
+                EvaluationResult(
+                    "holdout",
+                    "holdout",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
+            improved = [
+                EvaluationResult(
+                    "holdout",
+                    "holdout",
+                    {
+                        "naturalness": 0.8,
+                        "factuality": 0.9,
+                        "argument_strength": 0.8,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
+            store.apply(
+                "answer",
+                "candidate",
+                "test",
+                baseline,
+                improved,
+                OptimizationPolicy(),
+                approved_by_user=True,
+            )
+            regressed = [
+                EvaluationResult(
+                    "holdout",
+                    "holdout",
+                    {
+                        "naturalness": 0.3,
+                        "factuality": 0.4,
+                        "argument_strength": 0.3,
+                        "source_honesty": 0.4,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
             result = store.rollback_if_regressed("answer", improved, regressed)
             self.assertEqual("rolled_back", result["status"])
             self.assertEqual("old", path.read_text(encoding="utf-8").strip())
@@ -129,24 +304,67 @@ class PromptOptimizationStoreTests(unittest.TestCase):
             path = root / "answer.txt"
             path.write_text("user prompt", encoding="utf-8")
             store = PromptOptimizationStore(root)
-            base = [EvaluationResult("case", "fixed", {"naturalness": .7, "factuality": .9, "argument_strength": .7, "source_honesty": .9, "latency_ms": 100})]
+            base = [
+                EvaluationResult(
+                    "case",
+                    "fixed",
+                    {
+                        "naturalness": 0.7,
+                        "factuality": 0.9,
+                        "argument_strength": 0.7,
+                        "source_honesty": 0.9,
+                        "latency_ms": 100,
+                    },
+                )
+            ]
             with self.assertRaisesRegex(ValueError, "approval"):
-                store.apply("answer", "candidate", "reason", base, base, OptimizationPolicy())
+                store.apply(
+                    "answer", "candidate", "reason", base, base, OptimizationPolicy()
+                )
             path.write_text("user edited prompt", encoding="utf-8")
             with self.assertRaisesRegex(ValueError, "user"):
-                store.apply("answer", "candidate", "reason", base, base, OptimizationPolicy(), approved_by_user=True, user_managed=True)
+                store.apply(
+                    "answer",
+                    "candidate",
+                    "reason",
+                    base,
+                    base,
+                    OptimizationPolicy(),
+                    approved_by_user=True,
+                    user_managed=True,
+                )
 
 
 class MissingScoreRegressionTests(unittest.TestCase):
     def test_missing_candidate_quality_metric_cannot_masquerade_as_zero(self):
-        baseline = [EvaluationResult("holdout", "holdout", {"naturalness": 0.8, "factuality": 0.9, "source_honesty": 0.9})]
-        candidate = [EvaluationResult("holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9})]
+        baseline = [
+            EvaluationResult(
+                "holdout",
+                "holdout",
+                {"naturalness": 0.8, "factuality": 0.9, "source_honesty": 0.9},
+            )
+        ]
+        candidate = [
+            EvaluationResult(
+                "holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9}
+            )
+        ]
         decision = compare_evaluations(baseline, candidate)
         self.assertFalse(decision.approved)
         self.assertTrue(any("naturalness" in reason for reason in decision.reasons))
 
     def test_missing_baseline_metric_cannot_create_false_quality_gain(self):
-        baseline = [EvaluationResult("holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9})]
-        candidate = [EvaluationResult("holdout", "holdout", {"naturalness": 0.9, "factuality": 0.9, "source_honesty": 0.9})]
+        baseline = [
+            EvaluationResult(
+                "holdout", "holdout", {"factuality": 0.9, "source_honesty": 0.9}
+            )
+        ]
+        candidate = [
+            EvaluationResult(
+                "holdout",
+                "holdout",
+                {"naturalness": 0.9, "factuality": 0.9, "source_honesty": 0.9},
+            )
+        ]
         decision = compare_evaluations(baseline, candidate)
         self.assertFalse(decision.approved)

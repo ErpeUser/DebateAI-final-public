@@ -9,7 +9,11 @@ interface Props {
   placement?: "right" | "bottom";
 }
 
-export default function InfoTooltip({ content, details, placement = "right" }: Props) {
+export default function InfoTooltip({
+  content,
+  details,
+  placement = "right",
+}: Props) {
   const [open, setOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
@@ -44,7 +48,8 @@ export default function InfoTooltip({ content, details, placement = "right" }: P
       left = rect.left - popoverWidth / 2 + rect.width / 2;
       // Keep within viewport
       if (left < 16) left = 16;
-      if (left + popoverWidth > window.innerWidth - 16) left = window.innerWidth - 16 - popoverWidth;
+      if (left + popoverWidth > window.innerWidth - 16)
+        left = window.innerWidth - 16 - popoverWidth;
     } else {
       top = rect.top + rect.height / 2 - popoverEstHeight / 2;
       left = rect.right + gap;
@@ -62,8 +67,10 @@ export default function InfoTooltip({ content, details, placement = "right" }: P
     if (!open) return;
     const handler = (e: MouseEvent) => {
       if (
-        popoverRef.current && !popoverRef.current.contains(e.target as Node) &&
-        triggerRef.current && !triggerRef.current.contains(e.target as Node)
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
       ) {
         setOpen(false);
       }
@@ -75,7 +82,9 @@ export default function InfoTooltip({ content, details, placement = "right" }: P
   // Close on Escape
   useEffect(() => {
     if (!open) return;
-    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [open]);
@@ -101,7 +110,11 @@ export default function InfoTooltip({ content, details, placement = "right" }: P
         aria-label="Weitere Informationen"
       >
         <svg className="h-2.5 w-2.5" fill="currentColor" viewBox="0 0 20 20">
-          <path fillRule="evenodd" d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM8.94 6.94a.75.75 0 1 1-1.061-1.061 .75.75 0 0 1 1.06 1.06ZM10 8.75a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
+          <path
+            fillRule="evenodd"
+            d="M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0ZM8.94 6.94a.75.75 0 1 1-1.061-1.061 .75.75 0 0 1 1.06 1.06ZM10 8.75a.75.75 0 0 1 .75.75v4.5a.75.75 0 0 1-1.5 0v-4.5a.75.75 0 0 1 .75-.75Z"
+            clipRule="evenodd"
+          />
         </svg>
       </button>
 
@@ -126,7 +139,10 @@ export default function InfoTooltip({ content, details, placement = "right" }: P
             {details && details.length > 0 && (
               <ul className="mt-2.5 space-y-1.5">
                 {details.map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-brand-gray">
+                  <li
+                    key={i}
+                    className="flex items-start gap-2 text-xs text-brand-gray"
+                  >
                     <span className="mt-1 h-1 w-1 flex-shrink-0 rounded-full bg-brand-teal/50" />
                     <span className="font-body leading-relaxed">{item}</span>
                   </li>

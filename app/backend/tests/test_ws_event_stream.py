@@ -24,19 +24,25 @@ class SessionEventJournalTests(unittest.TestCase):
         )
 
         self.assertTrue(snapshot["data"]["full"])
-        self.assertEqual(["new"], [event["data"]["id"] for event in snapshot["data"]["events"]])
+        self.assertEqual(
+            ["new"], [event["data"]["id"] for event in snapshot["data"]["events"]]
+        )
 
     def test_sequences_are_monotone_and_replay_only_returns_newer_events(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=8)
 
         first = journal.record({"type": "status", "data": {"state": "ready"}})
-        second = journal.record({"type": "transcript", "data": {"id": "t1", "text": "Hallo"}})
+        second = journal.record(
+            {"type": "transcript", "data": {"id": "t1", "text": "Hallo"}}
+        )
 
         self.assertEqual(1, first["session_sequence"])
         self.assertEqual(2, second["session_sequence"])
         snapshot = journal.snapshot(after_sequence=1)
         self.assertFalse(snapshot["data"]["full"])
-        self.assertEqual([2], [event["session_sequence"] for event in snapshot["data"]["events"]])
+        self.assertEqual(
+            [2], [event["session_sequence"] for event in snapshot["data"]["events"]]
+        )
 
     async def _reverse_commit_delta_fixture(self):
         journal = SessionEventJournal("reverse-commit")
@@ -46,10 +52,14 @@ class SessionEventJournalTests(unittest.TestCase):
 
         async def writer_a():
             await release_a.wait()
-            return journal.record({"type": "transcript", "data": {"id": "a", "text": "A"}})
+            return journal.record(
+                {"type": "transcript", "data": {"id": "a", "text": "A"}}
+            )
 
         async def writer_b():
-            event = journal.record({"type": "transcript", "data": {"id": "b", "text": "B"}})
+            event = journal.record(
+                {"type": "transcript", "data": {"id": "b", "text": "B"}}
+            )
             committed_b.set()
             return event
 
@@ -62,11 +72,19 @@ class SessionEventJournalTests(unittest.TestCase):
         return journal, delta, event_a, event_b
 
     def test_reverse_commit_order_keeps_delta_cursor_and_late_writer_replayable(self):
-        journal, delta, event_a, event_b = asyncio.run(self._reverse_commit_delta_fixture())
+        journal, delta, event_a, event_b = asyncio.run(
+            self._reverse_commit_delta_fixture()
+        )
 
-        self.assertEqual([event_b["session_sequence"]], [event["session_sequence"] for event in delta["data"]["events"]])
+        self.assertEqual(
+            [event_b["session_sequence"]],
+            [event["session_sequence"] for event in delta["data"]["events"]],
+        )
         follow_up = journal.snapshot(after_sequence=delta["data"]["through_sequence"])
-        self.assertEqual([event_a["session_sequence"]], [event["session_sequence"] for event in follow_up["data"]["events"]])
+        self.assertEqual(
+            [event_a["session_sequence"]],
+            [event["session_sequence"] for event in follow_up["data"]["events"]],
+        )
 
     def test_new_connection_generation_supersedes_old_sender(self):
         journal = SessionEventJournal(uuid.uuid4())
@@ -77,9 +95,13 @@ class SessionEventJournalTests(unittest.TestCase):
         self.assertTrue(journal.is_current_generation(new_generation))
 
     def test_byte_budget_evicts_old_history_and_reports_bound(self):
-        journal = SessionEventJournal(uuid.uuid4(), max_events=64, max_state_events=64, max_bytes=1024)
+        journal = SessionEventJournal(
+            uuid.uuid4(), max_events=64, max_state_events=64, max_bytes=1024
+        )
         for index in range(20):
-            journal.record({"type": "transcript", "data": {"id": str(index), "text": "x" * 200}})
+            journal.record(
+                {"type": "transcript", "data": {"id": str(index), "text": "x" * 200}}
+            )
         self.assertLessEqual(journal.buffered_bytes, 2048)
         self.assertLess(len(journal.snapshot()["data"]["events"]), 20)
 
@@ -92,7 +114,9 @@ class SessionEventJournalTests(unittest.TestCase):
         ws_event_stream._journals["active"] = active
         ws_event_stream._journals["closed"] = closed
         closed._last_touch = 0
-        self.assertGreaterEqual(ws_event_stream.sweep_idle_journals(now=3600, idle_ttl_seconds=60), 1)
+        self.assertGreaterEqual(
+            ws_event_stream.sweep_idle_journals(now=3600, idle_ttl_seconds=60), 1
+        )
         self.assertNotIn("closed", ws_event_stream._journals)
         self.assertIn("active", ws_event_stream._journals)
         active.close_generation(generation)
@@ -101,8 +125,15 @@ class SessionEventJournalTests(unittest.TestCase):
     def test_full_snapshot_keeps_latest_state_and_final_transcripts(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=2, max_state_events=8)
         journal.record({"type": "status", "data": {"state": "ready"}})
-        journal.record({"type": "transcript", "data": {"id": "t1", "text": "Erster Satz"}})
-        journal.record({"type": "debate_update", "data": {"claim_id": "c1", "answer_now": "Antwort"}})
+        journal.record(
+            {"type": "transcript", "data": {"id": "t1", "text": "Erster Satz"}}
+        )
+        journal.record(
+            {
+                "type": "debate_update",
+                "data": {"claim_id": "c1", "answer_now": "Antwort"},
+            }
+        )
 
         snapshot = journal.snapshot(after_sequence=0)
         event_types = [event["type"] for event in snapshot["data"]["events"]]
@@ -111,18 +142,25 @@ class SessionEventJournalTests(unittest.TestCase):
         self.assertIn("status", event_types)
         self.assertIn("transcript", event_types)
         self.assertIn("debate_update", event_types)
-        self.assertEqual([1, 2, 3], [event["session_sequence"] for event in snapshot["data"]["events"]])
+        self.assertEqual(
+            [1, 2, 3],
+            [event["session_sequence"] for event in snapshot["data"]["events"]],
+        )
 
     def test_interim_revisions_are_coalesced_in_snapshot_state(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
-        journal.record({
-            "type": "interim_transcript",
-            "data": {"segment_id": "s1", "segment_revision": 1, "text": "Alt"},
-        })
-        journal.record({
-            "type": "interim_transcript",
-            "data": {"segment_id": "s1", "segment_revision": 2, "text": "Neu"},
-        })
+        journal.record(
+            {
+                "type": "interim_transcript",
+                "data": {"segment_id": "s1", "segment_revision": 1, "text": "Alt"},
+            }
+        )
+        journal.record(
+            {
+                "type": "interim_transcript",
+                "data": {"segment_id": "s1", "segment_revision": 2, "text": "Neu"},
+            }
+        )
 
         events = journal.snapshot(after_sequence=0)["data"]["events"]
 
@@ -132,38 +170,66 @@ class SessionEventJournalTests(unittest.TestCase):
 
     def test_append_interims_accumulate_before_coalescing(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
-        journal.record({
-            "type": "interim_transcript",
-            "data": {"segment_id": "s1", "segment_revision": 1, "mode": "append", "text": "Nicht "},
-        })
-        latest = journal.record({
-            "type": "interim_transcript",
-            "data": {"segment_id": "s1", "segment_revision": 2, "mode": "append", "text": "zustimmen."},
-        })
+        journal.record(
+            {
+                "type": "interim_transcript",
+                "data": {
+                    "segment_id": "s1",
+                    "segment_revision": 1,
+                    "mode": "append",
+                    "text": "Nicht ",
+                },
+            }
+        )
+        latest = journal.record(
+            {
+                "type": "interim_transcript",
+                "data": {
+                    "segment_id": "s1",
+                    "segment_revision": 2,
+                    "mode": "append",
+                    "text": "zustimmen.",
+                },
+            }
+        )
 
         self.assertEqual("zustimmen.", latest["data"]["text"])
         self.assertEqual("append", latest["data"]["mode"])
         events = journal.snapshot(after_sequence=0)["data"]["events"]
-        self.assertEqual(["Nicht zustimmen."], [event["data"]["text"] for event in events])
+        self.assertEqual(
+            ["Nicht zustimmen."], [event["data"]["text"] for event in events]
+        )
 
     def test_full_snapshot_drops_interim_text_replaced_by_a_final_transcript(self):
         journal = SessionEventJournal("reused-track-id")
-        journal.record({"type": "interim_transcript", "data": {"text": "First", "mode": "append"}})
-        journal.record({"type": "transcript", "data": {"id": "final", "text": "First."}})
-        journal.record({"type": "interim_transcript", "data": {"text": "Next", "mode": "append"}})
+        journal.record(
+            {"type": "interim_transcript", "data": {"text": "First", "mode": "append"}}
+        )
+        journal.record(
+            {"type": "transcript", "data": {"id": "final", "text": "First."}}
+        )
+        journal.record(
+            {"type": "interim_transcript", "data": {"text": "Next", "mode": "append"}}
+        )
 
         events = journal.snapshot()["data"]["events"]
-        self.assertEqual(["transcript", "interim_transcript"], [event["type"] for event in events])
+        self.assertEqual(
+            ["transcript", "interim_transcript"], [event["type"] for event in events]
+        )
         self.assertEqual("Next", events[-1]["data"]["text"])
 
     def test_full_snapshot_keeps_transcript_creation_before_its_update(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
         journal.record({"type": "transcript", "data": {"id": "t1", "text": "Original"}})
-        journal.record({"type": "transcript_updated", "data": {"id": "t1", "text": "Korrigiert"}})
+        journal.record(
+            {"type": "transcript_updated", "data": {"id": "t1", "text": "Korrigiert"}}
+        )
 
         events = journal.snapshot(after_sequence=0)["data"]["events"]
 
-        self.assertEqual(["transcript", "transcript_updated"], [event["type"] for event in events])
+        self.assertEqual(
+            ["transcript", "transcript_updated"], [event["type"] for event in events]
+        )
 
     def test_incremental_snapshot_drops_superseded_completed_status(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=8, max_state_events=8)
@@ -172,9 +238,10 @@ class SessionEventJournalTests(unittest.TestCase):
         journal.record({"type": "status", "data": {"state": "connecting"}})
 
         events = journal.snapshot(after_sequence=1)["data"]["events"]
-        self.assertEqual(["connecting"], [
-            event["data"]["state"] for event in events if event["type"] == "status"
-        ])
+        self.assertEqual(
+            ["connecting"],
+            [event["data"]["state"] for event in events if event["type"] == "status"],
+        )
 
     def test_live_audio_levels_keep_only_the_latest_value_per_track(self):
         journal = SessionEventJournal(uuid.uuid4(), max_events=1, max_state_events=8)
@@ -193,22 +260,38 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
     async def test_status_cursor_cannot_skip_an_unsent_interim_prefix(self):
         journal = SessionEventJournal("interleaved")
         buffer = ClientSendBuffer(maxsize=3)
-        await buffer.put(journal.record({
-            "type": "interim_transcript", "data": {"mode": "replace", "text": "Hello "},
-        }))
+        await buffer.put(
+            journal.record(
+                {
+                    "type": "interim_transcript",
+                    "data": {"mode": "replace", "text": "Hello "},
+                }
+            )
+        )
         await buffer.put(journal.record({"type": "status", "data": {"state": "ready"}}))
-        await buffer.put(journal.record({
-            "type": "interim_transcript", "data": {"mode": "append", "text": "world"},
-        }))
+        await buffer.put(
+            journal.record(
+                {
+                    "type": "interim_transcript",
+                    "data": {"mode": "append", "text": "world"},
+                }
+            )
+        )
 
         [prefix, status] = [await buffer.get(), await buffer.get()]
-        self.assertEqual(["interim_transcript", "status"], [prefix["type"], status["type"]])
+        self.assertEqual(
+            ["interim_transcript", "status"], [prefix["type"], status["type"]]
+        )
         # If the socket drops after sending the status, the acknowledged
         # prefix and the delta replay must reconstruct the complete preview.
-        [suffix] = journal.snapshot(after_sequence=status["session_sequence"])["data"]["events"]
+        [suffix] = journal.snapshot(after_sequence=status["session_sequence"])["data"][
+            "events"
+        ]
         self.assertEqual("Hello world", prefix["data"]["text"] + suffix["data"]["text"])
 
-    async def test_coalescing_preserves_append_dependencies_without_mutating_events(self):
+    async def test_coalescing_preserves_append_dependencies_without_mutating_events(
+        self,
+    ):
         for wrapped in (False, True):
             for first_mode, next_mode, expected_text, expected_mode in (
                 ("append", "append", "Hello world", "append"),
@@ -217,9 +300,31 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
             ):
                 with self.subTest(wrapped=wrapped, modes=(first_mode, next_mode)):
                     buffer = ClientSendBuffer(maxsize=2)
-                    first = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": first_mode, "text": "Hello ", "audio_start_sample": 0, "segment_revision": 1}}
-                    latest = {"type": "interim_transcript", "data": {"segment_id": "s1", "mode": next_mode, "text": "world", "audio_start_sample": 1600, "segment_revision": 2}}
-                    wrap = (lambda payload: {"payload": payload, "event_id": "newest"}) if wrapped else (lambda payload: payload)
+                    first = {
+                        "type": "interim_transcript",
+                        "data": {
+                            "segment_id": "s1",
+                            "mode": first_mode,
+                            "text": "Hello ",
+                            "audio_start_sample": 0,
+                            "segment_revision": 1,
+                        },
+                    }
+                    latest = {
+                        "type": "interim_transcript",
+                        "data": {
+                            "segment_id": "s1",
+                            "mode": next_mode,
+                            "text": "world",
+                            "audio_start_sample": 1600,
+                            "segment_revision": 2,
+                        },
+                    }
+                    wrap = (
+                        (lambda payload: {"payload": payload, "event_id": "newest"})
+                        if wrapped
+                        else (lambda payload: payload)
+                    )
                     await buffer.put(wrap(first))
                     await buffer.put(wrap(latest))
                     result = await buffer.get()
@@ -227,27 +332,52 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
                     self.assertEqual(expected_text, data["text"])
                     self.assertEqual(expected_mode, data["mode"])
                     self.assertEqual(2, data["segment_revision"])
-                    self.assertEqual(0 if next_mode == "append" else 1600, data["audio_start_sample"])
+                    self.assertEqual(
+                        0 if next_mode == "append" else 1600, data["audio_start_sample"]
+                    )
                     self.assertEqual("Hello ", first["data"]["text"])
                     self.assertEqual("world", latest["data"]["text"])
 
     async def test_discarding_an_interim_prefix_requests_a_snapshot(self):
         buffer = ClientSendBuffer(maxsize=1)
-        await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "replace", "text": "Prefix"}})
-        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s2", "mode": "append", "text": "Other"}}))
+        await buffer.put(
+            {
+                "type": "interim_transcript",
+                "data": {"segment_id": "s1", "mode": "replace", "text": "Prefix"},
+            }
+        )
+        self.assertFalse(
+            await buffer.put(
+                {
+                    "type": "interim_transcript",
+                    "data": {"segment_id": "s2", "mode": "append", "text": "Other"},
+                }
+            )
+        )
         self.assertTrue(buffer.needs_resync)
 
     async def test_rejected_append_also_requests_a_snapshot(self):
         buffer = ClientSendBuffer(maxsize=1)
         await buffer.put({"type": "transcript", "data": {"id": "final"}})
-        self.assertFalse(await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "mode": "append", "text": "Prefix"}}))
+        self.assertFalse(
+            await buffer.put(
+                {
+                    "type": "interim_transcript",
+                    "data": {"segment_id": "s1", "mode": "append", "text": "Prefix"},
+                }
+            )
+        )
         self.assertTrue(buffer.needs_resync)
 
     async def test_replaces_stale_interim_for_the_same_segment(self):
         buffer = ClientSendBuffer(maxsize=2)
 
-        await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Alt"}})
-        await buffer.put({"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Neu"}})
+        await buffer.put(
+            {"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Alt"}}
+        )
+        await buffer.put(
+            {"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Neu"}}
+        )
 
         self.assertEqual(1, buffer.qsize())
         self.assertEqual("Neu", (await buffer.get())["data"]["text"])
@@ -263,18 +393,30 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_wrapped_interims_keep_distinct_segments(self):
         buffer = ClientSendBuffer(maxsize=3)
-        await buffer.put({
-            "type": "interim_transcript",
-            "payload": {"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Eins"}},
-        })
-        await buffer.put({
-            "type": "interim_transcript",
-            "payload": {"type": "interim_transcript", "data": {"segment_id": "s2", "text": "Zwei"}},
-        })
+        await buffer.put(
+            {
+                "type": "interim_transcript",
+                "payload": {
+                    "type": "interim_transcript",
+                    "data": {"segment_id": "s1", "text": "Eins"},
+                },
+            }
+        )
+        await buffer.put(
+            {
+                "type": "interim_transcript",
+                "payload": {
+                    "type": "interim_transcript",
+                    "data": {"segment_id": "s2", "text": "Zwei"},
+                },
+            }
+        )
 
         self.assertEqual(2, buffer.qsize())
 
-    async def test_final_overflow_returns_immediately_and_requests_snapshot_resync(self):
+    async def test_final_overflow_returns_immediately_and_requests_snapshot_resync(
+        self,
+    ):
         buffer = ClientSendBuffer(maxsize=1)
         await buffer.put({"type": "status", "data": {"state": "ready"}})
 
@@ -291,15 +433,24 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
         buffer = ClientSendBuffer(maxsize=2)
         await buffer.put({"type": "status", "data": {"state": "ready"}})
         await buffer.put({"type": "transcript", "data": {"id": "old", "text": "Alt"}})
-        self.assertFalse(await asyncio.wait_for(
-            buffer.put({"type": "transcript", "data": {"id": "new", "text": "Neu"}}),
-            timeout=0.05,
-        ))
+        self.assertFalse(
+            await asyncio.wait_for(
+                buffer.put(
+                    {"type": "transcript", "data": {"id": "new", "text": "Neu"}}
+                ),
+                timeout=0.05,
+            )
+        )
 
-        await buffer.replace_with_snapshot({
-            "type": "session_snapshot",
-            "data": {"through_sequence": 3, "events": [{"type": "transcript", "data": {"id": "new"}}]},
-        })
+        await buffer.replace_with_snapshot(
+            {
+                "type": "session_snapshot",
+                "data": {
+                    "through_sequence": 3,
+                    "events": [{"type": "transcript", "data": {"id": "new"}}],
+                },
+            }
+        )
 
         self.assertFalse(buffer.needs_resync)
         self.assertEqual("session_snapshot", (await buffer.get())["type"])
@@ -310,13 +461,15 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
         await buffer.put({"type": "transcript", "data": {"id": "t1", "text": "Final"}})
 
         accepted = await buffer.put(
-            {"type": "interim_transcript", "data": {"segment_id": "s1", "text": "Zwischenstand"}}
+            {
+                "type": "interim_transcript",
+                "data": {"segment_id": "s1", "text": "Zwischenstand"},
+            }
         )
 
         self.assertFalse(accepted)
         self.assertEqual(1, buffer.qsize())
         self.assertEqual("transcript", (await buffer.get())["type"])
-
 
     def test_idle_sweep_is_bounded_by_max_journals(self):
         from app.services import ws_event_stream
@@ -325,7 +478,9 @@ class ClientSendBufferTests(unittest.IsolatedAsyncioTestCase):
         for index in range(6):
             ws_event_stream._journals[str(index)] = SessionEventJournal(str(index))
             ws_event_stream._journals[str(index)]._last_touch = 0
-        removed = ws_event_stream.sweep_idle_journals(now=100, idle_ttl_seconds=60, max_journals=3)
+        removed = ws_event_stream.sweep_idle_journals(
+            now=100, idle_ttl_seconds=60, max_journals=3
+        )
         self.assertEqual(6, removed)
         self.assertEqual({}, ws_event_stream._journals)
 

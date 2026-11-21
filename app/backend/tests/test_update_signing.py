@@ -2,9 +2,6 @@ import base64
 import copy
 import unittest
 
-from cryptography.hazmat.primitives import serialization
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
 from app.services.update_signing import (
     attach_platform_signature,
     canonical_update_bytes,
@@ -14,12 +11,17 @@ from app.services.update_signing import (
     sign_platform_manifest,
     verify_update_descriptor,
 )
-
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
 PRIVATE = bytes(range(1, 33))
-PUBLIC = Ed25519PrivateKey.from_private_bytes(PRIVATE).public_key().public_bytes(
-    serialization.Encoding.Raw,
-    serialization.PublicFormat.Raw,
+PUBLIC = (
+    Ed25519PrivateKey.from_private_bytes(PRIVATE)
+    .public_key()
+    .public_bytes(
+        serialization.Encoding.Raw,
+        serialization.PublicFormat.Raw,
+    )
 )
 MANIFEST = {
     "version": "v1.2.3",
@@ -78,7 +80,9 @@ class UpdateSigningTests(unittest.TestCase):
 
     def test_signs_public_fields_and_verifies_a_copy(self):
         signed_manifest = sign_platform_manifest(MANIFEST, "test-key", PRIVATE)
-        self.assertEqual(set(signed_manifest["update"]), {"key_id", "schema", "signature"})
+        self.assertEqual(
+            set(signed_manifest["update"]), {"key_id", "schema", "signature"}
+        )
         descriptor = public_update_descriptor(signed_manifest)
         verified = self.verify(descriptor)
         self.assertEqual(verified, descriptor)
@@ -104,12 +108,20 @@ class UpdateSigningTests(unittest.TestCase):
 
     def test_rejects_invalid_detached_platform_signatures_and_manifests(self):
         _, request = platform_signing_request(MANIFEST, "test-key")
-        encoded = base64.urlsafe_b64encode(
-            Ed25519PrivateKey.from_private_bytes(PRIVATE).sign(request)
-        ).rstrip(b"=").decode("ascii")
-        wrong_public = Ed25519PrivateKey.generate().public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw,
+        encoded = (
+            base64.urlsafe_b64encode(
+                Ed25519PrivateKey.from_private_bytes(PRIVATE).sign(request)
+            )
+            .rstrip(b"=")
+            .decode("ascii")
+        )
+        wrong_public = (
+            Ed25519PrivateKey.generate()
+            .public_key()
+            .public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
         )
         tampered = copy.deepcopy(MANIFEST)
         tampered["asset"]["size"] = 8
@@ -123,9 +135,8 @@ class UpdateSigningTests(unittest.TestCase):
             ("invalid key id", MANIFEST, "Invalid", encoded, PUBLIC),
             ("extra manifest field", extra, "test-key", encoded, PUBLIC),
         ):
-            with self.subTest(label=label):
-                with self.assertRaises(ValueError):
-                    attach_platform_signature(manifest, key_id, signature, public_key)
+            with self.subTest(label=label), self.assertRaises(ValueError):
+                attach_platform_signature(manifest, key_id, signature, public_key)
 
     def test_rejects_tampered_signed_fields(self):
         signed = self.signed_descriptor()
@@ -151,9 +162,13 @@ class UpdateSigningTests(unittest.TestCase):
         signed = self.signed_descriptor()
         with self.assertRaisesRegex(ValueError, "key"):
             self.verify(signed, keys={})
-        wrong = Ed25519PrivateKey.generate().public_key().public_bytes(
-            serialization.Encoding.Raw,
-            serialization.PublicFormat.Raw,
+        wrong = (
+            Ed25519PrivateKey.generate()
+            .public_key()
+            .public_bytes(
+                serialization.Encoding.Raw,
+                serialization.PublicFormat.Raw,
+            )
         )
         with self.assertRaisesRegex(ValueError, "signature"):
             self.verify(signed, keys={"test-key": wrong})

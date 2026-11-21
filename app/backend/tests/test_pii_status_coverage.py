@@ -38,7 +38,9 @@ class RefinementCoverageTests(unittest.TestCase):
     def test_a_cloud_model_does_not_break_coverage(self):
         # The whole point: the refiner reads tokens, so the destination of the
         # text does not change what it can expose.
-        row = status.refinement_coverage(_settings(True), _refiner(model_id="gemini-3.6-flash"))
+        row = status.refinement_coverage(
+            _settings(True), _refiner(model_id="gemini-3.6-flash")
+        )
         self.assertTrue(row["covered"])
         self.assertTrue(row["enabled"])
         self.assertEqual("gemini-3.6-flash", row["model_id"])
@@ -52,7 +54,9 @@ class RefinementCoverageTests(unittest.TestCase):
 
     def test_coverage_follows_the_shield_switch(self):
         row = status.refinement_coverage(_settings(False), _refiner())
-        self.assertFalse(row["covered"], "with the shield off nothing is tokenized to protect")
+        self.assertFalse(
+            row["covered"], "with the shield off nothing is tokenized to protect"
+        )
         self.assertTrue(row["enabled"], "the agent still runs; only the claim changes")
 
     def test_enablement_is_no_longer_what_the_badge_reads(self):

@@ -5,10 +5,11 @@ from collections import deque
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
+from app.services.agents.base import TranscriptBuffer
 from app.services.agents.objection_handler import (
-    DeepDebateAnalysis,
     DebateRecommendation,
     DebateSource,
+    DeepDebateAnalysis,
     LiveDebateResponse,
     LogicalRelation,
     ObjectionHandlerAgent,
@@ -18,22 +19,20 @@ from app.services.agents.objection_handler import (
     _limit_spoken_words,
     build_deep_analysis_prompt,
 )
-from app.services.agents.base import TranscriptBuffer
 from app.services.agents.orchestrator import (
     AgentOrchestrator,
-    live_debate_snapshot,
+    _bind_research_result,
+    _contains_unsupported_numeric_assertion,
+    _external_analysis_deadline,
     _manual_research_query,
     _materially_better_recommendation,
-    _contains_unsupported_numeric_assertion,
-    _unicode_words,
-    _bind_research_result,
-    _external_analysis_deadline,
     _select_relevant_transcript_excerpt,
+    _unicode_words,
+    live_debate_snapshot,
 )
 from app.services.debate_research import ResearchResult, ResearchSource
-from app.services.external_reasoning import AdaptiveReasoningEffort
 from app.services.debate_settings import DebateSettings
-
+from app.services.external_reasoning import AdaptiveReasoningEffort
 
 SPEAKER_ID = str(uuid.uuid4())
 SPEAKERS = [{"id": SPEAKER_ID, "name": "Alex", "speaker_type": "external"}]
@@ -42,7 +41,8 @@ SPEAKERS = [{"id": SPEAKER_ID, "name": "Alex", "speaker_type": "external"}]
 class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
     def test_experimental_transcript_selector_keeps_relevant_context(self):
         transcript = (
-            "DISTANT_TRANSCRIPT_MARKER " + ("unrelated filler " * 900)
+            "DISTANT_TRANSCRIPT_MARKER "
+            + ("unrelated filler " * 900)
             + ". Aktueller Claim zur Inflation bleibt umstritten. "
             + "Meine Position verlangt eine amtliche Statistik. "
             + "Benötigter Kontext ist der Jahresdurchschnitt. "
@@ -89,14 +89,16 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             claim="Die Quote liegt bei acht Prozent.",
             query="Quote pruefen",
             status="completed",
-            sources=[ResearchSource(
-                title="Amtliche Reihe",
-                url="https://example.test/rate",
-                snippet="Die Rate liegt bei 2,2 Prozent.",
-                provider="test",
-                claim="Die Quote liegt bei acht Prozent.",
-                claim_revision=1,
-            )],
+            sources=[
+                ResearchSource(
+                    title="Amtliche Reihe",
+                    url="https://example.test/rate",
+                    snippet="Die Rate liegt bei 2,2 Prozent.",
+                    provider="test",
+                    claim="Die Quote liegt bei acht Prozent.",
+                    claim_revision=1,
+                )
+            ],
         )
 
         rebound = _bind_research_result(
@@ -106,7 +108,9 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual("Die Quote liegt nicht bei acht Prozent.", rebound.claim)
-        self.assertEqual("Die Quote liegt nicht bei acht Prozent.", rebound.sources[0].claim)
+        self.assertEqual(
+            "Die Quote liegt nicht bei acht Prozent.", rebound.sources[0].claim
+        )
         self.assertEqual(3, rebound.sources[0].claim_revision)
 
     def test_automatic_and_manual_research_use_separate_deadlines(self):
@@ -130,6 +134,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
                 180,
                 _external_analysis_deadline(ExternalAnalysisPriority.MANUAL),
             )
+
     def test_experimental_lanes_use_the_shared_adaptive_controller(self):
         controller = AdaptiveReasoningEffort(
             latency_threshold_ms=1000,
@@ -196,7 +201,9 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
     async def test_deep_analysis_uses_requested_external_model(self):
         analysis = DeepDebateAnalysis(
             best_reply="Freiheit ohne gleiche Grenzen wird zur Freiheit des Staerkeren.",
-            counterarguments=["Die Folgerung setzt Freiheit mit Regellosigkeit gleich."],
+            counterarguments=[
+                "Die Folgerung setzt Freiheit mit Regellosigkeit gleich."
+            ],
             rebuttal="Regeln koennen Freiheit sichern, statt sie nur zu begrenzen.",
             interpretation="Die versteckte Praemisse lautet, jede Regel sei Zwang.",
             followups=["Welche Freiheit bleibt den Schwaecheren ohne Regeln?"],
@@ -307,7 +314,9 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
 
     def test_unicode_word_tokenizer_keeps_german_umlauts(self):
-        self.assertEqual({"fünf", "grösserer", "massstab"}, _unicode_words("Fünf größerer Maßstab"))
+        self.assertEqual(
+            {"fünf", "grösserer", "massstab"}, _unicode_words("Fünf größerer Maßstab")
+        )
 
     def test_unrelated_found_source_does_not_validate_a_number(self):
         recommendation = DebateRecommendation(
@@ -317,12 +326,14 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             analogy="Wie eine eindeutige Abstimmung.",
             target_claim="73 Prozent stimmen zu.",
             confidence="high",
-            sources=[DebateSource(
-                title="Irgendeine Seite",
-                url="https://example.test",
-                claim="Ein anderes Thema",
-                verification_status="found",
-            )],
+            sources=[
+                DebateSource(
+                    title="Irgendeine Seite",
+                    url="https://example.test",
+                    claim="Ein anderes Thema",
+                    verification_status="found",
+                )
+            ],
         )
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
@@ -362,15 +373,17 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             counterargument="Das ist die klare Mehrheit.",
             target_claim="73 Prozent stimmen zu.",
             confidence="high",
-            sources=[DebateSource(
-                title="Treffer",
-                url="https://example.test/treffer",
-                claim="73 Prozent stimmen zu.",
-                snippet="73 Prozent stimmen zu.",
-                claim_relation="supports",
-                verification_status="supports",
-                retrieval_status="found",
-            )],
+            sources=[
+                DebateSource(
+                    title="Treffer",
+                    url="https://example.test/treffer",
+                    claim="73 Prozent stimmen zu.",
+                    snippet="73 Prozent stimmen zu.",
+                    claim_relation="supports",
+                    verification_status="supports",
+                    retrieval_status="found",
+                )
+            ],
         )
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
@@ -381,18 +394,20 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             counterargument="Das ist die Mehrheit.",
             target_claim="73 Prozent stimmen zu.",
             confidence="high",
-            sources=[DebateSource(
-                title="Studie",
-                url="https://example.test/studie",
-                claim="73 Prozent der befragten Erwachsenen stimmten zu.",
-                passage="73 Prozent im Jahr 2024 unter befragten Erwachsenen.",
-                claim_relation="supports",
-                verification_status="supports",
-                retrieval_status="read",
-                numeric_unit="Prozent",
-                numeric_period="2024",
-                numeric_population="befragte Erwachsene",
-            )],
+            sources=[
+                DebateSource(
+                    title="Studie",
+                    url="https://example.test/studie",
+                    claim="73 Prozent der befragten Erwachsenen stimmten zu.",
+                    passage="73 Prozent im Jahr 2024 unter befragten Erwachsenen.",
+                    claim_relation="supports",
+                    verification_status="supports",
+                    retrieval_status="read",
+                    numeric_unit="Prozent",
+                    numeric_period="2024",
+                    numeric_population="befragte Erwachsene",
+                )
+            ],
         )
 
         self.assertTrue(_contains_unsupported_numeric_assertion(recommendation))
@@ -403,18 +418,20 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             counterargument="Das ist die Mehrheit.",
             target_claim="73 Prozent stimmen zu.",
             confidence="high",
-            sources=[DebateSource(
-                title="Studie",
-                url="https://example.test/studie",
-                claim="73 Prozent der befragten Erwachsenen stimmten zu.",
-                passage="73 Prozent im Jahr 2024 unter befragten Erwachsenen.",
-                claim_relation="supports",
-                verification_status="supports",
-                retrieval_status="read",
-                numeric_unit="Prozent",
-                numeric_period="2024",
-                numeric_population="befragte Erwachsene",
-            )],
+            sources=[
+                DebateSource(
+                    title="Studie",
+                    url="https://example.test/studie",
+                    claim="73 Prozent der befragten Erwachsenen stimmten zu.",
+                    passage="73 Prozent im Jahr 2024 unter befragten Erwachsenen.",
+                    claim_relation="supports",
+                    verification_status="supports",
+                    retrieval_status="read",
+                    numeric_unit="Prozent",
+                    numeric_period="2024",
+                    numeric_population="befragte Erwachsene",
+                )
+            ],
         )
 
         self.assertFalse(_contains_unsupported_numeric_assertion(recommendation))
@@ -522,9 +539,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             "app.services.agents.objection_handler.generate_json",
             new=AsyncMock(return_value=output),
         ):
-            items = await agent.run_cycle(
-                "[S1]: Das kostet uns zu viel.", [], SPEAKERS
-            )
+            items = await agent.run_cycle("[S1]: Das kostet uns zu viel.", [], SPEAKERS)
 
         self.assertEqual(1, len(items))
         self.assertEqual("objection", items[0]["item_type"])
@@ -545,9 +560,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             )
         )
 
-        with patch(
-            "app.services.agents.objection_handler.generate_json", new=generate
-        ):
+        with patch("app.services.agents.objection_handler.generate_json", new=generate):
             await agent.run_cycle("[S1]: Das stimmt so nicht.", [], SPEAKERS)
 
         system = generate.await_args.kwargs["system"]
@@ -575,7 +588,9 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
             )
         )
         with patch("app.services.agents.objection_handler.generate_json", new=generate):
-            await agent.run_cycle("[S1]: Dann reden wir jetzt ueber ein anderes Thema.", [], SPEAKERS)
+            await agent.run_cycle(
+                "[S1]: Dann reden wir jetzt ueber ein anderes Thema.", [], SPEAKERS
+            )
 
         system = generate.await_args.kwargs["system"]
         self.assertIn("Nutzerseite", system)
@@ -594,9 +609,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
-        with patch(
-            "app.services.agents.objection_handler.generate_json", new=generate
-        ):
+        with patch("app.services.agents.objection_handler.generate_json", new=generate):
             items = await agent.run_cycle(
                 "[S1]: Nennen Sie Ihr Gegenargument.", [], SPEAKERS
             )
@@ -615,9 +628,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
-        with patch(
-            "app.services.agents.objection_handler.generate_json", new=generate
-        ):
+        with patch("app.services.agents.objection_handler.generate_json", new=generate):
             items = await agent.run_cycle("[S1]: Das ist zu teuer.", [], SPEAKERS)
 
         self.assertEqual("Das ist zu teuer.", items[0]["question"])
@@ -634,9 +645,7 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         generate = AsyncMock(return_value=ObjectionHandlerOutput(items=[objection]))
         agent = ObjectionHandlerAgent()
 
-        with patch(
-            "app.services.agents.objection_handler.generate_json", new=generate
-        ):
+        with patch("app.services.agents.objection_handler.generate_json", new=generate):
             items = await agent.run_cycle("[S1]: Das ist zu teuer.", [], SPEAKERS)
 
         self.assertEqual("Das ist zu teuer.", items[0]["question"])
@@ -728,7 +737,9 @@ class DebateRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(original.follow_ups, result.follow_ups)
         self.assertIn(source.url, generate.await_args.args[1])
         self.assertIn("amtliche Statistiken", generate.await_args.args[1])
-        self.assertIn("direkt in answer_now oder counterargument", generate.await_args.args[1])
+        self.assertIn(
+            "direkt in answer_now oder counterargument", generate.await_args.args[1]
+        )
         self.assertIn("Zeitraum", generate.await_args.args[1])
         self.assertIn("1-3", generate.await_args.args[1])
         self.assertIn("quellengetragene Gegenargumente", generate.await_args.args[1])
@@ -775,7 +786,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._event_bus = MagicMock()
         orchestrator._save_and_send_insight = AsyncMock(return_value=True)
         orchestrator._get_model = lambda slug: "qwen3:4b"
-        orchestrator._is_enabled = lambda slug, fallback=True: slug == "objection_handler"
+        orchestrator._is_enabled = lambda slug, fallback=True: (
+            slug == "objection_handler"
+        )
         orchestrator._stopped = False
         orchestrator._consolidated_context_event = asyncio.Event()
         orchestrator._objection_task = None
@@ -824,13 +837,25 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             transcript_retention_enabled=False,
             learning_examples_enabled=False,
         )
-        save = AsyncMock(return_value=SimpleNamespace(
-            id="example-1", claim="claim", answer="answer",
-            counterargument="", mode="", style_focus="",
-        ))
+        save = AsyncMock(
+            return_value=SimpleNamespace(
+                id="example-1",
+                claim="claim",
+                answer="answer",
+                counterargument="",
+                mode="",
+                style_focus="",
+            )
+        )
         with (
-            patch("app.services.agents.orchestrator.async_session", return_value=SessionContext()),
-            patch("app.services.debate_settings.get_debate_settings", AsyncMock(return_value=current)) as policy,
+            patch(
+                "app.services.agents.orchestrator.async_session",
+                return_value=SessionContext(),
+            ),
+            patch(
+                "app.services.debate_settings.get_debate_settings",
+                AsyncMock(return_value=current),
+            ) as policy,
             patch("app.services.agents.orchestrator.save_good_debate_example", save),
         ):
             result = await orchestrator.confirm_good_debate_answer(
@@ -848,9 +873,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._get_model = lambda slug: (
             model_id if slug == "consolidated_analyst" else "qwen3:4b"
         )
-        orchestrator._is_enabled = lambda slug, fallback=True: slug in {
-            "objection_handler", "consolidated_analyst"
-        }
+        orchestrator._is_enabled = lambda slug, fallback=True: (
+            slug in {"objection_handler", "consolidated_analyst"}
+        )
         orchestrator._privacy_admits = lambda _model_id: True
         orchestrator.meeting_context = ""
         orchestrator._argument_memory = deque(maxlen=16)
@@ -904,16 +929,22 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_background_analyst_runs_for_logic_without_web_search(self):
         agent = MagicMock(
-            analyze_deep=AsyncMock(return_value=(
-                DeepDebateAnalysis(
-                    best_reply="Aus dem Wert Freiheit folgt nicht, dass jede Regel falsch ist.",
-                    counterarguments=["Die Schlussfolgerung setzt Freiheit mit Regellosigkeit gleich."],
-                    rebuttal="Gleiche Regeln koennen die Freiheit aller erst absichern.",
-                    interpretation="Versteckte Praemisse: Jede Begrenzung vernichtet Freiheit.",
-                    followups=["Welche Freiheit haben Schwaechere ohne gemeinsame Regeln?"],
-                ),
-                "kompakter Analyseauftrag",
-            )),
+            analyze_deep=AsyncMock(
+                return_value=(
+                    DeepDebateAnalysis(
+                        best_reply="Aus dem Wert Freiheit folgt nicht, dass jede Regel falsch ist.",
+                        counterarguments=[
+                            "Die Schlussfolgerung setzt Freiheit mit Regellosigkeit gleich."
+                        ],
+                        rebuttal="Gleiche Regeln koennen die Freiheit aller erst absichern.",
+                        interpretation="Versteckte Praemisse: Jede Begrenzung vernichtet Freiheit.",
+                        followups=[
+                            "Welche Freiheit haben Schwaechere ohne gemeinsame Regeln?"
+                        ],
+                    ),
+                    "kompakter Analyseauftrag",
+                )
+            ),
             latest_recommendation=DebateRecommendation(),
             last_outcome={"kind": "no_findings", "items": 0},
         )
@@ -921,9 +952,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator._get_model = lambda slug: (
             "gemini-3.1-pro" if slug == "consolidated_analyst" else "qwen3:4b"
         )
-        orchestrator._is_enabled = lambda slug, fallback=True: slug in {
-            "objection_handler", "consolidated_analyst"
-        }
+        orchestrator._is_enabled = lambda slug, fallback=True: (
+            slug in {"objection_handler", "consolidated_analyst"}
+        )
         orchestrator._privacy_admits = lambda model_id: True
         orchestrator.meeting_context = "Freiheit braucht faire gemeinsame Regeln."
         orchestrator._argument_memory = deque(maxlen=16)
@@ -966,7 +997,10 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 window = kwargs["transcript_window"]
                 self.windows.append(window)
                 folded_window = window.casefold()
-                changed = any(token.casefold() in folded_window for token in ("15 Prozent", "Berta", "falls"))
+                changed = any(
+                    token.casefold() in folded_window
+                    for token in ("15 Prozent", "Berta", "falls")
+                )
                 self.latest_recommendation = DebateRecommendation(
                     answer_now=(
                         "Die neue Revision aendert die Antwort."
@@ -981,19 +1015,26 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         cases = (
             ("Es sind 50 Prozent.", "Es sind 15 Prozent."),
             ("Anna hat zugestimmt.", "Berta hat zugestimmt."),
-            ("Wenn die Quelle stimmt, gilt der Schluss.", "Falls die Quelle stimmt, gilt der Schluss."),
+            (
+                "Wenn die Quelle stimmt, gilt der Schluss.",
+                "Falls die Quelle stimmt, gilt der Schluss.",
+            ),
         )
         for first_text, changed_text in cases:
             with self.subTest(first_text=first_text, changed_text=changed_text):
                 agent = MeaningAwareAgent()
                 orchestrator = self._orchestrator(agent)
-                await orchestrator.feed_interim_transcript(first_text, utterance_id="meaning-utt")
+                await orchestrator.feed_interim_transcript(
+                    first_text, utterance_id="meaning-utt"
+                )
                 first_task = orchestrator._objection_task
                 first_task.set_name("debate-test-meaning-first")
                 await asyncio.wait_for(first_task, 0.5)
                 first_revision = orchestrator._transcript_revision
 
-                await orchestrator.feed_interim_transcript(changed_text, utterance_id="meaning-utt")
+                await orchestrator.feed_interim_transcript(
+                    changed_text, utterance_id="meaning-utt"
+                )
                 second_task = orchestrator._objection_task
                 second_task.set_name("debate-test-meaning-second")
                 await asyncio.wait_for(second_task, 0.5)
@@ -1008,7 +1049,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     and call.args[0]["data"].get("origin") == "model"
                 ]
                 self.assertGreaterEqual(len(updates), 2)
-                self.assertNotEqual(updates[-2]["answer_now"], updates[-1]["answer_now"])
+                self.assertNotEqual(
+                    updates[-2]["answer_now"], updates[-1]["answer_now"]
+                )
                 self.assertEqual(2, updates[-1]["claim_revision"])
 
     async def test_final_negation_replaces_interim_for_same_utterance(self):
@@ -1044,17 +1087,28 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_final_retires_explicit_provisional_not_other_track(self):
         import inspect
-        agent=MagicMock()
-        orchestrator=self._orchestrator(agent)
-        self.assertIn("provisional_segment_id",inspect.signature(orchestrator.feed_transcript).parameters)
-        orchestrator._schedule_debate_revision=MagicMock()
-        orchestrator._interim_debate_hypotheses={"mic-part":"Mic", "sys-part":"System"}
-        orchestrator._active_interim_segment_id="sys-part"
-        orchestrator._finalized_interim_segments=set()
-        await orchestrator.feed_transcript("Final microphone",utterance_id="final-mic",provisional_segment_id="mic-part")
-        self.assertIn("mic-part",orchestrator._finalized_interim_segments)
-        self.assertNotIn("sys-part",orchestrator._finalized_interim_segments)
-        self.assertNotIn("mic-part",orchestrator._interim_debate_hypotheses)
+
+        agent = MagicMock()
+        orchestrator = self._orchestrator(agent)
+        self.assertIn(
+            "provisional_segment_id",
+            inspect.signature(orchestrator.feed_transcript).parameters,
+        )
+        orchestrator._schedule_debate_revision = MagicMock()
+        orchestrator._interim_debate_hypotheses = {
+            "mic-part": "Mic",
+            "sys-part": "System",
+        }
+        orchestrator._active_interim_segment_id = "sys-part"
+        orchestrator._finalized_interim_segments = set()
+        await orchestrator.feed_transcript(
+            "Final microphone",
+            utterance_id="final-mic",
+            provisional_segment_id="mic-part",
+        )
+        self.assertIn("mic-part", orchestrator._finalized_interim_segments)
+        self.assertNotIn("sys-part", orchestrator._finalized_interim_segments)
+        self.assertNotIn("mic-part", orchestrator._interim_debate_hypotheses)
 
     async def test_manual_correction_invalidates_matching_live_recommendation(self):
         agent = MagicMock()
@@ -1098,7 +1152,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(2, invalidated.transcript_revision)
         orchestrator._schedule_debate_revision.assert_called_once_with()
 
-    async def test_gateway_preserves_provider_segment_identity_and_zero_audio_origin(self):
+    async def test_gateway_preserves_provider_segment_identity_and_zero_audio_origin(
+        self,
+    ):
         orchestrator = self._orchestrator(MagicMock())
 
         class Gateway:
@@ -1141,7 +1197,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator = self._orchestrator(Agent())
         await orchestrator.transcript_buffer.add("Ein vorhandener Streitpunkt", "Alex")
 
-        accepted = await orchestrator.send_directive("Debate AI, wiederhole meine Frage")
+        accepted = await orchestrator.send_directive(
+            "Debate AI, wiederhole meine Frage"
+        )
 
         self.assertTrue(accepted)
         self.assertIsNotNone(orchestrator._objection_task)
@@ -1207,7 +1265,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
     async def test_text_command_can_force_extra_high_for_next_deep_analysis(self):
         orchestrator = self._orchestrator(MagicMock())
 
-        accepted = await orchestrator.send_directive("Debate AI, Extra High analysieren")
+        accepted = await orchestrator.send_directive(
+            "Debate AI, Extra High analysieren"
+        )
 
         self.assertTrue(accepted)
         self.assertTrue(orchestrator._force_deep_analysis_once)
@@ -1266,14 +1326,18 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
     async def asyncTearDown(self):
         for task in asyncio.all_tasks():
-            if task is not asyncio.current_task() and task.get_name().startswith("debate-test-"):
+            if task is not asyncio.current_task() and task.get_name().startswith(
+                "debate-test-"
+            ):
                 task.cancel()
                 try:
                     await task
                 except asyncio.CancelledError:
                     pass
 
-    async def test_source_enriched_update_merges_into_measured_diagnostic_revision(self):
+    async def test_source_enriched_update_merges_into_measured_diagnostic_revision(
+        self,
+    ):
         orchestrator = self._orchestrator(MagicMock())
         draft = DebateRecommendation(
             answer_now="Die Zahl ist noch unbelegt.",
@@ -1294,13 +1358,15 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 "confidence": "high",
                 "research_status": "completed",
                 "research_alert": "Gegenbeleg gefunden.",
-                "sources": [DebateSource(
-                    title="Amtliche Reihe",
-                    url="https://example.test/rate",
-                    snippet="Die Rate lag bei 2,2 Prozent.",
-                    provider="test",
-                    claim="Die Quote liegt bei acht Prozent.",
-                )],
+                "sources": [
+                    DebateSource(
+                        title="Amtliche Reihe",
+                        url="https://example.test/rate",
+                        snippet="Die Rate lag bei 2,2 Prozent.",
+                        provider="test",
+                        claim="Die Quote liegt bei acht Prozent.",
+                    )
+                ],
             }
         )
         await orchestrator._send_debate_update(7, researched)
@@ -1377,7 +1443,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             call.args[0]["data"]
             for call in orchestrator.websocket.send_json.await_args_list
         ]
-        self.assertLess(first["recommendation_revision"], second["recommendation_revision"])
+        self.assertLess(
+            first["recommendation_revision"], second["recommendation_revision"]
+        )
         self.assertEqual(first["claim_id"], second["claim_id"])
         self.assertTrue(first["provisional"])
         self.assertFalse(second["provisional"])
@@ -1429,7 +1497,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         agent = BlockingAgent()
         orchestrator = self._orchestrator(agent)
 
-        await asyncio.wait_for(orchestrator.feed_transcript("Erster Punkt", "Alex"), 0.1)
+        await asyncio.wait_for(
+            orchestrator.feed_transcript("Erster Punkt", "Alex"), 0.1
+        )
         first = orchestrator._objection_task
         first.set_name("debate-test-first")
         await agent.started.wait()
@@ -1508,9 +1578,13 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         ]
         self.assertEqual(1, len(model_updates))
         self.assertIn("nicht funktionieren", model_updates[0]["answer_now"])
-        self.assertEqual(orchestrator._transcript_revision, model_updates[0]["transcript_revision"])
+        self.assertEqual(
+            orchestrator._transcript_revision, model_updates[0]["transcript_revision"]
+        )
 
-    async def test_streamed_model_sentence_is_broadcast_before_full_model_finishes(self):
+    async def test_streamed_model_sentence_is_broadcast_before_full_model_finishes(
+        self,
+    ):
         class SlowAgent:
             def __init__(self):
                 self.started = asyncio.Event()
@@ -1520,11 +1594,13 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
             async def run_cycle(self, **kwargs):
                 self.started.set()
-                await kwargs["on_model_partial"](DebateRecommendation(
-                    answer_now="Das widerlegt meine Position noch nicht.",
-                    target_claim="Die Position sei widerlegt.",
-                    provisional=True,
-                ))
+                await kwargs["on_model_partial"](
+                    DebateRecommendation(
+                        answer_now="Das widerlegt meine Position noch nicht.",
+                        target_claim="Die Position sei widerlegt.",
+                        provisional=True,
+                    )
+                )
                 await self.release.wait()
                 return []
 
@@ -1574,9 +1650,7 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         agent = SlowFailingAgent()
         orchestrator = self._orchestrator(agent)
-        await orchestrator.transcript_buffer.add(
-            "Neunzig Prozent stimmen zu.", "Alex"
-        )
+        await orchestrator.transcript_buffer.add("Neunzig Prozent stimmen zu.", "Alex")
         orchestrator._debate_revision = 1
 
         task = asyncio.create_task(orchestrator._run_debate_revision(1))
@@ -1588,7 +1662,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         await asyncio.wait_for(task, 0.5)
         orchestrator.websocket.send_json.assert_not_awaited()
 
-    async def test_new_speech_is_coalesced_while_streamed_model_answer_remains_visible(self):
+    async def test_new_speech_is_coalesced_while_streamed_model_answer_remains_visible(
+        self,
+    ):
         class SlowAgent:
             def __init__(self):
                 self.started = asyncio.Event()
@@ -1598,11 +1674,13 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
             async def run_cycle(self, **kwargs):
                 self.started.set()
-                await kwargs["on_model_partial"](DebateRecommendation(
-                    answer_now="Das widerlegt meine Position noch nicht.",
-                    target_claim=kwargs["transcript_window"],
-                    provisional=True,
-                ))
+                await kwargs["on_model_partial"](
+                    DebateRecommendation(
+                        answer_now="Das widerlegt meine Position noch nicht.",
+                        target_claim=kwargs["transcript_window"],
+                        provisional=True,
+                    )
+                )
                 await self.release.wait()
                 return []
 
@@ -1627,7 +1705,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         agent.release.set()
         await asyncio.wait_for(orchestrator._objection_task, 0.5)
 
-    async def test_live_partial_triggers_copilot_without_saving_duplicate_transcript(self):
+    async def test_live_partial_triggers_copilot_without_saving_duplicate_transcript(
+        self,
+    ):
         class Agent:
             latest_recommendation = DebateRecommendation()
             last_outcome = {"kind": "no_findings", "items": 0}
@@ -1654,17 +1734,21 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("LIVE-TEILTRANSKRIPT", agent.windows[0])
         self.assertIn("Treibung ist Mord", agent.windows[0])
 
-    async def test_each_meaningful_word_is_considered_for_the_streamed_model_sentence(self):
+    async def test_each_meaningful_word_is_considered_for_the_streamed_model_sentence(
+        self,
+    ):
         class Agent:
             latest_recommendation = DebateRecommendation()
             last_outcome = {"kind": "no_findings", "items": 0}
 
             async def run_cycle(self, **kwargs):
-                await kwargs["on_model_partial"](DebateRecommendation(
-                    answer_now="Dann fehlt dir noch der Beleg.",
-                    target_claim=kwargs["transcript_window"],
-                    provisional=True,
-                ))
+                await kwargs["on_model_partial"](
+                    DebateRecommendation(
+                        answer_now="Dann fehlt dir noch der Beleg.",
+                        target_claim=kwargs["transcript_window"],
+                        provisional=True,
+                    )
+                )
                 return []
 
         orchestrator = self._orchestrator(Agent())
@@ -1698,7 +1782,11 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             maxlen=48,
         )
         orchestrator.active_questions = [
-            {"id": "q1", "question": "Welcher Beleg traegt die Zahl?", "item_type": "question"}
+            {
+                "id": "q1",
+                "question": "Welcher Beleg traegt die Zahl?",
+                "item_type": "question",
+            }
         ]
         await orchestrator.transcript_buffer.add("Das ist doch eindeutig.", "Alex")
         orchestrator._debate_revision = 1
@@ -1779,15 +1867,17 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         unchanged = original.model_copy(update={"research_status": "completed"})
         agent = MagicMock(
             latest_recommendation=original,
-            analyze_deep=AsyncMock(return_value=(
-                DeepDebateAnalysis(
-                    best_reply=unchanged.answer_now,
-                    counterarguments=[],
-                    rebuttal=unchanged.counterargument,
-                    followups=[unchanged.counter_question],
-                ),
-                "kompakter Analyseauftrag",
-            )),
+            analyze_deep=AsyncMock(
+                return_value=(
+                    DeepDebateAnalysis(
+                        best_reply=unchanged.answer_now,
+                        counterarguments=[],
+                        rebuttal=unchanged.counterargument,
+                        followups=[unchanged.counter_question],
+                    ),
+                    "kompakter Analyseauftrag",
+                )
+            ),
         )
         orchestrator = self._orchestrator(agent)
         self._enable_external_analyst(orchestrator)
@@ -1799,14 +1889,16 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                     claim=original.target_claim,
                     status="completed",
                     query=original.research_query,
-                    sources=[ResearchSource(
-                        title="Quelle",
-                        url="https://example.test",
-                        snippet="Text",
-                        passage="Text",
-                        provider="test",
-                        claim=original.target_claim,
-                    )],
+                    sources=[
+                        ResearchSource(
+                            title="Quelle",
+                            url="https://example.test",
+                            snippet="Text",
+                            passage="Text",
+                            provider="test",
+                            claim=original.target_claim,
+                        )
+                    ],
                 )
             ),
         ):
@@ -1945,7 +2037,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 side_effect=capture_task,
             ),
         ):
-            self.assertIs(fake_task, orchestrator._maybe_schedule_research(1, recommendation))
+            self.assertIs(
+                fake_task, orchestrator._maybe_schedule_research(1, recommendation)
+            )
 
         orchestrator._active_claim_is_interim = False
         orchestrator._last_research_at = 0.0
@@ -1959,7 +2053,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
                 side_effect=capture_task,
             ),
         ):
-            self.assertIs(fake_task, orchestrator._maybe_schedule_research(1, recommendation))
+            self.assertIs(
+                fake_task, orchestrator._maybe_schedule_research(1, recommendation)
+            )
 
     def test_research_frequency_controls_event_cooldown(self):
         orchestrator = self._orchestrator(MagicMock())
@@ -1979,10 +2075,13 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         orchestrator.debate_settings = DebateSettings(
             research_enabled=True, research_frequency="normal"
         )
-        with patch("app.services.agents.orchestrator.time.monotonic", return_value=125.0):
+        with patch(
+            "app.services.agents.orchestrator.time.monotonic", return_value=125.0
+        ):
             self.assertIsNone(orchestrator._maybe_schedule_research(1, recommendation))
 
         fake_task = MagicMock()
+
         def capture_task(coro, **_kwargs):
             coro.close()
             return fake_task
@@ -1991,10 +2090,17 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
             research_enabled=True, research_frequency="often"
         )
         with (
-            patch("app.services.agents.orchestrator.time.monotonic", return_value=125.0),
-            patch("app.services.agents.orchestrator.asyncio.create_task", side_effect=capture_task),
+            patch(
+                "app.services.agents.orchestrator.time.monotonic", return_value=125.0
+            ),
+            patch(
+                "app.services.agents.orchestrator.asyncio.create_task",
+                side_effect=capture_task,
+            ),
         ):
-            self.assertIs(fake_task, orchestrator._maybe_schedule_research(1, recommendation))
+            self.assertIs(
+                fake_task, orchestrator._maybe_schedule_research(1, recommendation)
+            )
 
         self.assertEqual(125.0, orchestrator._last_research_at)
 
@@ -2034,14 +2140,18 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         with patch("app.services.agents.orchestrator.research_claim", new=research):
             await orchestrator._run_debate_research(1, recommendation)
 
-        self.assertEqual(result, orchestrator._research_cache[recommendation.research_query])
+        self.assertEqual(
+            result, orchestrator._research_cache[recommendation.research_query]
+        )
         remembered = orchestrator._topic_knowledge["claim-1"]
         self.assertEqual(0, remembered["claim_revision"])
         self.assertEqual("https://example.test/rate", remembered["sources"][0]["url"])
         orchestrator.objection_agent.refine_with_sources.assert_not_awaited()
         orchestrator.websocket.send_json.assert_not_awaited()
 
-    async def test_plain_paraphrase_does_not_start_another_automatic_deep_analysis(self):
+    async def test_plain_paraphrase_does_not_start_another_automatic_deep_analysis(
+        self,
+    ):
         orchestrator = self._orchestrator(MagicMock())
         self._enable_external_analyst(orchestrator)
         orchestrator._debate_revision = 1
@@ -2076,7 +2186,12 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn("Widerlegung", everything)
         self.assertIn("Originalquelle", everything)
         self.assertNotIn("Studie Acht Prozent", counter)
-        self.assertTrue(all(len(query) <= 300 for query in (counter, translation, interpretation, everything)))
+        self.assertTrue(
+            all(
+                len(query) <= 300
+                for query in (counter, translation, interpretation, everything)
+            )
+        )
 
     async def test_manual_research_bypasses_cache_and_marks_the_card_searching(self):
         class Agent:
@@ -2101,7 +2216,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("searching", payload["data"]["research_status"])
         self.assertIn("Originalquelle", payload["data"]["research_query"])
         orchestrator._run_debate_research.assert_awaited_once()
-        self.assertTrue(orchestrator._run_debate_research.await_args.kwargs["force_refresh"])
+        self.assertTrue(
+            orchestrator._run_debate_research.await_args.kwargs["force_refresh"]
+        )
 
     async def test_identical_manual_research_groups_coalesce_per_claim_revision(self):
         class Agent:
@@ -2143,7 +2260,9 @@ class DebateOrchestratorTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual({}, orchestrator._research_group_tasks)
 
-    async def test_manual_deep_analysis_can_be_cancelled_without_stopping_shared_provider(self):
+    async def test_manual_deep_analysis_can_be_cancelled_without_stopping_shared_provider(
+        self,
+    ):
         started = asyncio.Event()
         request_closed = asyncio.Event()
 

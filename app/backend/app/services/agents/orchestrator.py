@@ -13,7 +13,7 @@ import asyncio
 import hashlib
 import json
 import logging
-import os  # noqa: F401 - tests patch module.os for environment isolation
+import os  # noqa: F401 - tests patch the module-level platform dependency
 import re
 import time
 import uuid
@@ -22,92 +22,50 @@ from collections.abc import Awaitable, Callable
 from dataclasses import replace
 from datetime import UTC, datetime
 
-from fastapi import WebSocket
-from sqlalchemy import select
-
 from app.config import settings
 from app.database import async_session
-from app.services.model_intervals import parse_model_intervals as _parse_model_intervals
-from app.services.identity import env_value
-from app.models import Directive, Question, TranscriptEntry, Speaker
+from app.models import Directive, Question, Speaker, TranscriptEntry
 from app.schemas import SessionSynthesisOut
-from app.services.transcript_refiner import (
-    REFINER_LIVE_WINDOW,
-    REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
-    live_refiner_is_idle,
-    refine_session,
-    update_payload as refiner_update_payload,
-)
+from app.services import external_audit
 from app.services.agents.activity import (
     ActivityRegistry,
     classify_error,
     saved_outcome,
 )
 from app.services.agents.base import TranscriptBuffer
+from app.services.agents.consolidated_analyst import ConsolidatedAnalystAgent
+from app.services.agents.event_bus import CooldownSubscriber, EventBus
+from app.services.agents.objection_handler import (
+    ConditionalFollowUp,
+    DebateRecommendation,
+    DeepDebateAnalysis,
+    ObjectionHandlerAgent,
+    _has_speakable_guidance,
+    build_atomic_claims,
+    normalize_experimental_strategies,
+    normalize_standard_strategies,
+)
+from app.services.agents.opportunity_specialist import run_opportunity_specialist_cycle
+from app.services.agents.prompt_resources import load_prompt_resource
 from app.services.agents.speaker_context import (
     build_speaker_aliases,
     format_transcript_segment,
     speaker_display_name,
 )
-from app.services.agents.consolidated_analyst import ConsolidatedAnalystAgent
-from app.services.agents.event_bus import CooldownSubscriber, EventBus
-from app.services.agents.objection_handler import (
-    ConditionalFollowUp,
-    DeepDebateAnalysis,
-    DebateRecommendation,
-    ObjectionHandlerAgent,
-    build_atomic_claims,
-    normalize_experimental_strategies,
-    normalize_standard_strategies,
-    _has_speakable_guidance,
-)
-from app.services.debate_contracts import DebateSource
-from app.services.experimental_debate import build_experimental_update
-from app.services.agents.opportunity_specialist import run_opportunity_specialist_cycle
 from app.services.agents.strategic_signals import (
     STRATEGIC_SIGNALS_SLUG,
     run_strategic_signals_cycle,
 )
-from app.services.agents.synthesizer import clear_synthesizer_state, run_synthesizer_cycle
-from app.services.briefing_synthesis import (
-    BRIEF_ARBITER_SLUG,
-    agent_config_enabled,
-    run_session_synthesis,
-)
-from app.services.gemini_live import GeminiLiveSession
-from app.services.llm import provider_for, registry_entry
-from app.services.privacy import allows_local_only
-from app.services import external_audit
-from app.services.speaker_name_rewriter import replace_speaker_labels
-from app.services.local_live_captioner import LocalLiveCaptioner, is_local_live_model
-from app.services.openai_realtime import OpenAIRealtimeSession
-from app.services.meeting_context import (
-    build_meeting_context_text,
-    debate_mode_for_meeting_type,
-    normalize_meeting_type,
-    should_match_offerings,
-)
-from app.services.debate_research import (
-    ResearchResult,
-    is_safe_research_query,
-    research_claim,
-)
-from app.services.debate_settings import DebateSettings
-from app.services.argument_graph import load_argument_graph, persist_argument_recommendation
-from app.services.semantic_argument_memory import SemanticArgumentMemory
-from app.services.knowledge_context import select_context_sections
-from app.services.session_manager import get_local_dossier_context
-from app.services.debate_learning import (
-    load_good_debate_examples,
-    revoke_good_debate_example,
-    save_good_debate_example,
+from app.services.agents.synthesizer import (
+    clear_synthesizer_state,
+    run_synthesizer_cycle,
 )
 from app.services.ai_config import (
     adaptive_reasoning_settings,
     analysis_deadline_seconds,
     create_configuration_snapshot,
-    live_research_deadline_seconds,
     deep_analysis_models,
+    live_research_deadline_seconds,
     max_parallel_analyses,
     model_cooldown_seconds,
     model_timeout_seconds,
@@ -116,6 +74,28 @@ from app.services.ai_config import (
     research_settings,
     use_configuration_snapshot,
 )
+from app.services.argument_graph import (
+    load_argument_graph,
+    persist_argument_recommendation,
+)
+from app.services.briefing_synthesis import (
+    BRIEF_ARBITER_SLUG,
+    agent_config_enabled,
+    run_session_synthesis,
+)
+from app.services.debate_contracts import DebateSource
+from app.services.debate_learning import (
+    load_good_debate_examples,
+    revoke_good_debate_example,
+    save_good_debate_example,
+)
+from app.services.debate_research import (
+    ResearchResult,
+    is_safe_research_query,
+    research_claim,
+)
+from app.services.debate_settings import DebateSettings
+from app.services.experimental_debate import build_experimental_update
 from app.services.external_analysis_scheduler import (
     AnalysisJobContext,
     ExternalAnalysisCancelled,
@@ -126,11 +106,40 @@ from app.services.external_analysis_scheduler import (
     external_analysis_scheduler,
 )
 from app.services.external_reasoning import AdaptiveReasoningEffort
+from app.services.gemini_live import GeminiLiveSession
+from app.services.identity import env_value
+from app.services.knowledge_context import select_context_sections
+from app.services.llm import provider_for, registry_entry
+from app.services.local_live_captioner import LocalLiveCaptioner, is_local_live_model
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    debate_mode_for_meeting_type,
+    normalize_meeting_type,
+    should_match_offerings,
+)
+from app.services.model_intervals import parse_model_intervals as _parse_model_intervals
+from app.services.openai_realtime import OpenAIRealtimeSession
+from app.services.privacy import allows_local_only
 from app.services.provider_capabilities import (
     classify_provider_failure,
     effective_reasoning_effort,
 )
-from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.semantic_argument_memory import SemanticArgumentMemory
+from app.services.session_manager import get_local_dossier_context
+from app.services.speaker_name_rewriter import replace_speaker_labels
+from app.services.transcript_refiner import (
+    REFINER_LIVE_WINDOW,
+    live_refiner_is_idle,
+    refine_session,
+)
+from app.services.transcript_refiner import (
+    REFINER_SLUG as TRANSCRIPT_REFINER_SLUG,
+)
+from app.services.transcript_refiner import (
+    update_payload as refiner_update_payload,
+)
+from fastapi import WebSocket
+from sqlalchemy import select
 
 logger = logging.getLogger(__name__)
 
@@ -140,6 +149,8 @@ def _synthesis_payload(synthesis) -> dict:
     response = SessionSynthesisOut.model_validate(synthesis)
     response.signal_history_count = len(synthesis.signal_history or [])
     return response.model_dump(mode="json", exclude={"signal_history"})
+
+
 AUTOMATIC_RESEARCH_STABILITY_SECONDS = 1.5
 
 
@@ -229,14 +240,15 @@ def _annotate_experimental_sources(
     for claim_key, members in groups.items():
         relations = {relation for _, relation in members}
         if relations == {"supports", "contradicts"}:
-            conflict_id = "conflict-" + hashlib.sha256(
-                claim_key.encode("utf-8")
-            ).hexdigest()[:16]
+            conflict_id = (
+                "conflict-" + hashlib.sha256(claim_key.encode("utf-8")).hexdigest()[:16]
+            )
             for index, _relation in members:
                 conflict_ids[index] = conflict_id
     annotated: list[DebateSource] = []
     claim_terms = {
-        token for token in re.findall(r"[\wäöüß]+", str(target_claim).casefold())
+        token
+        for token in re.findall(r"[\wäöüß]+", str(target_claim).casefold())
         if len(token) >= 5
     }
     for index, source in enumerate(sources):
@@ -269,16 +281,21 @@ def _bind_research_result(
     claim_revision: int,
 ) -> ResearchResult:
     """Attach reusable query results to the exact current claim revision."""
-    return result.model_copy(update={
-        "claim": claim,
-        "sources": [
-            source.model_copy(update={
-                "claim": claim,
-                "claim_revision": claim_revision,
-            })
-            for source in result.sources
-        ],
-    })
+    return result.model_copy(
+        update={
+            "claim": claim,
+            "sources": [
+                source.model_copy(
+                    update={
+                        "claim": claim,
+                        "claim_revision": claim_revision,
+                    }
+                )
+                for source in result.sources
+            ],
+        }
+    )
+
 
 _DEBATE_MEETING_TYPES = {"debate_persuasive", "debate_forceful"}
 _DEBATE_LIVE_AGENTS = {
@@ -293,12 +310,15 @@ _SUBSCRIPTION_GPT_ANALYST = "endpoint:subscription-ai:gpt-6-sol"
 _SUBSCRIPTION_GPT_FALLBACK = "endpoint:subscription-ai:gpt-6.1-sol"
 _SUBSCRIPTION_GEMINI_ANALYST = "endpoint:subscription-ai:gemini-3.1-pro-preview"
 _GOOGLE_GEMINI_ANALYST = "gemini-3.1-pro-preview"
-_SUBSCRIPTION_GEMINI_AVAILABLE_FALLBACK = "endpoint:subscription-ai:gemini-3.8-flash-high"
+_SUBSCRIPTION_GEMINI_AVAILABLE_FALLBACK = (
+    "endpoint:subscription-ai:gemini-3.8-flash-high"
+)
 _GEMINI_WEB_ANALYST = "endpoint:gemini-web:gemini-3.1-pro"
 
 
 def _uses_adaptive_gpt6_reasoning(model_id: str) -> bool:
     return model_id.rsplit(":", 1)[-1].casefold().startswith("gpt-6")
+
 
 _PLAYBOOK_CONTROLS = (
     (
@@ -363,8 +383,17 @@ _VOICE_COMMANDS = {
     "humor": "Humor",
 }
 _VOICE_COMMAND_FORBIDDEN = (
-    "api", "abo", "account", "anmeldung", "budget", "kosten", "konto",
-    "login", "passwort", "provider", "zahlung",
+    "api",
+    "abo",
+    "account",
+    "anmeldung",
+    "budget",
+    "kosten",
+    "konto",
+    "login",
+    "passwort",
+    "provider",
+    "zahlung",
 )
 
 
@@ -410,7 +439,11 @@ def _manual_research_query(
     claim = recommendation.target_claim.strip()
     if not claim:
         claim = next(
-            (point.strip() for point in recommendation.argument_points if point.strip()),
+            (
+                point.strip()
+                for point in recommendation.argument_points
+                if point.strip()
+            ),
             "",
         )
     if not claim:
@@ -422,7 +455,9 @@ def _recommendation_quality(recommendation: DebateRecommendation) -> int:
     """Small deterministic gate so slower work only replaces a clearly better card."""
     score = {"low": 0, "medium": 2, "high": 3}[recommendation.confidence]
     score += bool(recommendation.target_claim.strip())
-    score += min(2, len([point for point in recommendation.argument_points if point.strip()]))
+    score += min(
+        2, len([point for point in recommendation.argument_points if point.strip()])
+    )
     score += recommendation.question_status != "none"
     score += bool(recommendation.open_question.strip())
     score += bool(recommendation.follow_ups)
@@ -450,20 +485,72 @@ def _materially_better_recommendation(
 
 
 _CLAIM_STOPWORDS = {
-    "aber", "auch", "dass", "deine", "deiner", "dies", "diese", "dieser",
-    "doch", "eine", "einen", "einer", "haben", "heute", "ihre", "nicht",
-    "oder", "sagen", "seien", "sind", "wird", "wurde", "zum", "zur",
+    "aber",
+    "auch",
+    "dass",
+    "deine",
+    "deiner",
+    "dies",
+    "diese",
+    "dieser",
+    "doch",
+    "eine",
+    "einen",
+    "einer",
+    "haben",
+    "heute",
+    "ihre",
+    "nicht",
+    "oder",
+    "sagen",
+    "seien",
+    "sind",
+    "wird",
+    "wurde",
+    "zum",
+    "zur",
 }
 _NUMBER_WORDS = {
-    "null", "eins", "ein", "eine", "zwei", "drei", "vier", "fuenf",
-    "fünf", "sechs", "sieben", "acht", "neun", "zehn", "zwanzig",
-    "dreissig", "dreißig", "vierzig", "fuenfzig", "fünfzig", "sechzig",
-    "siebzig", "achtzig", "neunzig", "hundert", "tausend", "million",
-    "milliarde", "prozent",
+    "null",
+    "eins",
+    "ein",
+    "eine",
+    "zwei",
+    "drei",
+    "vier",
+    "fuenf",
+    "fünf",
+    "sechs",
+    "sieben",
+    "acht",
+    "neun",
+    "zehn",
+    "zwanzig",
+    "dreissig",
+    "dreißig",
+    "vierzig",
+    "fuenfzig",
+    "fünfzig",
+    "sechzig",
+    "siebzig",
+    "achtzig",
+    "neunzig",
+    "hundert",
+    "tausend",
+    "million",
+    "milliarde",
+    "prozent",
 }
 _UNCERTAINTY_MARKERS = (
-    "behaupt", "unbelegt", "ungeprueft", "ungeprüft", "ohne beleg",
-    "ohne quelle", "quelle fehlt", "nicht belegt", "unklar",
+    "behaupt",
+    "unbelegt",
+    "ungeprueft",
+    "ungeprüft",
+    "ohne beleg",
+    "ohne quelle",
+    "quelle fehlt",
+    "nicht belegt",
+    "unklar",
 )
 
 
@@ -513,9 +600,13 @@ def _structured_numeric_scope_matches(
         if terms and any(
             not any(
                 candidate == term
-                or (len(term) >= 5 and len(candidate) >= 5 and (
-                    candidate.startswith(term[:5]) or term.startswith(candidate[:5])
-                ))
+                or (
+                    len(term) >= 5
+                    and len(candidate) >= 5
+                    and (
+                        candidate.startswith(term[:5]) or term.startswith(candidate[:5])
+                    )
+                )
                 for candidate in context_terms
             )
             for term in terms
@@ -527,9 +618,7 @@ def _structured_numeric_scope_matches(
 def _contains_unsupported_numeric_assertion(
     recommendation: DebateRecommendation,
 ) -> bool:
-    spoken = " ".join(
-        (recommendation.answer_now, recommendation.counterargument)
-    ).casefold()
+    spoken = f"{recommendation.answer_now} {recommendation.counterargument}".casefold()
     has_number = bool(re.search(r"\d", spoken)) or bool(
         set(re.findall(r"[\wäöüß]+", spoken)).intersection(_NUMBER_WORDS)
     )
@@ -540,12 +629,12 @@ def _contains_unsupported_numeric_assertion(
         return False
 
     spoken_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", spoken))
-    spoken_number_words = set(
-        re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", spoken)
-    ).intersection(_NUMBER_WORDS)
+    spoken_number_words = set(re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", spoken)).intersection(
+        _NUMBER_WORDS
+    )
     spoken_number_words = _unicode_words(spoken).intersection(_NUMBER_WORDS)
     target_terms = _claim_terms(recommendation.target_claim)
-    context = " ".join((recommendation.target_claim, spoken))
+    context = f"{recommendation.target_claim} {spoken}"
     for source in recommendation.sources:
         if (
             source.retrieval_status != "read"
@@ -556,7 +645,7 @@ def _contains_unsupported_numeric_assertion(
             )
         ):
             continue
-        evidence = " ".join((source.claim, source.passage)).casefold()
+        evidence = f"{source.claim} {source.passage}".casefold()
         evidence_numbers = set(re.findall(r"\d+(?:[.,]\d+)?", evidence))
         evidence_number_words = set(
             re.findall(r"[\wÃ¤Ã¶Ã¼ÃŸ]+", evidence)
@@ -580,9 +669,7 @@ def _contains_unsupported_evidence_claim(
     recommendation: DebateRecommendation,
 ) -> bool:
     """Gate quotes, attributions, conditions and causal claims like numbers."""
-    spoken = " ".join(
-        (recommendation.answer_now, recommendation.counterargument)
-    ).strip()
+    spoken = f"{recommendation.answer_now} {recommendation.counterargument}".strip()
     folded = spoken.casefold()
     if not spoken or any(marker in folded for marker in _UNCERTAINTY_MARKERS):
         return False
@@ -590,11 +677,14 @@ def _contains_unsupported_evidence_claim(
         source
         for source in recommendation.sources
         if source.retrieval_status == "read"
-        and (source.claim_relation == "supports" or source.verification_status == "supports")
+        and (
+            source.claim_relation == "supports"
+            or source.verification_status == "supports"
+        )
         and source.passage.strip()
     ]
     evidence = "\n".join(
-        " ".join((source.title, source.publisher, source.passage, source.claim))
+        f"{source.title} {source.publisher} {source.passage} {source.claim}"
         for source in readable_support
     ).casefold()
     quotes = [
@@ -604,15 +694,23 @@ def _contains_unsupported_evidence_claim(
     if quotes and any(quote not in evidence for quote in quotes):
         return True
     has_attribution = bool(
-        re.search(r"\b(laut|gem[aä]ß|nach angaben von|sagt|schreibt|studie von)\b", folded)
+        re.search(
+            r"\b(laut|gem[aä]ß|nach angaben von|sagt|schreibt|studie von)\b", folded
+        )
     )
     if has_attribution and not readable_support:
         return True
     has_causal_claim = any(
         marker in folded
         for marker in (
-            "führt zu", "fuehrt zu", "verursacht", "bewirkt", "ist der grund",
-            "deshalb entsteht", "dadurch steigt", "dadurch sinkt",
+            "führt zu",
+            "fuehrt zu",
+            "verursacht",
+            "bewirkt",
+            "ist der grund",
+            "deshalb entsteht",
+            "dadurch steigt",
+            "dadurch sinkt",
         )
     )
     if has_causal_claim and not readable_support:
@@ -621,11 +719,12 @@ def _contains_unsupported_evidence_claim(
     target_is_conditional = bool(
         re.search(r"\b(wenn|falls|sofern|unter der bedingung)\b", target_folded)
     )
-    if target_is_conditional and not re.search(
-        r"\b(wenn|falls|sofern|unter dieser bedingung|nur dann)\b", folded
-    ):
-        return True
-    return False
+    return bool(
+        target_is_conditional
+        and not re.search(
+            r"\b(wenn|falls|sofern|unter dieser bedingung|nur dann)\b", folded
+        )
+    )
 
 
 # Restatements cluster about a minute apart: on a measured 57-minute meeting the
@@ -670,7 +769,11 @@ _SHIELD_GATEWAY_REMEDY = (
 
 def _shield_locks_gateway(slug: str, audio_local_only: bool, model_id: str) -> bool:
     """The PII Shield admits only an on-device model as the audio gateway."""
-    return slug == "audio_gateway" and audio_local_only and not is_local_live_model(model_id)
+    return (
+        slug == "audio_gateway"
+        and audio_local_only
+        and not is_local_live_model(model_id)
+    )
 
 
 _ACTIVITY_AGENTS = (
@@ -717,6 +820,7 @@ def drain_progress_percent(current_step: int, total_steps: int) -> int:
         return 95
     return 15 + round((current_step - 1) * 80 / (total_steps - 1))
 
+
 # Live orchestrators by session id so REST routes can push mid-call updates.
 # ponytail: in-process dict; needs a shared channel if the app ever runs multi-worker.
 _live_orchestrators: dict[uuid.UUID, "AgentOrchestrator"] = {}
@@ -737,7 +841,9 @@ def live_debate_snapshot() -> dict[str, object]:
         recommendation = (
             latest["data"]
             if latest is not None
-            else orchestrator.objection_agent.latest_recommendation.model_dump(mode="json")
+            else orchestrator.objection_agent.latest_recommendation.model_dump(
+                mode="json"
+            )
         )
         return {
             "active": True,
@@ -798,8 +904,14 @@ async def _emit_progress(
 
 _DEDUP_NEGATIONS = {"nicht", "kein", "keine", "nie", "niemals", "ohne"}
 _DEDUP_TIME_MARKERS = {
-    "heute", "gestern", "morgen", "derzeit", "aktuell", "frueher",
-    "kuenftig", "jaehrlich",
+    "heute",
+    "gestern",
+    "morgen",
+    "derzeit",
+    "aktuell",
+    "frueher",
+    "kuenftig",
+    "jaehrlich",
 }
 
 
@@ -887,10 +999,13 @@ class AgentOrchestrator:
         self._agent_configs = agent_configs or {}
         self.local_only = local_only
         self.debate_settings = debate_settings or DebateSettings()
-        self._experimental_mode = self.debate_settings.pipeline_mode == "experimental_debateai"
+        self._experimental_mode = (
+            self.debate_settings.pipeline_mode == "experimental_debateai"
+        )
         if self.debate_settings.profile_directive:
             self.directives = [
-                directive for directive in self.directives
+                directive
+                for directive in self.directives
                 if not directive.startswith("[PLAYBOOK]")
             ] + [self.debate_settings.profile_directive]
         self._default_debate_mode = self.debate_settings.mode
@@ -949,7 +1064,9 @@ class AgentOrchestrator:
             if _privacy_admits(model_id):
                 return True
             if not any(b["agent"] == slug for b in self.privacy_blocked_agents):
-                self.privacy_blocked_agents.append({"agent": slug, "model_id": model_id})
+                self.privacy_blocked_agents.append(
+                    {"agent": slug, "model_id": model_id}
+                )
             return False
 
         def _get_prompt(slug: str) -> str:
@@ -963,7 +1080,9 @@ class AgentOrchestrator:
                 return fallback
             # A per-model budget for the agent's assigned model wins, so the same
             # agent can run tighter on a fast model and looser on a slow one.
-            per_model = _parse_model_intervals(getattr(cfg, "model_intervals", "")).get(cfg.model_id)
+            per_model = _parse_model_intervals(getattr(cfg, "model_intervals", "")).get(
+                cfg.model_id
+            )
             if per_model:
                 return per_model
             return cfg.interval_seconds if cfg.interval_seconds else fallback
@@ -979,7 +1098,9 @@ class AgentOrchestrator:
                 try:
                     ids.append(uuid.UUID(part))
                 except ValueError:
-                    logger.warning(f"[orchestrator] invalid knowledge source id '{part}' on agent '{slug}'")
+                    logger.warning(
+                        f"[orchestrator] invalid knowledge source id '{part}' on agent '{slug}'"
+                    )
             return ids
 
         self._is_enabled = _is_enabled
@@ -994,7 +1115,9 @@ class AgentOrchestrator:
         enabled_types: set[str] = set()
         ca_cfg = self._agent_configs.get("consolidated_analyst")
         if ca_cfg and ca_cfg.sub_types:
-            enabled_types = {t.strip() for t in ca_cfg.sub_types.split(",") if t.strip()}
+            enabled_types = {
+                t.strip() for t in ca_cfg.sub_types.split(",") if t.strip()
+            }
         else:
             # Fallback to config.py settings
             enabled_types.add("question")
@@ -1015,7 +1138,9 @@ class AgentOrchestrator:
                 if isinstance(parsed, list):
                     ca_lenses = parsed
             except json.JSONDecodeError:
-                logger.warning("[orchestrator] invalid lenses JSON on consolidated_analyst; using defaults")
+                logger.warning(
+                    "[orchestrator] invalid lenses JSON on consolidated_analyst; using defaults"
+                )
 
         ca_model = _get_model("consolidated_analyst")
         self.consolidated_agent = ConsolidatedAnalystAgent(
@@ -1029,7 +1154,13 @@ class AgentOrchestrator:
         )
 
         activity_agents = []
-        for slug, fallback_name, trigger, fallback_interval, fallback_enabled in _ACTIVITY_AGENTS:
+        for (
+            slug,
+            fallback_name,
+            trigger,
+            fallback_interval,
+            fallback_enabled,
+        ) in _ACTIVITY_AGENTS:
             cfg = self._agent_configs.get(slug)
             configured_enabled = cfg.enabled if cfg else fallback_enabled
             admitted = _is_enabled(slug, fallback_enabled)
@@ -1040,11 +1171,12 @@ class AgentOrchestrator:
                 else None
             )
             if interval is not None and (
-                not isinstance(interval, (int, float))
-                or isinstance(interval, bool)
+                not isinstance(interval, (int, float)) or isinstance(interval, bool)
             ):
                 interval = fallback_interval
-            debate_suppressed = self._debate_live_mode and slug not in _DEBATE_LIVE_AGENTS
+            debate_suppressed = (
+                self._debate_live_mode and slug not in _DEBATE_LIVE_AGENTS
+            )
             if debate_suppressed:
                 state = "off"
                 blocked_reason = "debate_live_minimal"
@@ -1066,7 +1198,11 @@ class AgentOrchestrator:
                 state = "blocked"
                 blocked_reason = "no_model"
                 remedy = "Choose a model for this agent in Admin -> Agents."
-            elif not admitted and not self.local_only and _shield_locks_gateway(slug, self.audio_local_only, _get_model(slug)):
+            elif (
+                not admitted
+                and not self.local_only
+                and _shield_locks_gateway(slug, self.audio_local_only, _get_model(slug))
+            ):
                 state = "blocked"
                 blocked_reason = "pii_shield"
                 remedy = _SHIELD_GATEWAY_REMEDY
@@ -1077,7 +1213,9 @@ class AgentOrchestrator:
                     "Assign a local model to this agent (Admin -> Agents) or "
                     "turn off Privacy First (Admin -> Connections)."
                 )
-            elif slug == "opportunity_specialist" and not self._offering_matching_enabled:
+            elif (
+                slug == "opportunity_specialist" and not self._offering_matching_enabled
+            ):
                 state = "blocked"
                 blocked_reason = "meeting_type"
                 remedy = (
@@ -1196,7 +1334,9 @@ class AgentOrchestrator:
         # One external research group may serve several distinct analysis
         # lanes, but the same claim revision/query must never create duplicate
         # groups while the first one is still active.
-        self._research_group_tasks: dict[tuple[str, int, int, int, str], asyncio.Task] = {}
+        self._research_group_tasks: dict[
+            tuple[str, int, int, int, str], asyncio.Task
+        ] = {}
         self._research_cache: dict[str, ResearchResult] = {}
         self._topic_knowledge: dict[str, dict[str, object]] = {}
         self._experimental_lane_artifacts: list[dict[str, object]] = []
@@ -1215,7 +1355,9 @@ class AgentOrchestrator:
         self._manual_analysis_tasks: dict[str, asyncio.Task] = {}
         adaptive_config = adaptive_reasoning_settings()
         self._adaptive_reasoning_enabled = bool(adaptive_config.pop("enabled", True))
-        self._reuse_topic_analysis = bool(adaptive_config.pop("reuse_topic_analysis", True))
+        self._reuse_topic_analysis = bool(
+            adaptive_config.pop("reuse_topic_analysis", True)
+        )
         self._topic_similarity_threshold = float(
             adaptive_config.pop("topic_similarity_threshold", 0.46)
         )
@@ -1257,16 +1399,24 @@ class AgentOrchestrator:
                 str(note.get("text") or ""),
             )
 
-
-    def _experimentalize_recommendation(self, recommendation: DebateRecommendation) -> DebateRecommendation:
+    def _experimentalize_recommendation(
+        self, recommendation: DebateRecommendation
+    ) -> DebateRecommendation:
         """Attach the four local response moves for the isolated pipeline."""
         if not getattr(self, "_experimental_mode", False):
             return recommendation
-        recommendation = recommendation.model_copy(update={"pipeline_mode": "experimental_debateai"})
+        recommendation = recommendation.model_copy(
+            update={"pipeline_mode": "experimental_debateai"}
+        )
         options = normalize_experimental_strategies(recommendation)
         selected = recommendation.selected_strategy_id
         if not selected:
-            preferred_kinds = ("example", "refutation", "contradiction", "counter_question")
+            preferred_kinds = (
+                "example",
+                "refutation",
+                "contradiction",
+                "counter_question",
+            )
             selected = next(
                 (
                     item["id"]
@@ -1276,7 +1426,9 @@ class AgentOrchestrator:
                 ),
                 "",
             )
-        selected_item = next((item for item in options if item.get("id") == selected), None)
+        selected_item = next(
+            (item for item in options if item.get("id") == selected), None
+        )
         if selected_item is None:
             selected_item = next((item for item in options if item.get("text")), None)
             selected = str((selected_item or {}).get("id") or "")
@@ -1288,13 +1440,19 @@ class AgentOrchestrator:
         ]
         # The chosen move is the only large visible answer; alternatives remain
         # available as compact blobs for deliberate selection in the UI.
-        return recommendation.model_copy(update={
-            "strategy_options": options,
-            "selected_strategy_id": selected,
-            "answer_now": selected_text or recommendation.answer_now,
-            "primary_move": "question" if selected_kind == "counter_question" else "answer",
-            "selection_reason": recommendation.selection_reason or "Sofort passendster Zug mit konkretem Beispiel.",
-        })
+        return recommendation.model_copy(
+            update={
+                "strategy_options": options,
+                "selected_strategy_id": selected,
+                "answer_now": selected_text or recommendation.answer_now,
+                "primary_move": "question"
+                if selected_kind == "counter_question"
+                else "answer",
+                "selection_reason": recommendation.selection_reason
+                or "Sofort passendster Zug mit konkretem Beispiel.",
+            }
+        )
+
     def briefing_enabled(self) -> bool:
         # The arbiter settles the briefing, so its model decides whether the
         # stage can run at all; a lens on a refused model degrades to a partial
@@ -1358,7 +1516,9 @@ class AgentOrchestrator:
             if lines:
                 return "\n".join(lines)
         except Exception as exc:
-            logger.warning("Complete transcript load failed; using live buffer: %s", exc)
+            logger.warning(
+                "Complete transcript load failed; using live buffer: %s", exc
+            )
         return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
 
     async def start(self):
@@ -1378,26 +1538,33 @@ class AgentOrchestrator:
                     else []
                 )
             claims = sorted(
-                (node for node in (graph.nodes if graph else []) if node.kind == "claim"),
+                (
+                    node
+                    for node in (graph.nodes if graph else [])
+                    if node.kind == "claim"
+                ),
                 key=lambda node: node.revision,
             )
             for claim in claims[-16:]:
                 question = next(
                     (
-                        node.text for node in (graph.nodes if graph else [])
+                        node.text
+                        for node in (graph.nodes if graph else [])
                         if node.claim_id == claim.claim_id and node.kind == "question"
                     ),
                     "",
                 )
-                self._argument_memory.append({
-                    "claim_id": claim.claim_id,
-                    "target_claim": claim.text,
-                    "open_question": question,
-                    "revision": claim.revision,
-                    "speaker_id": claim.speaker_id,
-                    "speaker_name": claim.speaker_name,
-                    "speaker_type": claim.speaker_type,
-                })
+                self._argument_memory.append(
+                    {
+                        "claim_id": claim.claim_id,
+                        "target_claim": claim.text,
+                        "open_question": question,
+                        "revision": claim.revision,
+                        "speaker_id": claim.speaker_id,
+                        "speaker_name": claim.speaker_name,
+                        "speaker_type": claim.speaker_type,
+                    }
+                )
             self._good_answer_examples = [
                 {
                     "claim_id": f"good:{example.id}",
@@ -1427,13 +1594,15 @@ class AgentOrchestrator:
         if self._is_enabled("audio_gateway"):
             try:
                 await self.audio_gateway.connect()
-                self._gateway_task = asyncio.create_task(self._handle_gateway_responses())
-                await self.activity.set_agent_state("audio_gateway", "running")
-                await self.activity.update_call(
-                    gateway={"state": "ok", "detail": ""}
+                self._gateway_task = asyncio.create_task(
+                    self._handle_gateway_responses()
                 )
+                await self.activity.set_agent_state("audio_gateway", "running")
+                await self.activity.update_call(gateway={"state": "ok", "detail": ""})
             except Exception as e:
-                logger.error(f"Audio gateway unavailable, continuing without interim transcription: {e}")
+                logger.error(
+                    f"Audio gateway unavailable, continuing without interim transcription: {e}"
+                )
                 await self.activity.cycle_error(
                     "audio_gateway",
                     classify_error(e, self._get_model("audio_gateway")),
@@ -1442,13 +1611,16 @@ class AgentOrchestrator:
                     gateway={"state": "reconnecting", "detail": str(e)}
                 )
         else:
-            await self.activity.update_call(
-                gateway={"state": "off", "detail": ""}
-            )
+            await self.activity.update_call(gateway={"state": "off", "detail": ""})
 
         # --- Consolidated Analyst ---
-        if self._is_enabled("consolidated_analyst") and self.consolidated_agent.enabled_types:
-            self._consolidated_task = asyncio.create_task(self._consolidated_agent_loop())
+        if (
+            self._is_enabled("consolidated_analyst")
+            and self.consolidated_agent.enabled_types
+        ):
+            self._consolidated_task = asyncio.create_task(
+                self._consolidated_agent_loop()
+            )
 
         # --- Debate Copilot ---
         # Transcript arrival schedules this agent directly; there is no polling
@@ -1456,7 +1628,9 @@ class AgentOrchestrator:
 
         # --- Event-driven: Synthesizer ---
         if self._is_enabled("synthesizer"):
-            synth_cooldown = self._get_interval("synthesizer", settings.SYNTHESIZER_COOLDOWN_SECONDS)
+            synth_cooldown = self._get_interval(
+                "synthesizer", settings.SYNTHESIZER_COOLDOWN_SECONDS
+            )
             self._synth_subscriber = CooldownSubscriber(
                 handler=self._run_synthesizer,
                 cooldown_seconds=synth_cooldown,
@@ -1474,7 +1648,9 @@ class AgentOrchestrator:
         if self._is_enabled(TRANSCRIPT_REFINER_SLUG, False):
             self._refiner_task = asyncio.create_task(self._transcript_refiner_loop())
 
-        ca_interval = self._get_interval("consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS)
+        ca_interval = self._get_interval(
+            "consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS
+        )
         logger.info(
             f"Orchestrator started: gateway={self._is_enabled('audio_gateway')} "
             f"consolidated={self._is_enabled('consolidated_analyst')} "
@@ -1491,19 +1667,27 @@ class AgentOrchestrator:
         """Subscribe the opportunity specialist if enabled and the meeting type warrants it."""
         if self._opp_specialist_subscriber is not None:
             return
-        if not (self._is_enabled("opportunity_specialist") and self._offering_matching_enabled):
+        if not (
+            self._is_enabled("opportunity_specialist")
+            and self._offering_matching_enabled
+        ):
             return
         self._opp_specialist_subscriber = CooldownSubscriber(
             handler=self._run_opportunity_specialist,
             cooldown_seconds=self._get_interval(
-                "opportunity_specialist", settings.OPPORTUNITY_SPECIALIST_COOLDOWN_SECONDS
+                "opportunity_specialist",
+                settings.OPPORTUNITY_SPECIALIST_COOLDOWN_SECONDS,
             ),
         )
         self._event_bus.subscribe("new_opportunity", self._opp_specialist_subscriber)
 
-    def _remember_active_question(self, item_id: str, text: str, item_type: str = "question"):
+    def _remember_active_question(
+        self, item_id: str, text: str, item_type: str = "question"
+    ):
         """Track an open question, dropping the oldest past the cap."""
-        self.active_questions.append({"id": item_id, "question": text, "item_type": item_type})
+        self.active_questions.append(
+            {"id": item_id, "question": text, "item_type": item_type}
+        )
         overflow = len(self.active_questions) - _MAX_ACTIVE_QUESTIONS
         if overflow > 0:
             del self.active_questions[:overflow]
@@ -1512,7 +1696,9 @@ class AgentOrchestrator:
         """Stop carrying a question once it is answered or dismissed."""
         if not item_id:
             return
-        self.active_questions[:] = [aq for aq in self.active_questions if aq["id"] != item_id]
+        self.active_questions[:] = [
+            aq for aq in self.active_questions if aq["id"] != item_id
+        ]
 
     def _remember_board_stub(self, item_type: str, text: str):
         """Track a non-question insight so the analyst stops restating it."""
@@ -1534,11 +1720,14 @@ class AgentOrchestrator:
         return_related_ids: bool = False,
     ) -> str | tuple[str, list[str]]:
         """Return a tiny evidence board for the next deep debate revision."""
-        economy = getattr(
-            getattr(self, "debate_settings", None),
-            "performance_profile",
-            "balanced",
-        ) == "economy"
+        economy = (
+            getattr(
+                getattr(self, "debate_settings", None),
+                "performance_profile",
+                "balanced",
+            )
+            == "economy"
+        )
         board_limit = 2 if economy else 4
         lines = [
             f"- [{row.get('item_type') or 'Hinweis'}] {row.get('text', '').strip()}"
@@ -1571,7 +1760,9 @@ class AgentOrchestrator:
             if semantic_memory is not None
             else None
         )
-        semantic_matches = semantic_result.related if semantic_result is not None else []
+        semantic_matches = (
+            semantic_result.related if semantic_result is not None else []
+        )
         conflict_matches = (
             semantic_result.possible_conflicts if semantic_result is not None else []
         )
@@ -1579,7 +1770,13 @@ class AgentOrchestrator:
         folded = current_text.casefold()
         refers_back = any(
             marker in folded
-            for marker in ("deine position", "dieser punkt", "dieser beleg", "dazu", "darum")
+            for marker in (
+                "deine position",
+                "dieser punkt",
+                "dieser beleg",
+                "dazu",
+                "darum",
+            )
         )
         related: list[dict[str, object]] = [match.row for match in semantic_matches]
         related_claim_ids = [
@@ -1651,7 +1848,9 @@ class AgentOrchestrator:
             for source in list(knowledge.get("sources") or [])[:2]:
                 if not isinstance(source, dict):
                     continue
-                passage = str(source.get("passage") or source.get("snippet") or "").strip()
+                passage = str(
+                    source.get("passage") or source.get("snippet") or ""
+                ).strip()
                 if passage:
                     lines.append(
                         f"- [Themenwissen; claim:{claim_id}; Quelle:{str(source.get('url') or '')[:240]}] "
@@ -1684,16 +1883,13 @@ class AgentOrchestrator:
                 current_text,
                 return_related_ids=True,
             )
-            if (
-                claim_snapshot == str(getattr(self, "_active_claim_id", "") or "")
-                and transcript_snapshot == int(getattr(self, "_transcript_revision", 0))
-            ):
+            if claim_snapshot == str(
+                getattr(self, "_active_claim_id", "") or ""
+            ) and transcript_snapshot == int(getattr(self, "_transcript_revision", 0)):
                 self._active_semantic_related_claim_ids = related_ids
             return context
 
-        local_dossier_context = str(
-            getattr(self, "local_dossier_context", "") or ""
-        )
+        local_dossier_context = str(getattr(self, "local_dossier_context", "") or "")
         if not include_local_dossier or not local_dossier_context.strip():
             # SemanticArgumentMemory uses an ONNX embedding model. Retrieval is
             # small but CPU-bound, so never run it on the WebSocket event loop.
@@ -1708,7 +1904,7 @@ class AgentOrchestrator:
         else:
             try:
                 dossier_admitted = bool(model_id) and await allows_local_only(model_id)
-            except Exception:  # noqa: BLE001 - fail closed before any retrieval
+            except Exception:
                 logger.warning(
                     "Could not verify dossier egress route for %s; omitting local context",
                     model_id or "unconfigured model",
@@ -1737,9 +1933,13 @@ class AgentOrchestrator:
             )
         base_context = await retrieve_base_context()
         dossier_block = (
-            "- [lokales Vorbereitungsdossier; nicht an Cloudmodelle senden]\n"
-            + dossier_context
-        ) if dossier_context.strip() else ""
+            (
+                "- [lokales Vorbereitungsdossier; nicht an Cloudmodelle senden]\n"
+                + dossier_context
+            )
+            if dossier_context.strip()
+            else ""
+        )
         return "\n".join(part for part in (dossier_block, base_context) if part)
 
     def _external_analysis_models(self) -> list[str]:
@@ -1748,9 +1948,7 @@ class AgentOrchestrator:
         try:
             served_subscription_models = {
                 str(value).strip()
-                for value in json.loads(
-                    env_value("DEBATEAI_SUBSCRIPTION_MODELS", "[]")
-                )
+                for value in json.loads(env_value("DEBATEAI_SUBSCRIPTION_MODELS", "[]"))
                 if str(value).strip()
             }
         except (TypeError, ValueError):
@@ -1773,21 +1971,26 @@ class AgentOrchestrator:
         # The editable order can mix normal consumer-web accounts, OAuth bridge
         # models and explicitly enabled official APIs. Only advertise a bridge
         # model that its live /models response actually serves.
-        for model_id in deep_analysis_models([
-            _SUBSCRIPTION_GPT_ANALYST,
-            _SUBSCRIPTION_GEMINI_ANALYST,
-            _GEMINI_WEB_ANALYST,
-            _CHATGPT_WEB_ANALYST,
-            _GOOGLE_GEMINI_ANALYST,
-            _SUBSCRIPTION_GPT_FALLBACK,
-            _SUBSCRIPTION_GEMINI_AVAILABLE_FALLBACK,
-        ]):
+        for model_id in deep_analysis_models(
+            [
+                _SUBSCRIPTION_GPT_ANALYST,
+                _SUBSCRIPTION_GEMINI_ANALYST,
+                _GEMINI_WEB_ANALYST,
+                _CHATGPT_WEB_ANALYST,
+                _GOOGLE_GEMINI_ANALYST,
+                _SUBSCRIPTION_GPT_FALLBACK,
+                _SUBSCRIPTION_GEMINI_AVAILABLE_FALLBACK,
+            ]
+        ):
             if model_id == _CHATGPT_WEB_ANALYST:
                 if not consumer_chatgpt_ready:
                     continue
             elif model_id.startswith("endpoint:subscription-ai:"):
                 wire_model = model_id.split(":", 2)[-1]
-                if not bridge_configured or wire_model not in served_subscription_models:
+                if (
+                    not bridge_configured
+                    or wire_model not in served_subscription_models
+                ):
                     continue
             elif model_id == _GEMINI_WEB_ANALYST:
                 wire_model = model_id.split(":", 2)[-1]
@@ -1795,7 +1998,9 @@ class AgentOrchestrator:
                     continue
             else:
                 provider = provider_for(model_id)
-                known_cloud_model = bool(registry_entry(model_id)) or model_id.startswith(
+                known_cloud_model = bool(
+                    registry_entry(model_id)
+                ) or model_id.startswith(
                     ("gemini-", "gpt-", "openai-", "o1", "o3", "o4")
                 )
                 if provider not in {"google", "openai"} or not known_cloud_model:
@@ -1840,7 +2045,9 @@ class AgentOrchestrator:
             candidates.append(model_id)
         unavailable = getattr(self, "_external_model_unavailable_until", {})
         now = time.monotonic()
-        return [model_id for model_id in candidates if unavailable.get(model_id, 0.0) <= now]
+        return [
+            model_id for model_id in candidates if unavailable.get(model_id, 0.0) <= now
+        ]
 
     @staticmethod
     def _analyst_provider_label(model_id: str) -> str:
@@ -1863,7 +2070,11 @@ class AgentOrchestrator:
         sources: list[DebateSource],
     ) -> DebateRecommendation:
         points: list[str] = []
-        for value in [*analysis.counterarguments, analysis.rebuttal, analysis.interpretation]:
+        for value in [
+            *analysis.counterarguments,
+            analysis.rebuttal,
+            analysis.interpretation,
+        ]:
             value = " ".join(value.split()).strip()
             if value and value not in points:
                 points.append(value)
@@ -1899,10 +2110,12 @@ class AgentOrchestrator:
             "analyst_research_performed": bool(sources),
             "analyst_prompt": prompt,
         }
-        return DebateRecommendation.model_validate({
-            **recommendation.model_dump(),
-            **updates,
-        })
+        return DebateRecommendation.model_validate(
+            {
+                **recommendation.model_dump(),
+                **updates,
+            }
+        )
 
     def _remember_argument_context(self, recommendation: DebateRecommendation) -> None:
         if not getattr(self, "_argument_memory_enabled", True):
@@ -1914,8 +2127,7 @@ class AgentOrchestrator:
             memory = deque(maxlen=16)
             self._argument_memory = memory
         retained = [
-            row for row in memory
-            if row.get("claim_id") != recommendation.claim_id
+            row for row in memory if row.get("claim_id") != recommendation.claim_id
         ]
         memory.clear()
         memory.extend(retained)
@@ -1945,7 +2157,9 @@ class AgentOrchestrator:
 
     def _derive_meeting_context(self):
         """Recompute the fields derived from meeting_type/meeting_context."""
-        self.meeting_context_text = build_meeting_context_text(self.meeting_type, self.meeting_context)
+        self.meeting_context_text = build_meeting_context_text(
+            self.meeting_type, self.meeting_context
+        )
         self._offering_matching_enabled = should_match_offerings(self.meeting_type)
 
     def _suppressed_analyst_types(self) -> set[str]:
@@ -1958,7 +2172,9 @@ class AgentOrchestrator:
         """
         return set() if self._offering_matching_enabled else {"opportunity"}
 
-    def update_meeting_context(self, meeting_type: str | None = None, meeting_context: str | None = None):
+    def update_meeting_context(
+        self, meeting_type: str | None = None, meeting_context: str | None = None
+    ):
         """Apply a mid-call session context edit to the running text agents."""
         if meeting_type is not None:
             self.meeting_type = normalize_meeting_type(meeting_type)
@@ -2122,30 +2338,32 @@ class AgentOrchestrator:
         scheduler = getattr(self, "_external_analysis_scheduler", None)
         if scheduler is not None:
             scheduler.cancel_session(str(self.session_id))
-        invalidated = recommendation.model_copy(update={
-            "answer_now": "Transkript korrigiert - Empfehlung wird neu geprueft.",
-            "counterargument": "",
-            "counter_question": "",
-            "analogy": "",
-            "target_claim": normalized,
-            "argument_points": [],
-            "atomic_claims": [],
-            "logical_relations": [],
-            "confidence": "low",
-            "needs_research": False,
-            "research_query": "",
-            "research_status": "cancelled",
-            "research_alert": "Abhaengige Empfehlung wegen manueller Korrektur entwertet.",
-            "sources": [],
-            "analysis_status": "analyzing",
-            "analysis_can_cancel": False,
-            "generation_id": uuid.uuid4().hex,
-            "claim_id": utterance_id,
-            "utterance_id": utterance_id,
-            "transcript_revision": self._transcript_revision,
-            "claim_revision": self._transcript_revision,
-            "recommendation_revision": 0,
-        })
+        invalidated = recommendation.model_copy(
+            update={
+                "answer_now": "Transkript korrigiert - Empfehlung wird neu geprueft.",
+                "counterargument": "",
+                "counter_question": "",
+                "analogy": "",
+                "target_claim": normalized,
+                "argument_points": [],
+                "atomic_claims": [],
+                "logical_relations": [],
+                "confidence": "low",
+                "needs_research": False,
+                "research_query": "",
+                "research_status": "cancelled",
+                "research_alert": "Abhaengige Empfehlung wegen manueller Korrektur entwertet.",
+                "sources": [],
+                "analysis_status": "analyzing",
+                "analysis_can_cancel": False,
+                "generation_id": uuid.uuid4().hex,
+                "claim_id": utterance_id,
+                "utterance_id": utterance_id,
+                "transcript_revision": self._transcript_revision,
+                "claim_revision": self._transcript_revision,
+                "recommendation_revision": 0,
+            }
+        )
         await self._send_debate_update(
             getattr(self, "_debate_revision", 0),
             invalidated,
@@ -2172,8 +2390,9 @@ class AgentOrchestrator:
         hypotheses = getattr(self, "_interim_debate_hypotheses", {})
         removed = hypotheses.pop(utterance_id, None) is not None
         getattr(self, "_interim_segment_revisions", {}).pop(utterance_id, None)
-        if (getattr(self, "_active_claim_id", None) != utterance_id
-                or not getattr(self, "_active_claim_is_interim", False)):
+        if getattr(self, "_active_claim_id", None) != utterance_id or not getattr(
+            self, "_active_claim_is_interim", False
+        ):
             return removed
 
         # Advance the guards before the first await. Clearing the active claim
@@ -2197,10 +2416,12 @@ class AgentOrchestrator:
                 await self._send_debate_update(
                     self._debate_revision,
                     DebateRecommendation(
-                        claim_id=utterance_id, utterance_id=utterance_id,
+                        claim_id=utterance_id,
+                        utterance_id=utterance_id,
                         transcript_revision=self._transcript_revision,
                         claim_revision=self._transcript_revision,
-                        analysis_status="cancelled", analysis_can_cancel=False,
+                        analysis_status="cancelled",
+                        analysis_can_cancel=False,
                         research_status="cancelled",
                         research_alert="Zwischentranskript wurde nicht bestaetigt.",
                     ),
@@ -2230,7 +2451,11 @@ class AgentOrchestrator:
             return False
         self._mark_transcript_activity()
         hypotheses = getattr(self, "_interim_debate_hypotheses", {})
-        utterance_id = utterance_id or getattr(self, "_active_utterance_id", None) or uuid.uuid4().hex
+        utterance_id = (
+            utterance_id
+            or getattr(self, "_active_utterance_id", None)
+            or uuid.uuid4().hex
+        )
         finalized_segments = getattr(self, "_finalized_interim_segments", set())
         if utterance_id in finalized_segments:
             return False
@@ -2247,7 +2472,10 @@ class AgentOrchestrator:
         self._active_semantic_related_claim_ids = []
         self._interim_debate_hypotheses = {utterance_id: normalized[:500]}
         self._transcript_revision = getattr(self, "_transcript_revision", 0) + 1
-        if getattr(self.debate_settings, "performance_profile", "balanced") == "economy":
+        if (
+            getattr(self.debate_settings, "performance_profile", "balanced")
+            == "economy"
+        ):
             now = time.monotonic()
             if now - getattr(self, "_last_economy_interim_at", 0.0) < 1.5:
                 return True
@@ -2297,26 +2525,55 @@ class AgentOrchestrator:
         if not folded:
             return False
         self._directive_revision = getattr(self, "_directive_revision", 0) + 1
-        if "recherche" in folded and any(word in folded for word in ("aus", "stop", "pause")):
+        if "recherche" in folded and any(
+            word in folded for word in ("aus", "stop", "pause")
+        ):
             await self.update_debate_research(False)
             return True
-        if "recherche" in folded and any(word in folded for word in (" an", " ein", "start", "weiter")):
+        if "recherche" in folded and any(
+            word in folded for word in (" an", " ein", "start", "weiter")
+        ):
             await self.update_debate_research(True)
             return True
-        if any(term in folded for term in ("extra high", "xhigh", "tiefenanalyse", "tief analys")):
+        if any(
+            term in folded
+            for term in ("extra high", "xhigh", "tiefenanalyse", "tief analys")
+        ):
             self._force_deep_analysis_once = True
-        if any(term in folded for term in ("modus hart", "brutal sachlich", "hart-modus")):
+        if any(
+            term in folded for term in ("modus hart", "brutal sachlich", "hart-modus")
+        ):
             self.debate_settings = replace(self.debate_settings, mode="forceful")
             self.objection_agent.update_debate_mode("forceful")
-        elif any(term in folded for term in ("modus ueberzeugen", "modus überzeugen", "ueberzeugen-modus", "überzeugen-modus")):
+        elif any(
+            term in folded
+            for term in (
+                "modus ueberzeugen",
+                "modus überzeugen",
+                "ueberzeugen-modus",
+                "überzeugen-modus",
+            )
+        ):
             self.debate_settings = replace(self.debate_settings, mode="persuasive")
             self.objection_agent.update_debate_mode("persuasive")
-        if any(term in folded for term in ("faktencheck", "gegenbeleg", "zahlen pruefen", "zahlen prüfen", "statistik pruefen", "statistik prüfen")):
+        if any(
+            term in folded
+            for term in (
+                "faktencheck",
+                "gegenbeleg",
+                "zahlen pruefen",
+                "zahlen prüfen",
+                "statistik pruefen",
+                "statistik prüfen",
+            )
+        ):
             if await self.request_debate_research("counterevidence"):
                 return True
-        elif any(term in folded for term in ("originalquelle", "originaltext", "quelle lesen")):
-            if await self.request_debate_research("all"):
-                return True
+        elif any(
+            term in folded
+            for term in ("originalquelle", "originaltext", "quelle lesen")
+        ) and await self.request_debate_research("all"):
+            return True
         normalized = _normalize_debate_control(raw)
         if not normalized:
             return False
@@ -2380,14 +2637,20 @@ class AgentOrchestrator:
         try:
             async with async_session() as db:
                 rows = (
-                    await db.execute(
-                        select(TranscriptEntry)
-                        .where(TranscriptEntry.session_id == self.session_id)
-                        .order_by(TranscriptEntry.sequence)
+                    (
+                        await db.execute(
+                            select(TranscriptEntry)
+                            .where(TranscriptEntry.session_id == self.session_id)
+                            .order_by(TranscriptEntry.sequence)
+                        )
                     )
-                ).scalars().all()
+                    .scalars()
+                    .all()
+                )
         except Exception as exc:
-            logger.warning("Complete transcript load failed; using live buffer: %s", exc)
+            logger.warning(
+                "Complete transcript load failed; using live buffer: %s", exc
+            )
             return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
         if not rows:
             return await self.transcript_buffer.get_full(aliases=self.speaker_aliases())
@@ -2406,7 +2669,9 @@ class AgentOrchestrator:
             for row in rows
             if str(row.text or "").strip()
         ]
-        return "\n".join(lines) or await self.transcript_buffer.get_full(aliases=aliases)
+        return "\n".join(lines) or await self.transcript_buffer.get_full(
+            aliases=aliases
+        )
 
     async def close_all(self):
         self._stopped = True
@@ -2536,10 +2801,7 @@ class AgentOrchestrator:
         argument_tasks = list(getattr(self, "_argument_graph_tasks", set()))
         if argument_tasks:
             await asyncio.gather(*argument_tasks, return_exceptions=True)
-        if (
-            self._strategic_signals_task
-            and not self._strategic_signals_task.done()
-        ):
+        if self._strategic_signals_task and not self._strategic_signals_task.done():
             self._strategic_signals_task.cancel()
             try:
                 await self._strategic_signals_task
@@ -2663,12 +2925,16 @@ class AgentOrchestrator:
 
             for insight in insights:
                 agent_source = insight.get("agent_source", "consolidated_analyst")
-                saved = await self._save_and_send_insight(insight, agent_source=agent_source)
+                saved = await self._save_and_send_insight(
+                    insight, agent_source=agent_source
+                )
                 if saved:
                     result["insights_saved"] = int(result["insights_saved"]) + 1
 
             if insights:
-                logger.info(f"[consolidated_analyst] final drain produced {len(insights)} insights")
+                logger.info(
+                    f"[consolidated_analyst] final drain produced {len(insights)} insights"
+                )
             last_outcome = self.consolidated_agent.last_outcome or {}
             if last_outcome.get("kind") == "error":
                 await self.activity.cycle_error(
@@ -2686,9 +2952,7 @@ class AgentOrchestrator:
                 )
         except Exception as e:
             logger.error(f"Final consolidated analyst drain error: {e}")
-            result["stage_errors"].append(
-                {"stage": "final_insights", "detail": str(e)}
-            )
+            result["stage_errors"].append({"stage": "final_insights", "detail": str(e)})
             await self.activity.cycle_error(
                 "consolidated_analyst",
                 classify_error(e, self._get_model("consolidated_analyst")),
@@ -2701,9 +2965,8 @@ class AgentOrchestrator:
         drain_total_steps: int,
         result: dict,
     ) -> None:
-        if (
-            "insight_reconciliation" not in stages
-            or not self._is_enabled("synthesizer")
+        if "insight_reconciliation" not in stages or not self._is_enabled(
+            "synthesizer"
         ):
             return
         stage_step = 2 + stages.index("insight_reconciliation")
@@ -2852,9 +3115,7 @@ class AgentOrchestrator:
                 )
         except Exception as e:
             logger.error(f"Final briefing synthesis error: {e}")
-            result["stage_errors"].append(
-                {"stage": "call_briefing", "detail": str(e)}
-            )
+            result["stage_errors"].append({"stage": "call_briefing", "detail": str(e)})
             for slug in briefing_slugs:
                 await self.activity.cycle_error(
                     slug,
@@ -2901,20 +3162,22 @@ class AgentOrchestrator:
                     else event_audio_end
                 )
                 try:
-                    await self.websocket.send_json({
-                        "type": "interim_transcript",
-                        "data": {
-                            "text": text,
-                            "mode": mode,
-                            "track_id": track_id,
-                            "segment_id": segment_id,
-                            "segment_revision": segment_revision,
-                            "audio_start_sample": audio_start_sample,
-                            "audio_end_sample": audio_end_sample,
-                            "sample_rate": 16000,
-                            "final": False,
-                        },
-                    })
+                    await self.websocket.send_json(
+                        {
+                            "type": "interim_transcript",
+                            "data": {
+                                "text": text,
+                                "mode": mode,
+                                "track_id": track_id,
+                                "segment_id": segment_id,
+                                "segment_revision": segment_revision,
+                                "audio_start_sample": audio_start_sample,
+                                "audio_end_sample": audio_end_sample,
+                                "sample_rate": 16000,
+                                "final": False,
+                            },
+                        }
+                    )
                 except Exception:
                     pass
                 await self.feed_interim_transcript(
@@ -2932,14 +3195,20 @@ class AgentOrchestrator:
             existing_speaker == speaker_id
             and now - committed_at < _DEDUP_WINDOW_SECONDS
             and _texts_similar(text, existing_text)
-            for (existing_speaker, existing_text), committed_at in self._recent_insights.items()
+            for (
+                existing_speaker,
+                existing_text,
+            ), committed_at in self._recent_insights.items()
         )
 
-    def _remember_committed_insight(self, text: str, speaker_id: str | None = None) -> None:
+    def _remember_committed_insight(
+        self, text: str, speaker_id: str | None = None
+    ) -> None:
         """Remember only a successful commit, even if refresh or broadcast fails."""
         now = time.time()
         self._recent_insights = {
-            key: committed_at for key, committed_at in self._recent_insights.items()
+            key: committed_at
+            for key, committed_at in self._recent_insights.items()
             if now - committed_at < _DEDUP_WINDOW_SECONDS
         }
         self._recent_insights[(speaker_id, text)] = now
@@ -2999,31 +3268,39 @@ class AgentOrchestrator:
             await db.refresh(question)
 
             if question.item_type == "question":
-                self._remember_active_question(str(question.id), question.question, question.item_type)
+                self._remember_active_question(
+                    str(question.id), question.question, question.item_type
+                )
             else:
                 self._remember_board_stub(question.item_type, question.question)
 
             try:
-                await self.websocket.send_json({
-                    "type": "question",
-                    "data": {
-                        "id": str(question.id),
-                        "item_type": question.item_type,
-                        "lens_label": question.lens_label,
-                        "question": question.question,
-                        "rationale": question.rationale,
-                        "source_context": question.source_context,
-                        "speaker_id": speaker_id,
-                        "directive_id": str(question.directive_id) if question.directive_id else None,
-                        "is_followup": False,
-                        "timestamp": question.created_at.isoformat(),
-                        "agent_source": effective_source,
-                        "offering_match": "",
-                        "enhanced": False,
-                    },
-                })
+                await self.websocket.send_json(
+                    {
+                        "type": "question",
+                        "data": {
+                            "id": str(question.id),
+                            "item_type": question.item_type,
+                            "lens_label": question.lens_label,
+                            "question": question.question,
+                            "rationale": question.rationale,
+                            "source_context": question.source_context,
+                            "speaker_id": speaker_id,
+                            "directive_id": str(question.directive_id)
+                            if question.directive_id
+                            else None,
+                            "is_followup": False,
+                            "timestamp": question.created_at.isoformat(),
+                            "agent_source": effective_source,
+                            "offering_match": "",
+                            "enhanced": False,
+                        },
+                    }
+                )
             except Exception as e:
-                logger.info(f"[{effective_source}] Insight saved but websocket broadcast failed: {e}")
+                logger.info(
+                    f"[{effective_source}] Insight saved but websocket broadcast failed: {e}"
+                )
 
             return True
 
@@ -3051,9 +3328,13 @@ class AgentOrchestrator:
             for row in rows:
                 try:
                     payload = {**row, "analysis_context": dict(context or {})}
-                    await self.websocket.send_json({"type": message_type, "data": payload})
+                    await self.websocket.send_json(
+                        {"type": message_type, "data": payload}
+                    )
                 except Exception as e:
-                    logger.info(f"[strategic_signals] signal insight broadcast failed: {e}")
+                    logger.info(
+                        f"[strategic_signals] signal insight broadcast failed: {e}"
+                    )
                     return len(created)
         return len(created)
 
@@ -3104,7 +3385,9 @@ class AgentOrchestrator:
 
     async def _consolidated_agent_loop(self):
         """Wake on first durable context, then retain the configured cadence."""
-        interval = self._get_interval("consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS)
+        interval = self._get_interval(
+            "consolidated_analyst", settings.TEXT_AGENT_INTERVAL_SECONDS
+        )
         # Run immediately when a session already has transcript context; the
         # interval is the delay between subsequent cycles, not startup latency.
 
@@ -3119,7 +3402,9 @@ class AgentOrchestrator:
                     aliases=self.speaker_aliases()
                 )
                 if transcript_window == "(No recent transcript)":
-                    logger.debug("[consolidated_analyst] No transcript yet, skipping cycle")
+                    logger.debug(
+                        "[consolidated_analyst] No transcript yet, skipping cycle"
+                    )
                     await self.activity.cycle_finished(
                         "consolidated_analyst",
                         {
@@ -3134,14 +3419,18 @@ class AgentOrchestrator:
                 # exactly this window, so re-reading it buys nothing. Mirrors the
                 # guard the objection handler has always had.
                 if transcript_window == last_window:
-                    logger.debug("[consolidated_analyst] Window unchanged, skipping cycle")
+                    logger.debug(
+                        "[consolidated_analyst] Window unchanged, skipping cycle"
+                    )
                     await self.activity.cycle_finished(
                         "consolidated_analyst",
                         {"kind": "skipped_unchanged", "items": 0},
                     )
                     await asyncio.sleep(interval)
                     continue
-                logger.info(f"[consolidated_analyst] Running cycle with {len(transcript_window)} chars of transcript")
+                logger.info(
+                    f"[consolidated_analyst] Running cycle with {len(transcript_window)} chars of transcript"
+                )
                 insights = await self.consolidated_agent.run_cycle(
                     transcript_window=transcript_window,
                     directives=self.directives,
@@ -3154,21 +3443,34 @@ class AgentOrchestrator:
                 saved_count = 0
                 for insight in insights:
                     agent_source = insight.get("agent_source", "consolidated_analyst")
-                    saved = await self._save_and_send_insight(insight, agent_source=agent_source)
+                    saved = await self._save_and_send_insight(
+                        insight, agent_source=agent_source
+                    )
                     if saved:
                         saved_count += 1
                         item_type = insight.get("item_type", "")
-                        self._event_bus.publish("new_insight", {
-                            "item_type": item_type,
-                            "agent_source": agent_source,
-                        })
-                        if item_type == "opportunity" and self._offering_matching_enabled:
-                            self._event_bus.publish("new_opportunity", {
+                        self._event_bus.publish(
+                            "new_insight",
+                            {
+                                "item_type": item_type,
                                 "agent_source": agent_source,
-                            })
+                            },
+                        )
+                        if (
+                            item_type == "opportunity"
+                            and self._offering_matching_enabled
+                        ):
+                            self._event_bus.publish(
+                                "new_opportunity",
+                                {
+                                    "agent_source": agent_source,
+                                },
+                            )
 
                 if insights:
-                    logger.info(f"[consolidated_analyst] produced {len(insights)} insights")
+                    logger.info(
+                        f"[consolidated_analyst] produced {len(insights)} insights"
+                    )
                 last_outcome = self.consolidated_agent.last_outcome or {}
                 if last_outcome.get("kind") == "error":
                     await self.activity.cycle_error(
@@ -3233,13 +3535,14 @@ class AgentOrchestrator:
             )
         )
         if (
-            (recommendation.claim_id and active_claim_id and recommendation.claim_id != active_claim_id)
-            or (
-                explicit_revision
-                and current_transcript_revision
-                and explicit_revision < current_transcript_revision
-                and not same_claim_visible_card
-            )
+            recommendation.claim_id
+            and active_claim_id
+            and recommendation.claim_id != active_claim_id
+        ) or (
+            explicit_revision
+            and current_transcript_revision
+            and explicit_revision < current_transcript_revision
+            and not same_claim_visible_card
         ):
             logger.debug(
                 "Discarded stale debate update claim=%s revision=%s current_claim=%s current_revision=%s",
@@ -3272,23 +3575,30 @@ class AgentOrchestrator:
             }
         )
         if not recommendation.atomic_claims:
-            recommendation = recommendation.model_copy(update={
-                "atomic_claims": build_atomic_claims(
-                    recommendation,
-                    parent_claim_id=recommendation.claim_id,
-                    speaker_id=str(getattr(self, "_active_speaker_id", "") or ""),
-                )
-            })
+            recommendation = recommendation.model_copy(
+                update={
+                    "atomic_claims": build_atomic_claims(
+                        recommendation,
+                        parent_claim_id=recommendation.claim_id,
+                        speaker_id=str(getattr(self, "_active_speaker_id", "") or ""),
+                    )
+                }
+            )
         if recommendation.sources:
             atomic_ids = [claim.id for claim in recommendation.atomic_claims]
             bound_sources = [
-                source.model_copy(update={
-                    "claim_id": source.claim_id or recommendation.claim_id,
-                    "claim_revision": source.claim_revision or recommendation.claim_revision,
-                    "transcript_revision": source.transcript_revision or recommendation.transcript_revision,
-                    "affected_claim_ids": source.affected_claim_ids or atomic_ids,
-                    "affected_claims": source.affected_claims or [claim.text for claim in recommendation.atomic_claims],
-                })
+                source.model_copy(
+                    update={
+                        "claim_id": source.claim_id or recommendation.claim_id,
+                        "claim_revision": source.claim_revision
+                        or recommendation.claim_revision,
+                        "transcript_revision": source.transcript_revision
+                        or recommendation.transcript_revision,
+                        "affected_claim_ids": source.affected_claim_ids or atomic_ids,
+                        "affected_claims": source.affected_claims
+                        or [claim.text for claim in recommendation.atomic_claims],
+                    }
+                )
                 for source in recommendation.sources
             ]
             if recommendation.pipeline_mode == "experimental_debateai":
@@ -3296,7 +3606,9 @@ class AgentOrchestrator:
                     bound_sources,
                     target_claim=recommendation.target_claim,
                 )
-            recommendation = recommendation.model_copy(update={"sources": bound_sources})
+            recommendation = recommendation.model_copy(
+                update={"sources": bound_sources}
+            )
         self.objection_agent.latest_recommendation = recommendation
         payload = recommendation.model_dump(mode="json")
         payload.update(
@@ -3350,7 +3662,9 @@ class AgentOrchestrator:
             "confidence": recommendation.confidence,
             "research_status": recommendation.research_status,
             "research_alert": recommendation.research_alert,
-            "sources": [source.model_dump(mode="json") for source in recommendation.sources],
+            "sources": [
+                source.model_dump(mode="json") for source in recommendation.sources
+            ],
             "analysis_status": recommendation.analysis_status,
             "analyst_provider": recommendation.analyst_provider,
             "analyst_model": recommendation.analyst_model,
@@ -3403,14 +3717,18 @@ class AgentOrchestrator:
                     experimental_payload.setdefault("recommendation", {})[
                         "external_lane_artifacts"
                     ] = list(getattr(self, "_experimental_lane_artifacts", []))
-                await self.websocket.send_json({
-                    "type": "experimental_debate_update",
-                    "data": experimental_payload,
-                })
+                await self.websocket.send_json(
+                    {
+                        "type": "experimental_debate_update",
+                        "data": experimental_payload,
+                    }
+                )
             except Exception as exc:
                 # A malformed optional event must never suppress the legacy
                 # debate_update that old clients already received.
-                logger.warning("Experimental debate event could not be emitted: %s", exc)
+                logger.warning(
+                    "Experimental debate event could not be emitted: %s", exc
+                )
         if getattr(self, "_argument_graph_enabled", False):
             task = asyncio.create_task(
                 self._persist_argument_recommendation(payload),
@@ -3438,29 +3756,29 @@ class AgentOrchestrator:
         sources = []
         for source in recommendation.sources:
             if source.url.rstrip("/") == source_url.rstrip("/"):
-                if (
-                    relation in {"supports", "contradicts"}
-                    and (
-                        source.retrieval_status != "read"
-                        or not source.passage.strip()
-                    )
+                if relation in {"supports", "contradicts"} and (
+                    source.retrieval_status != "read" or not source.passage.strip()
                 ):
                     return False
-                source = source.model_copy(update={
-                    "claim_relation": relation,
-                    "verification_status": relation,
-                    "affected_claim_ids": affected_claim_ids,
-                })
+                source = source.model_copy(
+                    update={
+                        "claim_relation": relation,
+                        "verification_status": relation,
+                        "affected_claim_ids": affected_claim_ids,
+                    }
+                )
                 changed = True
             sources.append(source)
         if not changed:
             return False
         await self._send_debate_update(
             recommendation.transcript_revision,
-            recommendation.model_copy(update={
-                "sources": sources,
-                "research_alert": "Quellenzuordnung wurde manuell korrigiert.",
-            }),
+            recommendation.model_copy(
+                update={
+                    "sources": sources,
+                    "research_alert": "Quellenzuordnung wurde manuell korrigiert.",
+                }
+            ),
             origin="research",
         )
         return True
@@ -3484,7 +3802,9 @@ class AgentOrchestrator:
             "average_latency_ms": round(sum(latencies) / count) if count else 0,
             "maximum_latency_ms": max(latencies, default=0),
             "average_answer_words": round(sum(answer_words) / count, 1) if count else 0,
-            "average_question_words": round(sum(question_words) / count, 1) if count else 0,
+            "average_question_words": round(sum(question_words) / count, 1)
+            if count
+            else 0,
             "samples": samples,
         }
 
@@ -3533,18 +3853,24 @@ class AgentOrchestrator:
         for option in recommendation.strategy_options:
             if str(option.get("id") or "") == option_id:
                 selected_item = option
-            options.append({**option, "selected": str(option.get("id") or "") == option_id})
+            options.append(
+                {**option, "selected": str(option.get("id") or "") == option_id}
+            )
         if selected_item is None or not str(selected_item.get("text") or "").strip():
             return False
         selected_kind = str(selected_item.get("kind") or "")
         selected_text = " ".join(str(selected_item.get("text") or "").split())
-        updated = recommendation.model_copy(update={
-            "strategy_options": options,
-            "selected_strategy_id": option_id,
-            "answer_now": selected_text,
-            "primary_move": "question" if selected_kind == "counter_question" else "answer",
-            "selection_reason": "Vom Nutzer als passendster Antwortzug ausgewählt.",
-        })
+        updated = recommendation.model_copy(
+            update={
+                "strategy_options": options,
+                "selected_strategy_id": option_id,
+                "answer_now": selected_text,
+                "primary_move": "question"
+                if selected_kind == "counter_question"
+                else "answer",
+                "selection_reason": "Vom Nutzer als passendster Antwortzug ausgewählt.",
+            }
+        )
         await self._send_debate_update(
             recommendation.transcript_revision or self._debate_revision,
             updated,
@@ -3626,8 +3952,7 @@ class AgentOrchestrator:
             return False
         claim_id = f"good:{example_id}"
         self._good_answer_examples = [
-            row for row in self._good_answer_examples
-            if row.get("claim_id") != claim_id
+            row for row in self._good_answer_examples if row.get("claim_id") != claim_id
         ]
         semantic_memory = getattr(self, "_semantic_argument_memory", None)
         if semantic_memory is not None:
@@ -3642,7 +3967,9 @@ class AgentOrchestrator:
     ) -> AnalysisJobContext:
         return AnalysisJobContext(
             session_id=str(self.session_id),
-            claim_id=str(getattr(self, "_active_claim_id", None) or f"claim-{revision}"),
+            claim_id=str(
+                getattr(self, "_active_claim_id", None) or f"claim-{revision}"
+            ),
             claim_revision=int(getattr(self, "_transcript_revision", revision)),
             directive_revision=int(getattr(self, "_directive_revision", 0)),
             config_generation=create_configuration_snapshot().generation,
@@ -3665,7 +3992,10 @@ class AgentOrchestrator:
             store = {}
             self._topic_knowledge = store
         previous = store.get(context.claim_id)
-        if previous and int(previous.get("claim_revision") or 0) > context.claim_revision:
+        if (
+            previous
+            and int(previous.get("claim_revision") or 0) > context.claim_revision
+        ):
             return
         findings: list[str] = []
         if analysis is not None:
@@ -3698,12 +4028,11 @@ class AgentOrchestrator:
             getattr(self, "_transcript_revision", context.claim_revision)
         )
         revision_is_current = context.claim_revision == current_revision
-        if allow_newer_revision_same_claim:
-            if active_claim_id:
-                revision_is_current = (
-                    context.claim_revision <= current_revision
-                    and context.claim_id == str(active_claim_id)
-                )
+        if allow_newer_revision_same_claim and active_claim_id:
+            revision_is_current = (
+                context.claim_revision <= current_revision
+                and context.claim_id == str(active_claim_id)
+            )
             # Before the first persisted claim exists, the exact transcript
             # revision is still authoritative. Requiring an active claim here
             # would discard the initial live partial and its saved objection.
@@ -3712,9 +4041,8 @@ class AgentOrchestrator:
             and context.session_id == str(self.session_id)
             and (not active_claim_id or context.claim_id == str(active_claim_id))
             and revision_is_current
-            and context.directive_revision == int(
-                getattr(self, "_directive_revision", 0)
-            )
+            and context.directive_revision
+            == int(getattr(self, "_directive_revision", 0))
             and context.config_generation == create_configuration_snapshot().generation
         )
 
@@ -3804,10 +4132,10 @@ class AgentOrchestrator:
         query = recommendation.research_query.strip()
         model_ids = self._external_analysis_models()
         manual = bool(getattr(self, "_force_deep_analysis_once", False))
-        is_new_topic = not bool(
-            getattr(self, "_active_semantic_related_claim_ids", [])
+        is_new_topic = not bool(getattr(self, "_active_semantic_related_claim_ids", []))
+        has_numeric_fact = bool(
+            re.search(r"\b\d+(?:[.,]\d+)?\b", recommendation.target_claim)
         )
-        has_numeric_fact = bool(re.search(r"\b\d+(?:[.,]\d+)?\b", recommendation.target_claim))
         if (
             not debate_settings.research_enabled
             or debate_settings.performance_profile == "economy"
@@ -3895,12 +4223,14 @@ class AgentOrchestrator:
             # of waiting forever for a task that must never be scheduled.
             recommendation = self.objection_agent.latest_recommendation
             if recommendation.target_claim.strip():
-                blocked = recommendation.model_copy(update={
-                    "research_status": "blocked_by_privacy",
-                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
-                    "analysis_status": "completed",
-                    "analysis_can_cancel": False,
-                })
+                blocked = recommendation.model_copy(
+                    update={
+                        "research_status": "blocked_by_privacy",
+                        "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                        "analysis_status": "completed",
+                        "analysis_can_cancel": False,
+                    }
+                )
                 await self._send_debate_update(
                     self._debate_revision,
                     blocked,
@@ -3966,8 +4296,7 @@ class AgentOrchestrator:
             if task.done():
                 continue
             cancelled_by_scheduler = bool(
-                scheduler is not None
-                and scheduler.cancel_generation(generation_id)
+                scheduler is not None and scheduler.cancel_generation(generation_id)
             )
             if not cancelled_by_scheduler:
                 task.cancel()
@@ -3975,15 +4304,17 @@ class AgentOrchestrator:
 
         recommendation = self.objection_agent.latest_recommendation
         if recommendation.analysis_status == "analyzing":
-            cancelled = recommendation.model_copy(update={
-                "analysis_status": "cancelled",
-                "analysis_can_cancel": False,
-                "research_status": (
-                    "cancelled"
-                    if recommendation.research_status == "searching"
-                    else recommendation.research_status
-                ),
-            })
+            cancelled = recommendation.model_copy(
+                update={
+                    "analysis_status": "cancelled",
+                    "analysis_can_cancel": False,
+                    "research_status": (
+                        "cancelled"
+                        if recommendation.research_status == "searching"
+                        else recommendation.research_status
+                    ),
+                }
+            )
             await self._send_debate_update(
                 self._debate_revision,
                 cancelled,
@@ -4012,8 +4343,11 @@ class AgentOrchestrator:
                 if getattr(self, "_experimental_mode", False)
                 else max_parallel_analyses()
             )
-            scheduler = external_analysis_scheduler(max(1, min(4, configured_parallelism)))
+            scheduler = external_analysis_scheduler(
+                max(1, min(4, configured_parallelism))
+            )
             self._external_analysis_scheduler = scheduler
+
         async def execute_with_snapshot():
             with use_configuration_snapshot(snapshot):
                 return await self._execute_debate_research(
@@ -4030,12 +4364,14 @@ class AgentOrchestrator:
             # research request method. Never enqueue a cloud provider in this
             # mode, and surface the reason to the client.
             if self._analysis_context_is_current(context):
-                blocked = recommendation.model_copy(update={
-                    "research_status": "blocked_by_privacy",
-                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
-                    "analysis_status": "completed",
-                    "analysis_can_cancel": False,
-                })
+                blocked = recommendation.model_copy(
+                    update={
+                        "research_status": "blocked_by_privacy",
+                        "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                        "analysis_status": "completed",
+                        "analysis_can_cancel": False,
+                    }
+                )
                 await self._send_debate_update(
                     revision,
                     blocked,
@@ -4054,14 +4390,17 @@ class AgentOrchestrator:
             return
         except ExternalAnalysisDeadline:
             if self._analysis_context_is_current(context):
-                unavailable = recommendation.model_copy(update={
-                    "analysis_status": "unavailable",
-                    "analysis_can_cancel": False,
-                    "research_status": (
-                        "unavailable" if recommendation.needs_research
-                        else recommendation.research_status
-                    ),
-                })
+                unavailable = recommendation.model_copy(
+                    update={
+                        "analysis_status": "unavailable",
+                        "analysis_can_cancel": False,
+                        "research_status": (
+                            "unavailable"
+                            if recommendation.needs_research
+                            else recommendation.research_status
+                        ),
+                    }
+                )
                 await self._send_debate_update(
                     revision,
                     unavailable,
@@ -4069,10 +4408,12 @@ class AgentOrchestrator:
                 )
         except ExternalAnalysisQueueFull:
             if priority is ExternalAnalysisPriority.MANUAL:
-                unavailable = recommendation.model_copy(update={
-                    "analysis_status": "unavailable",
-                    "analysis_can_cancel": False,
-                })
+                unavailable = recommendation.model_copy(
+                    update={
+                        "analysis_status": "unavailable",
+                        "analysis_can_cancel": False,
+                    }
+                )
                 await self._send_debate_update(revision, unavailable, origin="research")
 
     def _experimental_lane_effort(
@@ -4085,10 +4426,7 @@ class AgentOrchestrator:
     ) -> str:
         """Choose and capability-clamp one effort from the shared controller."""
         controller = getattr(self, "_adaptive_external_reasoning", None)
-        if (
-            not getattr(self, "_adaptive_reasoning_enabled", True)
-            or controller is None
-        ):
+        if not getattr(self, "_adaptive_reasoning_enabled", True) or controller is None:
             requested = base_effort
         else:
             requested = controller.effort_for_next(
@@ -4127,12 +4465,24 @@ class AgentOrchestrator:
         merges the findings into one recommendation.
         """
         lane_specs = (
-            ("research", "Finde Originalquellen und ordne jede Quelle dem Claim zu.",
-             "experimental_research_v1", "high"),
-            ("adversarial", "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe.",
-             "experimental_adversarial_v1", "high"),
-            ("rhetoric", "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
-             "experimental_strategist_v1", "medium"),
+            (
+                "research",
+                "Finde Originalquellen und ordne jede Quelle dem Claim zu.",
+                "experimental_research_v1",
+                "high",
+            ),
+            (
+                "adversarial",
+                "Suche Gegenbeispiele, Widersprüche und doppelte Maßstäbe.",
+                "experimental_adversarial_v1",
+                "high",
+            ),
+            (
+                "rhetoric",
+                "Formuliere die schlagfertigste, natürlich sprechbare Fassung mit Beispiel.",
+                "experimental_strategist_v1",
+                "medium",
+            ),
         )
         try:
             complete_transcript = await self._get_complete_transcript()
@@ -4166,9 +4516,7 @@ class AgentOrchestrator:
             )
             route = provider_route(model_id)
             provider = str(
-                route.get("provider")
-                or route.get("kind")
-                or model_id.split(":", 1)[0]
+                route.get("provider") or route.get("kind") or model_id.split(":", 1)[0]
             )
             standpoint_snapshot = str(self.meeting_context or "")[:1200]
             recent_transcript_window = recent_transcript
@@ -4242,10 +4590,7 @@ class AgentOrchestrator:
                     "error": str(exc)[:240],
                 }
 
-        tasks = [
-            asyncio.create_task(run_lane(*spec))
-            for spec in lane_specs
-        ]
+        tasks = [asyncio.create_task(run_lane(*spec)) for spec in lane_specs]
         artifacts: list[dict] = []
         analyses: list[DeepDebateAnalysis] = []
         prompts: list[str] = []
@@ -4282,24 +4627,30 @@ class AgentOrchestrator:
                     ]
 
                     def add_lane_insights(kind: str, values: object) -> None:
-                        for index, value in enumerate(values if isinstance(values, list) else []):
+                        for index, value in enumerate(
+                            values if isinstance(values, list) else []
+                        ):
                             text = " ".join(str(value or "").split()).strip()
                             if not text:
                                 continue
-                            external_insights.append({
-                                "insight_id": (
-                                    f"{artifact['lane_id']}:{kind}:{index}"
-                                ),
-                                "lane_id": artifact["lane_id"],
-                                "kind": kind,
-                                "text": text[:1200],
-                                "source_ids": source_ids,
-                                "confidence": "low",
-                                "claim_id": artifact["claim_id"],
-                                "claim_revision": artifact["claim_revision"],
-                                "transcript_revision": artifact["transcript_revision"],
-                                "generation_id": artifact["generation_id"],
-                            })
+                            external_insights.append(
+                                {
+                                    "insight_id": (
+                                        f"{artifact['lane_id']}:{kind}:{index}"
+                                    ),
+                                    "lane_id": artifact["lane_id"],
+                                    "kind": kind,
+                                    "text": text[:1200],
+                                    "source_ids": source_ids,
+                                    "confidence": "low",
+                                    "claim_id": artifact["claim_id"],
+                                    "claim_revision": artifact["claim_revision"],
+                                    "transcript_revision": artifact[
+                                        "transcript_revision"
+                                    ],
+                                    "generation_id": artifact["generation_id"],
+                                }
+                            )
 
                     add_lane_insights(
                         "counterexample",
@@ -4346,9 +4697,8 @@ class AgentOrchestrator:
                 # is attached so the UI can show arriving rebuttal/example blobs
                 # before all lanes and the final consolidation finish.
                 self._experimental_lane_artifacts = list(artifacts)
-                if (
-                    getattr(self, "_experimental_mode", False)
-                    and getattr(self, "_argument_graph_enabled", False)
+                if getattr(self, "_experimental_mode", False) and getattr(
+                    self, "_argument_graph_enabled", False
                 ):
                     lane_payload = recommendation.model_dump(mode="json")
                     lane_payload["external_lane_artifacts"] = list(artifacts)
@@ -4356,27 +4706,31 @@ class AgentOrchestrator:
                 try:
                     await self._send_debate_update(
                         recommendation.transcript_revision,
-                        recommendation.model_copy(update={
-                            "analysis_status": "analyzing",
-                            "research_status": "searching",
-                        }),
+                        recommendation.model_copy(
+                            update={
+                                "analysis_status": "analyzing",
+                                "research_status": "searching",
+                            }
+                        ),
                         origin="research",
                     )
                 except Exception:
                     # A partial lane must never block the remaining lanes.
                     pass
                 try:
-                    await self.websocket.send_json({
-                        "type": "experimental_lane_update",
-                        "data": {
-                            "session_id": str(self.session_id),
-                            "claim_id": recommendation.claim_id,
-                            "claim_revision": recommendation.claim_revision,
-                            "transcript_revision": recommendation.transcript_revision,
-                            "generation_id": recommendation.generation_id,
-                            **artifact_summary,
-                        },
-                    })
+                    await self.websocket.send_json(
+                        {
+                            "type": "experimental_lane_update",
+                            "data": {
+                                "session_id": str(self.session_id),
+                                "claim_id": recommendation.claim_id,
+                                "claim_revision": recommendation.claim_revision,
+                                "transcript_revision": recommendation.transcript_revision,
+                                "generation_id": recommendation.generation_id,
+                                **artifact_summary,
+                            },
+                        }
+                    )
                 except Exception:
                     pass
                 if artifact["analysis"] is not None:
@@ -4403,30 +4757,35 @@ class AgentOrchestrator:
                     break
             return result
 
-        merged = analyses[0].model_copy(update={
-            "counterarguments": unique(
-                [value for item in analyses for value in item.counterarguments], 3
+        merged = analyses[0].model_copy(
+            update={
+                "counterarguments": unique(
+                    [value for item in analyses for value in item.counterarguments], 3
+                ),
+                "followups": unique(
+                    [value for item in analyses for value in item.followups], 2
+                ),
+                "evidence": unique(
+                    [value for item in analyses for value in item.evidence], 4
+                ),
+                "rebuttal": next(
+                    (item.rebuttal for item in analyses if item.rebuttal),
+                    analyses[0].rebuttal,
+                ),
+                "interpretation": next(
+                    (item.interpretation for item in analyses if item.interpretation),
+                    analyses[0].interpretation,
+                ),
+            }
+        )
+        return (
+            merged,
+            json.dumps(
+                {"lanes": artifacts, "prompts": prompts},
+                ensure_ascii=False,
             ),
-            "followups": unique(
-                [value for item in analyses for value in item.followups], 2
-            ),
-            "evidence": unique(
-                [value for item in analyses for value in item.evidence], 4
-            ),
-            "rebuttal": next(
-                (item.rebuttal for item in analyses if item.rebuttal),
-                analyses[0].rebuttal,
-            ),
-            "interpretation": next(
-                (item.interpretation for item in analyses if item.interpretation),
-                analyses[0].interpretation,
-            ),
-        })
-        return merged, json.dumps(
-            {"lanes": artifacts, "prompts": prompts},
-            ensure_ascii=False,
-        ), model_id
-
+            model_id,
+        )
 
     async def _execute_debate_research(
         self,
@@ -4455,9 +4814,7 @@ class AgentOrchestrator:
         if not hasattr(self, "_external_analysis_waiters"):
             self._external_analysis_waiters = 0
         if not hasattr(self, "_external_analysis_lock"):
-            self._external_analysis_lock = asyncio.Semaphore(
-                max_parallel_analyses()
-            )
+            self._external_analysis_lock = asyncio.Semaphore(max_parallel_analyses())
         if not hasattr(self, "_external_model_unavailable_until"):
             self._external_model_unavailable_until = {}
         if not hasattr(self, "_adaptive_external_reasoning"):
@@ -4494,7 +4851,13 @@ class AgentOrchestrator:
                     data_category="research_claim",
                     approval=(
                         manual
-                        or bool(getattr(getattr(self, "debate_settings", None), "research_enabled", False))
+                        or bool(
+                            getattr(
+                                getattr(self, "debate_settings", None),
+                                "research_enabled",
+                                False,
+                            )
+                        )
                     ),
                 ):
                     result = await research_claim(
@@ -4511,13 +4874,14 @@ class AgentOrchestrator:
             )
             if result.status == "completed":
                 sources = [
-                    DebateSource(**source.model_dump())
-                    for source in result.sources
+                    DebateSource(**source.model_dump()) for source in result.sources
                 ]
 
         # A slow answer from an older utterance may still be useful in the cache,
         # but it must never overwrite what the user is currently seeing.
-        if revision != self._debate_revision or not self._analysis_context_is_current(context):
+        if revision != self._debate_revision or not self._analysis_context_is_current(
+            context
+        ):
             self._remember_topic_knowledge(context, recommendation, sources)
             return
         analysis = None
@@ -4529,9 +4893,8 @@ class AgentOrchestrator:
             if reuse_topic_analysis
             else ""
         )
-        is_new_topic = (
-            not reuse_topic_analysis
-            or not bool(getattr(self, "_active_semantic_related_claim_ids", []))
+        is_new_topic = not reuse_topic_analysis or not bool(
+            getattr(self, "_active_semantic_related_claim_ids", [])
         )
         needs_deep_reanalysis = manual
         self._external_analysis_waiters += 1
@@ -4540,7 +4903,9 @@ class AgentOrchestrator:
                 if not self._analysis_context_is_current(context):
                     return
                 queue_depth = max(0, self._external_analysis_waiters - 1)
-                for model_id in (() if getattr(self, "_experimental_mode", False) else model_ids):
+                for model_id in (
+                    () if getattr(self, "_experimental_mode", False) else model_ids
+                ):
                     if not self._analysis_context_is_current(context):
                         return
                     adaptive = (
@@ -4574,8 +4939,10 @@ class AgentOrchestrator:
                                 sources=sources,
                                 reasoning_effort_override=effort,
                                 analysis_phase=(
-                                    "new_topic" if is_new_topic
-                                    else "deep_reanalysis" if needs_deep_reanalysis
+                                    "new_topic"
+                                    if is_new_topic
+                                    else "deep_reanalysis"
+                                    if needs_deep_reanalysis
                                     else "follow_up"
                                 ),
                             ),
@@ -4631,15 +4998,19 @@ class AgentOrchestrator:
             )
 
         if getattr(self, "_experimental_mode", False):
-            lane_model = (model_ids or self._external_analysis_models() or ["chatgpt-web:gpt-6"])[0]
+            lane_model = (
+                model_ids or self._external_analysis_models() or ["chatgpt-web:gpt-6"]
+            )[0]
             analysis, prompt, used_model = await self._run_experimental_external_lanes(
                 recommendation,
                 model_id=lane_model,
                 relevant_context=relevant_context,
                 sources=sources,
                 analysis_phase=(
-                    "new_topic" if is_new_topic
-                    else "deep_reanalysis" if needs_deep_reanalysis
+                    "new_topic"
+                    if is_new_topic
+                    else "deep_reanalysis"
+                    if needs_deep_reanalysis
                     else "follow_up"
                 ),
             )
@@ -4650,7 +5021,9 @@ class AgentOrchestrator:
             sources,
             analysis=analysis,
         )
-        if revision != self._debate_revision or not self._analysis_context_is_current(context):
+        if revision != self._debate_revision or not self._analysis_context_is_current(
+            context
+        ):
             if (
                 getattr(self, "_experimental_mode", False)
                 and getattr(self, "_argument_graph_enabled", False)
@@ -4663,37 +5036,50 @@ class AgentOrchestrator:
                 await self._persist_argument_recommendation(stale_payload)
             return
         if analysis is None:
-            unavailable = recommendation.model_copy(update={
-                "analysis_status": "unavailable",
-                "analysis_can_cancel": False,
-                "research_status": (
-                    "unavailable" if recommendation.needs_research
-                    else recommendation.research_status
-                ),
-            })
+            unavailable = recommendation.model_copy(
+                update={
+                    "analysis_status": "unavailable",
+                    "analysis_can_cancel": False,
+                    "research_status": (
+                        "unavailable"
+                        if recommendation.needs_research
+                        else recommendation.research_status
+                    ),
+                }
+            )
             await self._send_debate_update(revision, unavailable, origin="research")
             return
 
         if getattr(self, "_experimental_mode", False):
             # External lanes contribute evidence and adversarial material, while
             # the local live line remains the selected answer.
-            candidate = recommendation.model_copy(update={
-                "pipeline_mode": "experimental_debateai",
-                "counterargument": analysis.counterarguments[0] if analysis.counterarguments else recommendation.counterargument,
-                "analogy": analysis.interpretation or recommendation.analogy,
-                "counter_question": analysis.followups[0] if analysis.followups else recommendation.counter_question,
-                "research_alert": analysis.rebuttal or recommendation.research_alert,
-                "analysis_status": "completed",
-                "analyst_model": used_model,
-                "analyst_prompt": prompt,
-                "sources": [
-                    *recommendation.sources,
-                    *[
-                        source for source in sources
-                        if source.url and source.url not in {existing.url for existing in recommendation.sources}
+            candidate = recommendation.model_copy(
+                update={
+                    "pipeline_mode": "experimental_debateai",
+                    "counterargument": analysis.counterarguments[0]
+                    if analysis.counterarguments
+                    else recommendation.counterargument,
+                    "analogy": analysis.interpretation or recommendation.analogy,
+                    "counter_question": analysis.followups[0]
+                    if analysis.followups
+                    else recommendation.counter_question,
+                    "research_alert": analysis.rebuttal
+                    or recommendation.research_alert,
+                    "analysis_status": "completed",
+                    "analyst_model": used_model,
+                    "analyst_prompt": prompt,
+                    "sources": [
+                        *recommendation.sources,
+                        *[
+                            source
+                            for source in sources
+                            if source.url
+                            and source.url
+                            not in {existing.url for existing in recommendation.sources}
+                        ],
                     ],
-                ],
-            })
+                }
+            )
             candidate = self._experimentalize_recommendation(candidate)
         else:
             candidate = self._merge_deep_analysis(
@@ -4705,17 +5091,21 @@ class AgentOrchestrator:
             )
         if recommendation.needs_research and not sources:
             candidate = candidate.model_copy(update={"research_status": "unavailable"})
-        candidate = candidate.model_copy(update={
-            "analysis_can_cancel": False,
-            "generation_id": context.generation_id,
-        })
+        candidate = candidate.model_copy(
+            update={
+                "analysis_can_cancel": False,
+                "generation_id": context.generation_id,
+            }
+        )
         if not _materially_better_recommendation(recommendation, candidate):
             # Keep Qwen's speaking line, but retain the hosted analyst's extra
             # counters, interpretation and follow-ups in the same claim branch.
-            candidate = candidate.model_copy(update={
-                "answer_now": recommendation.answer_now,
-                "counterargument": recommendation.counterargument,
-            })
+            candidate = candidate.model_copy(
+                update={
+                    "answer_now": recommendation.answer_now,
+                    "counterargument": recommendation.counterargument,
+                }
+            )
         if self._analysis_context_is_current(context):
             await self._send_debate_update(revision, candidate, origin="research")
 
@@ -4734,20 +5124,24 @@ class AgentOrchestrator:
         generation_context = self._new_analysis_context(revision)
 
         def stamp_context(value: DebateRecommendation) -> DebateRecommendation:
-            value = value.model_copy(update={
-                "session_id": value.session_id or str(self.session_id),
-                "claim_id": value.claim_id or generation_context.claim_id,
-                "transcript_revision": transcript_revision,
-                "claim_revision": generation_context.claim_revision,
-                "directive_revision": generation_context.directive_revision,
-                "config_generation": generation_context.config_generation,
-                "generation_id": generation_context.generation_id,
-            })
+            value = value.model_copy(
+                update={
+                    "session_id": value.session_id or str(self.session_id),
+                    "claim_id": value.claim_id or generation_context.claim_id,
+                    "transcript_revision": transcript_revision,
+                    "claim_revision": generation_context.claim_revision,
+                    "directive_revision": generation_context.directive_revision,
+                    "config_generation": generation_context.config_generation,
+                    "generation_id": generation_context.generation_id,
+                }
+            )
             if getattr(self, "_experimental_mode", False):
                 return self._experimentalize_recommendation(value)
-            return value.model_copy(update={
-                "strategy_options": normalize_standard_strategies(value),
-            })
+            return value.model_copy(
+                update={
+                    "strategy_options": normalize_standard_strategies(value),
+                }
+            )
 
         def snapshot_is_current() -> bool:
             return bool(
@@ -4758,8 +5152,7 @@ class AgentOrchestrator:
                 )
                 and revision == self._debate_revision
                 and (
-                    not claim_id
-                    or claim_id == getattr(self, "_active_claim_id", None)
+                    not claim_id or claim_id == getattr(self, "_active_claim_id", None)
                 )
             )
 
@@ -4781,8 +5174,7 @@ class AgentOrchestrator:
             if interim_hypotheses:
                 live_partial = next(reversed(interim_hypotheses.values()))[-1200:]
                 partial_block = (
-                    "[LIVE-TEILTRANSKRIPT - kann unvollstaendig sein]: "
-                    f"{live_partial}"
+                    f"[LIVE-TEILTRANSKRIPT - kann unvollstaendig sein]: {live_partial}"
                 )
                 transcript_window = (
                     partial_block
@@ -4823,7 +5215,8 @@ class AgentOrchestrator:
 
             current_line = next(
                 (
-                    line for line in reversed(transcript_window.splitlines())
+                    line
+                    for line in reversed(transcript_window.splitlines())
                     if line.strip()
                 ),
                 transcript_window,
@@ -4853,44 +5246,47 @@ class AgentOrchestrator:
             )
             recommendation = model_recommendation
             if self.local_only and recommendation.needs_research:
-                recommendation = recommendation.model_copy(update={
-                    "research_status": "blocked_by_privacy",
-                    "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
-                    "analysis_status": "completed",
-                    "analysis_can_cancel": False,
-                })
-            if _has_speakable_guidance(
-                recommendation, debate_settings.always_analogy
-            ):
+                recommendation = recommendation.model_copy(
+                    update={
+                        "research_status": "blocked_by_privacy",
+                        "research_alert": "Recherche ist im Privacy-First-Modus deaktiviert.",
+                        "analysis_status": "completed",
+                        "analysis_can_cancel": False,
+                    }
+                )
+            if _has_speakable_guidance(recommendation, debate_settings.always_analogy):
                 research_task = self._maybe_schedule_research(revision, recommendation)
                 if research_task is not None:
-                    recommendation = recommendation.model_copy(update={
-                        "analysis_status": "analyzing",
-                        "analysis_can_cancel": bool(
-                            getattr(research_task, "manual_analysis", False)
-                        ),
-                        "generation_id": str(
-                            getattr(research_task, "analysis_generation_id", "")
-                        ),
-                        "research_status": (
-                            "searching"
-                            if recommendation.needs_research
-                            else recommendation.research_status
-                        ),
-                    })
+                    recommendation = recommendation.model_copy(
+                        update={
+                            "analysis_status": "analyzing",
+                            "analysis_can_cancel": bool(
+                                getattr(research_task, "manual_analysis", False)
+                            ),
+                            "generation_id": str(
+                                getattr(research_task, "analysis_generation_id", "")
+                            ),
+                            "research_status": (
+                                "searching"
+                                if recommendation.needs_research
+                                else recommendation.research_status
+                            ),
+                        }
+                    )
 
                 # A complete, valid model answer always replaces its own streamed
                 # partial. It is not scored against a canned fallback card.
-                if (
-                    _contains_unsupported_numeric_assertion(recommendation)
-                    or _contains_unsupported_evidence_claim(recommendation)
-                ):
-                    recommendation = recommendation.model_copy(update={
-                        "confidence": "low",
-                        "needs_research": True,
-                        "research_query": recommendation.research_query
-                        or recommendation.target_claim,
-                    })
+                if _contains_unsupported_numeric_assertion(
+                    recommendation
+                ) or _contains_unsupported_evidence_claim(recommendation):
+                    recommendation = recommendation.model_copy(
+                        update={
+                            "confidence": "low",
+                            "needs_research": True,
+                            "research_query": recommendation.research_query
+                            or recommendation.target_claim,
+                        }
+                    )
                 latency_ms = (
                     max(
                         0,
@@ -4965,7 +5361,9 @@ class AgentOrchestrator:
             last_transcript_at=self._last_transcript_activity_at,
         )
 
-    async def _refine_recent_transcript(self, *, limit: int | None, source_label: str) -> int:
+    async def _refine_recent_transcript(
+        self, *, limit: int | None, source_label: str
+    ) -> int:
         """Refine pending entries and push each rewrite to the interface."""
         from app.database import async_session
 
@@ -4976,11 +5374,15 @@ class AgentOrchestrator:
             await db.commit()
         for payload in payloads:
             try:
-                await self.websocket.send_json({"type": "transcript_updated", "data": payload})
-            except Exception:  # noqa: BLE001 - a closed socket must not stop the pass
+                await self.websocket.send_json(
+                    {"type": "transcript_updated", "data": payload}
+                )
+            except Exception:
                 break
         if payloads:
-            logger.info("[%s] refined %d transcript entries", source_label, len(payloads))
+            logger.info(
+                "[%s] refined %d transcript entries", source_label, len(payloads)
+            )
         return len(payloads)
 
     async def _transcript_refiner_loop(self):
@@ -5004,14 +5406,18 @@ class AgentOrchestrator:
                     TRANSCRIPT_REFINER_SLUG,
                     {
                         "kind": "insights" if count else "no_findings",
-                        "detail": f"{count} transcript lines refined." if count else "Nothing new to refine.",
+                        "detail": f"{count} transcript lines refined."
+                        if count
+                        else "Nothing new to refine.",
                         "items": count,
                     },
                 )
             except asyncio.CancelledError:
                 if self._stopped:
                     break
-                logger.debug("Transcript refiner pass cancelled because live speech resumed")
+                logger.debug(
+                    "Transcript refiner pass cancelled because live speech resumed"
+                )
             except Exception as e:
                 logger.error(f"Transcript refiner loop error: {e}")
                 await self.activity.cycle_error(
@@ -5021,6 +5427,7 @@ class AgentOrchestrator:
             finally:
                 self._refiner_job = None
             await asyncio.sleep(interval)
+
     async def _run_transcript_refinement_stage(
         self,
         stages: list[str],
@@ -5041,15 +5448,23 @@ class AgentOrchestrator:
         )
         await self.activity.cycle_started(TRANSCRIPT_REFINER_SLUG)
         try:
-            count = await self._refine_recent_transcript(limit=None, source_label="transcript_refinement")
+            count = await self._refine_recent_transcript(
+                limit=None, source_label="transcript_refinement"
+            )
             result["transcript_refined"] = count
             await self.activity.cycle_finished(
                 TRANSCRIPT_REFINER_SLUG,
-                {"kind": "insights" if count else "no_findings", "detail": f"{count} lines refined at call end.", "items": count},
+                {
+                    "kind": "insights" if count else "no_findings",
+                    "detail": f"{count} lines refined at call end.",
+                    "items": count,
+                },
             )
-        except Exception as e:  # noqa: BLE001 - the drain degrades past a failed stage
+        except Exception as e:
             logger.error(f"Transcript refinement stage failed: {e}")
-            result["stage_errors"].append({"stage": "transcript_refinement", "error": str(e)})
+            result["stage_errors"].append(
+                {"stage": "transcript_refinement", "error": str(e)}
+            )
             await self.activity.cycle_error(
                 TRANSCRIPT_REFINER_SLUG,
                 classify_error(e, self._get_model(TRANSCRIPT_REFINER_SLUG)),
@@ -5068,7 +5483,9 @@ class AgentOrchestrator:
             doc_summaries=self.doc_summaries,
             speakers=self.speakers,
             active_questions=self.active_questions,
-            is_current=lambda: cycle_revision == getattr(self, "_transcript_revision", 0),
+            is_current=lambda: (
+                cycle_revision == getattr(self, "_transcript_revision", 0)
+            ),
         )
         synthesis, signal_rows = cycle if cycle else (None, None)
         if cycle_revision != getattr(self, "_transcript_revision", 0):
@@ -5157,10 +5574,12 @@ class AgentOrchestrator:
         try:
             payload = _synthesis_payload(synthesis)
             payload["analysis_context"] = dict(context or {})
-            await self.websocket.send_json({
-                "type": "synthesis_updated",
-                "data": payload,
-            })
+            await self.websocket.send_json(
+                {
+                    "type": "synthesis_updated",
+                    "data": payload,
+                }
+            )
         except Exception:
             pass
 
@@ -5208,11 +5627,15 @@ class AgentOrchestrator:
         """Called by CooldownSubscriber when new_opportunity events arrive."""
         await self.activity.cycle_started("opportunity_specialist")
         try:
-            logger.info(f"Running opportunity specialist (triggered by {len(events)} events)")
+            logger.info(
+                f"Running opportunity specialist (triggered by {len(events)} events)"
+            )
             applied_ops = await run_opportunity_specialist_cycle(
                 self.session_id,
                 model_override=self._get_model("opportunity_specialist"),
-                knowledge_source_ids=self._get_knowledge_source_ids("opportunity_specialist"),
+                knowledge_source_ids=self._get_knowledge_source_ids(
+                    "opportunity_specialist"
+                ),
                 prompt_override=self._get_prompt("opportunity_specialist") or None,
             )
 
@@ -5244,10 +5667,12 @@ class AgentOrchestrator:
             ws_data = op_result.get("ws_data")
             if ws_type and ws_data:
                 try:
-                    await self.websocket.send_json({
-                        "type": ws_type,
-                        "data": ws_data,
-                    })
+                    await self.websocket.send_json(
+                        {
+                            "type": ws_type,
+                            "data": ws_data,
+                        }
+                    )
                 except Exception:
                     pass
 
@@ -5261,7 +5686,9 @@ class AgentOrchestrator:
             elif op_name == "create" and ws_data:
                 if (ws_data.get("item_type") or "question") == "question":
                     self._remember_active_question(
-                        ws_data["id"], ws_data["question"], ws_data.get("item_type") or "question"
+                        ws_data["id"],
+                        ws_data["question"],
+                        ws_data.get("item_type") or "question",
                     )
 
     # ── Reconnection ─────────────────────────────────────────────────────

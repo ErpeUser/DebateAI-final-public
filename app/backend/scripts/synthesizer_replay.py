@@ -64,7 +64,9 @@ SYNTH_PATH = "app/backend/app/services/agents/synthesizer.py"
 def repo_root() -> str:
     return subprocess.run(
         ["git", "rev-parse", "--show-toplevel"],
-        capture_output=True, text=True, check=True,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout.strip()
 
 
@@ -95,14 +97,17 @@ def common_prefix_len(a: str, b: str) -> int:
 
 
 def parse_ts(value):
-    return datetime.fromisoformat(value.replace("Z", "+00:00")) if value else None
+    return datetime.fromisoformat(value) if value else None
 
 
 def load_baseline(root: str, ref: str):
     """Import the serializer as it exists at `ref` without touching the worktree."""
     source = subprocess.run(
         ["git", "show", f"{ref}:{SYNTH_PATH}"],
-        cwd=root, capture_output=True, text=True, check=True,
+        cwd=root,
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     fd, path = tempfile.mkstemp(suffix=".py", prefix="synth_baseline_")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
@@ -128,19 +133,26 @@ def load_corpus(path: str):
         ns.updated_at = parse_ts(r.get("updated_at"))
         # The baseline serializer walks the speaker relationship; omitting the real
         # Speaker row would under-measure the baseline payload.
-        ns.speaker = speakers.get(str(r.get("speaker_id"))) if r.get("speaker_id") else None
+        ns.speaker = (
+            speakers.get(str(r.get("speaker_id"))) if r.get("speaker_id") else None
+        )
         questions.append(ns)
     questions.sort(key=lambda q: (q.created_at, str(q.id)))
 
-    entries = [(parse_ts(t.get("timestamp")), t.get("text") or "") for t in read("t.json")]
+    entries = [
+        (parse_ts(t.get("timestamp")), t.get("text") or "") for t in read("t.json")
+    ]
     entries = sorted([e for e in entries if e[0]], key=lambda e: e[0])
     return questions, entries
 
 
 def live_at(questions, t):
     # Mirrors the v0.5.0 query: non-dismissed, excluding asked items.
-    return [q for q in questions
-            if q.created_at <= t and not q.dismissed and q.item_type != "asked"]
+    return [
+        q
+        for q in questions
+        if q.created_at <= t and not q.dismissed and q.item_type != "asked"
+    ]
 
 
 def replay(questions, entries, start, end, baseline, candidate):
@@ -148,7 +160,9 @@ def replay(questions, entries, start, end, baseline, candidate):
     rows = []
     prev_base = prev_cand = None
     prev_stubs = set()
-    window_s = max(0, int(getattr(candidate.settings, "SYNTHESIZER_WORKING_SET_SECONDS", 600)))
+    window_s = max(
+        0, int(getattr(candidate.settings, "SYNTHESIZER_WORKING_SET_SECONDS", 600))
+    )
     t = start + timedelta(seconds=COOLDOWN_SECONDS)
 
     while t <= end:
@@ -161,23 +175,36 @@ def replay(questions, entries, start, end, baseline, candidate):
         base_json = baseline._build_insights_json(live)
         cand_json = candidate._build_insights_json(live, now=t)
 
-        stubs = {str(q.id) for q in live
-                 if not candidate._in_working_set(q, t - timedelta(seconds=window_s))}
+        stubs = {
+            str(q.id)
+            for q in live
+            if not candidate._in_working_set(q, t - timedelta(seconds=window_s))
+        }
 
-        rows.append({
-            "t": t,
-            "live": len(live),
-            "stubs": len(stubs),
-            "flipped": len(stubs - prev_stubs),
-            "base_in": tokens(base_json) + tokens(transcript) + PROMPT_TEMPLATE_TOKENS,
-            "cand_in": tokens(cand_json) + tokens(transcript) + PROMPT_TEMPLATE_TOKENS,
-            "base_blob": tokens(base_json),
-            "cand_blob": tokens(cand_json),
-            "base_prefix": common_prefix_len(prev_base, base_json) if prev_base else None,
-            "cand_prefix": common_prefix_len(prev_cand, cand_json) if prev_cand else None,
-            "base_len": len(base_json),
-            "cand_len": len(cand_json),
-        })
+        rows.append(
+            {
+                "t": t,
+                "live": len(live),
+                "stubs": len(stubs),
+                "flipped": len(stubs - prev_stubs),
+                "base_in": tokens(base_json)
+                + tokens(transcript)
+                + PROMPT_TEMPLATE_TOKENS,
+                "cand_in": tokens(cand_json)
+                + tokens(transcript)
+                + PROMPT_TEMPLATE_TOKENS,
+                "base_blob": tokens(base_json),
+                "cand_blob": tokens(cand_json),
+                "base_prefix": common_prefix_len(prev_base, base_json)
+                if prev_base
+                else None,
+                "cand_prefix": common_prefix_len(prev_cand, cand_json)
+                if prev_cand
+                else None,
+                "base_len": len(base_json),
+                "cand_len": len(cand_json),
+            }
+        )
         prev_base, prev_cand, prev_stubs = base_json, cand_json, stubs
         t += timedelta(seconds=COOLDOWN_SECONDS)
     return rows
@@ -197,8 +224,10 @@ def cmd_payload(rows, args):
     print(f"reduction           : {(base - cand) / base * 100:>11.1f}%")
     print()
     print("final cycle insight blob:")
-    print(f"  baseline {rows[-1]['base_blob']:>10,.0f} tokens"
-          f"   candidate {rows[-1]['cand_blob']:>10,.0f} tokens")
+    print(
+        f"  baseline {rows[-1]['base_blob']:>10,.0f} tokens"
+        f"   candidate {rows[-1]['cand_blob']:>10,.0f} tokens"
+    )
     print()
     print("The ratio is the trustworthy figure. The absolute over-predicts the")
     print("measured reference run, because real cycles sometimes spaced wider")
@@ -210,15 +239,19 @@ def cmd_prefix(rows, args):
     print("Cacheable prefix carried from the previous cycle.")
     print("Ordering is identical on both sides, so this isolates serialization.")
     print()
-    print(f"{'time':>9} {'live':>5} {'stubs':>6} {'flip':>5} |"
-          f" {'baseline':>18} | {'candidate':>18}")
+    print(
+        f"{'time':>9} {'live':>5} {'stubs':>6} {'flip':>5} |"
+        f" {'baseline':>18} | {'candidate':>18}"
+    )
     print("-" * 82)
     for r in pairs[::4]:
         bp = r["base_prefix"] / r["base_len"] * 100
         cp = r["cand_prefix"] / r["cand_len"] * 100
-        print(f"{r['t']:%H:%M:%S} {r['live']:>5} {r['stubs']:>6} {r['flipped']:>5} |"
-              f" {r['base_prefix']:>9,} ch {bp:>5.1f}% |"
-              f" {r['cand_prefix']:>9,} ch {cp:>5.1f}%")
+        print(
+            f"{r['t']:%H:%M:%S} {r['live']:>5} {r['stubs']:>6} {r['flipped']:>5} |"
+            f" {r['base_prefix']:>9,} ch {bp:>5.1f}% |"
+            f" {r['cand_prefix']:>9,} ch {cp:>5.1f}%"
+        )
     print("-" * 82)
     mb = sum(r["base_prefix"] / r["base_len"] for r in pairs) / len(pairs) * 100
     mc = sum(r["cand_prefix"] / r["cand_len"] for r in pairs) / len(pairs) * 100
@@ -232,8 +265,10 @@ def cmd_prefix(rows, args):
 
 
 def cmd_scale(rows_for, args):
-    print(f"{'call len':>9} {'cycles':>7} {'flips':>6} |"
-          f" {'prefix base':>12} {'prefix cand':>12} | {'raw win':>8} {'net win':>8}")
+    print(
+        f"{'call len':>9} {'cycles':>7} {'flips':>6} |"
+        f" {'prefix base':>12} {'prefix cand':>12} | {'raw win':>8} {'net win':>8}"
+    )
     print("-" * 78)
     for minutes in SCALE_CUTOFFS_MIN:
         rows = rows_for(timedelta(minutes=minutes))
@@ -248,11 +283,15 @@ def cmd_scale(rows_for, args):
         mc = sum(r["cand_prefix"] / r["cand_len"] for r in pairs) / len(pairs) * 100
         raw = (base_in - cand_in) / base_in * 100
         be, ce = effective(base_in, base_reuse), effective(cand_in, cand_reuse)
-        print(f"{minutes:>7} m {len(rows):>7} {sum(r['flipped'] for r in pairs):>6} |"
-              f" {mb:>11.1f}% {mc:>11.1f}% | {raw:>7.1f}% {(be - ce) / be * 100:>7.1f}%")
+        print(
+            f"{minutes:>7} m {len(rows):>7} {sum(r['flipped'] for r in pairs):>6} |"
+            f" {mb:>11.1f}% {mc:>11.1f}% | {raw:>7.1f}% {(be - ce) / be * 100:>7.1f}%"
+        )
     print("-" * 78)
     print("raw win = payload reduction with no caching, which is today's world")
-    print(f"net win = reduction once a prefix cache is priced at {CACHE_DISCOUNT:.0%} off")
+    print(
+        f"net win = reduction once a prefix cache is priced at {CACHE_DISCOUNT:.0%} off"
+    )
     print()
     print("A record cannot flip to stub before ageing past")
     print("SYNTHESIZER_WORKING_SET_SECONDS, so short calls show no conflict.")
@@ -262,8 +301,11 @@ def cmd_scale(rows_for, args):
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("mode", choices=["payload", "prefix", "scale"])
-    ap.add_argument("--baseline", default="origin/master",
-                    help="git ref to compare the working tree against")
+    ap.add_argument(
+        "--baseline",
+        default="origin/master",
+        help="git ref to compare the working tree against",
+    )
     args = ap.parse_args()
 
     root = repo_root()
@@ -271,15 +313,20 @@ def main():
     sys.path.insert(0, backend_root)
     questions, entries = load_corpus(data_dir())
     baseline = load_baseline(root, args.baseline)
-    from app.services.agents import synthesizer as candidate  # noqa: E402
+    from app.services.agents import synthesizer as candidate
 
     start = min(entries[0][0], questions[0].created_at)
     full_end = max(entries[-1][0], questions[-1].created_at)
-    print(f"baseline {args.baseline}   candidate working tree   "
-          f"corpus {len(questions)} insights / {len(entries)} entries\n")
+    print(
+        f"baseline {args.baseline}   candidate working tree   "
+        f"corpus {len(questions)} insights / {len(entries)} entries\n"
+    )
 
     if args.mode == "scale":
-        cmd_scale(lambda h: replay(questions, entries, start, start + h, baseline, candidate), args)
+        cmd_scale(
+            lambda h: replay(questions, entries, start, start + h, baseline, candidate),
+            args,
+        )
     else:
         rows = replay(questions, entries, start, full_end, baseline, candidate)
         (cmd_payload if args.mode == "payload" else cmd_prefix)(rows, args)

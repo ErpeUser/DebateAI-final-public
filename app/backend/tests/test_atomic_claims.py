@@ -1,6 +1,9 @@
 import unittest
 
-from app.services.agents.objection_handler import DebateRecommendation, build_atomic_claims
+from app.services.agents.objection_handler import (
+    DebateRecommendation,
+    build_atomic_claims,
+)
 
 
 class AtomicClaimCoverageTests(unittest.TestCase):
@@ -8,12 +11,23 @@ class AtomicClaimCoverageTests(unittest.TestCase):
         text = "Wenn der Preis 10 Euro ist, kaufen wir heute oder morgen."
         first = DebateRecommendation(
             target_claim=text,
-            argument_points=["Wenn der Preis 10 Euro ist", "kaufen wir heute oder morgen"],
+            argument_points=[
+                "Wenn der Preis 10 Euro ist",
+                "kaufen wir heute oder morgen",
+            ],
         )
-        second = first.model_copy(update={"argument_points": list(reversed(first.argument_points))})
+        second = first.model_copy(
+            update={"argument_points": list(reversed(first.argument_points))}
+        )
 
-        first_ids = {claim.text: claim.id for claim in build_atomic_claims(first, parent_claim_id="c1")}
-        second_ids = {claim.text: claim.id for claim in build_atomic_claims(second, parent_claim_id="c1")}
+        first_ids = {
+            claim.text: claim.id
+            for claim in build_atomic_claims(first, parent_claim_id="c1")
+        }
+        second_ids = {
+            claim.text: claim.id
+            for claim in build_atomic_claims(second, parent_claim_id="c1")
+        }
 
         self.assertEqual(first_ids, second_ids)
 
@@ -25,7 +39,9 @@ class AtomicClaimCoverageTests(unittest.TestCase):
         )
 
         claims = build_atomic_claims(recommendation, parent_claim_id="c2")
-        rendered = " ".join(claim.text for claim in sorted(claims, key=lambda item: item.start))
+        rendered = " ".join(
+            claim.text for claim in sorted(claims, key=lambda item: item.start)
+        )
 
         self.assertIn("10 Euro pro Monat", rendered)
         self.assertIn("nur wenn 100 Nutzer teilnehmen", rendered)

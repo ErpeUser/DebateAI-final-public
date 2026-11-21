@@ -51,6 +51,10 @@ $env:DEBATEAI_UPDATE_ASSET_URL = 'https://<operator-host>/api/update/assets/{ver
 
 The source build publishes into `DebateAI_Generated/build/releases/DebateAI/` and `DebateAI_Generated/build/releases/DebateAI-windows-x64.zip`. Its Python release virtualenv lives under `dependencies/python/release-venv`, npm and pip download caches under `cache/npm` and `cache/pip` **within Generated**. Package-local `node_modules`, frontend `dist` and downloaded build assets remain at their existing toolchain-compatible (Git-ignored) paths in `app/` until those tools support an independently verified relocation.
 
+The native archive smoke runner stores temporary extraction roots and isolated
+application data under `DebateAI_Generated/build/native-smoke/` and
+`DebateAI_Generated/build/native-smoke-data/`.
+
 `-Offline` forbids recovery if the installed release is missing. A partially configured channel (only one URL) always fails explicitly. Bad signatures, hashes or unsafe archives never trigger an unsigned installation fallback.
 
 ## Audit and CI

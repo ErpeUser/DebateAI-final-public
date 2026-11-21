@@ -4,7 +4,6 @@ import json
 import logging
 
 import numpy as np
-
 from app.services.audio_utils import pcm16_to_float32
 from app.services.batch_transcriber import _audio_has_speech_energy
 from app.services.secrets import get_secret, set_secret

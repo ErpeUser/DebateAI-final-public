@@ -6,21 +6,28 @@ interface Props {
 }
 
 export default function TranscriptionJobProgress({ job, onCancel }: Props) {
-  const action = job.kind === "audio_import"
-    ? `${job.filename || "Audio"} wird transkribiert`
-    : "Erneute Transkription";
+  const action =
+    job.kind === "audio_import"
+      ? `${job.filename || "Audio"} wird transkribiert`
+      : "Erneute Transkription";
   const recordingLabel = job.total_segments === 1 ? "Aufnahme" : "Aufnahmen";
   const entryLabel = job.entries === 1 ? "Eintrag" : "Einträge";
 
   return (
-    <div role="status" aria-live="polite" className="mt-3 border-t border-brand-light-gray-1 pt-3">
+    <div
+      role="status"
+      aria-live="polite"
+      className="mt-3 border-t border-brand-light-gray-1 pt-3"
+    >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="font-body text-sm font-medium text-brand-dark-gray">
-            {action} mit <span className="font-mono text-xs">{job.model_id}</span>
+            {action} mit{" "}
+            <span className="font-mono text-xs">{job.model_id}</span>
           </p>
           <p className="mt-1 font-body text-xs text-brand-mid-gray">
-            {job.segments_done} von {job.total_segments} {recordingLabel} · {job.entries} Transkript-{entryLabel}
+            {job.segments_done} von {job.total_segments} {recordingLabel} ·{" "}
+            {job.entries} Transkript-{entryLabel}
           </p>
         </div>
         <button

@@ -24,8 +24,8 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.services import model_downloads  # noqa: E402
-from app.services.pii import ner  # noqa: E402
+from app.services import model_downloads
+from app.services.pii import ner
 
 KEY = "test-model"
 
@@ -180,14 +180,18 @@ class NerLoaderTests(unittest.TestCase):
         self.addCleanup(ner.reset_for_tests)
 
     def test_find_entities_does_not_download(self):
-        with patch.object(ner, "is_installed", return_value=False), \
-                patch.object(ner, "ensure_downloaded") as fetch:
+        with (
+            patch.object(ner, "is_installed", return_value=False),
+            patch.object(ner, "ensure_downloaded") as fetch,
+        ):
             self.assertEqual([], ner.find_entities("Sarah Connor", {"PERSON"}))
         fetch.assert_not_called()
 
     def test_get_model_defaults_to_not_downloading(self):
-        with patch.object(ner, "is_installed", return_value=False), \
-                patch.object(ner, "ensure_downloaded") as fetch:
+        with (
+            patch.object(ner, "is_installed", return_value=False),
+            patch.object(ner, "ensure_downloaded") as fetch,
+        ):
             self.assertIsNone(ner.get_model())
         fetch.assert_not_called()
 
@@ -220,7 +224,9 @@ class NerLoaderTests(unittest.TestCase):
 
         worker = threading.Thread(target=ingest, daemon=True)
         worker.start()
-        self.assertTrue(returned.wait(5), "find_entities blocked on an in-flight download")
+        self.assertTrue(
+            returned.wait(5), "find_entities blocked on an in-flight download"
+        )
         release.set()
 
     def test_a_permanent_failure_is_not_retried_on_every_call(self):
@@ -242,7 +248,9 @@ class NerLoaderTests(unittest.TestCase):
         self.assertEqual(1, len(calls))
 
     def test_install_records_the_failure_in_the_registry(self):
-        with patch.object(ner, "ensure_downloaded", side_effect=RuntimeError("offline")):
+        with patch.object(
+            ner, "ensure_downloaded", side_effect=RuntimeError("offline")
+        ):
             self.assertIsNone(ner.install())
         job = model_downloads.get(ner.DOWNLOAD_KEY)
         self.assertEqual("error", job["state"])
@@ -266,13 +274,16 @@ class NerLoaderTests(unittest.TestCase):
             return str(target)
 
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "bert-base-NER"
-            with patch.object(ner, "model_dir", return_value=root), \
-                    patch.object(ner, "is_installed", return_value=False), \
-                    patch.object(ner, "_remote_total", return_value=1234), \
-                    patch.dict(sys.modules, {}, clear=False), \
-                    patch("huggingface_hub.hf_hub_download", fake_download):
+            with (
+                patch.object(ner, "model_dir", return_value=root),
+                patch.object(ner, "is_installed", return_value=False),
+                patch.object(ner, "_remote_total", return_value=1234),
+                patch.dict(sys.modules, {}, clear=False),
+                patch("huggingface_hub.hf_hub_download", fake_download),
+            ):
                 model_downloads.claim(ner.DOWNLOAD_KEY, ner.DOWNLOAD_LABEL)
                 ner.ensure_downloaded()
 
@@ -310,9 +321,17 @@ class NerLoaderTests(unittest.TestCase):
             return str(target)
 
         import tempfile
+
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "bert-base-NER"
-            with patch.object(ner, "model_dir", return_value=root),                     patch.object(ner, "_remote_total", return_value=len(files) * 7),                     patch.object(ner, "NerModel", lambda path: object()),                     patch("huggingface_hub.hf_hub_download", fake_download),                     patch.object(sys, "stderr", None), patch.object(sys, "stdout", None):
+            with (
+                patch.object(ner, "model_dir", return_value=root),
+                patch.object(ner, "_remote_total", return_value=len(files) * 7),
+                patch.object(ner, "NerModel", lambda path: object()),
+                patch("huggingface_hub.hf_hub_download", fake_download),
+                patch.object(sys, "stderr", None),
+                patch.object(sys, "stdout", None),
+            ):
                 model_downloads.claim(ner.DOWNLOAD_KEY, ner.DOWNLOAD_LABEL)
                 model = ner.get_model(download=True)
 

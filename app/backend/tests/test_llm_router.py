@@ -1,10 +1,9 @@
 import unittest
 from unittest import mock
 
-from pydantic import BaseModel
-
 from app.services import llm
 from app.services.llm_endpoint import OpenAIEndpoint
+from pydantic import BaseModel
 
 
 class _PriorityReply(BaseModel):
@@ -22,30 +21,48 @@ class LLMRouterTests(unittest.IsolatedAsyncioTestCase):
         self.addCleanup(local_only.stop)
 
     async def test_openai_model_dispatches_to_openai(self):
-        with mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")), \
-             mock.patch.object(llm, "_call_openai", mock.AsyncMock(return_value=("openai says", {"total_tokens": 3}))) as call:
+        with (
+            mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")),
+            mock.patch.object(
+                llm,
+                "_call_openai",
+                mock.AsyncMock(return_value=("openai says", {"total_tokens": 3})),
+            ) as call,
+        ):
             reply = await llm.generate_text("gpt-5.4-mini", "hello")
         self.assertEqual("openai says", reply)
         call.assert_awaited_once()
 
     async def test_gemini_model_dispatches_to_google(self):
-        with mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")), \
-             mock.patch.object(llm, "_call_google", mock.AsyncMock(return_value=("gemini says", None))) as call:
+        with (
+            mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")),
+            mock.patch.object(
+                llm, "_call_google", mock.AsyncMock(return_value=("gemini says", None))
+            ) as call,
+        ):
             reply = await llm.generate_text("gemini-3.5-flash", "hello")
         self.assertEqual("gemini says", reply)
         call.assert_awaited_once()
 
     async def test_unknown_model_defaults_to_google(self):
-        with mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")), \
-             mock.patch.object(llm, "_call_google", mock.AsyncMock(return_value=("ok", None))) as call:
+        with (
+            mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")),
+            mock.patch.object(
+                llm, "_call_google", mock.AsyncMock(return_value=("ok", None))
+            ) as call,
+        ):
             await llm.generate_text("gemini-9.9-legacy-preview", "hello")
         call.assert_awaited_once()
 
     async def test_attributed_call_records_provider_usage(self):
         usage = {"prompt_tokens": 8, "completion_tokens": 2, "total_tokens": 10}
-        with mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")), \
-             mock.patch.object(llm, "_call_openai", mock.AsyncMock(return_value=("reply", usage))), \
-             mock.patch.object(llm, "record_token_usage", mock.AsyncMock()) as record:
+        with (
+            mock.patch.object(llm, "_resolve_key", mock.AsyncMock(return_value="k")),
+            mock.patch.object(
+                llm, "_call_openai", mock.AsyncMock(return_value=("reply", usage))
+            ),
+            mock.patch.object(llm, "record_token_usage", mock.AsyncMock()) as record,
+        ):
             reply = await llm.generate_text(
                 "gpt-5.4-mini",
                 "hello",
@@ -193,7 +210,11 @@ class LLMRouterTests(unittest.IsolatedAsyncioTestCase):
         from app.config import MODEL_REGISTRY
 
         by_id = {model["id"]: model for model in MODEL_REGISTRY}
-        for model_id in ("gemini-3.8-flash", "gemini-3.7-flash", "gemini-3.5-flash-lite"):
+        for model_id in (
+            "gemini-3.8-flash",
+            "gemini-3.7-flash",
+            "gemini-3.5-flash-lite",
+        ):
             model = by_id[model_id]
             self.assertEqual("Google", model["provider"])
             self.assertEqual("stable", model["tier"])

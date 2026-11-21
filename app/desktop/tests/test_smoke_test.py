@@ -4,6 +4,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from typing import ClassVar
 from unittest.mock import Mock, patch
 from urllib.error import URLError
 
@@ -15,7 +16,7 @@ except ModuleNotFoundError:
 
 class _Response:
     status = 200
-    headers = {"X-DebateAI-Instance": "ours"}
+    headers: ClassVar[dict[str, str]] = {"X-DebateAI-Instance": "ours"}
 
     def __enter__(self):
         return self
@@ -58,7 +59,10 @@ class SmokeTestTests(unittest.TestCase):
 
     def test_bundle_exe_resolves_before_launcher_changes_cwd(self):
         for platform_name, exe in (("win32", "DebateAI.exe"), ("linux", "DebateAI")):
-            with self.subTest(platform=platform_name), tempfile.TemporaryDirectory() as tmp:
+            with (
+                self.subTest(platform=platform_name),
+                tempfile.TemporaryDirectory() as tmp,
+            ):
                 root = Path(tmp)
                 bundle = Path("dist") / "DebateAI"
                 executable = root / bundle / exe

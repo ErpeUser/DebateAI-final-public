@@ -1,5 +1,5 @@
-import logging
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Literal
@@ -13,22 +13,59 @@ from app.config import settings
 from app.database import engine
 from app.models import Base
 from app.release_notes import APP_VERSION
-from app.routers import agents, ai_config, analyze, artifacts, ask, chat, chatgpt_web, credentials, debate_review, debate_settings, dossiers, retranscribe, diagnostics, directives, documents, endpoints, gemini_web, groups, imports, knowledge, meta, model_downloads, models, native_audio, offerings, pii_shield, privacy, questions, sessions, speakers, subscription_accounts, synthesis, transcripts, updates, video_eval
-from app.services.pii.egress import PiiEgressBlocked
-from app.services.pii.reveal_middleware import PiiRevealMiddleware
-from app.services.privacy import LocalOnlyModeError
-from app.services.llm import LLMModelNotSelected
+from app.routers import (
+    agents,
+    ai_config,
+    analyze,
+    artifacts,
+    ask,
+    calibration,
+    chat,
+    chatgpt_web,
+    credentials,
+    debate_review,
+    debate_settings,
+    diagnostics,
+    directives,
+    documents,
+    dossiers,
+    endpoints,
+    gemini_web,
+    groups,
+    imports,
+    knowledge,
+    meta,
+    model_downloads,
+    models,
+    native_audio,
+    offerings,
+    pii_shield,
+    privacy,
+    questions,
+    retranscribe,
+    sessions,
+    speakers,
+    subscription_accounts,
+    synthesis,
+    transcripts,
+    updates,
+    video_eval,
+)
+from app.services import redaction, request_guard, runtime_activity
 from app.services.audio_store import (
     audio_file_path,
     cleanup_orphan_track_audio,
     repair_wav_file,
 )
-from app.routers import calibration
 from app.services.diagnostic_upload_limit import DiagnosticUploadLimitMiddleware
-from app.services import redaction, request_guard, runtime_activity
+from app.services.llm import LLMModelNotSelected
+from app.services.pii.egress import PiiEgressBlocked
+from app.services.pii.reveal_middleware import PiiRevealMiddleware
+from app.services.privacy import LocalOnlyModeError
 from app.ws import audio_handler
 
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 # Every log record in the process scrubs provider keys before any handler
 # formats it (root stream, the desktop file log, uvicorn's own loggers).
 redaction.install_log_redaction()
@@ -42,9 +79,7 @@ for _name in ("httpx", "httpcore", "websockets", "websockets.client"):
 def _add_revalidation_model_columns(connection, inspector, tables):
     if "speaker_revalidation_batches" not in tables:
         return
-    columns = {
-        c["name"] for c in inspector.get_columns("speaker_revalidation_batches")
-    }
+    columns = {c["name"] for c in inspector.get_columns("speaker_revalidation_batches")}
     for column in ("requested_model_id", "model_id"):
         if column not in columns:
             connection.execute(
@@ -73,16 +108,22 @@ def _add_thinking_token_column(connection, inspector, tables):
     columns = {c["name"] for c in inspector.get_columns("token_usage")}
     if "thinking_tokens" not in columns:
         connection.execute(
-            text("ALTER TABLE token_usage ADD COLUMN thinking_tokens INTEGER NOT NULL DEFAULT 0")
+            text(
+                "ALTER TABLE token_usage ADD COLUMN thinking_tokens INTEGER NOT NULL DEFAULT 0"
+            )
         )
     if "audio_seconds" not in columns:
         connection.execute(
-            text("ALTER TABLE token_usage ADD COLUMN audio_seconds DOUBLE PRECISION NOT NULL DEFAULT 0")
+            text(
+                "ALTER TABLE token_usage ADD COLUMN audio_seconds DOUBLE PRECISION NOT NULL DEFAULT 0"
+            )
         )
     for column in ("cached_input_tokens", "audio_input_tokens", "audio_output_tokens"):
         if column not in columns:
             connection.execute(
-                text(f"ALTER TABLE token_usage ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0")
+                text(
+                    f"ALTER TABLE token_usage ADD COLUMN {column} INTEGER NOT NULL DEFAULT 0"
+                )
             )
 
 
@@ -92,9 +133,15 @@ def _add_transcript_refinement_columns(connection, inspector, tables) -> None:
         return
     columns = {c["name"] for c in inspector.get_columns("transcript_entries")}
     if "raw_text" not in columns:
-        connection.execute(text("ALTER TABLE transcript_entries ADD COLUMN raw_text TEXT"))
+        connection.execute(
+            text("ALTER TABLE transcript_entries ADD COLUMN raw_text TEXT")
+        )
     if "refined_at" not in columns:
-        connection.execute(text("ALTER TABLE transcript_entries ADD COLUMN refined_at TIMESTAMP WITH TIME ZONE"))
+        connection.execute(
+            text(
+                "ALTER TABLE transcript_entries ADD COLUMN refined_at TIMESTAMP WITH TIME ZONE"
+            )
+        )
 
 
 async def _add_missing_columns(conn):
@@ -109,31 +156,45 @@ async def _add_missing_columns(conn):
             columns = {c["name"] for c in inspector.get_columns("questions")}
             if "agent_source" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN agent_source VARCHAR(30) NOT NULL DEFAULT 'general'")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN agent_source VARCHAR(30) NOT NULL DEFAULT 'general'"
+                    )
                 )
             if "offering_match" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN offering_match TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN offering_match TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "vote" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN vote INTEGER NOT NULL DEFAULT 0")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN vote INTEGER NOT NULL DEFAULT 0"
+                    )
                 )
             if "speaker_id" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN speaker_id UUID REFERENCES speakers(id)")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN speaker_id UUID REFERENCES speakers(id)"
+                    )
                 )
             if "enhanced" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN enhanced BOOLEAN NOT NULL DEFAULT false")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN enhanced BOOLEAN NOT NULL DEFAULT false"
+                    )
                 )
             if "lens_label" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN lens_label VARCHAR(120) NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN lens_label VARCHAR(120) NOT NULL DEFAULT ''"
+                    )
                 )
                 # Custom lens types need more room than the original enum-ish column
                 connection.execute(
-                    text("ALTER TABLE questions ALTER COLUMN item_type TYPE VARCHAR(50)")
+                    text(
+                        "ALTER TABLE questions ALTER COLUMN item_type TYPE VARCHAR(50)"
+                    )
                 )
 
         _add_transcript_refinement_columns(connection, inspector, tables)
@@ -142,18 +203,26 @@ async def _add_missing_columns(conn):
             columns = {c["name"] for c in inspector.get_columns("speakers")}
             if "display_name" not in columns:
                 connection.execute(
-                    text("ALTER TABLE speakers ADD COLUMN display_name VARCHAR(255) NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE speakers ADD COLUMN display_name VARCHAR(255) NOT NULL DEFAULT ''"
+                    )
                 )
             if "display_name_enabled" not in columns:
                 connection.execute(
-                    text("ALTER TABLE speakers ADD COLUMN display_name_enabled BOOLEAN NOT NULL DEFAULT false")
+                    text(
+                        "ALTER TABLE speakers ADD COLUMN display_name_enabled BOOLEAN NOT NULL DEFAULT false"
+                    )
                 )
             if "speaker_type" not in columns:
                 connection.execute(
-                    text("ALTER TABLE speakers ADD COLUMN speaker_type VARCHAR(20) NOT NULL DEFAULT 'external'")
+                    text(
+                        "ALTER TABLE speakers ADD COLUMN speaker_type VARCHAR(20) NOT NULL DEFAULT 'external'"
+                    )
                 )
                 connection.execute(
-                    text("UPDATE speakers SET speaker_type = 'team' WHERE is_user = true")
+                    text(
+                        "UPDATE speakers SET speaker_type = 'team' WHERE is_user = true"
+                    )
                 )
 
         if "offerings" in tables:
@@ -165,24 +234,34 @@ async def _add_missing_columns(conn):
                     )
                 else:
                     connection.execute(
-                        text("ALTER TABLE offerings ADD COLUMN tags VARCHAR(255) NOT NULL DEFAULT ''")
+                        text(
+                            "ALTER TABLE offerings ADD COLUMN tags VARCHAR(255) NOT NULL DEFAULT ''"
+                        )
                     )
             if "note" not in columns:
                 if "delivery_model" in columns:
                     connection.execute(
-                        text("ALTER TABLE offerings RENAME COLUMN delivery_model TO note")
+                        text(
+                            "ALTER TABLE offerings RENAME COLUMN delivery_model TO note"
+                        )
                     )
                     connection.execute(
-                        text("ALTER TABLE offerings ALTER COLUMN note TYPE VARCHAR(255)")
+                        text(
+                            "ALTER TABLE offerings ALTER COLUMN note TYPE VARCHAR(255)"
+                        )
                     )
                 else:
                     connection.execute(
-                        text("ALTER TABLE offerings ADD COLUMN note VARCHAR(255) NOT NULL DEFAULT ''")
+                        text(
+                            "ALTER TABLE offerings ADD COLUMN note VARCHAR(255) NOT NULL DEFAULT ''"
+                        )
                     )
             if "discipline" in columns:
                 # Merge the legacy discipline column into subcategory, then drop it.
                 connection.execute(
-                    text("ALTER TABLE offerings ALTER COLUMN subcategory TYPE VARCHAR(255)")
+                    text(
+                        "ALTER TABLE offerings ALTER COLUMN subcategory TYPE VARCHAR(255)"
+                    )
                 )
                 connection.execute(
                     text(
@@ -196,19 +275,27 @@ async def _add_missing_columns(conn):
             columns = {c["name"] for c in inspector.get_columns("agent_configs")}
             if "interval_seconds" not in columns:
                 connection.execute(
-                    text("ALTER TABLE agent_configs ADD COLUMN interval_seconds INTEGER")
+                    text(
+                        "ALTER TABLE agent_configs ADD COLUMN interval_seconds INTEGER"
+                    )
                 )
             if "knowledge_source_ids" not in columns:
                 connection.execute(
-                    text("ALTER TABLE agent_configs ADD COLUMN knowledge_source_ids TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE agent_configs ADD COLUMN knowledge_source_ids TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "lenses" not in columns:
                 connection.execute(
-                    text("ALTER TABLE agent_configs ADD COLUMN lenses TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE agent_configs ADD COLUMN lenses TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "model_intervals" not in columns:
                 connection.execute(
-                    text("ALTER TABLE agent_configs ADD COLUMN model_intervals TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE agent_configs ADD COLUMN model_intervals TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "knowledge_source_id" in columns:
                 # Migrate and drop the legacy single-source column (its FK would
@@ -227,45 +314,63 @@ async def _add_missing_columns(conn):
             columns = {c["name"] for c in inspector.get_columns("sessions")}
             if "meeting_type" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN meeting_type VARCHAR(50) NOT NULL DEFAULT 'general'")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN meeting_type VARCHAR(50) NOT NULL DEFAULT 'general'"
+                    )
                 )
             if "meeting_context" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN meeting_context TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN meeting_context TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "group_id" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN group_id UUID REFERENCES session_groups(id)")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN group_id UUID REFERENCES session_groups(id)"
+                    )
                 )
             if "speaker_context_dirty" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN speaker_context_dirty BOOLEAN NOT NULL DEFAULT false")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN speaker_context_dirty BOOLEAN NOT NULL DEFAULT false"
+                    )
                 )
             if "drain_summary" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN drain_summary TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN drain_summary TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "speaker_context_enhanced_at" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN speaker_context_enhanced_at TIMESTAMP WITH TIME ZONE")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN speaker_context_enhanced_at TIMESTAMP WITH TIME ZONE"
+                    )
                 )
             if "speaker_context_version" not in columns:
                 connection.execute(
-                    text("ALTER TABLE sessions ADD COLUMN speaker_context_version INTEGER NOT NULL DEFAULT 0")
+                    text(
+                        "ALTER TABLE sessions ADD COLUMN speaker_context_version INTEGER NOT NULL DEFAULT 0"
+                    )
                 )
 
         if "questions" in tables:
             columns = {c["name"] for c in inspector.get_columns("questions")}
             if "speaker_mapping_revision_id" not in columns:
                 connection.execute(
-                    text("ALTER TABLE questions ADD COLUMN speaker_mapping_revision_id UUID")
+                    text(
+                        "ALTER TABLE questions ADD COLUMN speaker_mapping_revision_id UUID"
+                    )
                 )
 
         if "session_syntheses" in tables:
             columns = {c["name"] for c in inspector.get_columns("session_syntheses")}
             if "speaker_mapping_revision_id" not in columns:
                 connection.execute(
-                    text("ALTER TABLE session_syntheses ADD COLUMN speaker_mapping_revision_id UUID")
+                    text(
+                        "ALTER TABLE session_syntheses ADD COLUMN speaker_mapping_revision_id UUID"
+                    )
                 )
             if "signal_history" not in columns:
                 connection.execute(
@@ -289,11 +394,15 @@ async def _add_missing_columns(conn):
             columns = {c["name"] for c in inspector.get_columns("documents")}
             if "summary" not in columns:
                 connection.execute(
-                    text("ALTER TABLE documents ADD COLUMN summary TEXT NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE documents ADD COLUMN summary TEXT NOT NULL DEFAULT ''"
+                    )
                 )
             if "summary_source" not in columns:
                 connection.execute(
-                    text("ALTER TABLE documents ADD COLUMN summary_source VARCHAR(20) NOT NULL DEFAULT ''")
+                    text(
+                        "ALTER TABLE documents ADD COLUMN summary_source VARCHAR(20) NOT NULL DEFAULT ''"
+                    )
                 )
 
         _add_revalidation_model_columns(connection, inspector, tables)
@@ -304,11 +413,18 @@ async def _add_missing_columns(conn):
         for table in ("agent_configs", "token_usage"):
             if table in tables:
                 width = next(
-                    (c for c in inspector.get_columns(table) if c["name"] == "model_id"), {}
+                    (
+                        c
+                        for c in inspector.get_columns(table)
+                        if c["name"] == "model_id"
+                    ),
+                    {},
                 ).get("type")
                 if getattr(width, "length", 0) and width.length < 160:
                     connection.execute(
-                        text(f"ALTER TABLE {table} ALTER COLUMN model_id TYPE VARCHAR(160)")
+                        text(
+                            f"ALTER TABLE {table} ALTER COLUMN model_id TYPE VARCHAR(160)"
+                        )
                     )
 
         if "call_segments" in tables:
@@ -319,11 +435,15 @@ async def _add_missing_columns(conn):
                 )
             if "mic_audio_path" not in columns:
                 connection.execute(
-                    text("ALTER TABLE call_segments ADD COLUMN mic_audio_path VARCHAR(500)")
+                    text(
+                        "ALTER TABLE call_segments ADD COLUMN mic_audio_path VARCHAR(500)"
+                    )
                 )
             if "system_audio_path" not in columns:
                 connection.execute(
-                    text("ALTER TABLE call_segments ADD COLUMN system_audio_path VARCHAR(500)")
+                    text(
+                        "ALTER TABLE call_segments ADD COLUMN system_audio_path VARCHAR(500)"
+                    )
                 )
 
     await conn.run_sync(_check_and_add)
@@ -341,7 +461,7 @@ async def _cleanup_orphan_audio(conn):
     referenced = {path for row in result for path in row if path}
     removed = cleanup_orphan_track_audio(referenced)
     if removed:
-        logging.info("Preserved %s orphan auxiliary audio files for recovery", removed)
+        logger.info("Preserved %s orphan auxiliary audio files for recovery", removed)
 
 
 async def _recover_interrupted_audio(conn):
@@ -366,7 +486,11 @@ async def _recover_interrupted_audio(conn):
             "mic_audio_path": row.mic_audio_path,
             "system_audio_path": row.system_audio_path,
         }
-        tracks = (("audio_path", "mixed"), ("mic_audio_path", "mic"), ("system_audio_path", "sys"))
+        tracks = (
+            ("audio_path", "mixed"),
+            ("mic_audio_path", "mic"),
+            ("system_audio_path", "sys"),
+        )
         recovered = False
         for field, track in tracks:
             if fields[field]:
@@ -375,7 +499,7 @@ async def _recover_interrupted_audio(conn):
             if not path.exists():
                 continue
             if not repair_wav_file(path):
-                logging.error("Could not validate interrupted audio archive %s", path)
+                logger.error("Could not validate interrupted audio archive %s", path)
                 continue
             fields[field] = str(path.relative_to(path.parents[2])).replace("\\", "/")
             recovered = True
@@ -389,7 +513,7 @@ async def _recover_interrupted_audio(conn):
             ),
             {"id": row.id, **fields},
         )
-        logging.warning(
+        logger.warning(
             "Recovered interrupted audio segment %s from durable archive files",
             row.id,
         )
@@ -472,12 +596,16 @@ async def _run_schema_migrations() -> None:
     locked = False
     try:
         if lock_conn.dialect.name == "postgresql":
-            await lock_conn.execute(text("SELECT pg_advisory_lock(hashtext('debateai.schema'))"))
+            await lock_conn.execute(
+                text("SELECT pg_advisory_lock(hashtext('debateai.schema'))")
+            )
             locked = True
         await _run_schema_migrations_unlocked()
     finally:
         if locked:
-            await lock_conn.execute(text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))"))
+            await lock_conn.execute(
+                text("SELECT pg_advisory_unlock(hashtext('debateai.schema'))")
+            )
         await lock_conn.close()
 
 
@@ -500,6 +628,7 @@ async def lifespan(app: FastAPI):
     )
     from app.services.seed_knowledge import seed_knowledge_sources
     from app.services.subscription_bridge import sync_subscription_bridge
+
     async with async_session() as db:
         await seed_agent_configs(db)
         await configure_desktop_debate_runtime(db)
@@ -509,7 +638,9 @@ async def lifespan(app: FastAPI):
         await migrate_legacy_endpoint(db)
         migrated_pii_rows = await migrate_legacy_entries(db)
         if migrated_pii_rows:
-            logging.getLogger(__name__).info("Migrated %s legacy PII vault rows", migrated_pii_rows)
+            logging.getLogger(__name__).info(
+                "Migrated %s legacy PII vault rows", migrated_pii_rows
+            )
         await db.commit()
     ai_config._ensure_static_prompts()
 
@@ -518,6 +649,7 @@ async def lifespan(app: FastAPI):
     import asyncio
 
     from app.services.provider_health import verify_untested_provider_keys
+
     verify_task = asyncio.create_task(verify_untested_provider_keys())
     update_task = updates.start_background_check()
     # With the PII Shield on, have the on-device NER model ready before the
@@ -550,7 +682,9 @@ async def lifespan(app: FastAPI):
                 type(exc).__name__,
             )
 
-    bridge_task = asyncio.create_task(_sync_optional_bridges(), name="optional-provider-discovery")
+    bridge_task = asyncio.create_task(
+        _sync_optional_bridges(), name="optional-provider-discovery"
+    )
 
     try:
         yield
@@ -558,10 +692,13 @@ async def lifespan(app: FastAPI):
         bridge_task.cancel()
         await asyncio.gather(bridge_task, return_exceptions=True)
     from app.services.windows_audio_capture import native_windows_audio
+
     await native_windows_audio.stop()
     from app.services.subscription_bridge import cleanup_gemini_web_cookie
+
     cleanup_gemini_web_cookie()
     from app.services.debate_research import close_research_client
+
     await close_research_client()
     verify_task.cancel()
     ner_task.cancel()

@@ -54,7 +54,8 @@ export function useModelDownloads(): ModelDownloadsController {
       } catch {
         // Keep polling; the backend may just be starting.
       }
-      if (!cancelled && !stopped.current) timer.current = setTimeout(() => void tick(), next);
+      if (!cancelled && !stopped.current)
+        timer.current = setTimeout(() => void tick(), next);
     };
 
     void tick();
@@ -65,19 +66,27 @@ export function useModelDownloads(): ModelDownloadsController {
     };
   }, []);
 
-  const retry = useCallback(async (key: string) => {
-    await api.retryModelDownload(key);
-    await refresh();
-  }, [refresh]);
+  const retry = useCallback(
+    async (key: string) => {
+      await api.retryModelDownload(key);
+      await refresh();
+    },
+    [refresh],
+  );
 
-  const dismiss = useCallback(async (key: string) => {
-    await api.dismissModelDownload(key);
-    await refresh();
-  }, [refresh]);
+  const dismiss = useCallback(
+    async (key: string) => {
+      await api.dismissModelDownload(key);
+      await refresh();
+    },
+    [refresh],
+  );
 
   return {
     status,
-    active: status.downloads.filter((d) => d.state === "queued" || d.state === "downloading"),
+    active: status.downloads.filter(
+      (d) => d.state === "queued" || d.state === "downloading",
+    ),
     failed: status.downloads.filter((d) => d.state === "error"),
     refresh,
     retry,

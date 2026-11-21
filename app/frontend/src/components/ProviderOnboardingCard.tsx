@@ -51,7 +51,7 @@ export default function ProviderOnboardingCard({
           localOnly,
           transcription: transcription as ReadinessTranscription | null,
           agentModels: toReadinessAgentModels(agents, models),
-        })
+        }),
       );
       return true;
     } catch (err) {
@@ -72,10 +72,12 @@ export default function ProviderOnboardingCard({
       setSmartTestMessage(
         ok
           ? "Schnelltest abgeschlossen. Die Anzeige wurde aktualisiert."
-          : "Schnelltest konnte nicht vollständig abgeschlossen werden. Details oben prüfen."
+          : "Schnelltest konnte nicht vollständig abgeschlossen werden. Details oben prüfen.",
       );
     } catch {
-      setSmartTestMessage("Schnelltest konnte nicht vollständig abgeschlossen werden.");
+      setSmartTestMessage(
+        "Schnelltest konnte nicht vollständig abgeschlossen werden.",
+      );
     } finally {
       setSmartTestBusy(false);
     }
@@ -92,7 +94,9 @@ export default function ProviderOnboardingCard({
     }
   };
 
-  const stage = readiness ? onboardingStage({ anyKeySaved, readiness }) : "choose";
+  const stage = readiness
+    ? onboardingStage({ anyKeySaved, readiness })
+    : "choose";
   const disabledImpact = privacy?.impact.disabled ?? [];
 
   return (
@@ -104,9 +108,10 @@ export default function ProviderOnboardingCard({
         Dienste verbinden, danach Modelle wählen
       </h3>
       <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-        Die integrierte lokale Transkription funktioniert ohne Schlüssel. Nur gewünschte
-        Dienste hinzufügen und danach unter Agenten sowie Transkription &amp; Audio die
-        Modelle wählen. „Empfohlen“ kennzeichnet einen guten Ausgangspunkt.
+        Die integrierte lokale Transkription funktioniert ohne Schlüssel. Nur
+        gewünschte Dienste hinzufügen und danach unter Agenten sowie
+        Transkription &amp; Audio die Modelle wählen. „Empfohlen“ kennzeichnet
+        einen guten Ausgangspunkt.
       </p>
 
       <div className="mt-3 rounded-lg border border-brand-teal/40 bg-brand-teal/5 p-3.5">
@@ -116,8 +121,8 @@ export default function ProviderOnboardingCard({
               Spielerischer Schnelltest
             </h4>
             <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-              Drei echte Bereitschaftsprüfungen zeigen dir sofort, ob Transkription,
-              Agentenmodelle und Datenschutz zusammenpassen.
+              Drei echte Bereitschaftsprüfungen zeigen dir sofort, ob
+              Transkription, Agentenmodelle und Datenschutz zusammenpassen.
             </p>
           </div>
           <button
@@ -142,9 +147,10 @@ export default function ProviderOnboardingCard({
             Cloud-KI
           </h4>
           <p className="mt-1.5 font-body text-xs leading-relaxed text-brand-gray">
-            Ein Google- oder OpenAI-Schlüssel stellt die Modelle dieses Anbieters
-            für Transkription, Live-Untertitel und Agenten bereit. Beim Speichern
-            wird die Verbindung geprüft; die Modellauswahl bleibt unverändert.
+            Ein Google- oder OpenAI-Schlüssel stellt die Modelle dieses
+            Anbieters für Transkription, Live-Untertitel und Agenten bereit.
+            Beim Speichern wird die Verbindung geprüft; die Modellauswahl bleibt
+            unverändert.
           </p>
         </div>
 
@@ -153,12 +159,16 @@ export default function ProviderOnboardingCard({
             Lokale KI und Datenschutzmodus
           </h4>
           <p className="mt-1.5 font-body text-xs leading-relaxed text-brand-gray">
-            Lokale Transkription benötigt keinen Schlüssel. Für lokale Analysen unten
-            einen selbst gehosteten Dienst verbinden, den Eignungstest ausführen und
-            unter Assistenten eine passende Empfehlung wählen. Der Datenschutzmodus sperrt Cloud-Wege.
+            Lokale Transkription benötigt keinen Schlüssel. Für lokale Analysen
+            unten einen selbst gehosteten Dienst verbinden, den Eignungstest
+            ausführen und unter Assistenten eine passende Empfehlung wählen. Der
+            Datenschutzmodus sperrt Cloud-Wege.
             {disabledImpact.length > 0 && (
               <>
-                {" "}Einschränkung: {disabledImpact.map((i) => i.feature).join(", ")}{" "}
+                {" "}
+                Einschränkung: {disabledImpact
+                  .map((i) => i.feature)
+                  .join(", ")}{" "}
                 bleiben deaktiviert, bis ein Cloud-Schlüssel hinzugefügt wird.
               </>
             )}
@@ -187,8 +197,9 @@ export default function ProviderOnboardingCard({
               Lokales Transkriptionslabor
             </h4>
             <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-              Vergleiche lokale Transkription mit echten Beispielen. Dieser Test prüft
-              Audioqualität und Latenz; er ändert keine Einstellungen automatisch.
+              Vergleiche lokale Transkription mit echten Beispielen. Dieser Test
+              prüft Audioqualität und Latenz; er ändert keine Einstellungen
+              automatisch.
             </p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
@@ -222,7 +233,8 @@ export default function ProviderOnboardingCard({
       {stage === "partial" && readiness && (
         <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3.5 py-2.5">
           <p className="font-body text-xs font-semibold text-amber-900">
-            Fast geschafft: Der Schlüssel ist gespeichert, die aktuelle Einrichtung ist aber noch nicht lauffähig.
+            Fast geschafft: Der Schlüssel ist gespeichert, die aktuelle
+            Einrichtung ist aber noch nicht lauffähig.
           </p>
           <p className="mt-1 font-body text-xs leading-relaxed text-amber-900">
             {readiness.reason}

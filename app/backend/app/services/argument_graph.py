@@ -14,13 +14,11 @@ import uuid
 from datetime import UTC, datetime
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-from sqlalchemy import select
-
 from app.database import async_session
 from app.models import DebateClaimRecord
 from app.services.app_settings import get_app_setting, set_app_setting
-
+from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 # Live consumers select a small recent window, but persistence keeps the full
 # session graph so old questions, concessions, sources and transcript links
@@ -65,7 +63,9 @@ class ArgumentEdge(BaseModel):
     target_claim_revision: int = 0
     source_span: tuple[int, int] | None = None
     target_span: tuple[int, int] | None = None
-    verification_method: Literal["derived", "model", "rule", "source", "user"] = "derived"
+    verification_method: Literal["derived", "model", "rule", "source", "user"] = (
+        "derived"
+    )
     rationale: str = ""
     obsolete: bool = False
 
@@ -90,7 +90,10 @@ def _revision(data: dict[str, Any]) -> int:
     # to the independently increasing UI recommendation revision.
     value = data.get(
         "claim_revision",
-        data.get("transcript_revision", data.get("recommendation_revision", data.get("revision", 0))),
+        data.get(
+            "transcript_revision",
+            data.get("recommendation_revision", data.get("revision", 0)),
+        ),
     )
     try:
         return max(0, int(value))
@@ -121,9 +124,7 @@ def _evidence_urls(data: dict[str, Any]) -> list[str]:
 
 def _terms(value: str) -> set[str]:
     return {
-        token
-        for token in re.findall(r"[\wäöüß]+", value.casefold())
-        if len(token) >= 5
+        token for token in re.findall(r"[\wäöüß]+", value.casefold()) if len(token) >= 5
     }
 
 
@@ -137,7 +138,8 @@ def _trim_claims(graph: ArgumentGraph) -> ArgumentGraph:
     nodes = [node for node in graph.nodes if node.claim_id in keep_claim_ids]
     node_ids = {node.id for node in nodes}
     edges = [
-        edge for edge in graph.edges
+        edge
+        for edge in graph.edges
         if edge.source_id in node_ids and edge.target_id in node_ids
     ]
     return graph.model_copy(update={"nodes": nodes, "edges": edges})
@@ -157,12 +159,14 @@ def update_argument_graph(
     claim_node_id = f"claim:{claim_id}"
     # A later model or research revision replaces only this claim's children.
     nodes = [
-        node for node in graph.nodes
+        node
+        for node in graph.nodes
         if node.claim_id != claim_id or node.kind == "claim"
     ]
     retained_ids = {node.id for node in nodes}
     edges = [
-        edge for edge in graph.edges
+        edge
+        for edge in graph.edges
         if edge.source_id in retained_ids and edge.target_id in retained_ids
     ]
 
@@ -203,7 +207,8 @@ def update_argument_graph(
         id=claim_node_id,
         kind="claim",
         claim_id=claim_id,
-        text=target_claim or (existing_claim.text if existing_claim else "Unbenannte Behauptung"),
+        text=target_claim
+        or (existing_claim.text if existing_claim else "Unbenannte Behauptung"),
         status=_text(data.get("question_status"), 40),
         revision=max(revision, existing_claim.revision if existing_claim else 0),
         speaker_id=_text(data.get("speaker_id"), 120),
@@ -213,13 +218,15 @@ def update_argument_graph(
     nodes = [node for node in nodes if node.id != claim_node_id]
     nodes.append(claim)
     if related_claim is not None:
-        edges.append(ArgumentEdge(
-            source_id=claim_node_id,
-            target_id=related_claim.id,
-            relation="related",
-            confidence=0.5,
-            verified=False,
-        ))
+        edges.append(
+            ArgumentEdge(
+                source_id=claim_node_id,
+                target_id=related_claim.id,
+                relation="related",
+                confidence=0.5,
+                verified=False,
+            )
+        )
 
     claim_ids = {
         node.claim_id
@@ -237,9 +244,7 @@ def update_argument_graph(
         "topic_shift",
         "supports",
     }
-    claim_nodes_by_id = {
-        node.claim_id: node for node in nodes if node.kind == "claim"
-    }
+    claim_nodes_by_id = {node.claim_id: node for node in nodes if node.kind == "claim"}
     for raw_relation in data.get("logical_relations") or []:
         if not isinstance(raw_relation, dict):
             continue
@@ -249,7 +254,10 @@ def update_argument_graph(
             confidence = float(raw_relation.get("confidence", 0.0))
         except (TypeError, ValueError):
             continue
-        if target_claim_id not in claim_ids or relation not in allowed_logical_relations:
+        if (
+            target_claim_id not in claim_ids
+            or relation not in allowed_logical_relations
+        ):
             continue
         method = _text(raw_relation.get("verification_method"), 20) or "model"
         if method not in {"model", "rule", "source", "user"}:
@@ -263,8 +271,16 @@ def update_argument_graph(
         target_node = claim_nodes_by_id[target_claim_id]
         source_span = raw_relation.get("source_span")
         target_span = raw_relation.get("target_span")
-        source_span = tuple(source_span) if isinstance(source_span, (list, tuple)) and len(source_span) == 2 else None
-        target_span = tuple(target_span) if isinstance(target_span, (list, tuple)) and len(target_span) == 2 else None
+        source_span = (
+            tuple(source_span)
+            if isinstance(source_span, (list, tuple)) and len(source_span) == 2
+            else None
+        )
+        target_span = (
+            tuple(target_span)
+            if isinstance(target_span, (list, tuple)) and len(target_span) == 2
+            else None
+        )
         edges = [
             edge
             for edge in edges
@@ -274,71 +290,87 @@ def update_argument_graph(
                 and edge.relation == relation
             )
         ]
-        edges.append(ArgumentEdge(
-            source_id=claim_node_id,
-            target_id=f"claim:{target_claim_id}",
-            relation=relation,
-            confidence=confidence,
-            verified=verified,
-            source_claim_revision=revision,
-            target_claim_revision=target_node.revision,
-            source_span=source_span,
-            target_span=target_span,
-            verification_method=method,
-            rationale=rationale,
-        ))
+        edges.append(
+            ArgumentEdge(
+                source_id=claim_node_id,
+                target_id=f"claim:{target_claim_id}",
+                relation=relation,
+                confidence=confidence,
+                verified=verified,
+                source_claim_revision=revision,
+                target_claim_revision=target_node.revision,
+                source_span=source_span,
+                target_span=target_span,
+                verification_method=method,
+                rationale=rationale,
+            )
+        )
 
     response_text = _text(data.get("answer_now")) or _text(data.get("counterargument"))
     response_id = f"response:{claim_id}"
     if response_text:
-        nodes.append(ArgumentNode(
-            id=response_id,
-            kind="response",
-            claim_id=claim_id,
-            text=response_text,
-            revision=revision,
-            evidence_urls=_evidence_urls(data),
-        ))
-        edges.append(ArgumentEdge(
-            source_id=response_id,
-            target_id=claim_node_id,
-            relation="rebuts",
-        ))
+        nodes.append(
+            ArgumentNode(
+                id=response_id,
+                kind="response",
+                claim_id=claim_id,
+                text=response_text,
+                revision=revision,
+                evidence_urls=_evidence_urls(data),
+            )
+        )
+        edges.append(
+            ArgumentEdge(
+                source_id=response_id,
+                target_id=claim_node_id,
+                relation="rebuts",
+            )
+        )
 
     for index, raw_point in enumerate(data.get("argument_points") or []):
         point = _text(raw_point, 400)
         if not point:
             continue
         point_id = f"point:{claim_id}:{index}"
-        nodes.append(ArgumentNode(
-            id=point_id,
-            kind="point",
-            claim_id=claim_id,
-            text=point,
-            revision=revision,
-        ))
-        edges.append(ArgumentEdge(
-            source_id=point_id,
-            target_id=response_id if response_text else claim_node_id,
-            relation="supports" if response_text else "rebuts",
-        ))
+        nodes.append(
+            ArgumentNode(
+                id=point_id,
+                kind="point",
+                claim_id=claim_id,
+                text=point,
+                revision=revision,
+            )
+        )
+        edges.append(
+            ArgumentEdge(
+                source_id=point_id,
+                target_id=response_id if response_text else claim_node_id,
+                relation="supports" if response_text else "rebuts",
+            )
+        )
 
-    question_text = _text(data.get("open_question")) or _text(data.get("counter_question"))
+    question_text = _text(data.get("open_question")) or _text(
+        data.get("counter_question")
+    )
     if question_text:
         question_id = f"question:{claim_id}"
-        nodes.append(ArgumentNode(
-            id=question_id,
-            kind="question",
-            claim_id=claim_id,
-            text=question_text,
-            status=_text(data.get("question_status"), 40),
-            revision=revision,
-        ))
-        edges.append(ArgumentEdge(
-            source_id=question_id,
-            target_id=claim_node_id,
-            relation="questions",
-        ))
+        nodes.append(
+            ArgumentNode(
+                id=question_id,
+                kind="question",
+                claim_id=claim_id,
+                text=question_text,
+                status=_text(data.get("question_status"), 40),
+                revision=revision,
+            )
+        )
+        edges.append(
+            ArgumentEdge(
+                source_id=question_id,
+                target_id=claim_node_id,
+                relation="questions",
+            )
+        )
 
     updated = ArgumentGraph(
         session_id=graph.session_id,
@@ -381,19 +413,23 @@ def argument_graph_from_records(
             newest[record.claim_id] = record
     graph = ArgumentGraph(session_id=str(session_id))
     prepared: list[dict[str, Any]] = []
-    for record in sorted(newest.values(), key=lambda item: (item.revision, item.claim_id)):
+    for record in sorted(
+        newest.values(), key=lambda item: (item.revision, item.claim_id)
+    ):
         feedback = record.feedback if isinstance(record.feedback, dict) else {}
         presentation = feedback.get("presentation")
         data = dict(presentation) if isinstance(presentation, dict) else {}
-        data.update({
-            "claim_id": record.claim_id,
-            "claim_revision": record.revision,
-            "target_claim": record.original_text,
-            "speaker_id": record.speaker_id,
-            "atomic_claims": list(record.atomic_claims or []),
-            "sources": list(record.sources or []),
-            "logical_relations": list(record.relations or []),
-        })
+        data.update(
+            {
+                "claim_id": record.claim_id,
+                "claim_revision": record.revision,
+                "target_claim": record.original_text,
+                "speaker_id": record.speaker_id,
+                "atomic_claims": list(record.atomic_claims or []),
+                "sources": list(record.sources or []),
+                "logical_relations": list(record.relations or []),
+            }
+        )
         prepared.append(data)
     # Build every claim node before resolving relations so a record may refer
     # to a later claim in revision order without losing that edge.
@@ -413,7 +449,9 @@ def argument_graph_from_records(
     return _trim_claims(graph)
 
 
-async def save_argument_graph(db, session_id: uuid.UUID | str, graph: ArgumentGraph) -> None:
+async def save_argument_graph(
+    db, session_id: uuid.UUID | str, graph: ArgumentGraph
+) -> None:
     await set_app_setting(db, argument_graph_key(session_id), graph.model_dump_json())
 
 
@@ -443,33 +481,40 @@ async def correct_source_assignment(
         for item in (record.atomic_claims or [])
         if isinstance(item, dict) and item.get("id")
     }
-    selected = [value for value in dict.fromkeys(affected_claim_ids) if value in allowed]
+    selected = [
+        value for value in dict.fromkeys(affected_claim_ids) if value in allowed
+    ]
     claim_text = {
         str(item.get("id")): str(item.get("text") or "")
         for item in (record.atomic_claims or [])
         if isinstance(item, dict) and item.get("id")
     }
-    sources = [dict(value) for value in (record.sources or []) if isinstance(value, dict)]
+    sources = [
+        dict(value) for value in (record.sources or []) if isinstance(value, dict)
+    ]
     corrected = None
     for source in sources:
         if str(source.get("url") or "").rstrip("/") != source_url.rstrip("/"):
             continue
-        if (
-            relation in {"supports", "contradicts"}
-            and (
-                str(source.get("retrieval_status") or "") != "read"
-                or not str(source.get("passage") or "").strip()
-            )
+        if relation in {"supports", "contradicts"} and (
+            str(source.get("retrieval_status") or "") != "read"
+            or not str(source.get("passage") or "").strip()
         ):
-            raise ValueError("source must be read before assigning an evidence relation")
-        source.update({
-            "claim_id": claim_id,
-            "claim_revision": record.revision,
-            "affected_claim_ids": selected,
-            "affected_claims": [claim_text[value] for value in selected if claim_text.get(value)],
-            "claim_relation": relation,
-            "verification_status": relation,
-        })
+            raise ValueError(
+                "source must be read before assigning an evidence relation"
+            )
+        source.update(
+            {
+                "claim_id": claim_id,
+                "claim_revision": record.revision,
+                "affected_claim_ids": selected,
+                "affected_claims": [
+                    claim_text[value] for value in selected if claim_text.get(value)
+                ],
+                "claim_relation": relation,
+                "verification_status": relation,
+            }
+        )
         corrected = source
         break
     if corrected is None:
@@ -477,12 +522,14 @@ async def correct_source_assignment(
     record.sources = sources
     feedback = dict(record.feedback or {})
     corrections = list(feedback.get("source_corrections") or [])
-    corrections.append({
-        "url": source_url,
-        "relation": relation,
-        "affected_claim_ids": selected,
-        "corrected_at": datetime.now(UTC).isoformat(),
-    })
+    corrections.append(
+        {
+            "url": source_url,
+            "relation": relation,
+            "affected_claim_ids": selected,
+            "corrected_at": datetime.now(UTC).isoformat(),
+        }
+    )
     feedback["source_corrections"] = corrections[-20:]
     record.feedback = feedback
     record.updated_at = datetime.now(UTC)
@@ -491,7 +538,11 @@ async def correct_source_assignment(
     nodes = []
     for node in graph.nodes:
         if node.claim_id == claim_id and node.kind == "response":
-            urls = [url for url in node.evidence_urls if url.rstrip("/") != source_url.rstrip("/")]
+            urls = [
+                url
+                for url in node.evidence_urls
+                if url.rstrip("/") != source_url.rstrip("/")
+            ]
             if selected and relation != "unclear":
                 urls.append(source_url)
             node = node.model_copy(update={"evidence_urls": urls})
@@ -499,7 +550,9 @@ async def correct_source_assignment(
     await save_argument_graph(
         db,
         session_id,
-        graph.model_copy(update={"nodes": nodes, "updated_at": datetime.now(UTC).isoformat()}),
+        graph.model_copy(
+            update={"nodes": nodes, "updated_at": datetime.now(UTC).isoformat()}
+        ),
     )
     return corrected
 
@@ -514,75 +567,76 @@ async def persist_argument_recommendation(
     """Serialize live updates per session so research cannot overwrite a newer turn."""
     key = str(session_id)
     lock = _PERSIST_LOCKS.setdefault(key, asyncio.Lock())
-    async with lock:
-        async with async_session() as db:
-            graph = await load_argument_graph(db, session_id)
-            updated_graph = update_argument_graph(graph, recommendation)
-            await save_argument_graph(
-                db,
-                session_id,
-                updated_graph,
-            )
-            raw = (
-                recommendation.model_dump(mode="json")
-                if isinstance(recommendation, BaseModel)
-                else dict(recommendation)
-            )
-            claim_id = str(raw.get("claim_id") or raw.get("utterance_id") or "")
-            revision = int(raw.get("claim_revision") or raw.get("transcript_revision") or 0)
-            if claim_id:
-                result = await db.execute(
-                    select(DebateClaimRecord).where(
-                        DebateClaimRecord.session_id == session_id,
-                        DebateClaimRecord.claim_id == claim_id,
-                        DebateClaimRecord.revision == revision,
-                    )
+    async with lock, async_session() as db:
+        graph = await load_argument_graph(db, session_id)
+        updated_graph = update_argument_graph(graph, recommendation)
+        await save_argument_graph(
+            db,
+            session_id,
+            updated_graph,
+        )
+        raw = (
+            recommendation.model_dump(mode="json")
+            if isinstance(recommendation, BaseModel)
+            else dict(recommendation)
+        )
+        claim_id = str(raw.get("claim_id") or raw.get("utterance_id") or "")
+        revision = int(raw.get("claim_revision") or raw.get("transcript_revision") or 0)
+        if claim_id:
+            result = await db.execute(
+                select(DebateClaimRecord).where(
+                    DebateClaimRecord.session_id == session_id,
+                    DebateClaimRecord.claim_id == claim_id,
+                    DebateClaimRecord.revision == revision,
                 )
-                record = result.scalar_one_or_none()
-                values = {
-                    "speaker_id": str(raw.get("speaker_id") or ""),
-                    "original_text": str(raw.get("target_claim") or ""),
-                    "atomic_claims": list(raw.get("atomic_claims") or []),
-                    "sources": list(raw.get("sources") or []),
-                    "relations": list(raw.get("logical_relations") or []),
-                    "feedback": {
-                        "presentation": {
-                            key: raw.get(key)
-                            for key in (
-                                "answer_now",
-                                "counterargument",
-                                "argument_points",
-                                "open_question",
-                                "counter_question",
-                                "question_status",
-                                "speaker_name",
-                                "speaker_type",
-                                "semantic_related_claim_ids",
-                                "pipeline_mode",
-                                "strategy_options",
-                                "selected_strategy_id",
-                                "selection_reason",
-                                "research_alert",
-                                "analyst_model",
-                                "analyst_research_performed",
-                                "external_lane_artifacts",
-                            )
-                            if raw.get(key) not in (None, "", [])
-                        },
+            )
+            record = result.scalar_one_or_none()
+            values = {
+                "speaker_id": str(raw.get("speaker_id") or ""),
+                "original_text": str(raw.get("target_claim") or ""),
+                "atomic_claims": list(raw.get("atomic_claims") or []),
+                "sources": list(raw.get("sources") or []),
+                "relations": list(raw.get("logical_relations") or []),
+                "feedback": {
+                    "presentation": {
+                        key: raw.get(key)
+                        for key in (
+                            "answer_now",
+                            "counterargument",
+                            "argument_points",
+                            "open_question",
+                            "counter_question",
+                            "question_status",
+                            "speaker_name",
+                            "speaker_type",
+                            "semantic_related_claim_ids",
+                            "pipeline_mode",
+                            "strategy_options",
+                            "selected_strategy_id",
+                            "selection_reason",
+                            "research_alert",
+                            "analyst_model",
+                            "analyst_research_performed",
+                            "external_lane_artifacts",
+                        )
+                        if raw.get(key) not in (None, "", [])
                     },
-                    "updated_at": datetime.now(UTC),
-                }
-                if record is None:
-                    db.add(DebateClaimRecord(
+                },
+                "updated_at": datetime.now(UTC),
+            }
+            if record is None:
+                db.add(
+                    DebateClaimRecord(
                         session_id=session_id,
                         claim_id=claim_id,
                         revision=revision,
                         **values,
-                    ))
-                else:
-                    existing_feedback = dict(record.feedback or {})
-                    existing_feedback.update(values["feedback"])
-                    values["feedback"] = existing_feedback
-                    for field, value in values.items():
-                        setattr(record, field, value)
-            await db.commit()
+                    )
+                )
+            else:
+                existing_feedback = dict(record.feedback or {})
+                existing_feedback.update(values["feedback"])
+                values["feedback"] = existing_feedback
+                for field, value in values.items():
+                    setattr(record, field, value)
+        await db.commit()

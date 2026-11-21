@@ -5,7 +5,6 @@ Revises: 028_debate_claim_records
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "029_unique_transcript_sequence"
@@ -33,7 +32,8 @@ def upgrade():
 
     # Resequence only affected sessions in their existing conversation order.
     # Moving duplicate rows to the end would corrupt briefing/export chronology.
-    op.execute(sa.text("""
+    op.execute(
+        sa.text("""
         WITH affected_sessions AS (
             SELECT session_id
             FROM transcript_entries
@@ -54,7 +54,8 @@ def upgrade():
         SET sequence = ordered_rows.new_sequence
         FROM ordered_rows
         WHERE transcript_entries.id = ordered_rows.id
-    """))
+    """)
+    )
     op.create_unique_constraint(
         _CONSTRAINT,
         "transcript_entries",

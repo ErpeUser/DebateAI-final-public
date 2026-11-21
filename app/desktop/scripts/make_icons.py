@@ -11,6 +11,7 @@ from PIL import Image
 
 ASSETS = Path(__file__).resolve().parent.parent / "assets"
 
+
 def main() -> None:
     ASSETS.mkdir(parents=True, exist_ok=True)
     source_path = ASSETS / "icon.png"

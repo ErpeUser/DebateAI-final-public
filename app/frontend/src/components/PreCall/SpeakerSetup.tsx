@@ -18,14 +18,20 @@ const PRESET_COLORS = [
   "#ffc52a",
 ];
 
-export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) {
+export default function SpeakerSetup({
+  sessionId,
+  speakers,
+  onRefresh,
+}: Props) {
   const { confirm, toast } = useConfirm();
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState("");
   const [role, setRole] = useState("");
   const [color, setColor] = useState(PRESET_COLORS[0]);
   const [isUser, setIsUser] = useState(false);
-  const [speakerType, setSpeakerType] = useState<"team" | "external">("external");
+  const [speakerType, setSpeakerType] = useState<"team" | "external">(
+    "external",
+  );
   const [saving, setSaving] = useState(false);
 
   const resetForm = () => {
@@ -84,9 +90,12 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
     } else {
       // Pick next unused color
       const usedColors = new Set(speakers.map((s) => s.color));
-      const nextColor = PRESET_COLORS.find((c) => !usedColors.has(c)) || PRESET_COLORS[0];
+      const nextColor =
+        PRESET_COLORS.find((c) => !usedColors.has(c)) || PRESET_COLORS[0];
       setColor(nextColor);
-      setName(`Teilnehmer ${speakers.filter((s) => s.speaker_type === "external").length + 1}`);
+      setName(
+        `Teilnehmer ${speakers.filter((s) => s.speaker_type === "external").length + 1}`,
+      );
       setIsUser(false);
       setSpeakerType("external");
     }
@@ -135,8 +144,18 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
                 className="ml-1 text-brand-mid-gray hover:text-red-500 transition-colors"
                 title="Teilnehmer entfernen"
               >
-                <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  className="h-3.5 w-3.5"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  strokeWidth={2}
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -202,7 +221,9 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
                   key={c}
                   onClick={() => setColor(c)}
                   className={`h-6 w-6 rounded-full border-2 transition-all ${
-                    color === c ? "border-brand-dark-gray scale-110" : "border-transparent"
+                    color === c
+                      ? "border-brand-dark-gray scale-110"
+                      : "border-transparent"
                   }`}
                   style={{ backgroundColor: c }}
                   title={c}
@@ -221,7 +242,9 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
                 }}
                 className="h-3.5 w-3.5 rounded border-brand-light-gray-1 text-brand-teal focus:ring-brand-teal-light"
               />
-              <span className="font-body text-xs text-brand-gray">Das bin ich</span>
+              <span className="font-body text-xs text-brand-gray">
+                Das bin ich
+              </span>
             </label>
           </div>
 
@@ -246,8 +269,18 @@ export default function SpeakerSetup({ sessionId, speakers, onRefresh }: Props) 
           onClick={handleShowForm}
           className="flex items-center gap-1.5 rounded-md border border-dashed border-brand-light-gray-1 px-3 py-2 font-body text-sm text-brand-teal transition-colors hover:border-brand-teal-light hover:bg-brand-light-gray-2"
         >
-          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          <svg
+            className="h-4 w-4"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+            strokeWidth={2}
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              d="M12 4.5v15m7.5-7.5h-15"
+            />
           </svg>
           Teilnehmer hinzufügen
         </button>

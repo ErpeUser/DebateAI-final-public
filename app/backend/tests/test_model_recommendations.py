@@ -5,7 +5,6 @@ from unittest.mock import AsyncMock, patch
 from app.routers import models
 from app.services.local_fit import local_recommendations_from_fit
 
-
 CURRENT = {"status": "current", "reason": "", "age_days": 0}
 
 
@@ -65,7 +64,10 @@ class CloudRecommendationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(expected, actual)
         self.assertEqual(
             {"objection_handler", "batch_transcription"},
-            {item["role"] for item in by_id["gemini-3.5-flash-lite"]["recommendations"]},
+            {
+                item["role"]
+                for item in by_id["gemini-3.5-flash-lite"]["recommendations"]
+            },
         )
         self.assertIn(
             "strategic_signals",
@@ -83,10 +85,13 @@ class CloudRecommendationTests(unittest.IsolatedAsyncioTestCase):
             models.ModelOut.model_validate(model)
             for recommendation in model["recommendations"]:
                 if recommendation.get("reasoning_effort") == "high":
-                    self.assertEqual(("gpt-5.6-sol", "brief_arbiter"), (
-                        model_id,
-                        recommendation["role"],
-                    ))
+                    self.assertEqual(
+                        ("gpt-5.6-sol", "brief_arbiter"),
+                        (
+                            model_id,
+                            recommendation["role"],
+                        ),
+                    )
 
     async def test_local_fit_metadata_is_merged_without_changing_availability(self):
         local_model = {
@@ -111,9 +116,15 @@ class CloudRecommendationTests(unittest.IsolatedAsyncioTestCase):
             "interval_seconds": 40,
         }
         with (
-            patch.object(models, "provider_key_availability", AsyncMock(return_value={})),
-            patch.object(models, "legacy_endpoint_configured", AsyncMock(return_value=False)),
-            patch.object(models, "endpoint_models", AsyncMock(return_value=[local_model])),
+            patch.object(
+                models, "provider_key_availability", AsyncMock(return_value={})
+            ),
+            patch.object(
+                models, "legacy_endpoint_configured", AsyncMock(return_value=False)
+            ),
+            patch.object(
+                models, "endpoint_models", AsyncMock(return_value=[local_model])
+            ),
             patch.object(
                 models,
                 "local_model_recommendations",
@@ -153,8 +164,7 @@ class LocalRecommendationTests(unittest.TestCase):
         recommendations = local_recommendations_from_fit(fit)
 
         fast_roles = {
-            item["role"]: item
-            for item in recommendations["endpoint:box:fast"]
+            item["role"]: item for item in recommendations["endpoint:box:fast"]
         }
         self.assertIn("consolidated_analyst", fast_roles)
         self.assertEqual(40, fast_roles["consolidated_analyst"]["interval_seconds"])

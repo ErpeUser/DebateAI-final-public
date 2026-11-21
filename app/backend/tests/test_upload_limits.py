@@ -45,11 +45,15 @@ class BoundedUploadRouteContractTests(unittest.TestCase):
             source = (backend / relative).read_text(encoding="utf-8")
             with self.subTest(relative=relative):
                 self.assertNotIn("content = await file.read()", source)
-                self.assertEqual(expected_calls, source.count("read_bounded_upload(file"))
+                self.assertEqual(
+                    expected_calls, source.count("read_bounded_upload(file")
+                )
                 ast.parse(source)
 
     def test_knowledge_markdown_output_is_bounded_before_persistence(self):
-        source = (Path(__file__).resolve().parents[1] / "app/routers/knowledge.py").read_text(encoding="utf-8")
+        source = (
+            Path(__file__).resolve().parents[1] / "app/routers/knowledge.py"
+        ).read_text(encoding="utf-8")
         self.assertIn("MAX_KNOWLEDGE_MARKDOWN_CHARS = 100_000", source)
         self.assertIn("body=markdown[:MAX_KNOWLEDGE_MARKDOWN_CHARS]", source)
 

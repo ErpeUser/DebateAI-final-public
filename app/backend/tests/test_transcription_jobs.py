@@ -60,7 +60,6 @@ class TranscriptionJobTests(unittest.TestCase):
             )
 
 
-
 class TranscriptionJobRetentionTests(unittest.TestCase):
     def tearDown(self):
         transcription_jobs._jobs.clear()

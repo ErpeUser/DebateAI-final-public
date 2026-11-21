@@ -1,8 +1,7 @@
 import unittest
 
-from pydantic import ValidationError
-
 from app.schemas import SessionCreate, SessionUpdate
+from pydantic import ValidationError
 
 
 class SessionNameValidationTests(unittest.TestCase):

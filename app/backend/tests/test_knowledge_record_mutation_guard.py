@@ -2,10 +2,9 @@ import unittest
 import uuid
 from types import SimpleNamespace
 
-from fastapi import HTTPException
-
 from app.models import KnowledgeRecord, KnowledgeSource
 from app.routers.knowledge import delete_record, update_record
+from fastapi import HTTPException
 
 
 class FakeDB:

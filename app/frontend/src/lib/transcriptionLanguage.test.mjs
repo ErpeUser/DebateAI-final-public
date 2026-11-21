@@ -18,7 +18,10 @@ test("multilingual or provider-decided models never warn", async () => {
 test("a set language the model does not cover warns by name", async () => {
   const { languageMismatch } = await load();
   assert.match(languageMismatch(v2, "de", name), /transkribiert German nicht/);
-  assert.match(languageMismatch(v3, "ja", name), /transkribiert Japanese nicht/);
+  assert.match(
+    languageMismatch(v3, "ja", name),
+    /transkribiert Japanese nicht/,
+  );
   assert.equal(languageMismatch(v3, "de", name), null);
 });
 

@@ -5,7 +5,6 @@ Revises: 030_provisional_transcript_revisions
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "031_transcript_entry_revisions"
@@ -45,11 +44,15 @@ def upgrade():
         sa.Column("revision", sa.Integer(), nullable=False),
         sa.Column("text", sa.Text(), nullable=False),
         sa.Column("speaker_id", sa.Uuid(), nullable=True),
-        sa.Column("source", sa.String(length=32), nullable=False, server_default="manual"),
+        sa.Column(
+            "source", sa.String(length=32), nullable=False, server_default="manual"
+        ),
         sa.Column("reason", sa.Text(), nullable=False, server_default=""),
         sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
         sa.ForeignKeyConstraint(["session_id"], ["sessions.id"], ondelete="CASCADE"),
-        sa.ForeignKeyConstraint(["transcript_id"], ["transcript_entries.id"], ondelete="CASCADE"),
+        sa.ForeignKeyConstraint(
+            ["transcript_id"], ["transcript_entries.id"], ondelete="CASCADE"
+        ),
         sa.ForeignKeyConstraint(["speaker_id"], ["speakers.id"], ondelete="SET NULL"),
         sa.PrimaryKeyConstraint("id"),
         sa.UniqueConstraint(
@@ -81,7 +84,8 @@ def downgrade():
         )
         op.drop_table("transcript_entry_revisions")
     transcript_columns = {
-        column["name"] for column in sa.inspect(op.get_bind()).get_columns("transcript_entries")
+        column["name"]
+        for column in sa.inspect(op.get_bind()).get_columns("transcript_entries")
     }
     if "producer_revision" in transcript_columns:
         op.drop_column("transcript_entries", "producer_revision")

@@ -17,7 +17,7 @@ from cryptography.fernet import Fernet
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.services import transcription_readiness as readiness  # noqa: E402
+from app.services import transcription_readiness as readiness
 
 
 class ProbeTests(unittest.TestCase):
@@ -33,11 +33,15 @@ class ProbeTests(unittest.TestCase):
 
     def test_import_failure_is_reported_not_raised(self):
         """v0.6.1's shape: the package is present but raises on import."""
-        with patch.object(readiness.importlib.util, "find_spec", return_value=object()), \
-                patch.dict(sys.modules, {"onnx_asr.preprocessors": None}):
-            with patch("builtins.__import__", side_effect=ImportError(
-                    "No package metadata was found for onnx-asr")):
-                usable, why = readiness.local_asr_status()
+        with (
+            patch.object(readiness.importlib.util, "find_spec", return_value=object()),
+            patch.dict(sys.modules, {"onnx_asr.preprocessors": None}),
+            patch(
+                "builtins.__import__",
+                side_effect=ImportError("No package metadata was found for onnx-asr"),
+            ),
+        ):
+            usable, why = readiness.local_asr_status()
         self.assertFalse(usable)
         self.assertIn("failed to load", why)
         self.assertIn("onnx-asr", why)
@@ -47,8 +51,10 @@ class ProbeTests(unittest.TestCase):
         missing = SimpleNamespace(is_file=lambda: False)
         data = SimpleNamespace(joinpath=lambda name: missing)
         package = SimpleNamespace(joinpath=lambda name: data)
-        with patch.object(readiness.importlib.util, "find_spec", return_value=object()), \
-                patch("importlib.resources.files", return_value=package):
+        with (
+            patch.object(readiness.importlib.util, "find_spec", return_value=object()),
+            patch("importlib.resources.files", return_value=package),
+        ):
             usable, why = readiness.local_asr_status()
         self.assertFalse(usable)
         self.assertIn("data files", why)
@@ -58,8 +64,10 @@ class ProbeTests(unittest.TestCase):
         present = SimpleNamespace(is_file=lambda: True)
         data = SimpleNamespace(joinpath=lambda name: present)
         package = SimpleNamespace(joinpath=lambda name: data)
-        with patch.object(readiness.importlib.util, "find_spec", return_value=object()), \
-                patch("importlib.resources.files", return_value=package):
+        with (
+            patch.object(readiness.importlib.util, "find_spec", return_value=object()),
+            patch("importlib.resources.files", return_value=package),
+        ):
             usable, why = readiness.local_asr_status()
         self.assertTrue(usable)
         self.assertEqual("", why)
@@ -90,9 +98,19 @@ class ReadinessMessageTests(unittest.IsolatedAsyncioTestCase):
     async def test_reason_names_the_actual_defect(self):
         """The old message always blamed a missing install, whatever was wrong."""
         runtime = SimpleNamespace(batch_model_id="local-whisper-base")
-        with patch.object(readiness, "get_transcription_runtime_config", return_value=runtime), \
-                patch.object(readiness, "local_asr_status",
-                             return_value=(False, "the onnx-asr runtime is missing its data files (fbanks.npz)")):
+        with (
+            patch.object(
+                readiness, "get_transcription_runtime_config", return_value=runtime
+            ),
+            patch.object(
+                readiness,
+                "local_asr_status",
+                return_value=(
+                    False,
+                    "the onnx-asr runtime is missing its data files (fbanks.npz)",
+                ),
+            ),
+        ):
             result = await readiness.get_transcription_readiness(object())
         self.assertFalse(result.ready)
         self.assertIn("data files", result.reason)

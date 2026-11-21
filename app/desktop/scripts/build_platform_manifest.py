@@ -14,7 +14,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "backend"))
 
-from app.services.update_signing import (  # noqa: E402
+from app.services.update_signing import (
     attach_platform_signature,
     parse_release_signing_keys,
     platform_signing_request,
@@ -30,9 +30,7 @@ from build_release_manifest import (
 def _private_key_from_environment() -> bytes:
     encoded = os.environ.get("DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY", "")
     if not encoded:
-        raise ValueError(
-            "DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY is required"
-        )
+        raise ValueError("DEBATEAI_RELEASE_SIGNING_PRIVATE_KEY is required")
     try:
         value = base64.b64decode(encoded + "=", altchars=b"-_", validate=True)
     except (ValueError, TypeError) as error:
@@ -81,14 +79,15 @@ def main() -> None:
         ):
             raise ValueError("--release-out and --platform-out are required")
         if detached_mode and (
-            arguments.detached_key_id is None
-            or arguments.detached_signature is None
+            arguments.detached_key_id is None or arguments.detached_signature is None
         ):
             raise ValueError("detached signing requires key id and signature")
         release = build_release_identity(
             arguments.tag, arguments.commit, arguments.published_at
         )
-        keys_file = arguments.keys_file or ROOT / "desktop" / "release_signing_keys.json"
+        keys_file = (
+            arguments.keys_file or ROOT / "desktop" / "release_signing_keys.json"
+        )
         notes_file = (
             arguments.release_notes_file
             or ROOT / ".github" / "release-notes" / f"{arguments.tag}.md"
@@ -119,10 +118,14 @@ def main() -> None:
             derived_public = (
                 Ed25519PrivateKey.from_private_bytes(private_key)
                 .public_key()
-                .public_bytes(serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+                .public_bytes(
+                    serialization.Encoding.Raw, serialization.PublicFormat.Raw
+                )
             )
             if not hmac.compare_digest(derived_public, public_keys[key_id]):
-                raise ValueError("release signing private key does not match active key")
+                raise ValueError(
+                    "release signing private key does not match active key"
+                )
             platform = sign_platform_manifest(manifest, key_id, private_key)
     except ValueError as error:
         parser.error(str(error))

@@ -1,7 +1,10 @@
 import unittest
 from unittest.mock import patch
 
-from scripts.install_sortformer import should_install_sortformer, use_rocm_windows_wheels
+from scripts.install_sortformer import (
+    should_install_sortformer,
+    use_rocm_windows_wheels,
+)
 
 
 class SortformerInstallTests(unittest.TestCase):
@@ -18,9 +21,11 @@ class SortformerInstallTests(unittest.TestCase):
         self.assertFalse(use_rocm_windows_wheels("https://example.com/whl"))
 
     def test_rocm_windows_wheels_require_windows_amd_and_python_312(self):
-        with patch("scripts.install_sortformer.sys") as fake_sys, \
-                patch("scripts.install_sortformer.nvidia_gpu_present", return_value=False), \
-                patch("scripts.install_sortformer.amd_gpu_present", return_value=True):
+        with (
+            patch("scripts.install_sortformer.sys") as fake_sys,
+            patch("scripts.install_sortformer.nvidia_gpu_present", return_value=False),
+            patch("scripts.install_sortformer.amd_gpu_present", return_value=True),
+        ):
             fake_sys.platform = "win32"
             fake_sys.version_info = (3, 12, 4)
             self.assertTrue(use_rocm_windows_wheels("auto"))

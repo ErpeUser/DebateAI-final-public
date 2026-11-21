@@ -27,7 +27,10 @@ class UpdaterTests(unittest.TestCase):
             ("linux", "DebateAI", "DebateAI"),
             ("darwin", "Contents/MacOS/DebateAI", "DebateAI.app"),
         ):
-            with self.subTest(platform=platform), patch.object(updater.sys, "platform", platform):
+            with (
+                self.subTest(platform=platform),
+                patch.object(updater.sys, "platform", platform),
+            ):
                 self.assertEqual(expected_launcher(), launcher)
                 self.assertEqual(expected_root(), root)
 
@@ -59,10 +62,14 @@ class UpdaterTests(unittest.TestCase):
         new_launcher.parent.mkdir(parents=True, exist_ok=True)
         new_launcher.write_text("new")
         self.state = self.updates / "state.json"
-        self.state.write_text(json.dumps({
-            "state": "applying",
-            "available_version": "v0.4.0",
-        }))
+        self.state.write_text(
+            json.dumps(
+                {
+                    "state": "applying",
+                    "available_version": "v0.4.0",
+                }
+            )
+        )
         self.plan_path = self.updates / "apply.json"
         self.plan = {
             "schema": 1,
@@ -102,9 +109,8 @@ class UpdaterTests(unittest.TestCase):
             {**self.plan, "launcher": "../DebateAI.exe"},
         ]
         for invalid in cases:
-            with self.subTest(invalid=invalid):
-                with self.assertRaises(PlanError):
-                    validate_plan(invalid, self.plan_path)
+            with self.subTest(invalid=invalid), self.assertRaises(PlanError):
+                validate_plan(invalid, self.plan_path)
 
         Path(self.plan["backup_dir"]).mkdir()
         with self.assertRaises(PlanError):
@@ -115,10 +121,14 @@ class UpdaterTests(unittest.TestCase):
             validate_plan(self.plan, self.plan_path)
         Path(self.plan["failed_dir"]).rmdir()
 
-        self.state.write_text(json.dumps({
-            "state": "ready",
-            "available_version": "v0.4.0",
-        }))
+        self.state.write_text(
+            json.dumps(
+                {
+                    "state": "ready",
+                    "available_version": "v0.4.0",
+                }
+            )
+        )
         with self.assertRaises(PlanError):
             validate_plan(self.plan, self.plan_path)
 
@@ -133,9 +143,11 @@ class UpdaterTests(unittest.TestCase):
                 return os.stat_result(fields)
             return result
 
-        with patch("updater.os.stat", side_effect=different_device):
-            with self.assertRaises(PlanError):
-                validate_plan(self.plan, self.plan_path)
+        with (
+            patch("updater.os.stat", side_effect=different_device),
+            self.assertRaises(PlanError),
+        ):
+            validate_plan(self.plan, self.plan_path)
 
     def test_plan_validation_rejects_symlinked_existing_roots(self):
         target = self.root / "real-state.json"
@@ -244,17 +256,25 @@ class UpdaterTests(unittest.TestCase):
         self.addCleanup(server.shutdown)
         lock = self.app_data / "launcher.json"
         self.assertFalse(instance_is_healthy(self.app_data))
-        lock.write_text(json.dumps({
-            "port": server.server_port,
-            "pid": 123,
-            "token": "wrong-token",
-        }))
+        lock.write_text(
+            json.dumps(
+                {
+                    "port": server.server_port,
+                    "pid": 123,
+                    "token": "wrong-token",
+                }
+            )
+        )
         self.assertFalse(instance_is_healthy(self.app_data))
-        lock.write_text(json.dumps({
-            "port": server.server_port,
-            "pid": 123,
-            "token": "new-token",
-        }))
+        lock.write_text(
+            json.dumps(
+                {
+                    "port": server.server_port,
+                    "pid": 123,
+                    "token": "new-token",
+                }
+            )
+        )
         self.assertTrue(instance_is_healthy(self.app_data))
 
     def test_old_process_or_lock_timeout_never_moves_the_good_install(self):

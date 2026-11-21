@@ -117,7 +117,9 @@ class RegistryTests(unittest.TestCase):
 
     def test_collection_and_files_resolve_to_records_adapter(self):
         for source_type in ("collection", "files"):
-            source = SimpleNamespace(name="s", source_type=source_type, id=None, config="{}")
+            source = SimpleNamespace(
+                name="s", source_type=source_type, id=None, config="{}"
+            )
             self.assertIsInstance(get_adapter(source), RecordsAdapter)
 
     def test_builtin_sources_expose_versioned_internal_contracts(self):

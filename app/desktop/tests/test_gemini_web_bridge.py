@@ -16,14 +16,18 @@ class GeminiWebBridgeTests(unittest.TestCase):
         resource_patch = patch(
             "debateai_desktop.gemini_web_bridge.resource", return_value=bundled
         )
-        port_patch = patch("debateai_desktop.gemini_web_bridge.free_port", return_value=49819)
+        port_patch = patch(
+            "debateai_desktop.gemini_web_bridge.free_port", return_value=49819
+        )
         self.addCleanup(resource_patch.stop)
         self.addCleanup(port_patch.stop)
         resource_patch.start()
         port_patch.start()
         return GeminiWebBridge(Path(tmp) / "data", logging.getLogger("test"))
 
-    def test_runtime_is_loopback_only_and_receives_cookie_only_in_child_environment(self):
+    def test_runtime_is_loopback_only_and_receives_cookie_only_in_child_environment(
+        self,
+    ):
         with tempfile.TemporaryDirectory() as tmp:
             bridge = self._bridge(tmp)
             bridge._ensure_key()
@@ -42,7 +46,10 @@ class GeminiWebBridgeTests(unittest.TestCase):
             bridge = self._bridge(tmp)
             bridge._ensure_key()
             with (
-                patch("debateai_desktop.gemini_web_bridge.subprocess.Popen", return_value=process) as popen,
+                patch(
+                    "debateai_desktop.gemini_web_bridge.subprocess.Popen",
+                    return_value=process,
+                ) as popen,
                 patch.object(bridge, "_request_json", return_value={"status": "ok"}),
                 patch.object(
                     bridge,
@@ -66,7 +73,10 @@ class GeminiWebBridgeTests(unittest.TestCase):
             bridge = self._bridge(tmp)
             bridge._ensure_key()
             with (
-                patch("debateai_desktop.gemini_web_bridge.subprocess.Popen", return_value=process),
+                patch(
+                    "debateai_desktop.gemini_web_bridge.subprocess.Popen",
+                    return_value=process,
+                ),
                 patch.object(bridge, "_request_json", return_value={"status": "ok"}),
                 patch.object(
                     bridge,

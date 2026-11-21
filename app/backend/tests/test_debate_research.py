@@ -1,9 +1,8 @@
 import asyncio
 import unittest
-
-import httpx
 from unittest import mock
 
+import httpx
 from app.services import debate_research
 
 
@@ -40,8 +39,15 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
     async def test_same_query_cannot_reuse_claim_specific_verdict(self):
         async def fake_research(client, claim, query, *, research_mode):
             await asyncio.sleep(0)
-            return debate_research.ResearchResult(claim=claim, query=query, status="completed")
-        with mock.patch.object(debate_research, "_research_with_client", new=mock.AsyncMock(side_effect=fake_research)) as research:
+            return debate_research.ResearchResult(
+                claim=claim, query=query, status="completed"
+            )
+
+        with mock.patch.object(
+            debate_research,
+            "_research_with_client",
+            new=mock.AsyncMock(side_effect=fake_research),
+        ) as research:
             first, second = await asyncio.gather(
                 debate_research.research_claim("Claim A", "gleiche Suche"),
                 debate_research.research_claim("Not Claim A", "gleiche Suche"),
@@ -51,21 +57,23 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("Not Claim A", second.claim)
 
     async def test_legacy_providers_are_disabled_even_in_old_configuration(self):
-        with mock.patch.object(
-            debate_research,
-            "research_settings",
-            return_value={
-                "enabled": True,
-                "providers": ["wikipedia", "duckduckgo"],
-                "timeout_seconds": 3,
-                "steps": 2,
-                "original_sources_required": True,
-            },
+        with (
+            mock.patch.object(
+                debate_research,
+                "research_settings",
+                return_value={
+                    "enabled": True,
+                    "providers": ["wikipedia", "duckduckgo"],
+                    "timeout_seconds": 3,
+                    "steps": 2,
+                    "original_sources_required": True,
+                },
+            ),
+            mock.patch.object(debate_research, "_ai_web_sources") as ai_lane,
         ):
-            with mock.patch.object(debate_research, "_ai_web_sources") as ai_lane:
-                result = await debate_research.research_claim(
-                    "Eine Behauptung", "diese Behauptung pruefen"
-                )
+            result = await debate_research.research_claim(
+                "Eine Behauptung", "diese Behauptung pruefen"
+            )
         self.assertEqual("unavailable", result.status)
         self.assertFalse(hasattr(debate_research, "_wikipedia_sources"))
         self.assertFalse(hasattr(debate_research, "_duckduckgo_sources"))
@@ -155,16 +163,20 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
                 return "https://api.example/gemini https://shared.example/source"
             return "https://cli.example/source"
 
-        with mock.patch.object(
-            debate_research,
-            "_research_provider_ready",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.generate",
-            new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
-        ), mock.patch(
-            "app.services.llm.generate_text",
-            new=fake_generate_text,
+        with (
+            mock.patch.object(
+                debate_research,
+                "_research_provider_ready",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.generate",
+                new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
+            ),
+            mock.patch(
+                "app.services.llm.generate_text",
+                new=fake_generate_text,
+            ),
         ):
             sources = await debate_research._ai_web_sources(
                 "Die Aussage",
@@ -185,7 +197,11 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             {source.provider for source in sources},
         )
         self.assertEqual(
-            {"https://api.example/gemini", "https://shared.example/source", "https://cli.example/source"},
+            {
+                "https://api.example/gemini",
+                "https://shared.example/source",
+                "https://cli.example/source",
+            },
             {source.url for source in sources},
         )
 
@@ -193,16 +209,20 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         async def fake_generate_text(*_args, **_kwargs):
             raise RuntimeError("provider unavailable")
 
-        with mock.patch.object(
-            debate_research,
-            "_research_provider_ready",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.generate",
-            new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
-        ), mock.patch(
-            "app.services.llm.generate_text",
-            new=fake_generate_text,
+        with (
+            mock.patch.object(
+                debate_research,
+                "_research_provider_ready",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.generate",
+                new=mock.AsyncMock(side_effect=RuntimeError("ChatGPT Web unavailable")),
+            ),
+            mock.patch(
+                "app.services.llm.generate_text",
+                new=fake_generate_text,
+            ),
         ):
             sources = await debate_research._ai_web_sources(
                 "Die Aussage",
@@ -416,13 +436,16 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             calls.append(model)
             return "https://api.example/live"
 
-        with mock.patch.object(
-            debate_research,
-            "_research_provider_ready",
-            return_value=True,
-        ), mock.patch(
-            "app.services.llm.generate_text",
-            new=fake_generate_text,
+        with (
+            mock.patch.object(
+                debate_research,
+                "_research_provider_ready",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.llm.generate_text",
+                new=fake_generate_text,
+            ),
         ):
             sources = await debate_research._ai_web_sources(
                 "Die Aussage",
@@ -432,7 +455,9 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(["gemini-3.1-pro-preview"], calls)
-        self.assertEqual(["https://api.example/live"], [source.url for source in sources])
+        self.assertEqual(
+            ["https://api.example/live"], [source.url for source in sources]
+        )
 
     async def test_live_fact_check_skips_busy_chatgpt_web_and_uses_fallback(self):
         calls = []
@@ -441,21 +466,27 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             calls.append(model)
             return "https://api.example/fallback"
 
-        with mock.patch(
-            "app.services.chatgpt_web.runtime_available",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.configured",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.model_confirmed",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.browser_busy",
-            return_value=True,
-        ), mock.patch(
-            "app.services.llm.generate_text",
-            new=fake_generate_text,
+        with (
+            mock.patch(
+                "app.services.chatgpt_web.runtime_available",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.configured",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.model_confirmed",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.browser_busy",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.llm.generate_text",
+                new=fake_generate_text,
+            ),
         ):
             sources = await debate_research._ai_web_sources(
                 "Die Aussage",
@@ -465,7 +496,9 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             )
 
         self.assertEqual(["gemini-3.1-pro-preview"], calls)
-        self.assertEqual(["https://api.example/fallback"], [source.url for source in sources])
+        self.assertEqual(
+            ["https://api.example/fallback"], [source.url for source in sources]
+        )
 
     def test_source_ranking_exposes_primary_scientific_and_statistics_signals(self):
         scientific = debate_research.ResearchSource(
@@ -536,12 +569,14 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         ]
 
         async def read(_client, source, _query, _claim):
-            return source.model_copy(update={
-                "verification_status": "read",
-                "retrieval_status": "read",
-                "passage": "Originalpassage zum Claim.",
-                "source_type": "original",
-            })
+            return source.model_copy(
+                update={
+                    "verification_status": "read",
+                    "retrieval_status": "read",
+                    "passage": "Originalpassage zum Claim.",
+                    "source_type": "original",
+                }
+            )
 
         settings = {
             "enabled": True,
@@ -553,19 +588,23 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         }
         client = httpx.AsyncClient()
         try:
-            with mock.patch.object(
-                debate_research,
-                "research_settings",
-                return_value=settings,
-            ), mock.patch.object(
-                debate_research,
-                "_ai_web_sources",
-                new=mock.AsyncMock(return_value=candidates),
-            ), mock.patch.object(
-                debate_research,
-                "_read_trusted_original",
-                side_effect=read,
-            ) as reader:
+            with (
+                mock.patch.object(
+                    debate_research,
+                    "research_settings",
+                    return_value=settings,
+                ),
+                mock.patch.object(
+                    debate_research,
+                    "_ai_web_sources",
+                    new=mock.AsyncMock(return_value=candidates),
+                ),
+                mock.patch.object(
+                    debate_research,
+                    "_read_trusted_original",
+                    side_effect=read,
+                ) as reader,
+            ):
                 result = await debate_research._research_with_client(
                     client,
                     "Claim",
@@ -579,7 +618,9 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             set(providers),
             {call.args[1].provider for call in reader.await_args_list},
         )
-        self.assertTrue(all(source.retrieval_status == "read" for source in result.sources))
+        self.assertTrue(
+            all(source.retrieval_status == "read" for source in result.sources)
+        )
 
     async def test_all_unread_ai_sources_remain_unavailable(self):
         source = debate_research.ResearchSource(
@@ -600,18 +641,22 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
         }
         client = httpx.AsyncClient()
         try:
-            with mock.patch.object(
-                debate_research,
-                "research_settings",
-                return_value=settings,
-            ), mock.patch.object(
-                debate_research,
-                "_ai_web_sources",
-                new=mock.AsyncMock(return_value=[source]),
-            ), mock.patch.object(
-                debate_research,
-                "_read_trusted_original",
-                new=mock.AsyncMock(return_value=source),
+            with (
+                mock.patch.object(
+                    debate_research,
+                    "research_settings",
+                    return_value=settings,
+                ),
+                mock.patch.object(
+                    debate_research,
+                    "_ai_web_sources",
+                    new=mock.AsyncMock(return_value=[source]),
+                ),
+                mock.patch.object(
+                    debate_research,
+                    "_read_trusted_original",
+                    new=mock.AsyncMock(return_value=source),
+                ),
             ):
                 result = await debate_research._research_with_client(
                     client,
@@ -630,18 +675,23 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual("gemini-3.1-pro-preview", model)
             return "https://api.example/research"
 
-        with mock.patch(
-            "app.services.chatgpt_web.runtime_available",
-            return_value=True,
-        ), mock.patch(
-            "app.services.chatgpt_web.configured",
-            return_value=False,
-        ), mock.patch(
-            "app.services.subscription_bridge.gemini_web_cookie_configured",
-            return_value=False,
-        ), mock.patch(
-            "app.services.llm.generate_text",
-            new=fake_generate_text,
+        with (
+            mock.patch(
+                "app.services.chatgpt_web.runtime_available",
+                return_value=True,
+            ),
+            mock.patch(
+                "app.services.chatgpt_web.configured",
+                return_value=False,
+            ),
+            mock.patch(
+                "app.services.subscription_bridge.gemini_web_cookie_configured",
+                return_value=False,
+            ),
+            mock.patch(
+                "app.services.llm.generate_text",
+                new=fake_generate_text,
+            ),
         ):
             sources = await debate_research._ai_web_sources(
                 "Die Aussage",
@@ -649,7 +699,9 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
                 ["chatgpt_web", "gemini_web", "gemini_api"],
             )
 
-        self.assertEqual(["https://api.example/research"], [source.url for source in sources])
+        self.assertEqual(
+            ["https://api.example/research"], [source.url for source in sources]
+        )
         health = debate_research.research_provider_health()
         self.assertEqual("blocked", health["chatgpt_web"]["state"])
         self.assertEqual("authentication", health["chatgpt_web"]["failure_kind"])
@@ -716,15 +768,18 @@ class DebateResearchTests(unittest.IsolatedAsyncioTestCase):
             "steps": 2,
             "original_sources_required": False,
         }
-        with mock.patch.object(
-            debate_research,
-            "research_settings",
-            return_value=settings,
-        ), mock.patch.object(
-            debate_research,
-            "_ai_web_sources",
-            new=mock.AsyncMock(return_value=[]),
-        ) as ai_lane:
+        with (
+            mock.patch.object(
+                debate_research,
+                "research_settings",
+                return_value=settings,
+            ),
+            mock.patch.object(
+                debate_research,
+                "_ai_web_sources",
+                new=mock.AsyncMock(return_value=[]),
+            ) as ai_lane,
+        ):
             result = await debate_research._research_with_client(
                 mock.AsyncMock(),
                 "Claim",

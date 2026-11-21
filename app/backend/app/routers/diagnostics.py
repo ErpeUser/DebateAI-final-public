@@ -2,15 +2,12 @@ import asyncio
 import os
 import tempfile
 
-from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
-from pydantic import BaseModel
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
-from app.database import get_db, async_session
+from app.database import async_session, get_db
+from app.services.audio_utils import convert_to_pcm16, make_wav_header
+from app.services.capacity_admission import assess_call_capacity
 from app.services.diagnostic_audio import AudioInputError, read_encoded_audio
 from app.services.diagnostic_jobs import run_diagnostic
-from app.services.audio_utils import convert_to_pcm16, make_wav_header
 from app.services.diarization_diagnostics import (
     benchmark_sortformer_audio,
     probe_sortformer_environment,
@@ -30,8 +27,10 @@ from app.services.local_fit import (
     run_local_fit,
     summarize_local_fit,
 )
-from app.services.capacity_admission import assess_call_capacity
-from app.services.transcription_readiness import get_transcription_readiness, local_asr_status
+from app.services.transcription_readiness import (
+    get_transcription_readiness,
+    local_asr_status,
+)
 from app.services.transcription_runtime import (
     get_transcription_runtime_config,
     set_batch_transcriber_model,
@@ -47,6 +46,9 @@ from app.services.voice_enrollment import (
     load_local_voice_embedding,
     save_local_voice_embedding,
 )
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile
+from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/diagnostics", tags=["diagnostics"])
 
@@ -114,7 +116,9 @@ async def update_diarization_config(
         else:
             runtime = await get_diarizer_runtime_config(db)
         if update.speaker_similarity_threshold is not None:
-            runtime = await set_speaker_similarity_threshold(db, update.speaker_similarity_threshold)
+            runtime = await set_speaker_similarity_threshold(
+                db, update.speaker_similarity_threshold
+            )
     except ValueError as exc:
         raise HTTPException(400, str(exc)) from exc
 
@@ -237,9 +241,11 @@ async def get_local_fit_summary(db: AsyncSession = Depends(get_db)):
 @router.post("/local-fit/run")
 async def run_local_fit_test(db: AsyncSession = Depends(get_db)):
     """Benchmark only while idle; own the DB session for the worker lifetime."""
+
     async def work(stop):
         async with async_session() as job_db:
             return await run_local_fit(job_db)
+
     return await run_diagnostic(work, timeout=600)
 
 
@@ -268,17 +274,25 @@ async def benchmark_local_asr(file: UploadFile):
 
     async def work(stop):
         from app.services.local_fit import MAX_ASR_SECONDS
+
         try:
             pcm_data = await asyncio.to_thread(
                 convert_to_pcm16, content, source_format, max_seconds=MAX_ASR_SECONDS
             )
         except Exception as exc:
-            raise HTTPException(400, "Audio conversion failed; use a valid short clip.") from exc
+            raise HTTPException(
+                400, "Audio conversion failed; use a valid short clip."
+            ) from exc
         if is_asr_clip_too_short(pcm_data):
-            raise HTTPException(400, f"Clip must be at least {MIN_ASR_SECONDS} seconds of audio.")
+            raise HTTPException(
+                400, f"Clip must be at least {MIN_ASR_SECONDS} seconds of audio."
+            )
         if not clip_has_speech(pcm_data):
-            raise HTTPException(400, "Clip needs audible speech to measure transcription speed.")
+            raise HTTPException(
+                400, "Clip needs audible speech to measure transcription speed."
+            )
         return await run_asr_fit(pcm_data)
+
     return await run_diagnostic(work, timeout=600)
 
 
@@ -293,12 +307,20 @@ async def benchmark_sortformer(file: UploadFile, db: AsyncSession = Depends(get_
     async def work(stop):
         try:
             pcm_data = await asyncio.to_thread(
-                convert_to_pcm16, content, source_format, max_seconds=MAX_BENCHMARK_SECONDS
+                convert_to_pcm16,
+                content,
+                source_format,
+                max_seconds=MAX_BENCHMARK_SECONDS,
             )
         except Exception as exc:
-            raise HTTPException(400, "Audio conversion failed; use a valid short clip.") from exc
+            raise HTTPException(
+                400, "Audio conversion failed; use a valid short clip."
+            ) from exc
         if is_benchmark_pcm_too_short(pcm_data):
-            raise HTTPException(400, f"Benchmark audio must be at least {MIN_BENCHMARK_SECONDS} seconds long.")
+            raise HTTPException(
+                400,
+                f"Benchmark audio must be at least {MIN_BENCHMARK_SECONDS} seconds long.",
+            )
         pcm_data = trim_benchmark_pcm(pcm_data)
         tmp_path = None
         try:
@@ -313,4 +335,5 @@ async def benchmark_sortformer(file: UploadFile, db: AsyncSession = Depends(get_
         finally:
             if tmp_path and os.path.exists(tmp_path):
                 os.unlink(tmp_path)
+
     return await run_diagnostic(work, timeout=600)

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import ipaddress
 import json
 import re
-import ipaddress
 import socket
 import tempfile
 from pathlib import Path
@@ -19,23 +19,43 @@ from urllib.parse import urljoin, urlsplit
 import httpx
 
 _MAX_MEDIA_BYTES = 1_000_000_000
-_MEDIA_SUFFIXES = {".wav", ".mp3", ".m4a", ".flac", ".ogg", ".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"}
-_CONTENT_SUFFIXES = {"audio/wav": ".wav", "audio/x-wav": ".wav", "audio/mpeg": ".mp3", "audio/mp4": ".m4a", "video/mp4": ".mp4", "video/webm": ".webm", "video/quicktime": ".mov"}
+_MEDIA_SUFFIXES = {
+    ".wav",
+    ".mp3",
+    ".m4a",
+    ".flac",
+    ".ogg",
+    ".mp4",
+    ".mkv",
+    ".webm",
+    ".mov",
+    ".avi",
+    ".m4v",
+}
+_CONTENT_SUFFIXES = {
+    "audio/wav": ".wav",
+    "audio/x-wav": ".wav",
+    "audio/mpeg": ".mp3",
+    "audio/mp4": ".m4a",
+    "video/mp4": ".mp4",
+    "video/webm": ".webm",
+    "video/quicktime": ".mov",
+}
 _SUBTITLE_SUFFIXES = {".vtt", ".srt", ".ass", ".ssa", ".ttml"}
 
+from app.services.video_eval_jobs import (
+    _artifact_from_segments,
+    probe_video_source,
+    retrieve_subtitles,
+)
 from app.services.video_eval_pipeline import (
     attach_media_metadata,
     build_video_artifact,
     evaluate_rhetoric_profile,
     research_source_candidates,
     save_artifact,
-    update_style_profile,
     transcribe_with_google_cloud,
-)
-from app.services.video_eval_jobs import (
-    _artifact_from_segments,
-    probe_video_source,
-    retrieve_subtitles,
+    update_style_profile,
 )
 
 
@@ -52,19 +72,27 @@ async def _public_https(url: str) -> bool:
     except ValueError:
         pass
     try:
-        addresses = await asyncio.to_thread(socket.getaddrinfo, host, 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        addresses = await asyncio.to_thread(
+            socket.getaddrinfo, host, 443, socket.AF_UNSPEC, socket.SOCK_STREAM
+        )
     except OSError:
         return False
-    return bool(addresses) and all(ipaddress.ip_address(item[4][0]).is_global for item in addresses if item[4])
+    return bool(addresses) and all(
+        ipaddress.ip_address(item[4][0]).is_global for item in addresses if item[4]
+    )
 
 
 async def _download_media(url: str, directory: Path) -> Path:
     current = url
-    async with httpx.AsyncClient(timeout=httpx.Timeout(120.0), follow_redirects=False) as client:
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(120.0), follow_redirects=False
+    ) as client:
         for _ in range(4):
             if not await _public_https(current):
                 raise ValueError("media URL must resolve to a public HTTPS host")
-            async with client.stream("GET", current, headers={"User-Agent": "DebateAI-video-eval"}) as response:
+            async with client.stream(
+                "GET", current, headers={"User-Agent": "DebateAI-video-eval"}
+            ) as response:
                 if response.is_redirect:
                     location = response.headers.get("location", "")
                     if not location:
@@ -72,7 +100,9 @@ async def _download_media(url: str, directory: Path) -> Path:
                     current = urljoin(str(response.url), location)
                     continue
                 response.raise_for_status()
-                content_type = response.headers.get("content-type", "").split(";", 1)[0].casefold()
+                content_type = (
+                    response.headers.get("content-type", "").split(";", 1)[0].casefold()
+                )
                 declared = response.headers.get("content-length", "")
                 if declared.isdigit() and int(declared) > _MAX_MEDIA_BYTES:
                     raise ValueError("media file exceeds the 1 GB safety limit")
@@ -88,7 +118,9 @@ async def _download_media(url: str, directory: Path) -> Path:
                             raise ValueError("media file exceeds the 1 GB safety limit")
                         handle.write(chunk)
                 if content_type.startswith("text/html") and suffix == ".media":
-                    raise ValueError("source_url points to a web page; provide a direct media_url")
+                    raise ValueError(
+                        "source_url points to a web page; provide a direct media_url"
+                    )
                 return output
         raise ValueError("media URL redirect limit exceeded")
 
@@ -134,18 +166,22 @@ async def _download_video_page(
 
     await asyncio.to_thread(extract)
     candidates = [
-        path for path in directory.iterdir()
+        path
+        for path in directory.iterdir()
         if path.is_file() and path.suffix.casefold() in _MEDIA_SUFFIXES
     ]
     if not candidates:
         raise ValueError("video page did not produce a supported audio/video file")
-    total_bytes = sum(path.stat().st_size for path in directory.iterdir() if path.is_file())
+    total_bytes = sum(
+        path.stat().st_size for path in directory.iterdir() if path.is_file()
+    )
     if total_bytes > _MAX_MEDIA_BYTES:
         raise ValueError("video page download exceeds the 1 GB safety limit")
     # Prefer a merged video over a separate audio-only rendition.
     candidates.sort(
         key=lambda path: (
-            path.suffix.casefold() not in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"},
+            path.suffix.casefold()
+            not in {".mp4", ".mkv", ".webm", ".mov", ".avi", ".m4v"},
             -path.stat().st_size,
         )
     )
@@ -155,7 +191,8 @@ async def _download_video_page(
 def _discover_subtitle(directory: Path, language: str) -> Path | None:
     language_root = str(language or "de").split("-", 1)[0].lower()
     candidates = [
-        path for path in directory.iterdir()
+        path
+        for path in directory.iterdir()
         if path.is_file() and path.suffix.casefold() in _SUBTITLE_SUFFIXES
     ]
     if not candidates:
@@ -218,14 +255,24 @@ def _normalize_video_item(item: object, index: int) -> dict:
     normalized = dict(item)
     if not str(normalized.get("video_id") or normalized.get("id") or "").strip():
         normalized["video_id"] = f"video-{index + 1:04d}"
-    if not any(
-        str(normalized.get(key) or "").strip()
-        for key in (
-            "audio", "video", "media_path",
-            "media_url", "video_url", "audio_url",
-            "video_page_url", "video_page", "page_url", "source_url",
+    if (
+        not any(
+            str(normalized.get(key) or "").strip()
+            for key in (
+                "audio",
+                "video",
+                "media_path",
+                "media_url",
+                "video_url",
+                "audio_url",
+                "video_page_url",
+                "video_page",
+                "page_url",
+                "source_url",
+            )
         )
-    ) and str(normalized.get("url") or "").strip():
+        and str(normalized.get("url") or "").strip()
+    ):
         normalized["video_page_url"] = str(normalized["url"]).strip()
     return normalized
 
@@ -245,7 +292,9 @@ def _assert_unique_video_ids(items: list[dict]) -> None:
         seen[effective] = index
 
 
-async def process(item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str) -> Path:
+async def process(
+    item: dict, output_dir: Path, language: str, diarization: bool, style_profile: str
+) -> Path:
     video_id = _safe_video_id(
         item.get("video_id") or item.get("id"),
         fallback="video-unknown",
@@ -272,9 +321,14 @@ async def process(item: dict, output_dir: Path, language: str, diarization: bool
             artifact = _artifact_from_segments(probe, segments, subtitle_meta)
             artifact_path = output_dir / f"{video_id}.json"
             artifact_path.parent.mkdir(parents=True, exist_ok=True)
-            artifact_path.write_text(json.dumps(artifact, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+            artifact_path.write_text(
+                json.dumps(artifact, ensure_ascii=False, indent=2) + "\n",
+                encoding="utf-8",
+            )
             if style_profile:
-                update_style_profile(style_profile, artifact.get("rhetorical_profile") or {})
+                update_style_profile(
+                    style_profile, artifact.get("rhetorical_profile") or {}
+                )
             return artifact_path
         media_path = await _resolve_media_path(
             item,
@@ -332,7 +386,13 @@ async def main() -> int:
     output_dir = Path(args.out_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
     for item in items:
-        path = await process(item, output_dir, args.language, args.speaker_diarization, args.style_profile)
+        path = await process(
+            item,
+            output_dir,
+            args.language,
+            args.speaker_diarization,
+            args.style_profile,
+        )
         print(path)
     return 0
 

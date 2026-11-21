@@ -1,9 +1,6 @@
 import uuid
 from dataclasses import dataclass
-from datetime import datetime, timezone
-
-from sqlalchemy import update
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import UTC, datetime
 
 from app.models import Question, Speaker, TranscriptEntry
 from app.services.speaker_name_rewriter import (
@@ -11,6 +8,8 @@ from app.services.speaker_name_rewriter import (
     rewrite_session_insight_labels_with_replacements,
     speaker_effective_name,
 )
+from sqlalchemy import update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class SpeakerMergeError(ValueError):
@@ -72,7 +71,7 @@ async def merge_speakers(
         db,
         session_id,
         replacements,
-        now=datetime.now(timezone.utc),
+        now=datetime.now(UTC),
         enhanced=True,
         note="Updated insight text after speaker merge.",
     )

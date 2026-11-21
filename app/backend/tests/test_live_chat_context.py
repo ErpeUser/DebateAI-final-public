@@ -36,7 +36,9 @@ class LiveSystemPromptTests(unittest.TestCase):
 
 class LivePromptTests(unittest.TestCase):
     def test_includes_every_small_layer_and_the_question(self):
-        prompt = build_live_prompt(context([("Sarah", "Q1 is spoken for.")]), "what is the budget?")
+        prompt = build_live_prompt(
+            context([("Sarah", "Q1 is spoken for.")]), "what is the budget?"
+        )
         self.assertIn("Acme discovery", prompt)
         self.assertIn("client_sales", prompt)
         self.assertIn("Renewal risk", prompt)
@@ -85,7 +87,9 @@ class LivePromptTests(unittest.TestCase):
         # ground truth; four maximal local extracts must not push it out.
         lines = [("Leah", "The runbook freeze lifts on Thursday.")]
         docs = [(f"doc{i}.txt", "y" * 4000) for i in range(4)]
-        prompt = build_live_prompt(context(lines, documents=docs), "when does the freeze lift?")
+        prompt = build_live_prompt(
+            context(lines, documents=docs), "when does the freeze lift?"
+        )
         self.assertIn("The runbook freeze lifts on Thursday.", prompt)
         self.assertIn("doc0.txt", prompt)
 
@@ -136,7 +140,9 @@ class LiveInsightFormatTests(unittest.TestCase):
             followup_question = ""
             offering_match = ""
 
-        out = format_live_insights([Item()], {"22222222-2222-2222-2222-222222222222": "Sarah"})
+        out = format_live_insights(
+            [Item()], {"22222222-2222-2222-2222-222222222222": "Sarah"}
+        )
         self.assertIn("objection", out)
         self.assertIn("No bandwidth until Q2", out)
         self.assertIn("Sarah", out)

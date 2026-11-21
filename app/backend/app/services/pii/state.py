@@ -8,9 +8,8 @@ either, is what keeps that from being a cycle.
 
 import json
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.services.app_settings import get_app_setting
+from sqlalchemy.ext.asyncio import AsyncSession
 
 SETTINGS_KEY = "pii.shield"
 

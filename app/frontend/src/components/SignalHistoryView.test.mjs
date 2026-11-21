@@ -7,7 +7,9 @@ import { fileURLToPath } from "node:url";
 import { after, test } from "node:test";
 import { build } from "esbuild";
 
-const componentDir = dirname(fileURLToPath(new URL("./ActiveCall/SynthesisSignals.tsx", import.meta.url)));
+const componentDir = dirname(
+  fileURLToPath(new URL("./ActiveCall/SynthesisSignals.tsx", import.meta.url)),
+);
 const outputDir = await mkdtemp(join(tmpdir(), "signal-history-view-test-"));
 const outputPath = join(outputDir, "bundle.cjs");
 
@@ -113,14 +115,22 @@ test("the model's own ranking decides the panel, not section order", () => {
     ...liveSynthesis,
     strategic_signals: [{ title: "Routine signal", priority: 4 }],
     risks_blockers: [{ title: "Decisive risk", priority: 1 }],
-    unresolved_discovery_questions: [{ title: "Nice-to-know question", priority: 5 }],
+    unresolved_discovery_questions: [
+      { title: "Nice-to-know question", priority: 5 },
+    ],
     top_opportunities: [{ title: "Live opportunity", priority: 3 }],
     action_plan: [{ title: "Do this now", priority: 2 }],
   });
 
   assert.deepEqual(
     ranked.map((card) => card.item.title),
-    ["Decisive risk", "Do this now", "Live opportunity", "Routine signal", "Nice-to-know question"],
+    [
+      "Decisive risk",
+      "Do this now",
+      "Live opportunity",
+      "Routine signal",
+      "Nice-to-know question",
+    ],
   );
 });
 
@@ -157,7 +167,13 @@ test("the strategic filter borrows the three most recently retired signals", () 
     historyRow("h-2", "2026-08-31T10:04:00Z"),
     historyRow("h-3", "2026-08-31T10:02:00Z"),
     historyRow("h-4", "2026-08-31T10:03:00Z"),
-    { id: "s-1", item_type: "signal", question: "Current", created_at: "2026-08-31T10:05:00Z", dismissed: false },
+    {
+      id: "s-1",
+      item_type: "signal",
+      question: "Current",
+      created_at: "2026-08-31T10:05:00Z",
+      dismissed: false,
+    },
   ]);
 
   // The oldest retiree drops; the current signal needs no borrowing.
@@ -167,7 +183,13 @@ test("the strategic filter borrows the three most recently retired signals", () 
 test("a dismissed or still-current signal is never a strategic extra", () => {
   const ids = recentSignalHistoryIds([
     historyRow("h-1", "2026-08-31T10:01:00Z", { dismissed: true }),
-    { id: "s-1", item_type: "signal", question: "Current", created_at: "2026-08-31T10:05:00Z", dismissed: false },
+    {
+      id: "s-1",
+      item_type: "signal",
+      question: "Current",
+      created_at: "2026-08-31T10:05:00Z",
+      dismissed: false,
+    },
   ]);
 
   assert.equal(ids.size, 0);

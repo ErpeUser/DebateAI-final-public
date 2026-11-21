@@ -1,11 +1,9 @@
 import unittest
 import uuid
 from contextlib import ExitStack
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
-
-from sqlalchemy import inspect
 
 from app.models import (
     Session,
@@ -31,6 +29,7 @@ from app.services.speaker_revalidation import (
     start_or_resume_revalidation,
     summarize_run,
 )
+from sqlalchemy import inspect
 
 
 class _FakeGoogleClientError(Exception):
@@ -157,7 +156,9 @@ class SpeakerRevalidationRevisionTests(unittest.TestCase):
                 speaker_id=None,
             )
         ]
-        session = SimpleNamespace(meeting_type="client_sales", meeting_context="Context")
+        session = SimpleNamespace(
+            meeting_type="client_sales", meeting_context="Context"
+        )
 
         first = content_version(session, [question_a, question_b], transcript)
         reordered = content_version(session, [question_b, question_a], transcript)
@@ -188,14 +189,14 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
         completed = SimpleNamespace(
             status="completed",
             error_message="",
-            started_at=datetime.now(timezone.utc),
-            completed_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         failed = SimpleNamespace(
             status="failed",
             error_message="model offline",
-            started_at=datetime.now(timezone.utc),
-            completed_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
         )
         queued = SimpleNamespace(
             status="queued",
@@ -206,7 +207,7 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
         run = SimpleNamespace(
             status="partial",
             error_message="1 batch failed",
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
 
         count = requeue_failed_batches(run, [completed, failed, queued])
@@ -223,8 +224,8 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
         self.assertIsNone(run.completed_at)
 
     def test_summary_reports_batch_progress_metrics_and_failures(self):
-        started = datetime(2026, 7, 23, 12, 0, tzinfo=timezone.utc)
-        completed = datetime(2026, 7, 23, 12, 0, 2, tzinfo=timezone.utc)
+        started = datetime(2026, 7, 23, 12, 0, tzinfo=UTC)
+        completed = datetime(2026, 7, 23, 12, 0, 2, tzinfo=UTC)
         batches = [
             SimpleNamespace(
                 id=uuid.uuid4(),
@@ -290,7 +291,7 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
         self.assertEqual("model offline", summary["batches"][1]["error"])
 
     def test_finalization_carries_the_failed_batch_reason_into_the_run(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reason = batch_failure_reason(
             _FakeGoogleClientError("429 RESOURCE_EXHAUSTED: monthly spending cap")
         )
@@ -305,7 +306,9 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
             speaker_context_enhanced_at=None,
         )
 
-        finalize_run_state(run, batches, session, SimpleNamespace(source_version=2), now)
+        finalize_run_state(
+            run, batches, session, SimpleNamespace(source_version=2), now
+        )
 
         self.assertEqual("partial", run.status)
         self.assertEqual(now, run.completed_at)
@@ -338,7 +341,7 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
     def test_failed_run_summary_is_distinguishable_from_in_progress(self):
         # Production regression: one insights batch hit a provider 429, the
         # briefing batch never ran, and the UI still showed "Revalidating 0/2".
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         reason = batch_failure_reason(
             _FakeGoogleClientError(
                 "429 RESOURCE_EXHAUSTED: Your project has exceeded its monthly "
@@ -405,7 +408,7 @@ class SpeakerRevalidationBatchTests(unittest.TestCase):
         self.assertEqual(reason, summary["batches"][0]["error"])
 
     def test_finalization_clears_only_the_mapping_version_that_ran(self):
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         mapping = SimpleNamespace(source_version=4)
         completed_batches = [
             SimpleNamespace(status="completed"),
@@ -473,7 +476,7 @@ class SpeakerRevalidationOrmTests(unittest.IsolatedAsyncioTestCase):
             mapping_revision_id=revision.id,
             content_version="content",
             status="partial",
-            started_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
             batches=[batch],
         )
         loaded_run = SpeakerRevalidationRun(
@@ -530,7 +533,9 @@ class SpeakerRevalidationOrmTests(unittest.IsolatedAsyncioTestCase):
             SimpleNamespace(execute=execute),
         )
 
-        compiled = str(captured["statement"].compile(compile_kwargs={"literal_binds": True}))
+        compiled = str(
+            captured["statement"].compile(compile_kwargs={"literal_binds": True})
+        )
         self.assertIn("LIMIT 1", compiled)
         self.assertIs(run, result)
 
@@ -634,30 +639,42 @@ class EnhanceInsightsWithFallbackTests(unittest.IsolatedAsyncioTestCase):
             "enhanced_insights": enhanced,
         }
 
-    async def _enhance(self, batch, fallbacks, *, local_only=False, sleep=None, resolve=None):
+    async def _enhance(
+        self, batch, fallbacks, *, local_only=False, sleep=None, resolve=None
+    ):
         with ExitStack() as stack:
             # The primary comes from the synthesizer agent row (ALP-157), so the
             # resolver stands in for that lookup here.
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.agent_model_id",
-                new=resolve or AsyncMock(return_value="cloud-primary"),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.get_local_only",
-                new=AsyncMock(return_value=local_only),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.select_fallback_models",
-                new=AsyncMock(return_value=fallbacks),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.run_speaker_context_batch",
-                new=batch,
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.asyncio.sleep",
-                new=sleep or AsyncMock(),
-            ))
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.agent_model_id",
+                    new=resolve or AsyncMock(return_value="cloud-primary"),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.get_local_only",
+                    new=AsyncMock(return_value=local_only),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.select_fallback_models",
+                    new=AsyncMock(return_value=fallbacks),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.run_speaker_context_batch",
+                    new=batch,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.asyncio.sleep",
+                    new=sleep or AsyncMock(),
+                )
+            )
             return await _enhance_insights_with_fallback(
                 SimpleNamespace(), uuid.uuid4(), [], uuid.uuid4()
             )
@@ -701,7 +718,9 @@ class EnhanceInsightsWithFallbackTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual("endpoint:lab:qwen", metrics["model_id"])
         self.assertEqual(2, batch.await_count)
         self.assertEqual("cloud-primary", batch.await_args_list[0].kwargs["model_id"])
-        self.assertEqual("endpoint:lab:qwen", batch.await_args_list[1].kwargs["model_id"])
+        self.assertEqual(
+            "endpoint:lab:qwen", batch.await_args_list[1].kwargs["model_id"]
+        )
 
     async def test_hard_cap_with_no_fallback_raises(self):
         cap = RuntimeError("429 RESOURCE_EXHAUSTED: spending cap")
@@ -740,7 +759,9 @@ class EnhanceInsightsWithFallbackTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(3, metrics["enhanced_insights"])
         self.assertEqual(2, batch.await_count)
-        self.assertEqual("endpoint:lab:qwen", batch.await_args_list[1].kwargs["model_id"])
+        self.assertEqual(
+            "endpoint:lab:qwen", batch.await_args_list[1].kwargs["model_id"]
+        )
 
 
 class SelfHostedQuotaWireFormatTests(unittest.TestCase):
@@ -757,7 +778,7 @@ class SelfHostedQuotaWireFormatTests(unittest.TestCase):
 
     def test_a_body_naming_quota_is_a_hard_cap_not_a_rate_limit(self):
         error = (
-            f'HTTP 429 from {self.URL}: '
+            f"HTTP 429 from {self.URL}: "
             '{"error":{"message":"You exceeded your current quota."}}'
         )
 
@@ -802,8 +823,8 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
             item_ids=[str(uuid.uuid4())],
             status="failed",
             attempts=1,
-            started_at=datetime.now(timezone.utc),
-            completed_at=datetime.now(timezone.utc),
+            started_at=datetime.now(UTC),
+            completed_at=datetime.now(UTC),
             error_message=(
                 "Gemini quota/spending cap exhausted. Assign a self-hosted model "
                 "in Admin -> Agents (any on-prem endpoint), or raise the cap in "
@@ -825,7 +846,7 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
             mapping_revision_id=uuid.uuid4(),
             status="partial",
             error_message="1 revalidation batch failed.",
-            completed_at=datetime.now(timezone.utc),
+            completed_at=datetime.now(UTC),
         )
         batch = self._batch()
 
@@ -839,10 +860,16 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
 
         # The re-run, with the primary still walled off.
         cap = RuntimeError("429 RESOURCE_EXHAUSTED: spending cap")
-        inner = AsyncMock(side_effect=[
-            cap,
-            {"processed_entries": 3, "applied_operations": 4, "enhanced_insights": 2},
-        ])
+        inner = AsyncMock(
+            side_effect=[
+                cap,
+                {
+                    "processed_entries": 3,
+                    "applied_operations": 4,
+                    "enhanced_insights": 2,
+                },
+            ]
+        )
         db = SimpleNamespace(
             commit=AsyncMock(),
             rollback=AsyncMock(),
@@ -851,25 +878,36 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with ExitStack() as stack:
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.agent_model_id",
-                new=AsyncMock(return_value="cloud-primary"),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.get_local_only",
-                new=AsyncMock(return_value=False),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.select_fallback_models",
-                new=AsyncMock(return_value=["endpoint:lab:qwen"]),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.run_speaker_context_batch",
-                new=inner,
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.asyncio.sleep", new=AsyncMock(),
-            ))
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.agent_model_id",
+                    new=AsyncMock(return_value="cloud-primary"),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.get_local_only",
+                    new=AsyncMock(return_value=False),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.select_fallback_models",
+                    new=AsyncMock(return_value=["endpoint:lab:qwen"]),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.run_speaker_context_batch",
+                    new=inner,
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.asyncio.sleep",
+                    new=AsyncMock(),
+                )
+            )
             await speaker_revalidation._run_batch(db, run, batch)
 
         self.assertEqual("completed", batch.status)
@@ -883,7 +921,9 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
         # source label the batch query filters on.
         self.assertEqual(11, batch.input_tokens)
         self.assertEqual(18, batch.total_tokens)
-        self.assertEqual("endpoint:lab:qwen", inner.await_args_list[1].kwargs["model_id"])
+        self.assertEqual(
+            "endpoint:lab:qwen", inner.await_args_list[1].kwargs["model_id"]
+        )
         db.rollback.assert_not_awaited()
 
     async def test_a_batch_with_no_fallback_still_fails_with_the_reworded_reason(self):
@@ -906,25 +946,36 @@ class RetryFailedBatchesEndToEndTests(unittest.IsolatedAsyncioTestCase):
         )
 
         with ExitStack() as stack:
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.agent_model_id",
-                new=AsyncMock(return_value="cloud-primary"),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.get_local_only",
-                new=AsyncMock(return_value=False),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.select_fallback_models",
-                new=AsyncMock(return_value=[]),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.run_speaker_context_batch",
-                new=AsyncMock(side_effect=cap),
-            ))
-            stack.enter_context(patch(
-                "app.services.speaker_revalidation.asyncio.sleep", new=AsyncMock(),
-            ))
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.agent_model_id",
+                    new=AsyncMock(return_value="cloud-primary"),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.get_local_only",
+                    new=AsyncMock(return_value=False),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.select_fallback_models",
+                    new=AsyncMock(return_value=[]),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.run_speaker_context_batch",
+                    new=AsyncMock(side_effect=cap),
+                )
+            )
+            stack.enter_context(
+                patch(
+                    "app.services.speaker_revalidation.asyncio.sleep",
+                    new=AsyncMock(),
+                )
+            )
             await speaker_revalidation._run_batch(db, run, batch)
 
         self.assertEqual("failed", batch.status)

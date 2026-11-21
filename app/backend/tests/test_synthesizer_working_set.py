@@ -9,14 +9,14 @@ record; settled ones become stubs that merge/answer can still target by id.
 import json
 import unittest
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from app.services.agents import synthesizer
 from app.services.agents.event_bus import CooldownSubscriber
 from app.services.agents.synthesizer import _build_insights_json
 
-NOW = datetime(2026, 8, 3, 20, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 3, 20, 0, 0, tzinfo=UTC)
 
 
 def insight(**overrides):
@@ -76,7 +76,9 @@ class WorkingSetTests(unittest.TestCase):
 
     def test_recent_edit_pulls_a_stale_insight_back_in(self):
         old = NOW - timedelta(hours=2)
-        [item] = records([insight(created_at=old, updated_at=NOW - timedelta(seconds=30))])
+        [item] = records(
+            [insight(created_at=old, updated_at=NOW - timedelta(seconds=30))]
+        )
         self.assertNotIn("settled", item)
 
     def test_source_context_and_duplicate_speaker_id_are_never_sent(self):
@@ -129,13 +131,15 @@ class WorkingSetTests(unittest.TestCase):
         # percent of the payload and source_context 17.9 percent.
         fields = {
             "rationale": "They are consolidating because renewal admin overhead "
-                         "is eating a quarter of the ops team's quarter." * 2,
+            "is eating a quarter of the ops team's quarter." * 2,
             "source_context": "We have three separate renewals and honestly it is "
-                              "burning us out, we want one throat to choke." * 2,
+            "burning us out, we want one throat to choke." * 2,
             "enrichment_notes": "Confirmed again later in the call." * 4,
         }
         live_row = insight(**fields)
-        settled_row = insight(answered=True, created_at=NOW - timedelta(hours=1), **fields)
+        settled_row = insight(
+            answered=True, created_at=NOW - timedelta(hours=1), **fields
+        )
 
         live_size = len(_build_insights_json([live_row], now=NOW))
         settled_size = len(_build_insights_json([settled_row], now=NOW))

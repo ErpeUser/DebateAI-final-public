@@ -15,15 +15,14 @@ import os
 import re
 import threading
 from collections import OrderedDict
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Sequence
+from typing import Any
 
 import numpy as np
-from sqlalchemy import func, select
-
 from app.models import KnowledgeRecord
-
+from sqlalchemy import func, select
 
 MODEL_NAME = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 EMBEDDING_META_KEY = "retrieval_embedding"
@@ -155,7 +154,9 @@ class FastEmbedContextIndex:
         self._remember(section.key, entry)
         return True
 
-    def cache_metadata(self, key: str, *, include_vector: bool = False) -> dict[str, Any]:
+    def cache_metadata(
+        self, key: str, *, include_vector: bool = False
+    ) -> dict[str, Any]:
         with self._lock:
             entry = self._cache.get(key)
             return entry.metadata(include_vector=include_vector) if entry else {}
@@ -215,7 +216,9 @@ class FastEmbedContextIndex:
             entry = entries[section.key]
             if entry.dimension != int(query_vector.shape[0]):
                 continue
-            ranked.append((section.key, float(np.dot(query_vector, entry.vector)), position))
+            ranked.append(
+                (section.key, float(np.dot(query_vector, entry.vector)), position)
+            )
         ranked.sort(key=lambda item: (-item[1], item[2]))
         return [key for key, _score, _position in ranked[:limit]]
 
@@ -302,14 +305,15 @@ def _parse_sections(value: str) -> list[KnowledgeSection]:
         for section in re.split(r"(?=^### )", value, flags=re.MULTILINE)
         if section.strip()
     ]
-    return [KnowledgeSection(f"section:{index}", text) for index, text in enumerate(raw_sections)]
+    return [
+        KnowledgeSection(f"section:{index}", text)
+        for index, text in enumerate(raw_sections)
+    ]
 
 
 def _lexical_fallback(sections: Sequence[KnowledgeSection], query: str) -> list[str]:
     terms = {
-        token
-        for token in re.findall(r"[\w]+", query.casefold())
-        if len(token) > 2
+        token for token in re.findall(r"[\w]+", query.casefold()) if len(token) > 2
     }
     return [
         section.key
@@ -324,7 +328,9 @@ def _lexical_fallback(sections: Sequence[KnowledgeSection], query: str) -> list[
     ]
 
 
-def _within_budget(sections: Sequence[KnowledgeSection], ranking: Sequence[str], budget: int) -> str:
+def _within_budget(
+    sections: Sequence[KnowledgeSection], ranking: Sequence[str], budget: int
+) -> str:
     by_key = {section.key: section.text for section in sections}
     parts: list[str] = []
     used = 0
@@ -378,7 +384,11 @@ def select_context_sections(
         or (len(sections) <= 8 and index is None)
     ):
         return _within_budget(sections, [section.key for section in sections], budget)
-    lexical = list(lexical_ranking) if lexical_ranking is not None else _lexical_fallback(sections, query)
+    lexical = (
+        list(lexical_ranking)
+        if lexical_ranking is not None
+        else _lexical_fallback(sections, query)
+    )
     return _hybrid_selection(
         sections,
         query,
@@ -463,7 +473,11 @@ def select_knowledge_record_context(
     content updates can reuse them without a new vector database or schema.
     Assignment back to ``record.meta`` lets the caller flush/commit atomically.
     """
-    active = [record for record in authorized_records if bool(getattr(record, "active", False))]
+    active = [
+        record
+        for record in authorized_records
+        if bool(getattr(record, "active", False))
+    ]
     if not active:
         return ""
     dense_index = index or _DEFAULT_INDEX

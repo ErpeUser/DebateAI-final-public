@@ -63,7 +63,9 @@ _PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     ),
     # Query parameters that carry credentials.
     (
-        re.compile(r"(?i)([?&](?:key|api[-_]?key|apikey|token|access_token|secret)=)([^&\s'\"]+)"),
+        re.compile(
+            r"(?i)([?&](?:key|api[-_]?key|apikey|token|access_token|secret)=)([^&\s'\"]+)"
+        ),
         rf"\1{REDACTED}",
     ),
     # URL userinfo: https://user:password@host
@@ -167,7 +169,7 @@ def redact_text(text: str | None, *, now: float | None = None) -> str:
 def _safe_redact(text: str) -> str:
     try:
         return redact_text(text)
-    except Exception:  # noqa: BLE001 - a scrubber must never take the log line down with it
+    except Exception:
         return REDACTED
 
 
@@ -179,7 +181,7 @@ class RedactingLogRecord(logging.LogRecord):
     every handler in the process sees clean text without being configured.
     """
 
-    def getMessage(self) -> str:  # noqa: N802 - logging API
+    def getMessage(self) -> str:
         return _safe_redact(super().getMessage())
 
     @property
@@ -210,7 +212,7 @@ class SecretRedactionFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         try:
             message = record.getMessage()
-        except Exception:  # noqa: BLE001
+        except Exception:
             message = str(record.msg)
         record.msg = _safe_redact(message)
         record.args = ()

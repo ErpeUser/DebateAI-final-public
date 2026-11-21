@@ -6,7 +6,6 @@ Create Date: 2026-07-22
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "017_token_usage"
@@ -29,7 +28,9 @@ def upgrade():
         sa.ForeignKeyConstraint(["session_id"], ["sessions.id"], ondelete="CASCADE"),
         sa.PrimaryKeyConstraint("id"),
     )
-    op.create_index(op.f("ix_token_usage_session_id"), "token_usage", ["session_id"], unique=False)
+    op.create_index(
+        op.f("ix_token_usage_session_id"), "token_usage", ["session_id"], unique=False
+    )
 
 
 def downgrade():

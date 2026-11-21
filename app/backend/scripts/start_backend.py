@@ -12,9 +12,14 @@ DEFAULT_BACKEND_HOST = "127.0.0.1"
 
 def _backend_host() -> str:
     """Resolve and validate the listener address for native and Compose starts."""
-    host = os.getenv("BACKEND_HOST", DEFAULT_BACKEND_HOST).strip() or DEFAULT_BACKEND_HOST
+    host = (
+        os.getenv("BACKEND_HOST", DEFAULT_BACKEND_HOST).strip() or DEFAULT_BACKEND_HOST
+    )
     loopback_hosts = {"localhost", "127.0.0.1", "::1", "[::1]"}
-    if host.lower() not in loopback_hosts and not os.getenv("DEBATEAI_INSTANCE_TOKEN", "").strip():
+    if (
+        host.lower() not in loopback_hosts
+        and not os.getenv("DEBATEAI_INSTANCE_TOKEN", "").strip()
+    ):
         raise RuntimeError(
             "BACKEND_HOST must stay on loopback unless DEBATEAI_INSTANCE_TOKEN is set"
         )
@@ -27,9 +32,13 @@ def _backend_workers() -> int:
     try:
         workers = int(raw)
     except ValueError as exc:
-        raise RuntimeError("BACKEND_WORKERS must be the integer 1 until shared live state is available") from exc
+        raise RuntimeError(
+            "BACKEND_WORKERS must be the integer 1 until shared live state is available"
+        ) from exc
     if workers != 1:
-        raise RuntimeError("BACKEND_WORKERS must remain 1; multi-worker live state is not supported yet")
+        raise RuntimeError(
+            "BACKEND_WORKERS must remain 1; multi-worker live state is not supported yet"
+        )
     return workers
 
 
@@ -54,7 +63,12 @@ def main() -> int:
         "--ws-max-size",
         "65536",
     ]
-    if os.getenv("BACKEND_RELOAD", "false").strip().lower() not in {"0", "false", "no", "off"}:
+    if os.getenv("BACKEND_RELOAD", "false").strip().lower() not in {
+        "0",
+        "false",
+        "no",
+        "off",
+    }:
         command.append("--reload")
 
     os.execvp(command[0], command)

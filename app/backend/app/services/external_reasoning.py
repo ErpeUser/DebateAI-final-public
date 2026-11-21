@@ -23,9 +23,17 @@ class AdaptiveReasoningEffort:
         self.latency_threshold_ms = max(1000, int(latency_threshold_ms))
         self.queue_threshold = max(1, int(queue_threshold))
         self.stable_calls_to_restore = max(1, int(stable_calls_to_restore))
-        self.new_topic_effort = new_topic_effort if new_topic_effort in {"high", "xhigh"} else "xhigh"
-        self.follow_up_effort = follow_up_effort if follow_up_effort in {"high", "xhigh"} else "high"
-        self.deep_reanalysis_effort = deep_reanalysis_effort if deep_reanalysis_effort in {"high", "xhigh"} else "xhigh"
+        self.new_topic_effort = (
+            new_topic_effort if new_topic_effort in {"high", "xhigh"} else "xhigh"
+        )
+        self.follow_up_effort = (
+            follow_up_effort if follow_up_effort in {"high", "xhigh"} else "high"
+        )
+        self.deep_reanalysis_effort = (
+            deep_reanalysis_effort
+            if deep_reanalysis_effort in {"high", "xhigh"}
+            else "xhigh"
+        )
         self._overloaded = False
         self._stable_calls = 0
 

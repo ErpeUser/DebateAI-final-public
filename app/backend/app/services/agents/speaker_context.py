@@ -139,7 +139,9 @@ def format_speaker_context(speaker: dict, alias: str | None = None) -> str:
     return line
 
 
-def format_speakers_list(speakers: list[dict], aliases: dict[str, str] | None = None) -> str:
+def format_speakers_list(
+    speakers: list[dict], aliases: dict[str, str] | None = None
+) -> str:
     """The Participants legend.
 
     Without ``aliases`` this keeps the old UUID-bearing shape, which is what a
@@ -148,7 +150,9 @@ def format_speakers_list(speakers: list[dict], aliases: dict[str, str] | None = 
     if not speakers:
         return "(No speaker information)"
     return "\n".join(
-        format_speaker_context(speaker, (aliases or {}).get(str(speaker.get("id") or "")))
+        format_speaker_context(
+            speaker, (aliases or {}).get(str(speaker.get("id") or ""))
+        )
         for speaker in speakers
     )
 

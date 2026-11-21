@@ -2,10 +2,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
-from pathlib import Path
 import tempfile
 import unittest
-
+from pathlib import Path
 
 SCRIPT = Path(__file__).resolve().parents[1] / "public_release_audit.py"
 SPEC = importlib.util.spec_from_file_location("public_release_audit", SCRIPT)
@@ -54,13 +53,17 @@ class PublicReleaseAuditTests(unittest.TestCase):
         root = self.make_repo()
         (root / "LICENSE").unlink()
         report = audit_module.audit(root)
-        self.assertIn("missing_root_license", {item["rule"] for item in report["findings"]})
+        self.assertIn(
+            "missing_root_license", {item["rule"] for item in report["findings"]}
+        )
 
     def test_external_git_pointer_fails(self):
         root = self.make_repo()
         (root / ".git").write_text("gitdir: ../private-metadata\n", encoding="utf-8")
         report = audit_module.audit(root)
-        self.assertIn("external_git_pointer", {item["rule"] for item in report["findings"]})
+        self.assertIn(
+            "external_git_pointer", {item["rule"] for item in report["findings"]}
+        )
 
     def test_literal_credential_assignment_fails_without_exposing_value(self):
         root = self.make_repo()
@@ -69,7 +72,9 @@ class PublicReleaseAuditTests(unittest.TestCase):
             f'API_KEY = "{value}"\n', encoding="utf-8"
         )
         report = audit_module.audit(root)
-        self.assertIn("credential_assignment", {item["rule"] for item in report["findings"]})
+        self.assertIn(
+            "credential_assignment", {item["rule"] for item in report["findings"]}
+        )
         self.assertNotIn(value, json.dumps(report))
 
 

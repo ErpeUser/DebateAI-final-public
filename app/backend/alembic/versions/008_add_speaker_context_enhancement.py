@@ -5,9 +5,8 @@ Revises: 007
 Create Date: 2026-05-11
 """
 
-from alembic import op
 import sqlalchemy as sa
-
+from alembic import op
 
 revision = "008"
 down_revision = "007"
@@ -18,11 +17,18 @@ depends_on = None
 def upgrade():
     op.add_column(
         "sessions",
-        sa.Column("speaker_context_dirty", sa.Boolean(), nullable=False, server_default="false"),
+        sa.Column(
+            "speaker_context_dirty",
+            sa.Boolean(),
+            nullable=False,
+            server_default="false",
+        ),
     )
     op.add_column(
         "sessions",
-        sa.Column("speaker_context_enhanced_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column(
+            "speaker_context_enhanced_at", sa.DateTime(timezone=True), nullable=True
+        ),
     )
     op.add_column(
         "questions",

@@ -1,5 +1,8 @@
-
-from app.services.request_guard import host_header_allowed, hostname_allowed, origin_allowed
+from app.services.request_guard import (
+    host_header_allowed,
+    hostname_allowed,
+    origin_allowed,
+)
 
 
 def test_localhost_subdomains_are_not_trusted():

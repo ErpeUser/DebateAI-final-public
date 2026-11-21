@@ -15,14 +15,18 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 REQUIREMENTS = {"A06", "A18", "A21", "A22"}
 SHA256_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 A06_EVENT_FIELDS = {
     "speaker_switch": ("at_seconds", "speaker_before", "speaker_after"),
     "device_switch": ("at_seconds", "track", "before_endpoint_id", "after_endpoint_id"),
     "asr_failure": ("at_seconds", "track", "injected", "visible_status"),
-    "reconnect": ("at_seconds", "capture_id_before", "capture_id_after", "sequence_continuous"),
+    "reconnect": (
+        "at_seconds",
+        "capture_id_before",
+        "capture_id_after",
+        "sequence_continuous",
+    ),
 }
 
 
@@ -53,10 +57,18 @@ def _required_metrics(
             errors.append(f"run {run.get('name', '<unnamed>')} misses metric {name}")
             continue
         value = metrics.get(name)
-        if isinstance(value, bool) or not isinstance(value, numbers.Real) or not math.isfinite(float(value)):
-            errors.append(f"run {run.get('name', '<unnamed>')} metric {name} must be finite numeric")
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, numbers.Real)
+            or not math.isfinite(float(value))
+        ):
+            errors.append(
+                f"run {run.get('name', '<unnamed>')} metric {name} must be finite numeric"
+            )
         elif value < 0:
-            errors.append(f"run {run.get('name', '<unnamed>')} metric {name} must be non-negative")
+            errors.append(
+                f"run {run.get('name', '<unnamed>')} metric {name} must be non-negative"
+            )
 
 
 def _validate_metric_range(
@@ -70,10 +82,16 @@ def _validate_metric_range(
     if not isinstance(metrics, dict) or metrics.get(name) is None:
         return
     value = metrics.get(name)
-    if isinstance(value, bool) or not isinstance(value, numbers.Real) or not math.isfinite(float(value)):
+    if (
+        isinstance(value, bool)
+        or not isinstance(value, numbers.Real)
+        or not math.isfinite(float(value))
+    ):
         return
     if maximum is not None and value > maximum:
-        errors.append(f"run {run.get('name', '<unnamed>')} metric {name} must be <= {maximum:g}")
+        errors.append(
+            f"run {run.get('name', '<unnamed>')} metric {name} must be <= {maximum:g}"
+        )
 
 
 def _validate_common(
@@ -122,11 +140,15 @@ def _validate_common(
             _missing(artifact.get("kind"), f"artifacts[{index}].kind", missing)
             _missing(artifact.get("sha256"), f"artifacts[{index}].sha256", missing)
             if artifact.get("sha256") is not None and not _sha(artifact.get("sha256")):
-                errors.append(f"artifacts[{index}].sha256 must be a 64-character SHA-256 hash")
+                errors.append(
+                    f"artifacts[{index}].sha256 must be a 64-character SHA-256 hash"
+                )
     return requirement, reference, environment
 
 
-def _validate_a06_events(payload: dict[str, Any], missing: list[str], errors: list[str]) -> None:
+def _validate_a06_events(
+    payload: dict[str, Any], missing: list[str], errors: list[str]
+) -> None:
     events = payload.get("events")
     if not isinstance(events, list) or not events:
         missing.append("events")
@@ -139,7 +161,9 @@ def _validate_a06_events(payload: dict[str, Any], missing: list[str], errors: li
             continue
         event_type = _text(event.get("type"))
         if event_type not in A06_EVENT_FIELDS:
-            errors.append(f"{prefix}.type must be one of {', '.join(sorted(A06_EVENT_FIELDS))}")
+            errors.append(
+                f"{prefix}.type must be one of {', '.join(sorted(A06_EVENT_FIELDS))}"
+            )
             continue
         seen.add(event_type)
         for field in A06_EVENT_FIELDS[event_type]:
@@ -152,12 +176,18 @@ def _validate_a06_events(payload: dict[str, Any], missing: list[str], errors: li
             or at_seconds < 0
         ):
             errors.append(f"{prefix}.at_seconds must be a finite non-negative number")
-        if event_type == "speaker_switch" and _text(event.get("speaker_before")) == _text(event.get("speaker_after")):
+        if event_type == "speaker_switch" and _text(
+            event.get("speaker_before")
+        ) == _text(event.get("speaker_after")):
             errors.append(f"{prefix} must change speaker identity")
-        if event_type == "device_switch" and _text(event.get("before_endpoint_id")) == _text(event.get("after_endpoint_id")):
+        if event_type == "device_switch" and _text(
+            event.get("before_endpoint_id")
+        ) == _text(event.get("after_endpoint_id")):
             errors.append(f"{prefix} must record different endpoint identities")
         if event_type == "asr_failure" and event.get("injected") is not True:
-            errors.append(f"{prefix}.injected must be true for a deliberate recovery test")
+            errors.append(
+                f"{prefix}.injected must be true for a deliberate recovery test"
+            )
         if event_type == "reconnect" and event.get("sequence_continuous") is not True:
             errors.append(f"{prefix}.sequence_continuous must be true after reconnect")
     for event_type in A06_EVENT_FIELDS:
@@ -180,7 +210,13 @@ def _validate_a06(
     if not isinstance(flags, dict):
         missing.append("scenario_flags")
     else:
-        for name in ("microphone", "system_audio", "overlap", "device_switch", "backlog"):
+        for name in (
+            "microphone",
+            "system_audio",
+            "overlap",
+            "device_switch",
+            "backlog",
+        ):
             if flags.get(name) is not True:
                 errors.append(f"A06 scenario flag {name} must be true")
     _validate_a06_events(payload, missing, errors)
@@ -214,7 +250,12 @@ def _validate_human_review(
     if required and (not isinstance(ratings, list) or not ratings):
         missing.append("human_review.ratings")
     if isinstance(raters, list):
-        invalid = [item for item in raters if not isinstance(item, str) or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", item)]
+        invalid = [
+            item
+            for item in raters
+            if not isinstance(item, str)
+            or not re.fullmatch(r"[A-Za-z0-9_-]{8,64}", item)
+        ]
         if invalid:
             errors.append("human_review.rater_ids must be anonymized identifiers")
     if isinstance(ratings, list):
@@ -230,14 +271,22 @@ def _validate_human_review(
             errors.append("human_review ratings must contain each case once")
 
 
-def _validate_a18(payload: dict[str, Any], missing: list[str], errors: list[str]) -> None:
+def _validate_a18(
+    payload: dict[str, Any], missing: list[str], errors: list[str]
+) -> None:
     modes = payload.get("modes")
     if not isinstance(modes, list) or len(set(map(_text, modes))) < 2:
         errors.append("A18 requires two modes")
     case_count = payload.get("case_count")
     if not isinstance(case_count, int) or case_count < 10:
         errors.append("A18 requires at least 10 German multi-turn cases")
-    minimum_ratings = case_count if isinstance(case_count, int) and not isinstance(case_count, bool) and case_count > 0 else None
+    minimum_ratings = (
+        case_count
+        if isinstance(case_count, int)
+        and not isinstance(case_count, bool)
+        and case_count > 0
+        else None
+    )
     _validate_human_review(
         payload,
         missing,
@@ -278,7 +327,14 @@ def _validate_a21(
             errors.append("A21 runs must not contain manual transcript correction")
         _required_metrics(
             run,
-            ("wer", "number_errors", "negation_errors", "latency_ms", "dropouts", "cpu_peak_mb"),
+            (
+                "wer",
+                "number_errors",
+                "negation_errors",
+                "latency_ms",
+                "dropouts",
+                "cpu_peak_mb",
+            ),
             errors,
         )
 
@@ -290,7 +346,9 @@ def _validate_a22(
     errors: list[str],
 ) -> None:
     _missing(payload.get("dataset_sha256"), "dataset_sha256", missing)
-    if payload.get("dataset_sha256") is not None and not _sha(payload.get("dataset_sha256")):
+    if payload.get("dataset_sha256") is not None and not _sha(
+        payload.get("dataset_sha256")
+    ):
         errors.append("dataset_sha256 must be a 64-character SHA-256 hash")
     if payload.get("future_data_excluded") is not True:
         errors.append("A22 future_data_excluded must be true")
@@ -319,7 +377,9 @@ def _validate_a22(
             _validate_metric_range(run, "error_rate", errors, maximum=1.0)
     minimum_ratings = (
         denominator
-        if isinstance(denominator, int) and not isinstance(denominator, bool) and denominator > 0
+        if isinstance(denominator, int)
+        and not isinstance(denominator, bool)
+        and denominator > 0
         else None
     )
     _validate_human_review(

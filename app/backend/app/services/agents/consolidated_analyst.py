@@ -11,19 +11,24 @@ import logging
 import re
 import uuid
 
-from pydantic import BaseModel, ValidationError
-
 from app.config import settings
 from app.services.agents.activity import classify_error
-from app.services.agents.prompts import CONSOLIDATED_ANALYST_BASE_PROMPT, DEFAULT_ANALYST_LENSES
-from app.services.llm import generate_json
+from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.agents.prompts import (
+    CONSOLIDATED_ANALYST_BASE_PROMPT,
+    DEFAULT_ANALYST_LENSES,
+)
 from app.services.agents.speaker_context import (
     build_speaker_aliases,
     format_speakers_list,
     resolve_speaker_reference,
 )
-from app.services.meeting_context import build_meeting_context_text, format_prompt_layers
-from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.llm import generate_json
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    format_prompt_layers,
+)
+from pydantic import BaseModel, ValidationError
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +106,7 @@ def compose_lens_sections(lenses: list[dict]) -> str:
         )
     return "\n\n".join(sections)
 
+
 SPEAKER_ATTRIBUTION_APPENDIX = """
 
 ## Speaker Attribution Requirements
@@ -140,7 +146,9 @@ class ConsolidatedAnalystAgent:
         session_id: uuid.UUID | None = None,
         suppressed_types: set[str] | None = None,
     ):
-        self._model = settings.REFINEMENT_MODEL if model_override is None else model_override
+        self._model = (
+            settings.REFINEMENT_MODEL if model_override is None else model_override
+        )
         prompt_template = prompt_override or CONSOLIDATED_ANALYST_BASE_PROMPT
 
         # Kept so the lens set can be recomposed when the meeting type changes
@@ -152,7 +160,9 @@ class ConsolidatedAnalystAgent:
         self._compose_lenses()
 
         if "## Speaker Attribution Requirements" not in prompt_template:
-            prompt_template = f"{prompt_template.rstrip()}{SPEAKER_ATTRIBUTION_APPENDIX}"
+            prompt_template = (
+                f"{prompt_template.rstrip()}{SPEAKER_ATTRIBUTION_APPENDIX}"
+            )
         self._prompt_template = prompt_template
         self.meeting_context_text = meeting_context_text or build_meeting_context_text()
         self._session_id = session_id
@@ -181,7 +191,8 @@ class ConsolidatedAnalystAgent:
                 if enabled_types:
                     lenses = [l for l in lenses if l["item_type"] in enabled_types]
             lens_list = [
-                lens for lens in active_lenses(lenses)
+                lens
+                for lens in active_lenses(lenses)
                 if _lens_item_type(lens) not in self._suppressed_types
             ]
             self._lens_sections = compose_lens_sections(lens_list)
@@ -201,8 +212,12 @@ class ConsolidatedAnalystAgent:
             # Legacy monolithic prompt (custom prompt from before configurable
             # lenses): run it as-is and filter output by the sub_types config.
             # The prompt cannot be trimmed, but suppressed output is dropped.
-            self.enabled_types = set(enabled_types or VALID_TYPES) - self._suppressed_types
-            self._item_type_values = "|".join(t for t in TYPE_ORDER if t in self.enabled_types)
+            self.enabled_types = (
+                set(enabled_types or VALID_TYPES) - self._suppressed_types
+            )
+            self._item_type_values = "|".join(
+                t for t in TYPE_ORDER if t in self.enabled_types
+            )
             # No lens sections in a legacy prompt; the enabled types are the
             # closest analog for the live activity summary.
             self.lens_count = len(self.enabled_types)
@@ -225,10 +240,14 @@ class ConsolidatedAnalystAgent:
         board_notes: list[dict] | None = None,
     ) -> list[dict]:
         """Execute one analysis cycle. Returns list of insight dicts with item_type and agent_source."""
-        directives_text = "\n".join(f"- {d}" for d in directives) if directives else "(No directives set)"
+        directives_text = (
+            "\n".join(f"- {d}" for d in directives)
+            if directives
+            else "(No directives set)"
+        )
         # Derived from the same ordered roster the transcript window was
-            # rendered against, so the legend and the lines agree without
-            # anything being stored or passed between them.
+        # rendered against, so the legend and the lines agree without
+        # anything being stored or passed between them.
         aliases = build_speaker_aliases(speakers)
         speakers_text = format_speakers_list(speakers, aliases)
         valid_speaker_ids = {str(s["id"]) for s in speakers if s.get("id")}
@@ -241,7 +260,7 @@ class ConsolidatedAnalystAgent:
         # the full context. Stubbed and capped upstream (_MAX_BOARD_STUBS).
         if board_notes:
             notes_text = "\n".join(
-                f'- [{note.get("item_type") or "insight"}] {note.get("text") or ""}'
+                f"- [{note.get('item_type') or 'insight'}] {note.get('text') or ''}"
                 for note in board_notes
             )
             aq_text += (
@@ -304,7 +323,9 @@ class ConsolidatedAnalystAgent:
                     itype,
                 )
                 continue
-            item["agent_source"] = AGENT_SOURCE_BY_TYPE.get(itype, "consolidated_analyst")
+            item["agent_source"] = AGENT_SOURCE_BY_TYPE.get(
+                itype, "consolidated_analyst"
+            )
             item["lens_label"] = self._resolve_lens_label(item.pop("lens", None), itype)
             results.append(item)
 
@@ -325,13 +346,9 @@ class ConsolidatedAnalystAgent:
             disabled = len(items)
             drops = []
             if invalid:
-                drops.append(
-                    f"{invalid} failed validation"
-                )
+                drops.append(f"{invalid} failed validation")
             if disabled:
-                drops.append(
-                    f"{disabled} disabled type{'s' if disabled != 1 else ''}"
-                )
+                drops.append(f"{disabled} disabled type{'s' if disabled != 1 else ''}")
             self.last_outcome = {
                 "kind": "all_filtered",
                 "detail": (

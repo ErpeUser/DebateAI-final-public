@@ -1,4 +1,11 @@
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
 // One small primitive for the app's destructive-action guard: an accessible
 // confirm dialog (Promise-based), a single-button notice variant sharing the
@@ -53,7 +60,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
 
   const confirm = useCallback(
     (opts: ConfirmOptions) =>
-      new Promise<boolean>((resolve) => setDialog({ ...opts, kind: "confirm", resolve })),
+      new Promise<boolean>((resolve) =>
+        setDialog({ ...opts, kind: "confirm", resolve }),
+      ),
     [],
   );
 
@@ -76,7 +85,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   const toast = useCallback((message: string) => {
     const id = ++nextId.current;
     setToasts((prev) => [...prev, { id, message }]);
-    window.setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+    window.setTimeout(
+      () => setToasts((prev) => prev.filter((t) => t.id !== id)),
+      4000,
+    );
   }, []);
 
   const settle = useCallback((value: boolean) => {
@@ -89,9 +101,10 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
   // Focus the confirm button and wire Escape when a dialog opens.
   useEffect(() => {
     if (!dialog) return;
-    previousFocusRef.current = document.activeElement instanceof HTMLElement
-      ? document.activeElement
-      : null;
+    previousFocusRef.current =
+      document.activeElement instanceof HTMLElement
+        ? document.activeElement
+        : null;
     confirmBtnRef.current?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") settle(false);
@@ -113,7 +126,8 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
     document.addEventListener("keydown", onKey);
     return () => {
       document.removeEventListener("keydown", onKey);
-      if (previousFocusRef.current?.isConnected) previousFocusRef.current.focus();
+      if (previousFocusRef.current?.isConnected)
+        previousFocusRef.current.focus();
     };
   }, [dialog, settle]);
 
@@ -136,10 +150,16 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
             className="w-full max-w-sm rounded-xl border border-brand-light-gray-1 bg-surface p-5 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="confirm-title" className="font-display text-base font-semibold text-brand-dark-gray">
-              {dialog.title ?? (dialog.kind === "notice" ? "Hinweis" : "Bist du sicher?")}
+            <h2
+              id="confirm-title"
+              className="font-display text-base font-semibold text-brand-dark-gray"
+            >
+              {dialog.title ??
+                (dialog.kind === "notice" ? "Hinweis" : "Bist du sicher?")}
             </h2>
-            <p className="mt-1.5 font-body text-sm text-brand-gray">{dialog.message}</p>
+            <p className="mt-1.5 font-body text-sm text-brand-gray">
+              {dialog.message}
+            </p>
             <div className="mt-5 flex justify-end gap-2">
               {dialog.kind !== "notice" && (
                 <button
@@ -153,7 +173,9 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
                 ref={confirmBtnRef}
                 onClick={() => settle(true)}
                 className={`rounded-lg px-3 py-1.5 font-body text-sm font-semibold text-white transition-colors ${
-                  danger ? "bg-red-600 hover:bg-red-700" : "bg-brand-teal hover:bg-brand-teal-dark"
+                  danger
+                    ? "bg-red-600 hover:bg-red-700"
+                    : "bg-brand-teal hover:bg-brand-teal-dark"
                 }`}
               >
                 {dialog.confirmLabel ?? "Bestätigen"}

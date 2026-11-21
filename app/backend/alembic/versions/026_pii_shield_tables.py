@@ -14,7 +14,6 @@ Create Date: 2026-09-02
 """
 
 import sqlalchemy as sa
-
 from alembic import op
 
 revision = "026_pii_shield_tables"
@@ -29,15 +28,21 @@ def upgrade():
         op.create_table(
             "pii_vault_entries",
             sa.Column("id", sa.Uuid(), primary_key=True),
-            sa.Column("session_id", sa.Uuid(), sa.ForeignKey("sessions.id"), nullable=False),
+            sa.Column(
+                "session_id", sa.Uuid(), sa.ForeignKey("sessions.id"), nullable=False
+            ),
             sa.Column("category", sa.String(20), nullable=False),
             sa.Column("ordinal", sa.Integer(), nullable=False),
             sa.Column("token", sa.String(40), nullable=False),
             sa.Column("value_hmac", sa.String(64), nullable=False),
             sa.Column("value_encrypted", sa.Text(), nullable=False),
             sa.Column("created_at", sa.DateTime(timezone=True), nullable=False),
-            sa.UniqueConstraint("session_id", "value_hmac", name="uq_pii_vault_session_value"),
-            sa.UniqueConstraint("session_id", "token", name="uq_pii_vault_session_token"),
+            sa.UniqueConstraint(
+                "session_id", "value_hmac", name="uq_pii_vault_session_value"
+            ),
+            sa.UniqueConstraint(
+                "session_id", "token", name="uq_pii_vault_session_token"
+            ),
         )
     if "pii_reveal_events" not in existing:
         op.create_table(

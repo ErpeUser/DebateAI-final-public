@@ -1,4 +1,5 @@
 """Canonical DebateAI runtime identity and side-effect-free data paths."""
+
 from __future__ import annotations
 
 import os
@@ -54,13 +55,17 @@ def canonical_root(platform: str | None = None) -> str:
     raise ValueError(f"unsupported platform: {platform}")
 
 
-def resolve_data_root(*, base: Path, environment: Mapping[str, str], lowercase: bool = False) -> Path:
+def resolve_data_root(
+    *, base: Path, environment: Mapping[str, str], lowercase: bool = False
+) -> Path:
     """Select only the configured or canonical path; never copy user data."""
     override = environment.get("DEBATEAI_DATA_DIR")
     name = PRODUCT_NAME.lower() if lowercase else PRODUCT_NAME
     selected = Path(override).expanduser() if override else base / name
     if selected.exists() and not selected.is_dir():
-        raise NotADirectoryError("The configured DebateAI data location is not a directory.")
+        raise NotADirectoryError(
+            "The configured DebateAI data location is not a directory."
+        )
     return selected
 
 

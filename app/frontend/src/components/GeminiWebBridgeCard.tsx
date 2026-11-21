@@ -2,7 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import * as api from "../services/api";
 import { useConfirm } from "./ConfirmProvider";
 
-export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => void }) {
+export default function GeminiWebBridgeCard({
+  onChanged,
+}: {
+  onChanged?: () => void;
+}) {
   const { confirm } = useConfirm();
   const [status, setStatus] = useState<api.GeminiWebStatus | null>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -17,13 +21,16 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+  }, [load]);
 
   useEffect(() => {
     if (status?.login_state !== "pending") return;
     let stopped = false;
     const timer = window.setInterval(() => {
-      void api.pollGeminiWebLogin()
+      void api
+        .pollGeminiWebLogin()
         .then((next) => {
           if (stopped) return;
           setStatus(next);
@@ -36,7 +43,11 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
         .catch((error) => {
           if (stopped) return;
           setBusy(false);
-          setMessage(error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.");
+          setMessage(
+            error instanceof Error
+              ? error.message
+              : "Anmeldung fehlgeschlagen.",
+          );
         });
     }, 1000);
     return () => {
@@ -54,7 +65,9 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
       setMessage(next.message);
     } catch (error) {
       setBusy(false);
-      setMessage(error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.");
+      setMessage(
+        error instanceof Error ? error.message : "Anmeldung fehlgeschlagen.",
+      );
     }
   };
 
@@ -69,7 +82,9 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
       setMessage(next.message);
       onChanged?.();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Import fehlgeschlagen.");
+      setMessage(
+        error instanceof Error ? error.message : "Import fehlgeschlagen.",
+      );
     } finally {
       setBusy(false);
     }
@@ -78,7 +93,8 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
   const removeCookie = async () => {
     const ok = await confirm({
       title: "Gemini-Webzugang entfernen",
-      message: "Die verschlüsselt gespeicherte Anmeldung wird entfernt. ChatGPT und offizielle Gemini-Zugänge bleiben erhalten.",
+      message:
+        "Die verschlüsselt gespeicherte Anmeldung wird entfernt. ChatGPT und offizielle Gemini-Zugänge bleiben erhalten.",
       confirmLabel: "Entfernen",
       tone: "danger",
     });
@@ -90,7 +106,9 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
       setMessage("Gemini-Webzugang entfernt.");
       onChanged?.();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "Entfernen fehlgeschlagen.");
+      setMessage(
+        error instanceof Error ? error.message : "Entfernen fehlgeschlagen.",
+      );
     } finally {
       setBusy(false);
     }
@@ -107,19 +125,27 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
   return (
     <div className="rounded-xl border border-amber-200 bg-surface p-5 shadow-sm">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 className="font-display text-base font-bold text-brand-dark-gray">Gemini über lokalen Webzugang</h3>
-        <span className={`rounded-full px-2 py-0.5 font-body text-[10px] font-medium text-white ${status?.pro_available ? "bg-brand-teal" : "bg-amber-500"}`}>
+        <h3 className="font-display text-base font-bold text-brand-dark-gray">
+          Gemini über lokalen Webzugang
+        </h3>
+        <span
+          className={`rounded-full px-2 py-0.5 font-body text-[10px] font-medium text-white ${status?.pro_available ? "bg-brand-teal" : "bg-amber-500"}`}
+        >
           {badge}
         </span>
       </div>
       <p className="mt-1 font-body text-xs leading-relaxed text-brand-gray">
-        Optionaler letzter Gemini-Fallback für dein eigenes Konto. Die Sitzung wird lokal übernommen, verschlüsselt gespeichert und weder angezeigt noch protokolliert.
+        Optionaler letzter Gemini-Fallback für dein eigenes Konto. Die Sitzung
+        wird lokal übernommen, verschlüsselt gespeichert und weder angezeigt
+        noch protokolliert.
       </p>
       <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 font-body text-xs text-amber-900">
-        Inoffizieller Webzugang: Google kann ihn ändern oder einschränken. Offizielle ChatGPT- und Gemini-Verbindungen bleiben höher priorisiert.
+        Inoffizieller Webzugang: Google kann ihn ändern oder einschränken.
+        Offizielle ChatGPT- und Gemini-Verbindungen bleiben höher priorisiert.
       </p>
       <p className="mt-2 font-body text-xs text-brand-gray">
-        {status?.thinking || "High wird angefordert. Das tatsächlich gelieferte Modell wird getrennt geprüft."}
+        {status?.thinking ||
+          "High wird angefordert. Das tatsächlich gelieferte Modell wird getrennt geprüft."}
       </p>
       {status?.models?.length ? (
         <p className="mt-2 font-body text-xs text-brand-gray">
@@ -131,10 +157,16 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
           <button
             type="button"
             onClick={startLogin}
-            disabled={busy || status.login_state === "pending" || Boolean(status.ready)}
+            disabled={
+              busy || status.login_state === "pending" || Boolean(status.ready)
+            }
             className="rounded bg-brand-teal px-3 py-1.5 font-body text-xs font-medium text-white disabled:opacity-40"
           >
-            {status.login_state === "pending" ? "Anmeldung läuft ..." : status.ready ? "Anmeldung gespeichert" : "Mit Google anmelden"}
+            {status.login_state === "pending"
+              ? "Anmeldung läuft ..."
+              : status.ready
+                ? "Anmeldung gespeichert"
+                : "Mit Google anmelden"}
           </button>
         )}
         {status?.configured && (
@@ -149,7 +181,9 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
         )}
       </div>
       <details className="mt-3">
-        <summary className="cursor-pointer font-body text-xs text-brand-gray">Cookie-Datei manuell importieren</summary>
+        <summary className="cursor-pointer font-body text-xs text-brand-gray">
+          Cookie-Datei manuell importieren
+        </summary>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <input
             type="file"
@@ -169,7 +203,9 @@ export default function GeminiWebBridgeCard({ onChanged }: { onChanged?: () => v
           </button>
         </div>
       </details>
-      <p className={`mt-2 font-body text-xs ${message.toLocaleLowerCase("de").includes("fehl") ? "text-red-600" : "text-brand-teal"}`}>
+      <p
+        className={`mt-2 font-body text-xs ${message.toLocaleLowerCase("de").includes("fehl") ? "text-red-600" : "text-brand-teal"}`}
+      >
         {message || status?.message}
       </p>
     </div>

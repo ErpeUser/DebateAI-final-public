@@ -51,13 +51,12 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-import onnxruntime as ort  # noqa: E402
-import soundfile as sf  # noqa: E402
-
-from app.config import settings  # noqa: E402
-from app.services import speaker_diarizer as sd  # noqa: E402
-from app.services.diarizer_selection import flush_diarizer_segments  # noqa: E402
-from app.services.speaker_diarizer import (  # noqa: E402
+import onnxruntime as ort
+import soundfile as sf
+from app.config import settings
+from app.services import speaker_diarizer as sd
+from app.services.diarizer_selection import flush_diarizer_segments
+from app.services.speaker_diarizer import (
     SpeakerDiarizer,
     SpeakerRegistry,
     VoiceActivityDetector,
@@ -116,7 +115,7 @@ def rms_envelope(audio: np.ndarray, frame_ms: int = FRAME_MS) -> np.ndarray:
     if frames == 0:
         return np.zeros(0, dtype=np.float32)
     block = audio[: frames * frame_len].reshape(frames, frame_len)
-    return np.sqrt(np.mean(block ** 2, axis=1))
+    return np.sqrt(np.mean(block**2, axis=1))
 
 
 def _xcorr_peak(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
@@ -128,9 +127,13 @@ def _xcorr_peak(x: np.ndarray, y: np.ndarray) -> tuple[float, float]:
     size = 1
     while size < (x.size + y.size):
         size <<= 1
-    correlation = np.fft.irfft(np.fft.rfft(x, size) * np.conj(np.fft.rfft(y, size)), size)
+    correlation = np.fft.irfft(
+        np.fft.rfft(x, size) * np.conj(np.fft.rfft(y, size)), size
+    )
     max_lag = 8000  # +/- 500 ms
-    window = np.concatenate([correlation[-max_lag:], correlation[: max_lag + 1]]) / (nx * ny)
+    window = np.concatenate([correlation[-max_lag:], correlation[: max_lag + 1]]) / (
+        nx * ny
+    )
     index = int(np.argmax(np.abs(window)))
     return float(np.abs(window[index])), (index - max_lag) * 1000.0 / 16000.0
 
@@ -161,10 +164,12 @@ def echo_peak(mic: np.ndarray, remote: np.ndarray) -> tuple[float, float]:
     best_peak, best_lag = 0.0, 0.0
     scored = []
     for start in range(0, frames - win_frames + 1, win_frames):
-        mic_slice = mic_env[start:start + win_frames]
-        sys_slice = sys_env[start:start + win_frames]
+        mic_slice = mic_env[start : start + win_frames]
+        sys_slice = sys_env[start : start + win_frames]
         # both tracks must actually be carrying audio in this window
-        activity = min(float(np.mean(mic_slice > 0.01)), float(np.mean(sys_slice > 0.01)))
+        activity = min(
+            float(np.mean(mic_slice > 0.01)), float(np.mean(sys_slice > 0.01))
+        )
         if activity > 0.1:
             scored.append((activity, start))
     scored.sort(reverse=True)
@@ -182,8 +187,13 @@ def echo_peak(mic: np.ndarray, remote: np.ndarray) -> tuple[float, float]:
 # --------------------------------------------------------------------------
 
 
-def make_session(model_path: str, intra_op: int = 0, inter_op: int = 0,
-                 spin: bool = True, use_app_options: bool = False) -> ort.InferenceSession:
+def make_session(
+    model_path: str,
+    intra_op: int = 0,
+    inter_op: int = 0,
+    spin: bool = True,
+    use_app_options: bool = False,
+) -> ort.InferenceSession:
     """Build an inference session with options this harness sets explicitly.
 
     intra_op/inter_op of 0 keeps the onnxruntime default (one thread per
@@ -268,16 +278,19 @@ def diarize_file(path: str) -> list:
     segments = []
     chunk = 32000  # 1 s of PCM16 @ 16 kHz
     for index in range(0, len(pcm), chunk):
-        segments.extend(diarizer.feed_audio(pcm[index:index + chunk]))
+        segments.extend(diarizer.feed_audio(pcm[index : index + chunk]))
     segments.extend(flush_diarizer_segments(diarizer))
     return segments, registry
 
 
-def run_pipeline_model(label: str, model_path: str, audio_files: list[str],
-                       threshold: float, intra_op: int) -> dict[str, list]:
+def run_pipeline_model(
+    label: str, model_path: str, audio_files: list[str], threshold: float, intra_op: int
+) -> dict[str, list]:
     sd._embed_session = make_session(model_path, intra_op=intra_op)
-    print(f"\n=== {label} ({os.path.basename(model_path)}) "
-          f"threshold={threshold} intra_op={intra_op or 'default'} ===")
+    print(
+        f"\n=== {label} ({os.path.basename(model_path)}) "
+        f"threshold={threshold} intra_op={intra_op or 'default'} ==="
+    )
 
     all_matched: list[float] = []
     all_new: list[float] = []
@@ -289,12 +302,14 @@ def run_pipeline_model(label: str, model_path: str, audio_files: list[str],
         segments = []
         chunk = 32000
         for index in range(0, len(pcm), chunk):
-            segments.extend(diarizer.feed_audio(pcm[index:index + chunk]))
+            segments.extend(diarizer.feed_audio(pcm[index : index + chunk]))
         segments.extend(flush_diarizer_segments(diarizer))
 
         speakers = sorted({segment.speaker_id for segment in segments})
-        print(f"  {os.path.basename(path)}: {len(segments)} segments, "
-              f"{len(speakers)} speakers {speakers}")
+        print(
+            f"  {os.path.basename(path)}: {len(segments)} segments, "
+            f"{len(speakers)} speakers {speakers}"
+        )
         assignments[path] = [
             (segment.start_sample, len(segment.pcm_bytes) // 2, segment.speaker_id)
             for segment in segments
@@ -326,7 +341,9 @@ def agreement(a: dict[str, list], b: dict[str, list]) -> None:
         right_labels = sorted({right[s] for s in shared})
         matrix = np.zeros((len(left_labels), len(right_labels)), dtype=np.int64)
         for start in shared:
-            matrix[left_labels.index(left[start]), right_labels.index(right[start])] += 1
+            matrix[
+                left_labels.index(left[start]), right_labels.index(right[start])
+            ] += 1
         try:
             from scipy.optimize import linear_sum_assignment
 
@@ -334,7 +351,9 @@ def agreement(a: dict[str, list], b: dict[str, list]) -> None:
             best = int(matrix[rows, cols].sum())
         except Exception:  # greedy fallback
             best, used_r, used_c = 0, set(), set()
-            order = np.dstack(np.unravel_index(np.argsort(-matrix, axis=None), matrix.shape))[0]
+            order = np.dstack(
+                np.unravel_index(np.argsort(-matrix, axis=None), matrix.shape)
+            )[0]
             for r, c in order:
                 if r in used_r or c in used_c:
                     continue
@@ -343,10 +362,12 @@ def agreement(a: dict[str, list], b: dict[str, list]) -> None:
                 best += int(matrix[r, c])
         total_a = len(a[path])
         total_b = len(b[path])
-        print(f"  {os.path.basename(path)}: {len(shared)} aligned of "
-              f"{total_a}/{total_b} segments, best-permutation agreement "
-              f"{best}/{len(shared)} = {100.0 * best / len(shared):.1f}% "
-              f"({len(left_labels)} vs {len(right_labels)} speakers)")
+        print(
+            f"  {os.path.basename(path)}: {len(shared)} aligned of "
+            f"{total_a}/{total_b} segments, best-permutation agreement "
+            f"{best}/{len(shared)} = {100.0 * best / len(shared):.1f}% "
+            f"({len(left_labels)} vs {len(right_labels)} speakers)"
+        )
 
 
 # --------------------------------------------------------------------------
@@ -366,7 +387,7 @@ def vad_mask(audio: np.ndarray) -> np.ndarray:
     count = audio.size // frame
     probs = np.zeros(count, dtype=np.float32)
     for index in range(count):
-        probs[index] = vad.process_frame(audio[index * frame:(index + 1) * frame])
+        probs[index] = vad.process_frame(audio[index * frame : (index + 1) * frame])
     speech = probs >= settings.VAD_THRESHOLD
 
     frame_len = int(16000 * FRAME_MS / 1000)
@@ -376,14 +397,21 @@ def vad_mask(audio: np.ndarray) -> np.ndarray:
     for index in range(out_frames):
         lo = int(index * per_out)
         hi = max(lo + 1, int((index + 1) * per_out))
-        chunk = speech[lo:min(hi, speech.size)]
+        chunk = speech[lo : min(hi, speech.size)]
         if chunk.size:
             mask[index] = bool(np.mean(chunk) >= 0.5)
     return mask
 
 
-def exclusive_windows(own_env, own_speech, other_env, other_speech,
-                      own_min_rms, other_max_rms, window_seconds):
+def exclusive_windows(
+    own_env,
+    own_speech,
+    other_env,
+    other_speech,
+    own_min_rms,
+    other_max_rms,
+    window_seconds,
+):
     """Fixed-length windows where this track speaks and the other is silent.
 
     Whole VAD turns almost never stay exclusive in a real conversation, so
@@ -391,13 +419,14 @@ def exclusive_windows(own_env, own_speech, other_env, other_speech,
     cut into equal windows. Equal length also removes segment duration as a
     confound between the two models being compared.
     """
-    keep = exclusive_mask(own_env, own_speech, other_env, other_speech,
-                          own_min_rms, other_max_rms)
+    keep = exclusive_mask(
+        own_env, own_speech, other_env, other_speech, own_min_rms, other_max_rms
+    )
     frames = keep.size
     if frames == 0:
         return []
     frame_len = int(16000 * FRAME_MS / 1000)
-    per_window = max(1, int(round(window_seconds * 1000.0 / FRAME_MS)))
+    per_window = max(1, round(window_seconds * 1000.0 / FRAME_MS))
 
     windows = []
     run_start = None
@@ -425,8 +454,15 @@ def dilate(mask: np.ndarray, frames: int) -> np.ndarray:
     return out
 
 
-def exclusive_mask(own_env, own_speech, other_env, other_speech,
-                   own_min_rms, other_max_rms, guard_frames: int = 3) -> np.ndarray:
+def exclusive_mask(
+    own_env,
+    own_speech,
+    other_env,
+    other_speech,
+    own_min_rms,
+    other_max_rms,
+    guard_frames: int = 3,
+) -> np.ndarray:
     """Frames where this track carries speech and the other carries none.
 
     The bar for the other track is "no speech", not "digital silence": a
@@ -446,11 +482,13 @@ def exclusive_mask(own_env, own_speech, other_env, other_speech,
     )
 
 
-def exclusive_run_lengths(own_env, own_speech, other_env, other_speech,
-                          own_min_rms, other_max_rms) -> np.ndarray:
+def exclusive_run_lengths(
+    own_env, own_speech, other_env, other_speech, own_min_rms, other_max_rms
+) -> np.ndarray:
     """Durations (seconds) of the maximal exclusive-activity runs."""
-    keep = exclusive_mask(own_env, own_speech, other_env, other_speech,
-                          own_min_rms, other_max_rms)
+    keep = exclusive_mask(
+        own_env, own_speech, other_env, other_speech, own_min_rms, other_max_rms
+    )
     if keep.size == 0:
         return np.zeros(0)
     padded = np.concatenate([[False], keep, [False]])
@@ -473,8 +511,8 @@ def speech_windows(env, speech, min_rms, window_seconds, min_seconds):
         return []
     keep = speech[:frames] & (env[:frames] > min_rms)
     frame_len = int(16000 * FRAME_MS / 1000)
-    per_window = max(1, int(round(window_seconds * 1000.0 / FRAME_MS)))
-    min_frames = max(1, int(round(min_seconds * 1000.0 / FRAME_MS)))
+    per_window = max(1, round(window_seconds * 1000.0 / FRAME_MS))
+    min_frames = max(1, round(min_seconds * 1000.0 / FRAME_MS))
 
     windows = []
     run_start = None
@@ -561,8 +599,10 @@ def single_speaker_report(embeddings: np.ndarray) -> str:
     centroid = embeddings.mean(axis=0)
     norm = np.linalg.norm(centroid)
     tightness = float(norm) if norm else 0.0
-    return (f"p50={np.median(values):.3f} p10={np.percentile(values, 10):.3f} "
-            f"p90={np.percentile(values, 90):.3f} |centroid|={tightness:.3f}")
+    return (
+        f"p50={np.median(values):.3f} p10={np.percentile(values, 10):.3f} "
+        f"p90={np.percentile(values, 90):.3f} |centroid|={tightness:.3f}"
+    )
 
 
 def centroid_scores(own: np.ndarray, other: np.ndarray):
@@ -610,7 +650,7 @@ def error_curves(pos: np.ndarray, neg: np.ndarray):
     if pos.size == 0 or neg.size == 0:
         return float("nan"), float("nan"), float("nan"), float("nan")
     grid = np.linspace(-0.2, 1.0, 1201)
-    frr = np.array([float(np.mean(pos < t)) for t in grid])   # same speaker split
+    frr = np.array([float(np.mean(pos < t)) for t in grid])  # same speaker split
     far = np.array([float(np.mean(neg >= t)) for t in grid])  # different merged
     cross = int(np.argmin(np.abs(frr - far)))
     total = frr + far
@@ -650,18 +690,29 @@ def paired_bootstrap(results: dict, samples: int) -> None:
     index = rng.integers(0, a.size, size=(samples, a.size))
     means = diff[index].mean(axis=1)
     lo, hi = np.percentile(means, [2.5, 97.5])
-    print(f"\n=== paired bootstrap, {left} vs {right} "
-          f"({a.size} shared positive pairs, {samples} resamples) ===")
-    print(f"  overlap rate {left}: {a.mean() * 100:.3f}%   "
-          f"{right}: {b.mean() * 100:.3f}%")
-    print(f"  difference ({right} - {left}): {diff.mean() * 100:+.3f}% "
-          f"95% CI [{lo * 100:+.3f}%, {hi * 100:+.3f}%]")
+    print(
+        f"\n=== paired bootstrap, {left} vs {right} "
+        f"({a.size} shared positive pairs, {samples} resamples) ==="
+    )
+    print(
+        f"  overlap rate {left}: {a.mean() * 100:.3f}%   {right}: {b.mean() * 100:.3f}%"
+    )
+    print(
+        f"  difference ({right} - {left}): {diff.mean() * 100:+.3f}% "
+        f"95% CI [{lo * 100:+.3f}%, {hi * 100:+.3f}%]"
+    )
     better = float(np.mean(means > 0))
     print(f"  P({left} better than {right}) = {better * 100:.1f}%")
-    print("  verdict: " + (
-        f"{left} is better at the 95% level" if lo > 0 else
-        f"{right} is better at the 95% level" if hi < 0 else
-        "no difference resolved at the 95% level"))
+    print(
+        "  verdict: "
+        + (
+            f"{left} is better at the 95% level"
+            if lo > 0
+            else f"{right} is better at the 95% level"
+            if hi < 0
+            else "no difference resolved at the 95% level"
+        )
+    )
 
 
 def describe(name: str, values: np.ndarray) -> None:
@@ -669,9 +720,11 @@ def describe(name: str, values: np.ndarray) -> None:
         print(f"    {name:28} n=0")
         return
     p = np.percentile(values, [1, 5, 10, 25, 50, 75, 90, 95, 99])
-    print(f"    {name:28} n={values.size:<8} mean={values.mean():.3f} "
-          f"p1={p[0]:.3f} p5={p[1]:.3f} p25={p[3]:.3f} p50={p[4]:.3f} "
-          f"p75={p[5]:.3f} p95={p[7]:.3f} p99={p[8]:.3f}")
+    print(
+        f"    {name:28} n={values.size:<8} mean={values.mean():.3f} "
+        f"p1={p[0]:.3f} p5={p[1]:.3f} p25={p[3]:.3f} p50={p[4]:.3f} "
+        f"p75={p[5]:.3f} p95={p[7]:.3f} p99={p[8]:.3f}"
+    )
 
 
 def find_dual_track_recordings(audio_root: str) -> list[tuple[str, str, str, str]]:
@@ -702,8 +755,8 @@ def classify_recording(mic_path: str, sys_path: str, args):
     remote = load_float_16k(sys_path)
     length = min(mic.size, remote.size)
     mic, remote = mic[:length], remote[:length]
-    mic_rms = float(np.sqrt(np.mean(mic ** 2)))
-    sys_rms = float(np.sqrt(np.mean(remote ** 2)))
+    mic_rms = float(np.sqrt(np.mean(mic**2)))
+    sys_rms = float(np.sqrt(np.mean(remote**2)))
     sys_silent = sys_rms < 0.001
     peak, lag = (0.0, 0.0) if sys_silent else echo_peak(mic, remote)
 
@@ -727,17 +780,30 @@ def validate_tracks(recordings, args) -> list:
     print("track is digitally silent, or the sample-level echo test is clean.")
     print("The output track only ever carries remote participants, so it is")
     print("trustworthy regardless of echo.")
-    print(f"\n{'session':16} {'stem':10} {'dur_s':>8} {'micRMS':>8} {'sysRMS':>8} "
-          f"{'echo':>6} {'lag_ms':>7}  mic     sys")
+    print(
+        f"\n{'session':16} {'stem':10} {'dur_s':>8} {'micRMS':>8} {'sysRMS':>8} "
+        f"{'echo':>6} {'lag_ms':>7}  mic     sys"
+    )
     usable = []
     for session, stem, mic_path, sys_path in recordings:
-        (length, mic_rms, sys_rms, peak, lag,
-         mic_state, sys_state) = classify_recording(mic_path, sys_path, args)
-        print(f"{session[:14]:16} {stem:10} {length/16000.0:8.1f} {mic_rms:8.5f} "
-              f"{sys_rms:8.5f} {peak:6.3f} {lag:7.1f}  {mic_state:15} {sys_state}")
+        (length, mic_rms, sys_rms, peak, lag, mic_state, sys_state) = (
+            classify_recording(mic_path, sys_path, args)
+        )
+        print(
+            f"{session[:14]:16} {stem:10} {length / 16000.0:8.1f} {mic_rms:8.5f} "
+            f"{sys_rms:8.5f} {peak:6.3f} {lag:7.1f}  {mic_state:15} {sys_state}"
+        )
         if mic_state.startswith("USE") or sys_state == "USE":
-            usable.append((session, stem, mic_path, sys_path,
-                           mic_state.startswith("USE"), sys_state == "USE"))
+            usable.append(
+                (
+                    session,
+                    stem,
+                    mic_path,
+                    sys_path,
+                    mic_state.startswith("USE"),
+                    sys_state == "USE",
+                )
+            )
     return usable
 
 
@@ -747,10 +813,14 @@ def window_tracks(usable, args) -> list:
     The VAD pass behind this is model independent, so it runs once here and
     every embedding model reuses the same windows.
     """
-    print(f"\n=== windowing (window={args.window_seconds}s, "
-          f"min={settings.MIN_SEGMENT_MS / 1000.0}s, min_rms={args.own_min_rms}) ===")
-    print(f"{'session':16} {'stem':10} {'micWin':>7} {'micSec':>8} "
-          f"{'sysWin':>7} {'sysSec':>8}")
+    print(
+        f"\n=== windowing (window={args.window_seconds}s, "
+        f"min={settings.MIN_SEGMENT_MS / 1000.0}s, min_rms={args.own_min_rms}) ==="
+    )
+    print(
+        f"{'session':16} {'stem':10} {'micWin':>7} {'micSec':>8} "
+        f"{'sysWin':>7} {'sysSec':>8}"
+    )
     prepared = []
     min_seconds = settings.MIN_SEGMENT_MS / 1000.0
     for session, stem, mic_path, sys_path, use_mic, use_sys in usable:
@@ -759,19 +829,25 @@ def window_tracks(usable, args) -> list:
         sys_keep: list = []
         if use_mic:
             mic, mic_env, mic_speech = cached_track_features(mic_path, args.cache_dir)
-            mic_keep = speech_windows(mic_env, mic_speech, args.own_min_rms,
-                                      args.window_seconds, min_seconds)
+            mic_keep = speech_windows(
+                mic_env, mic_speech, args.own_min_rms, args.window_seconds, min_seconds
+            )
         if use_sys:
-            remote, sys_env, sys_speech = cached_track_features(sys_path, args.cache_dir)
-            sys_keep = speech_windows(sys_env, sys_speech, args.own_min_rms,
-                                      args.window_seconds, min_seconds)
+            remote, sys_env, sys_speech = cached_track_features(
+                sys_path, args.cache_dir
+            )
+            sys_keep = speech_windows(
+                sys_env, sys_speech, args.own_min_rms, args.window_seconds, min_seconds
+            )
         if args.max_segments:
             mic_keep = mic_keep[: args.max_segments]
             sys_keep = sys_keep[: args.max_segments]
         mic_sec = sum(hi - lo for lo, hi in mic_keep) / 16000.0
         sys_sec = sum(hi - lo for lo, hi in sys_keep) / 16000.0
-        print(f"{session[:14]:16} {stem:10} {len(mic_keep):7} {mic_sec:8.1f} "
-              f"{len(sys_keep):7} {sys_sec:8.1f}")
+        print(
+            f"{session[:14]:16} {stem:10} {len(mic_keep):7} {mic_sec:8.1f} "
+            f"{len(sys_keep):7} {sys_sec:8.1f}"
+        )
         prepared.append((session, stem, mic, remote, mic_keep, sys_keep))
     return prepared
 
@@ -783,22 +859,31 @@ def embed_prepared(path: str, prepared, args) -> dict:
     started = time.process_time()
     for session, stem, mic, remote, mic_keep, sys_keep in prepared:
         key = f"{session}/{stem}"
-        mic_embeddings[key] = cached_embeddings(path, key, "mic", mic_keep,
-                                                mic, args.cache_dir)
-        sys_embeddings[key] = cached_embeddings(path, key, "sys", sys_keep,
-                                                remote, args.cache_dir)
+        mic_embeddings[key] = cached_embeddings(
+            path, key, "mic", mic_keep, mic, args.cache_dir
+        )
+        sys_embeddings[key] = cached_embeddings(
+            path, key, "sys", sys_keep, remote, args.cache_dir
+        )
         mic_spans[key] = mic_keep
         sys_spans[key] = sys_keep
         mic_starts[key] = np.array([lo / 16000.0 for lo, _ in mic_keep])
     cpu = time.process_time() - started
     embedded = sum(v.shape[0] for v in mic_embeddings.values())
     embedded += sum(v.shape[0] for v in sys_embeddings.values())
-    print(f"  embedded {embedded} windows, {cpu:.1f}s CPU "
-          f"({1000.0 * cpu / max(embedded, 1):.0f} ms CPU each incl. fbank; "
-          f"0 if served from cache)")
-    return dict(mic=mic_embeddings, sys=sys_embeddings, mic_starts=mic_starts,
-                mic_spans=mic_spans, sys_spans=sys_spans,
-                cpu_ms=1000.0 * cpu / max(embedded, 1))
+    print(
+        f"  embedded {embedded} windows, {cpu:.1f}s CPU "
+        f"({1000.0 * cpu / max(embedded, 1):.0f} ms CPU each incl. fbank; "
+        f"0 if served from cache)"
+    )
+    return {
+        "mic": mic_embeddings,
+        "sys": sys_embeddings,
+        "mic_starts": mic_starts,
+        "mic_spans": mic_spans,
+        "sys_spans": sys_spans,
+        "cpu_ms": 1000.0 * cpu / max(embedded, 1),
+    }
 
 
 def report_track_purity(mic_embeddings: dict, sys_embeddings: dict) -> None:
@@ -807,15 +892,18 @@ def report_track_purity(mic_embeddings: dict, sys_embeddings: dict) -> None:
     for name, store in (("mic", mic_embeddings), ("sys", sys_embeddings)):
         for key in sorted(store):
             if store[key].shape[0]:
-                print(f"    {name} {key[:14]}/{key.split('/')[-1]:10} "
-                      f"n={store[key].shape[0]:<5} "
-                      f"{single_speaker_report(store[key])}")
+                print(
+                    f"    {name} {key[:14]}/{key.split('/')[-1]:10} "
+                    f"n={store[key].shape[0]:<5} "
+                    f"{single_speaker_report(store[key])}"
+                )
 
 
-def restrict_positives(mic_embeddings: dict, mic_starts: dict, tokens, mic_spans: dict | None = None) -> None:
+def restrict_positives(
+    mic_embeddings: dict, mic_starts: dict, tokens, mic_spans: dict | None = None
+) -> None:
     """Drop mic tracks that should not supply same-speaker pairs."""
-    allowed = [k for k in mic_embeddings
-               if any(token in k for token in tokens)]
+    allowed = [k for k in mic_embeddings if any(token in k for token in tokens)]
     dropped = sorted(set(mic_embeddings) - set(allowed))
     print(f"  positives restricted to: {sorted(allowed)}")
     if dropped:
@@ -869,13 +957,20 @@ def track_label_pairs(mic_embeddings, sys_embeddings, mic_starts, min_pair_gap):
                 if left.shape[0] and right.shape[0]:
                     cross_parts.append((left @ right.T).ravel())
 
-    return (_stack(pos_parts), _stack(neg_parts), _stack(unknown_parts),
-            _stack(cross_parts), _stack(far_parts))
+    return (
+        _stack(pos_parts),
+        _stack(neg_parts),
+        _stack(unknown_parts),
+        _stack(cross_parts),
+        _stack(far_parts),
+    )
 
 
 def profile_pairs(mic_embeddings: dict, sys_embeddings: dict):
     """Similarities against a running profile, the regime the threshold gates."""
-    all_remote = [sys_embeddings[k] for k in sys_embeddings if sys_embeddings[k].shape[0]]
+    all_remote = [
+        sys_embeddings[k] for k in sys_embeddings if sys_embeddings[k].shape[0]
+    ]
     remote_stack = np.concatenate(all_remote) if all_remote else np.zeros((0, 256))
     c_same_parts, c_diff_parts = [], []
     for key in mic_embeddings:
@@ -895,13 +990,14 @@ def label_free_pairs(mic_embeddings, sys_embeddings, mic_spans, sys_spans):
     """
     adj_parts, xsess_by_session = [], {}
     for key in mic_embeddings:
-        for store, spans_by_key in ((mic_embeddings, mic_spans),
-                                    (sys_embeddings, sys_spans)):
+        for store, spans_by_key in (
+            (mic_embeddings, mic_spans),
+            (sys_embeddings, sys_spans),
+        ):
             vectors, spans = store[key], spans_by_key[key]
             for index in range(len(spans) - 1):
                 if spans[index][1] == spans[index + 1][0]:
-                    adj_parts.append(float(np.dot(vectors[index],
-                                                  vectors[index + 1])))
+                    adj_parts.append(float(np.dot(vectors[index], vectors[index + 1])))
         session_key = key.split("/")[0]
         if sys_embeddings[key].shape[0]:
             xsess_by_session.setdefault(session_key, []).append(sys_embeddings[key])
@@ -925,10 +1021,12 @@ def report_profile_regime(c_same, c_diff, threshold):
     c_eer, c_eer_t, c_best_t, c_best = error_curves(c_same, c_diff)
     c_at_frr = float(np.mean(c_same < threshold))
     c_at_far = float(np.mean(c_diff >= threshold))
-    print(f"    EER {c_eer * 100:.2f}% at t={c_eer_t:.3f}; min total error "
-          f"{c_best * 100:.2f}% at t={c_best_t:.3f}; "
-          f"at t={threshold:.2f} split-same={c_at_frr * 100:.2f}% "
-          f"merged-diff={c_at_far * 100:.2f}%")
+    print(
+        f"    EER {c_eer * 100:.2f}% at t={c_eer_t:.3f}; min total error "
+        f"{c_best * 100:.2f}% at t={c_best_t:.3f}; "
+        f"at t={threshold:.2f} split-same={c_at_frr * 100:.2f}% "
+        f"merged-diff={c_at_far * 100:.2f}%"
+    )
     return c_eer, c_eer_t, c_best_t
 
 
@@ -940,29 +1038,39 @@ def report_label_free(adjacent, cross_session):
         return float("nan"), float("nan"), float("nan"), float("nan")
     a_eer, a_eer_t, a_best_t, a_best = error_curves(adjacent, cross_session)
     a_ovl = overlap_rate(adjacent, cross_session)
-    print(f"    EER {a_eer * 100:.2f}% at t={a_eer_t:.3f}; min total error "
-          f"{a_best * 100:.2f}% at t={a_best_t:.3f}; "
-          f"overlap {a_ovl * 100:.3f}%; "
-          f"separation p5(SAME)-p95(DIFF)="
-          f"{np.percentile(adjacent, 5) - np.percentile(cross_session, 95):+.3f}")
+    print(
+        f"    EER {a_eer * 100:.2f}% at t={a_eer_t:.3f}; min total error "
+        f"{a_best * 100:.2f}% at t={a_best_t:.3f}; "
+        f"overlap {a_ovl * 100:.3f}%; "
+        f"separation p5(SAME)-p95(DIFF)="
+        f"{np.percentile(adjacent, 5) - np.percentile(cross_session, 95):+.3f}"
+    )
     return a_eer, a_eer_t, a_best_t, a_ovl
 
 
 def report_track_metrics(pos, neg, threshold):
     eer, eer_t, best_t, best_err = error_curves(pos, neg)
     overlap = overlap_rate(pos, neg)
-    margin = (float(np.percentile(pos, 5)) - float(np.percentile(neg, 95))
-              if pos.size and neg.size else float("nan"))
+    margin = (
+        float(np.percentile(pos, 5)) - float(np.percentile(neg, 95))
+        if pos.size and neg.size
+        else float("nan")
+    )
     at_t_frr = float(np.mean(pos < threshold)) if pos.size else float("nan")
     at_t_far = float(np.mean(neg >= threshold)) if neg.size else float("nan")
     print(f"  separation p5(SAME) - p95(DIFF)   : {margin:+.3f}")
-    print(f"  median gap  p50(SAME) - p50(DIFF) : "
-          f"{np.median(pos) - np.median(neg):+.3f}")
+    print(
+        f"  median gap  p50(SAME) - p50(DIFF) : {np.median(pos) - np.median(neg):+.3f}"
+    )
     print(f"  overlap P(DIFF >= SAME)           : {overlap * 100:.2f}%")
     print(f"  equal error rate                  : {eer * 100:.2f}% at t={eer_t:.3f}")
-    print(f"  min total error                   : {best_err * 100:.2f}% at t={best_t:.3f}")
-    print(f"  at threshold {threshold:.2f}: split-same={at_t_frr * 100:.2f}% "
-          f"merged-diff={at_t_far * 100:.2f}% total={100 * (at_t_frr + at_t_far):.2f}%")
+    print(
+        f"  min total error                   : {best_err * 100:.2f}% at t={best_t:.3f}"
+    )
+    print(
+        f"  at threshold {threshold:.2f}: split-same={at_t_frr * 100:.2f}% "
+        f"merged-diff={at_t_far * 100:.2f}% total={100 * (at_t_frr + at_t_far):.2f}%"
+    )
     return eer, eer_t, best_t, best_err, overlap, margin
 
 
@@ -993,9 +1101,11 @@ def analyze_model(label: str, path: str, prepared, args) -> dict:
     describe("UNKNOWN remote vs remote", unknown)
     if far.size and neg.size:
         f_eer, f_eer_t, f_best_t, f_best = error_curves(far, neg)
-        print(f"  time-separated positives: EER={f_eer * 100:.2f}% at "
-              f"t={f_eer_t:.3f}, min total error {f_best * 100:.2f}% at "
-              f"t={f_best_t:.3f}")
+        print(
+            f"  time-separated positives: EER={f_eer * 100:.2f}% at "
+            f"t={f_eer_t:.3f}, min total error {f_best * 100:.2f}% at "
+            f"t={f_best_t:.3f}"
+        )
 
     c_same, c_diff = profile_pairs(mic_embeddings, sys_embeddings)
     c_eer, c_eer_t, c_best_t = report_profile_regime(c_same, c_diff, args.threshold)
@@ -1008,32 +1118,49 @@ def analyze_model(label: str, path: str, prepared, args) -> dict:
     eer, eer_t, best_t, best_err, overlap, margin = report_track_metrics(
         pos, neg, args.threshold
     )
-    return dict(
-        eer=eer, eer_t=eer_t, best_t=best_t, best_err=best_err,
-        overlap=overlap, margin=margin, cpu_ms=store["cpu_ms"],
-        c_eer=c_eer, c_eer_t=c_eer_t, c_best_t=c_best_t,
-        a_eer=a_eer, a_eer_t=a_eer_t, a_best_t=a_best_t, a_ovl=a_ovl,
-        a_pos=adjacent, a_neg=cross_session,
-    )
+    return {
+        "eer": eer,
+        "eer_t": eer_t,
+        "best_t": best_t,
+        "best_err": best_err,
+        "overlap": overlap,
+        "margin": margin,
+        "cpu_ms": store["cpu_ms"],
+        "c_eer": c_eer,
+        "c_eer_t": c_eer_t,
+        "c_best_t": c_best_t,
+        "a_eer": a_eer,
+        "a_eer_t": a_eer_t,
+        "a_best_t": a_best_t,
+        "a_ovl": a_ovl,
+        "a_pos": adjacent,
+        "a_neg": cross_session,
+    }
 
 
 def print_margin_summary(results: dict) -> None:
     print("\n=== summary ===")
     print("track  = same/different from the mic-vs-output track labels")
     print("free   = contiguous windows vs output tracks of two different calls")
-    print(f"\n{'model':22} | {'trackEER%':>9} {'trackOvlp%':>10} | {'freeEER%':>8} "
-          f"{'freeEERt':>8} {'freeBestt':>9} {'freeOvlp%':>9} | {'ms/emb':>7}")
+    print(
+        f"\n{'model':22} | {'trackEER%':>9} {'trackOvlp%':>10} | {'freeEER%':>8} "
+        f"{'freeEERt':>8} {'freeBestt':>9} {'freeOvlp%':>9} | {'ms/emb':>7}"
+    )
     for label, r in results.items():
-        print(f"{label:22} | {r['eer']*100:9.2f} {r['overlap']*100:10.3f} | "
-              f"{r['a_eer']*100:8.2f} {r['a_eer_t']:8.3f} {r['a_best_t']:9.3f} "
-              f"{r['a_ovl']*100:9.3f} | {r['cpu_ms']:7.0f}")
+        print(
+            f"{label:22} | {r['eer'] * 100:9.2f} {r['overlap'] * 100:10.3f} | "
+            f"{r['a_eer'] * 100:8.2f} {r['a_eer_t']:8.3f} {r['a_best_t']:9.3f} "
+            f"{r['a_ovl'] * 100:9.3f} | {r['cpu_ms']:7.0f}"
+        )
 
 
 def run_margin(args) -> int:
     models = available_models(sd.MODELS_DIR)
     if len(models) < 2:
-        print("margin mode needs both embedding models; "
-              "run scripts/download_models.py --optional")
+        print(
+            "margin mode needs both embedding models; "
+            "run scripts/download_models.py --optional"
+        )
         return 1
 
     recordings = find_dual_track_recordings(args.audio_root)
@@ -1045,9 +1172,11 @@ def run_margin(args) -> int:
     if not any(flag for *_, flag, _ in usable):
         print("\nno recording has a trustworthy mic track; cannot measure margin")
         return 1
-    print(f"\ntrustworthy mic tracks: {sum(1 for *_, m, _ in usable if m)}, "
-          f"trustworthy output tracks: {sum(1 for *_, s in usable if s)}, "
-          f"of {len(recordings)} dual-track recordings")
+    print(
+        f"\ntrustworthy mic tracks: {sum(1 for *_, m, _ in usable if m)}, "
+        f"trustworthy output tracks: {sum(1 for *_, s in usable if s)}, "
+        f"of {len(recordings)} dual-track recordings"
+    )
 
     prepared = window_tracks(usable, args)
     total_mic = sum(len(m) for *_, m, _ in prepared)
@@ -1056,8 +1185,9 @@ def run_margin(args) -> int:
     if args.yield_only:
         return 0
 
-    results = {label: analyze_model(label, path, prepared, args)
-               for label, path in models}
+    results = {
+        label: analyze_model(label, path, prepared, args) for label, path in models
+    }
     paired_bootstrap(results, args.bootstrap)
     print_margin_summary(results)
     return 0
@@ -1078,10 +1208,14 @@ def run_cost(args) -> int:
     seconds = args.segment_seconds
     audio = (rng.standard_normal(int(16000 * seconds)) * 0.05).astype(np.float32)
     feats = sd._compute_fbank(audio).reshape(1, -1, 80)
-    print(f"segment={seconds:.1f}s -> feats {feats.shape}, "
-          f"{args.repeats} timed runs after {args.warmup} warmups")
-    print("cpu_ms/s_audio normalizes for the segment length, so it stays "
-          "comparable\nwhen two models segment the audio differently.")
+    print(
+        f"segment={seconds:.1f}s -> feats {feats.shape}, "
+        f"{args.repeats} timed runs after {args.warmup} warmups"
+    )
+    print(
+        "cpu_ms/s_audio normalizes for the segment length, so it stays "
+        "comparable\nwhen two models segment the audio differently."
+    )
 
     def time_session(session):
         for _ in range(args.warmup):
@@ -1089,13 +1223,17 @@ def run_cost(args) -> int:
         wall0, cpu0 = time.perf_counter(), time.process_time()
         for _ in range(args.repeats):
             session.run(["embs"], {"feats": feats})
-        return ((time.perf_counter() - wall0) * 1000.0 / args.repeats,
-                (time.process_time() - cpu0) * 1000.0 / args.repeats)
+        return (
+            (time.perf_counter() - wall0) * 1000.0 / args.repeats,
+            (time.process_time() - cpu0) * 1000.0 / args.repeats,
+        )
 
-    header = (f"\n{'model':22} {'intra_op':>9} {'spin':>5} {'wall_ms':>9} "
-              f"{'cpu_ms':>9} {'cpu_ms/s_audio':>15} {'x_cpu':>7}")
+    header = (
+        f"\n{'model':22} {'intra_op':>9} {'spin':>5} {'wall_ms':>9} "
+        f"{'cpu_ms':>9} {'cpu_ms/s_audio':>15} {'x_cpu':>7}"
+    )
     print(header)
-    for spin in ([True, False] if args.both_spin else [not args.no_spin]):
+    for spin in [True, False] if args.both_spin else [not args.no_spin]:
         for intra_op in args.intra_op:
             baseline = None
             for label, path in models:
@@ -1103,33 +1241,41 @@ def run_cost(args) -> int:
                 wall, cpu = time_session(session)
                 if baseline is None:
                     baseline = cpu
-                print(f"{label:22} {intra_op or 'default':>9} {str(spin):>5} "
-                      f"{wall:9.1f} {cpu:9.1f} {cpu / seconds:15.1f} "
-                      f"{baseline / max(cpu, 1e-6):7.2f}")
+                print(
+                    f"{label:22} {intra_op or 'default':>9} {spin!s:>5} "
+                    f"{wall:9.1f} {cpu:9.1f} {cpu / seconds:15.1f} "
+                    f"{baseline / max(cpu, 1e-6):7.2f}"
+                )
                 del session
 
     # The row the application actually runs, straight from the shared helper,
     # so it tracks the tuned defaults instead of a copy of them.
-    print(f"\nas the application configures it "
-          f"(_embed_session_options: {settings.DIARIZER_EMBED_ONNX_THREADS} threads, "
-          f"spin={settings.DIARIZER_EMBED_ONNX_SPIN})")
+    print(
+        f"\nas the application configures it "
+        f"(_embed_session_options: {settings.DIARIZER_EMBED_ONNX_THREADS} threads, "
+        f"spin={settings.DIARIZER_EMBED_ONNX_SPIN})"
+    )
     baseline = None
     for label, path in models:
         session = make_session(path, use_app_options=True)
         wall, cpu = time_session(session)
         if baseline is None:
             baseline = cpu
-        print(f"{label:22} {'app':>9} {'-':>5} {wall:9.1f} {cpu:9.1f} "
-              f"{cpu / seconds:15.1f} {baseline / max(cpu, 1e-6):7.2f}")
+        print(
+            f"{label:22} {'app':>9} {'-':>5} {wall:9.1f} {cpu:9.1f} "
+            f"{cpu / seconds:15.1f} {baseline / max(cpu, 1e-6):7.2f}"
+        )
         del session
 
     # fbank cost for context: charged once per segment regardless of model
     wall0, cpu0 = time.perf_counter(), time.process_time()
     for _ in range(args.repeats):
         sd._compute_fbank(audio)
-    print(f"\n{'fbank frontend':22} {'-':>9} {'-':>5} "
-          f"{(time.perf_counter() - wall0) * 1000.0 / args.repeats:9.1f} "
-          f"{(time.process_time() - cpu0) * 1000.0 / args.repeats:9.1f}")
+    print(
+        f"\n{'fbank frontend':22} {'-':>9} {'-':>5} "
+        f"{(time.perf_counter() - wall0) * 1000.0 / args.repeats:9.1f} "
+        f"{(time.process_time() - cpu0) * 1000.0 / args.repeats:9.1f}"
+    )
     return 0
 
 
@@ -1157,44 +1303,90 @@ def run_pipeline(args) -> int:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="A/B diarizer embedding models")
-    parser.add_argument("--intra-op", type=int, default=0,
-                        help="onnxruntime intra_op_num_threads (0 = ORT default)")
+    parser.add_argument(
+        "--intra-op",
+        type=int,
+        default=0,
+        help="onnxruntime intra_op_num_threads (0 = ORT default)",
+    )
     sub = parser.add_subparsers(dest="mode", required=True)
 
     p_pipe = sub.add_parser("pipeline", help="full pipeline over mixed audio")
     p_pipe.add_argument("audio", nargs="+", help="WAV file(s) to diarize")
-    p_pipe.add_argument("--threshold", type=float, default=None,
-                        help="similarity threshold (default: app setting)")
+    p_pipe.add_argument(
+        "--threshold",
+        type=float,
+        default=None,
+        help="similarity threshold (default: app setting)",
+    )
     p_pipe.set_defaults(func=run_pipeline)
 
-    p_margin = sub.add_parser("margin", help="ground-truth separation from split tracks")
-    p_margin.add_argument("--audio-root", required=True,
-                          help="DATA_DIR/audio containing <session>/segment_N_*.wav")
-    p_margin.add_argument("--threshold", type=float,
-                          default=settings.SPEAKER_SIMILARITY_THRESHOLD)
-    p_margin.add_argument("--echo-limit", type=float, default=0.15,
-                          help="max mic/sys cross-correlation before a pair is rejected")
-    p_margin.add_argument("--allow-echo", action="store_true",
-                          help="keep echo-contaminated recordings (labels are unreliable)")
+    p_margin = sub.add_parser(
+        "margin", help="ground-truth separation from split tracks"
+    )
+    p_margin.add_argument(
+        "--audio-root",
+        required=True,
+        help="DATA_DIR/audio containing <session>/segment_N_*.wav",
+    )
+    p_margin.add_argument(
+        "--threshold", type=float, default=settings.SPEAKER_SIMILARITY_THRESHOLD
+    )
+    p_margin.add_argument(
+        "--echo-limit",
+        type=float,
+        default=0.15,
+        help="max mic/sys cross-correlation before a pair is rejected",
+    )
+    p_margin.add_argument(
+        "--allow-echo",
+        action="store_true",
+        help="keep echo-contaminated recordings (labels are unreliable)",
+    )
     p_margin.add_argument("--own-min-rms", type=float, default=0.015)
     p_margin.add_argument("--other-max-rms", type=float, default=0.004)
-    p_margin.add_argument("--window-seconds", type=float, default=3.0,
-                          help="length of each exclusive-activity window")
-    p_margin.add_argument("--min-pair-gap", type=float, default=60.0,
-                          help="seconds apart for the independent positive set")
-    p_margin.add_argument("--max-segments", type=int, default=0,
-                          help="cap windows per track per recording (0 = no cap)")
-    p_margin.add_argument("--cache-dir", default=os.path.join(
-        tempfile.gettempdir(), "diarizer_ab_cache"),
-        help="where to cache the per-track VAD pass ('' disables)")
-    p_margin.add_argument("--yield-only", action="store_true",
-                          help="stop after windowing; use to sweep filter settings")
-    p_margin.add_argument("--bootstrap", type=int, default=5000,
-                          help="paired bootstrap resamples (0 disables)")
-    p_margin.add_argument("--positive-sessions", nargs="*", default=None,
-                          help="only these mic tracks supply same-speaker pairs "
-                               "(substring match); use after checking the "
-                               "per-track self-similarity report")
+    p_margin.add_argument(
+        "--window-seconds",
+        type=float,
+        default=3.0,
+        help="length of each exclusive-activity window",
+    )
+    p_margin.add_argument(
+        "--min-pair-gap",
+        type=float,
+        default=60.0,
+        help="seconds apart for the independent positive set",
+    )
+    p_margin.add_argument(
+        "--max-segments",
+        type=int,
+        default=0,
+        help="cap windows per track per recording (0 = no cap)",
+    )
+    p_margin.add_argument(
+        "--cache-dir",
+        default=os.path.join(tempfile.gettempdir(), "diarizer_ab_cache"),
+        help="where to cache the per-track VAD pass ('' disables)",
+    )
+    p_margin.add_argument(
+        "--yield-only",
+        action="store_true",
+        help="stop after windowing; use to sweep filter settings",
+    )
+    p_margin.add_argument(
+        "--bootstrap",
+        type=int,
+        default=5000,
+        help="paired bootstrap resamples (0 disables)",
+    )
+    p_margin.add_argument(
+        "--positive-sessions",
+        nargs="*",
+        default=None,
+        help="only these mic tracks supply same-speaker pairs "
+        "(substring match); use after checking the "
+        "per-track self-similarity report",
+    )
     p_margin.set_defaults(func=run_margin)
 
     p_cost = sub.add_parser("cost", help="CPU per embedding under explicit options")
@@ -1202,10 +1394,12 @@ def main() -> int:
     p_cost.add_argument("--repeats", type=int, default=20)
     p_cost.add_argument("--warmup", type=int, default=3)
     p_cost.add_argument("--intra-op", type=int, nargs="+", default=[0, 1, 2, 4])
-    p_cost.add_argument("--no-spin", action="store_true",
-                        help="disable the intra-op spin wait")
-    p_cost.add_argument("--both-spin", action="store_true",
-                        help="report both spin settings")
+    p_cost.add_argument(
+        "--no-spin", action="store_true", help="disable the intra-op spin wait"
+    )
+    p_cost.add_argument(
+        "--both-spin", action="store_true", help="report both spin settings"
+    )
     p_cost.set_defaults(func=run_cost)
 
     args = parser.parse_args()

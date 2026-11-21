@@ -6,30 +6,48 @@ import json
 import logging
 import re
 import uuid
+from datetime import UTC, datetime
 from hashlib import blake2b
-from datetime import datetime, timezone
 from types import SimpleNamespace
 from typing import Any, Literal
 
-from pydantic import BaseModel, Field
-from sqlalchemy import delete, select, text
-from sqlalchemy.orm import selectinload
-
 from app.database import async_session
-from app.models import AgentConfig, Directive, InsightCluster, Question, Session, SessionAgentOverride, SessionSynthesis, Speaker, TranscriptEntry
-from app.services.agents.prompts import BRIEF_ARBITER_PROMPT, BRIEF_DISCOVERY_LENS_PROMPT, BRIEF_MEETING_LENS_PROMPT
+from app.models import (
+    AgentConfig,
+    Directive,
+    InsightCluster,
+    Question,
+    Session,
+    SessionAgentOverride,
+    SessionSynthesis,
+    Speaker,
+    TranscriptEntry,
+)
 from app.services.agents.prompt_resources import load_prompt_resource
+from app.services.agents.prompts import (
+    BRIEF_ARBITER_PROMPT,
+    BRIEF_DISCOVERY_LENS_PROMPT,
+    BRIEF_MEETING_LENS_PROMPT,
+)
 from app.services.agents.speaker_context import (
-    speaker_to_dict as _speaker_dict,
     build_speaker_aliases,
     format_speakers_list,
     format_transcript_segment,
     speaker_display_name,
 )
+from app.services.agents.speaker_context import (
+    speaker_to_dict as _speaker_dict,
+)
 from app.services.llm import generate_json, provider_for
-from app.services.meeting_context import build_meeting_context_text, format_prompt_layers
+from app.services.meeting_context import (
+    build_meeting_context_text,
+    format_prompt_layers,
+)
 from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_message
 from app.services.session_manager import get_document_summaries
+from pydantic import BaseModel, Field
+from sqlalchemy import delete, select, text
+from sqlalchemy.orm import selectinload
 
 logger = logging.getLogger(__name__)
 
@@ -132,14 +150,24 @@ def agent_config_enabled(agent_configs: dict[str, Any], slug: str) -> bool:
 
 async def load_agent_configs(session_id: uuid.UUID | None = None) -> dict[str, Any]:
     async with async_session() as db:
-        result = await db.execute(select(AgentConfig).order_by(AgentConfig.display_order))
-        configs = {agent.slug: _agent_config_snapshot(agent) for agent in result.scalars().all()}
+        result = await db.execute(
+            select(AgentConfig).order_by(AgentConfig.display_order)
+        )
+        configs = {
+            agent.slug: _agent_config_snapshot(agent)
+            for agent in result.scalars().all()
+        }
 
         if session_id:
             override_result = await db.execute(
-                select(SessionAgentOverride).where(SessionAgentOverride.session_id == session_id)
+                select(SessionAgentOverride).where(
+                    SessionAgentOverride.session_id == session_id
+                )
             )
-            overrides = {override.agent_slug: override.enabled for override in override_result.scalars().all()}
+            overrides = {
+                override.agent_slug: override.enabled
+                for override in override_result.scalars().all()
+            }
             for slug, enabled in overrides.items():
                 if slug in configs:
                     configs[slug].enabled = enabled
@@ -182,18 +210,24 @@ def _agent_config_snapshot(agent: AgentConfig):
     )
 
 
-async def get_session_synthesis(session_id: uuid.UUID, mode: str = "post_call") -> SessionSynthesis | None:
+async def get_session_synthesis(
+    session_id: uuid.UUID, mode: str = "post_call"
+) -> SessionSynthesis | None:
     _validate_synthesis_mode(mode)
     async with async_session() as db:
         result = await db.execute(
             select(SessionSynthesis)
-            .where(SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode)
+            .where(
+                SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode
+            )
             .options(selectinload(SessionSynthesis.clusters))
         )
         synthesis = result.scalar_one_or_none()
         if synthesis is None:
             return None
-        speaker_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+        speaker_result = await db.execute(
+            select(Speaker).where(Speaker.session_id == session_id)
+        )
         speaker_names = _speaker_owner_names(speaker_result.scalars().all())
     return _normalize_synthesis_owners(synthesis, speaker_names)
 
@@ -212,7 +246,11 @@ async def run_session_synthesis(
     _validate_synthesis_mode(mode)
     if mode != "post_call":
         raise ValueError("Live synthesis is owned by the strategic_signals agent")
-    from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
+    from app.services.privacy import (
+        LocalOnlyModeError,
+        allows_local_only,
+        is_local_only,
+    )
 
     agent_configs = agent_configs or await load_agent_configs(session_id)
     if not agent_config_enabled(agent_configs, BRIEF_ARBITER_SLUG):
@@ -250,7 +288,9 @@ async def run_session_synthesis(
     # a partial briefing rather than failing the whole run.
     arbiter_model = agent_configs[BRIEF_ARBITER_SLUG].model_id
     if await is_local_only() and not await allows_local_only(arbiter_model):
-        raise LocalOnlyModeError("call briefing synthesis", arbiter_model, BRIEF_ARBITER_SLUG)
+        raise LocalOnlyModeError(
+            "call briefing synthesis", arbiter_model, BRIEF_ARBITER_SLUG
+        )
 
     context = await _build_context(
         session_id,
@@ -272,7 +312,9 @@ async def run_session_synthesis(
     discovery_output = None
     errors: list[str] = []
 
-    async def run_lens(slug: str, cfg: AgentConfig | None, default_prompt: str) -> BriefLensOutput | None:
+    async def run_lens(
+        slug: str, cfg: AgentConfig | None, default_prompt: str
+    ) -> BriefLensOutput | None:
         if not cfg or not cfg.enabled:
             return None
         system, prompt = format_prompt_layers(
@@ -344,7 +386,9 @@ async def run_session_synthesis(
         )
     except Exception as exc:
         logger.error("[brief_arbiter] failed: %s", exc)
-        errors.append(f"{BRIEF_ARBITER_SLUG}: {_failure_text(arbiter_cfg.model_id, exc)}")
+        errors.append(
+            f"{BRIEF_ARBITER_SLUG}: {_failure_text(arbiter_cfg.model_id, exc)}"
+        )
         return await _persist_error_synthesis(
             session_id,
             mode,
@@ -358,7 +402,11 @@ async def run_session_synthesis(
             discovery_output=discovery_output,
         )
 
-    status = "partial" if errors or meeting_output is None or discovery_output is None else "completed"
+    status = (
+        "partial"
+        if errors or meeting_output is None or discovery_output is None
+        else "completed"
+    )
     return await _persist_synthesis(
         session_id=session_id,
         mode=mode,
@@ -399,7 +447,9 @@ async def _build_context(
 
         if directives is None:
             result = await db.execute(
-                select(Directive.text).where(Directive.session_id == session_id, Directive.active.is_(True))
+                select(Directive.text).where(
+                    Directive.session_id == session_id, Directive.active.is_(True)
+                )
             )
             directives = list(result.scalars().all())
 
@@ -408,7 +458,9 @@ async def _build_context(
 
         if speakers is None:
             result = await db.execute(
-                select(Speaker).where(Speaker.session_id == session_id).order_by(Speaker.created_at)
+                select(Speaker)
+                .where(Speaker.session_id == session_id)
+                .order_by(Speaker.created_at)
             )
             speakers = [_speaker_dict(s) for s in result.scalars().all()]
 
@@ -448,9 +500,13 @@ async def _build_context(
     return SynthesisContext(
         meeting_context_text=meeting_context_text,
         transcript_text=transcript_text,
-        directives_text="\n".join(f"- {d}" for d in directives) if directives else "(No directives set)",
+        directives_text="\n".join(f"- {d}" for d in directives)
+        if directives
+        else "(No directives set)",
         document_summaries=doc_summaries or "(No documents uploaded)",
-        speakers_text=format_speakers_list(speakers or [], build_speaker_aliases(speakers or [])),
+        speakers_text=format_speakers_list(
+            speakers or [], build_speaker_aliases(speakers or [])
+        ),
         insights_text=insights_text,
     )
 
@@ -571,7 +627,11 @@ def _format_insights(
         {
             field: item.get(
                 field,
-                False if field in {"answered", "needs_followup"} else 0 if field == "vote" else "",
+                False
+                if field in {"answered", "needs_followup"}
+                else 0
+                if field == "vote"
+                else "",
             )
             for field in fields
         }
@@ -760,7 +820,9 @@ def _response_contract(response_schema: type[BaseModel]) -> str:
                 "evidence_refs": item["evidence_refs"],
             }
         ]
-        contract["arbiter_notes"] = "how the lenses agreed, differed, and how the settled view was chosen"
+        contract["arbiter_notes"] = (
+            "how the lenses agreed, differed, and how the settled view was chosen"
+        )
         contract["evidence_refs"] = item["evidence_refs"]
     return (
         "Return exactly one valid JSON object. Use these keys and value shapes; use empty arrays or empty strings "
@@ -780,21 +842,27 @@ async def _persist_error_synthesis(
     # An arbiter/provider failure is a status update, not a new empty
     # synthesis. Reusing _persist_synthesis here used to overwrite a
     # previously completed snapshot and delete its insight clusters.
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with async_session() as db:
         await _lock_synthesis_scope(db, session_id, mode)
         result = await db.execute(
             select(SessionSynthesis)
-            .where(SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode)
+            .where(
+                SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode
+            )
             .with_for_update()
         )
         synthesis = result.scalar_one_or_none()
         if synthesis is None:
             synthesis = SessionSynthesis(
-                session_id=session_id, mode=mode, status="error",
+                session_id=session_id,
+                mode=mode,
+                status="error",
                 arbiter_notes="Briefing synthesis failed.",
-                model_ids=model_ids, error_message=error_message,
-                created_at=now, updated_at=now,
+                model_ids=model_ids,
+                error_message=error_message,
+                created_at=now,
+                updated_at=now,
             )
             db.add(synthesis)
         else:
@@ -812,7 +880,9 @@ async def _persist_error_synthesis(
             .options(selectinload(SessionSynthesis.clusters))
         )
         synthesis = result.scalar_one()
-        speaker_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+        speaker_result = await db.execute(
+            select(Speaker).where(Speaker.session_id == session_id)
+        )
         speaker_names = _speaker_owner_names(speaker_result.scalars().all())
     return _normalize_synthesis_owners(synthesis, speaker_names)
 
@@ -827,17 +897,21 @@ async def _persist_synthesis(
     model_ids: dict[str, str],
     error_message: str = "",
 ) -> SessionSynthesis:
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     async with async_session() as db:
         await _lock_synthesis_scope(db, session_id, mode)
         result = await db.execute(
             select(SessionSynthesis)
-            .where(SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode)
+            .where(
+                SessionSynthesis.session_id == session_id, SessionSynthesis.mode == mode
+            )
             .with_for_update()
         )
         synthesis = result.scalar_one_or_none()
         if synthesis is None:
-            synthesis = SessionSynthesis(session_id=session_id, mode=mode, created_at=now)
+            synthesis = SessionSynthesis(
+                session_id=session_id, mode=mode, created_at=now
+            )
             db.add(synthesis)
 
         if mode == "live" and status == "completed":
@@ -854,7 +928,9 @@ async def _persist_synthesis(
         synthesis.top_opportunities = _items_json(arbiter_output.top_opportunities)
         synthesis.risks_blockers = _items_json(arbiter_output.risks_blockers)
         synthesis.action_plan = _items_json(arbiter_output.action_plan)
-        synthesis.unresolved_discovery_questions = _items_json(arbiter_output.unresolved_discovery_questions)
+        synthesis.unresolved_discovery_questions = _items_json(
+            arbiter_output.unresolved_discovery_questions
+        )
         synthesis.strategic_signals = _items_json(arbiter_output.strategic_signals)
         synthesis.evidence_refs = _evidence_refs_json(arbiter_output.evidence_refs)
         synthesis.lens_meeting = _model_dict(meeting_output)
@@ -865,7 +941,9 @@ async def _persist_synthesis(
         synthesis.updated_at = now
 
         await db.flush()
-        await db.execute(delete(InsightCluster).where(InsightCluster.synthesis_id == synthesis.id))
+        await db.execute(
+            delete(InsightCluster).where(InsightCluster.synthesis_id == synthesis.id)
+        )
         for index, cluster in enumerate(arbiter_output.insight_clusters):
             db.add(
                 InsightCluster(
@@ -888,7 +966,9 @@ async def _persist_synthesis(
             .options(selectinload(SessionSynthesis.clusters))
         )
         synthesis = result.scalar_one()
-        speaker_result = await db.execute(select(Speaker).where(Speaker.session_id == session_id))
+        speaker_result = await db.execute(
+            select(Speaker).where(Speaker.session_id == session_id)
+        )
         speaker_names = _speaker_owner_names(speaker_result.scalars().all())
     return _normalize_synthesis_owners(synthesis, speaker_names)
 
@@ -918,7 +998,9 @@ def _set_json_path_value(root: object, path: tuple[object, ...], value: object) 
     parent[path[-1]] = value  # type: ignore[index]
 
 
-def _model_json(model: BaseModel | None, budget: int = BRIEF_LENS_JSON_BUDGET_CHARS) -> str:
+def _model_json(
+    model: BaseModel | None, budget: int = BRIEF_LENS_JSON_BUDGET_CHARS
+) -> str:
     """Render a lens result as compact, bounded JSON for the arbiter prompt.
 
     Lens output is model-controlled and can contain long evidence quotes or
@@ -941,7 +1023,13 @@ def _model_json(model: BaseModel | None, budget: int = BRIEF_LENS_JSON_BUDGET_CH
     def candidates(value: object, path: tuple[object, ...] = ()):
         strings: list[tuple[int, tuple[object, ...]]] = []
         lists: list[tuple[int, tuple[object, ...]]] = []
-        for key, item in value.items() if isinstance(value, dict) else enumerate(value) if isinstance(value, list) else []:
+        for key, item in (
+            value.items()
+            if isinstance(value, dict)
+            else enumerate(value)
+            if isinstance(value, list)
+            else []
+        ):
             child_path = path + (key,)
             if isinstance(item, str) and len(item) > 64 and str(key) not in protected:
                 strings.append((len(item), child_path))
@@ -973,7 +1061,9 @@ def _model_json(model: BaseModel | None, budget: int = BRIEF_LENS_JSON_BUDGET_CH
         rendered = json.dumps(clipped, ensure_ascii=False, separators=(",", ":"))
 
     if len(rendered) > budget:
-        return json.dumps({"_truncated": True}, ensure_ascii=False, separators=(",", ":"))
+        return json.dumps(
+            {"_truncated": True}, ensure_ascii=False, separators=(",", ":")
+        )
     return rendered
 
 
@@ -991,5 +1081,7 @@ async def _lock_synthesis_scope(db, session_id: uuid.UUID, mode: str):
 
 
 def _synthesis_lock_key(session_id: uuid.UUID, mode: str) -> int:
-    digest = blake2b(f"session_synthesis:{session_id}:{mode}".encode("utf-8"), digest_size=8).digest()
+    digest = blake2b(
+        f"session_synthesis:{session_id}:{mode}".encode(), digest_size=8
+    ).digest()
     return int.from_bytes(digest, byteorder="big", signed=True)

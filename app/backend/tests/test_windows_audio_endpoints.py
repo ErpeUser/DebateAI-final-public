@@ -21,21 +21,30 @@ class _Audio:
 
 
 class WindowsAudioEndpointTests(unittest.TestCase):
-    def test_native_mmdevice_and_stable_ids_are_preferred_when_binding_exposes_them(self):
-        device = _device_from_info({
-            "index": 3,
-            "name": "USB Mic",
-            "hostApi": 2,
-            "maxInputChannels": 1,
-            "defaultSampleRate": 48000,
-            "deviceUID": "{0.0.1.00000000}.endpoint",
-            "stableId": "stable:endpoint",
-        })
+    def test_native_mmdevice_and_stable_ids_are_preferred_when_binding_exposes_them(
+        self,
+    ):
+        device = _device_from_info(
+            {
+                "index": 3,
+                "name": "USB Mic",
+                "hostApi": 2,
+                "maxInputChannels": 1,
+                "defaultSampleRate": 48000,
+                "deviceUID": "{0.0.1.00000000}.endpoint",
+                "stableId": "stable:endpoint",
+            }
+        )
         self.assertEqual("mmdevice:{0.0.1.00000000}.endpoint", device.endpoint_id)
         self.assertEqual("stable:endpoint", device.stable_id)
 
     def test_endpoint_id_survives_index_changes(self):
-        base = {"name": "USB Mic", "hostApi": 2, "maxInputChannels": 1, "defaultSampleRate": 48000}
+        base = {
+            "name": "USB Mic",
+            "hostApi": 2,
+            "maxInputChannels": 1,
+            "defaultSampleRate": 48000,
+        }
         first = _device_from_info({**base, "index": 1})
         second = _device_from_info({**base, "index": 7})
         self.assertEqual(first.endpoint_id, second.endpoint_id)
@@ -59,7 +68,17 @@ class WindowsAudioEndpointTests(unittest.TestCase):
         self.assertEqual("stable:endpoint", device.stable_id)
 
     def test_missing_fixed_endpoint_never_falls_back_to_default(self):
-        audio = _Audio([{"index": 0, "name": "Default", "hostApi": 2, "maxInputChannels": 1, "defaultSampleRate": 48000}])
+        audio = _Audio(
+            [
+                {
+                    "index": 0,
+                    "name": "Default",
+                    "hostApi": 2,
+                    "maxInputChannels": 1,
+                    "defaultSampleRate": 48000,
+                }
+            ]
+        )
         with self.assertRaisesRegex(OSError, "nicht mehr verfuegbar"):
             select_devices(
                 audio,
@@ -67,19 +86,27 @@ class WindowsAudioEndpointTests(unittest.TestCase):
                 microphone_mode="fixed",
             )
 
-    def test_fixed_current_default_recovers_when_enumeration_temporarily_misses_id(self):
-        audio = _Audio([{
-            "index": 0,
-            "name": "Default",
-            "hostApi": 2,
-            "maxInputChannels": 1,
-            "defaultSampleRate": 48000,
-            "deviceUID": "{0.0.1.00000000}.default",
-        }])
+    def test_fixed_current_default_recovers_when_enumeration_temporarily_misses_id(
+        self,
+    ):
+        audio = _Audio(
+            [
+                {
+                    "index": 0,
+                    "name": "Default",
+                    "hostApi": 2,
+                    "maxInputChannels": 1,
+                    "defaultSampleRate": 48000,
+                    "deviceUID": "{0.0.1.00000000}.default",
+                }
+            ]
+        )
         with patch.object(
             windows_audio_capture,
             "_device_by_endpoint_id",
-            side_effect=OSError("Das fest gewaehlte Windows-Audiogeraet ist nicht mehr verfuegbar"),
+            side_effect=OSError(
+                "Das fest gewaehlte Windows-Audiogeraet ist nicht mehr verfuegbar"
+            ),
         ):
             microphone, _loopback = select_devices(
                 audio,
@@ -113,11 +140,13 @@ class WindowsAudioEndpointTests(unittest.TestCase):
             "maxInputChannels": 1,
             "defaultSampleRate": 48000,
         }
-        audio = _Audio([
-            {**base, "index": 0, "hostApi": 0},
-            {**base, "index": 1, "hostApi": 1},
-            {**base, "index": 2, "hostApi": 2},
-        ])
+        audio = _Audio(
+            [
+                {**base, "index": 0, "hostApi": 0},
+                {**base, "index": 1, "hostApi": 1},
+                {**base, "index": 2, "hostApi": 2},
+            ]
+        )
         audio.get_host_api_info_by_type = lambda _host_type: {"index": 2}
 
         def resolve(info, *, loopback=False):
@@ -125,7 +154,9 @@ class WindowsAudioEndpointTests(unittest.TestCase):
                 return "{0.0.1}.endpoint", "stable:endpoint"
             return "", ""
 
-        with patch.object(windows_audio_capture, "_resolve_mmdevice_identity", side_effect=resolve):
+        with patch.object(
+            windows_audio_capture, "_resolve_mmdevice_identity", side_effect=resolve
+        ):
             microphone, _loopback = select_devices(
                 audio,
                 microphone_id="mmdevice:{0.0.1}.endpoint",

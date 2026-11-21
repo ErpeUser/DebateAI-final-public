@@ -1,5 +1,5 @@
 import unittest
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 from uuid import uuid4
@@ -9,7 +9,7 @@ from app.services.agents.orchestrator import AgentOrchestrator, _synthesis_paylo
 
 
 def _synthesis(history=None):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     return SimpleNamespace(
         id=uuid4(),
         session_id=uuid4(),
@@ -46,7 +46,10 @@ class SynthesisRouterTests(unittest.IsolatedAsyncioTestCase):
         event = orchestrator.websocket.send_json.call_args.args[0]
         self.assertEqual("synthesis_updated", event["type"])
         self.assertEqual(str(synthesis.id), event["data"]["id"])
-        self.assertEqual(synthesis.created_at.isoformat().replace("+00:00", "Z"), event["data"]["created_at"])
+        self.assertEqual(
+            synthesis.created_at.isoformat().replace("+00:00", "Z"),
+            event["data"]["created_at"],
+        )
         self.assertEqual(1, event["data"]["signal_history_count"])
         self.assertNotIn("signal_history", event["data"])
 
@@ -130,9 +133,7 @@ class SynthesisRouterTests(unittest.IsolatedAsyncioTestCase):
         session_id = uuid4()
         db = AsyncMock()
         db.get.return_value = SimpleNamespace(id=session_id)
-        expected = _synthesis(
-            [{"section": "strategic_signals", "title": "Budget"}]
-        )
+        expected = _synthesis([{"section": "strategic_signals", "title": "Budget"}])
 
         with (
             patch(

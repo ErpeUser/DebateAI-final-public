@@ -1,8 +1,10 @@
 import unittest
 
 import numpy as np
-
-from app.services.sortformer_diarizer import SortformerDiarizer, extract_sortformer_turns
+from app.services.sortformer_diarizer import (
+    SortformerDiarizer,
+    extract_sortformer_turns,
+)
 from app.services.speaker_diarizer import SpeakerRegistry
 from app.services.voice_enrollment import LOCAL_VOICE_PROFILE_ID
 
@@ -33,7 +35,10 @@ class SortformerDiarizerTests(unittest.TestCase):
         ):
             with self.subTest(raw=raw):
                 turns = extract_sortformer_turns([raw])
-                self.assertEqual([(0.5, 1.0, "s")], [(t.start_seconds, t.end_seconds, t.label) for t in turns])
+                self.assertEqual(
+                    [(0.5, 1.0, "s")],
+                    [(t.start_seconds, t.end_seconds, t.label) for t in turns],
+                )
 
     def test_dictionary_turns_preserve_zero_start_and_speaker(self):
         for raw in (
@@ -43,7 +48,10 @@ class SortformerDiarizerTests(unittest.TestCase):
         ):
             with self.subTest(raw=raw):
                 turns = extract_sortformer_turns([raw])
-                self.assertEqual([(0.0, 1.0, "0")], [(t.start_seconds, t.end_seconds, t.label) for t in turns])
+                self.assertEqual(
+                    [(0.0, 1.0, "0")],
+                    [(t.start_seconds, t.end_seconds, t.label) for t in turns],
+                )
 
     def test_segments_record_absolute_start_across_windows(self):
         diarizer = StubSortformerDiarizer(
@@ -129,8 +137,14 @@ class SortformerDiarizerTests(unittest.TestCase):
         turns = extract_sortformer_turns(result)
 
         self.assertEqual(2, len(turns))
-        self.assertEqual((0.5, 1.75, "speaker_0"), (turns[0].start_seconds, turns[0].end_seconds, turns[0].label))
-        self.assertEqual((2.0, 2.75, "speaker_1"), (turns[1].start_seconds, turns[1].end_seconds, turns[1].label))
+        self.assertEqual(
+            (0.5, 1.75, "speaker_0"),
+            (turns[0].start_seconds, turns[0].end_seconds, turns[0].label),
+        )
+        self.assertEqual(
+            (2.0, 2.75, "speaker_1"),
+            (turns[1].start_seconds, turns[1].end_seconds, turns[1].label),
+        )
 
     def test_extracts_turns_from_simple_label_lines(self):
         result = ["0.00 1.00 speaker_a", "1.50 2.25 speaker_b"]
@@ -143,10 +157,12 @@ class SortformerDiarizerTests(unittest.TestCase):
         )
 
     def test_stitches_reused_sortformer_window_labels_by_voice_embedding(self):
-        diarizer = StubSortformerDiarizer([
-            ["0.00 4.00 speaker_0"],
-            ["0.00 4.00 speaker_0"],
-        ])
+        diarizer = StubSortformerDiarizer(
+            [
+                ["0.00 4.00 speaker_0"],
+                ["0.00 4.00 speaker_0"],
+            ]
+        )
         first_voice = (np.ones(64000, dtype=np.int16) * 1000).tobytes()
         second_voice = (np.ones(64000, dtype=np.int16) * -1000).tobytes()
 

@@ -9,7 +9,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-
 CUDA_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cu130"
 CPU_TORCH_INDEX_URL = "https://download.pytorch.org/whl/cpu"
 _FALSE_VALUES = {"0", "false", "no", "off"}
@@ -42,7 +41,12 @@ def amd_gpu_present() -> bool:
         return False
     try:
         result = subprocess.run(
-            ["powershell", "-NoProfile", "-Command", "(Get-CimInstance Win32_VideoController).Name"],
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "(Get-CimInstance Win32_VideoController).Name",
+            ],
             capture_output=True,
             text=True,
             timeout=60,
@@ -140,7 +144,9 @@ def _install_torch() -> None:
 
 
 def _install_nemo() -> None:
-    requirements_path = Path(__file__).resolve().parents[1] / "requirements-sortformer.txt"
+    requirements_path = (
+        Path(__file__).resolve().parents[1] / "requirements-sortformer.txt"
+    )
     _run_pip(["install", "--no-cache-dir", "-r", str(requirements_path)])
 
 

@@ -18,9 +18,12 @@ def _write_json(path: Path, payload: dict[str, object]) -> None:
     pending.replace(path)
 
 
-def _verified_oracle_selection(home: Path, started_at: float) -> dict[str, object] | None:
+def _verified_oracle_selection(
+    home: Path, started_at: float
+) -> dict[str, object] | None:
     candidates = [
-        path for path in (home / "sessions").glob("*/meta.json")
+        path
+        for path in (home / "sessions").glob("*/meta.json")
         if path.stat().st_mtime >= started_at - 2
     ]
     for path in sorted(candidates, key=lambda item: item.stat().st_mtime, reverse=True):
@@ -30,12 +33,20 @@ def _verified_oracle_selection(home: Path, started_at: float) -> dict[str, objec
             continue
         browser = metadata.get("browser") if isinstance(metadata, dict) else None
         model = browser.get("modelSelection") if isinstance(browser, dict) else None
-        thinking = browser.get("thinkingSelection") if isinstance(browser, dict) else None
+        thinking = (
+            browser.get("thinkingSelection") if isinstance(browser, dict) else None
+        )
         if not isinstance(model, dict) or not isinstance(thinking, dict):
             continue
-        if not model.get("verified") or str(model.get("resolvedLabel", "")).strip() != "GPT-6":
+        if (
+            not model.get("verified")
+            or str(model.get("resolvedLabel", "")).strip() != "GPT-6"
+        ):
             continue
-        if not thinking.get("verified") or thinking.get("requestedLevel") != "extra-high":
+        if (
+            not thinking.get("verified")
+            or thinking.get("requestedLevel") != "extra-high"
+        ):
             continue
         return {"model": model, "thinking": thinking}
     return None
@@ -58,18 +69,21 @@ def run_chatgpt_web_login(result_path: Path) -> int:
     # a verified marker exists; later rechecks stay one-shot.
     if not marker.is_file():
         insert_at = command.index("--browser-no-focus")
-        command[insert_at:insert_at + 1] = ["--browser-keep-browser"]
+        command[insert_at : insert_at + 1] = ["--browser-keep-browser"]
     env = os.environ.copy()
-    env.update({
-        "ORACLE_HOME_DIR": str(home),
-        "ORACLE_BROWSER_PROFILE_DIR": str(profile),
-        "NO_COLOR": "1",
-    })
+    env.update(
+        {
+            "ORACLE_HOME_DIR": str(home),
+            "ORACLE_BROWSER_PROFILE_DIR": str(profile),
+            "NO_COLOR": "1",
+        }
+    )
     started = time.perf_counter()
     started_wall = time.time()
     try:
         completed = subprocess.run(
             command,
+            check=False,
             input="Antworte nur mit: OK",
             text=True,
             capture_output=True,
@@ -95,10 +109,13 @@ def run_chatgpt_web_login(result_path: Path) -> int:
                 message = "GPT-6 wurde ausgewählt, aber die Antwortprüfung blieb leer."
             else:
                 message = "GPT-6 mit Extra High konnte in der ChatGPT-Oberflaeche nicht bestaetigt werden."
-            _write_json(result_path, {
-                "error": message,
-                "exit_code": completed.returncode,
-            })
+            _write_json(
+                result_path,
+                {
+                    "error": message,
+                    "exit_code": completed.returncode,
+                },
+            )
             return 1
         model_selection = selection["model"]
         thinking_selection = selection["thinking"]
@@ -118,7 +135,12 @@ def run_chatgpt_web_login(result_path: Path) -> int:
         _write_json(result_path, evidence)
         return 0
     except (OSError, subprocess.TimeoutExpired) as exc:
-        _write_json(result_path, {"error": f"Die ChatGPT-Anmeldung konnte nicht abgeschlossen werden: {type(exc).__name__}"})
+        _write_json(
+            result_path,
+            {
+                "error": f"Die ChatGPT-Anmeldung konnte nicht abgeschlossen werden: {type(exc).__name__}"
+            },
+        )
         return 1
     finally:
         output.unlink(missing_ok=True)

@@ -32,7 +32,12 @@ function activeBarCount(level: number) {
   return level > 0.015 ? Math.max(1, Math.ceil(level * BAR_COUNT)) : 0;
 }
 
-export default function AudioIndicator({ isCapturing, level, label, showStatusText = true }: AudioIndicatorProps) {
+export default function AudioIndicator({
+  isCapturing,
+  level,
+  label,
+  showStatusText = true,
+}: AudioIndicatorProps) {
   const meterRef = useRef<HTMLDivElement | null>(null);
   const barsRef = useRef<(HTMLDivElement | null)[]>([]);
   const paintedBarsRef = useRef(-1);
@@ -63,8 +68,8 @@ export default function AudioIndicator({ isCapturing, level, label, showStatusTe
 
       const aria = Math.round(value * 100);
       if (
-        aria !== paintedAriaRef.current
-        && (force || now - ariaPaintedAtRef.current >= ARIA_INTERVAL_MS)
+        aria !== paintedAriaRef.current &&
+        (force || now - ariaPaintedAtRef.current >= ARIA_INTERVAL_MS)
       ) {
         paintedAriaRef.current = aria;
         ariaPaintedAtRef.current = now;

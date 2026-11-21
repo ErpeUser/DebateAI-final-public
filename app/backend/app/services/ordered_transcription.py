@@ -75,7 +75,10 @@ class OrderedTranscriptionQueue:
         if self._closed:
             raise RuntimeError("Cannot add transcription job after queue drain")
         if self._min_batch_bytes:
-            if self._pending_speaker is not None and self._pending_speaker != speaker_auto_id:
+            if (
+                self._pending_speaker is not None
+                and self._pending_speaker != speaker_auto_id
+            ):
                 self._flush_pending()
             if self._pending_speaker is None:
                 self._pending_speaker = speaker_auto_id
@@ -127,14 +130,18 @@ class OrderedTranscriptionQueue:
         if failed:
             await self._record_failure("transcribe")
         async with self._lock:
-            self._results[index] = TranscriptionResult(speaker_auto_id, pcm_bytes, text, provisional_segment_id)
+            self._results[index] = TranscriptionResult(
+                speaker_auto_id, pcm_bytes, text, provisional_segment_id
+            )
         await self._emit_ready()
         return index
 
     async def _emit_result(self, result: TranscriptionResult) -> None:
         if self._emit_with_identity is not None:
             await self._emit_with_identity(
-                result.speaker_auto_id, result.pcm_bytes, result.text,
+                result.speaker_auto_id,
+                result.pcm_bytes,
+                result.text,
                 result.provisional_segment_id,
             )
         else:
@@ -170,7 +177,7 @@ class OrderedTranscriptionQueue:
                         self._transcribe(pcm_bytes),
                         timeout=self._transcribe_timeout_seconds,
                     )
-        except asyncio.TimeoutError:
+        except TimeoutError:
             logger.error("Transcription job %s timed out", index)
             failed = True
         except Exception as exc:
@@ -219,7 +226,7 @@ class OrderedTranscriptionQueue:
                             timeout=self._emit_timeout_seconds,
                         )
                     self._emitted_count += 1
-                except asyncio.TimeoutError:
+                except TimeoutError:
                     logger.error("Ordered transcript emit timed out")
                     emit_failures += 1
                 except Exception as exc:

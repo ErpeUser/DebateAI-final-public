@@ -32,7 +32,7 @@ characters. Nothing here reads or resolves a vault value itself.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from html import escape
 
 # --------------------------------------------------------------------------
@@ -409,14 +409,19 @@ def _attributed(row, roster: dict[str, str]) -> str:
 
 def _section_items(items) -> list[dict]:
     return [
-        item for item in (items or [])
-        if isinstance(item, dict) and (_text(item.get("title")) or _text(item.get("summary")))
+        item
+        for item in (items or [])
+        if isinstance(item, dict)
+        and (_text(item.get("title")) or _text(item.get("summary")))
     ]
 
 
 def synthesis_is_usable(synthesis) -> bool:
     """Whether a stored synthesis has enough in it to lead the document."""
-    if synthesis is None or getattr(synthesis, "status", "") not in {"completed", "partial"}:
+    if synthesis is None or getattr(synthesis, "status", "") not in {
+        "completed",
+        "partial",
+    }:
         return False
     sections = [
         getattr(synthesis, name, None)
@@ -429,22 +434,48 @@ def synthesis_is_usable(synthesis) -> bool:
             "unresolved_discovery_questions",
         )
     ]
-    return any(_section_items(section) for section in sections) or bool(getattr(synthesis, "clusters", None))
+    return any(_section_items(section) for section in sections) or bool(
+        getattr(synthesis, "clusters", None)
+    )
 
 
 def section_labels(meeting_type: str) -> dict[str, str]:
     """Section names that fit the conversation that actually happened."""
     by_type = {
-        "internal_enablement": ("Learning objectives", "Enablement opportunities", "Open learning questions"),
-        "internal_checkin": ("Objectives and needs", "Support opportunities", "Open questions"),
-        "vendor_partner": ("Vendor and program objectives", "Partner opportunities", "Open vendor questions"),
-        "customer_delivery": ("Project objectives", "Delivery opportunities", "Open delivery questions"),
-        "client_sales": ("Client objectives", "Top opportunities", "Unresolved discovery questions"),
+        "internal_enablement": (
+            "Learning objectives",
+            "Enablement opportunities",
+            "Open learning questions",
+        ),
+        "internal_checkin": (
+            "Objectives and needs",
+            "Support opportunities",
+            "Open questions",
+        ),
+        "vendor_partner": (
+            "Vendor and program objectives",
+            "Partner opportunities",
+            "Open vendor questions",
+        ),
+        "customer_delivery": (
+            "Project objectives",
+            "Delivery opportunities",
+            "Open delivery questions",
+        ),
+        "client_sales": (
+            "Client objectives",
+            "Top opportunities",
+            "Unresolved discovery questions",
+        ),
     }
     objectives, opportunities, questions = by_type.get(
         meeting_type, ("Objectives", "Top opportunities", "Open questions")
     )
-    return {"objectives": objectives, "opportunities": opportunities, "questions": questions}
+    return {
+        "objectives": objectives,
+        "opportunities": opportunities,
+        "questions": questions,
+    }
 
 
 # --------------------------------------------------------------------------
@@ -456,11 +487,15 @@ def _tally(cells: list[tuple[str, object, bool]]) -> str:
     out = []
     for label, value, hot in cells:
         klass = "n hot" if hot else "n"
-        out.append(f'<div><div class="{klass}">{_e(value)}</div><div class="k">{_e(label)}</div></div>')
+        out.append(
+            f'<div><div class="{klass}">{_e(value)}</div><div class="k">{_e(label)}</div></div>'
+        )
     return f'<div class="tally">{"".join(out)}</div>'
 
 
-def _masthead(data: BriefingData, kind: str, cells: list[tuple[str, object, bool]]) -> str:
+def _masthead(
+    data: BriefingData, kind: str, cells: list[tuple[str, object, bool]]
+) -> str:
     session = data.session
     started = getattr(session, "started_at", None)
     ended = getattr(session, "ended_at", None)
@@ -515,7 +550,9 @@ def _figures(data: BriefingData) -> str:
         counts[slug] = counts.get(slug, 0) + 1
     if len(counts) > 1:
         ordered = sorted(counts.items(), key=lambda pair: (-pair[1], pair[0]))
-        figures.append(_bars([(_label(slug), n, "") for slug, n in ordered], "What was captured"))
+        figures.append(
+            _bars([(_label(slug), n, "") for slug, n in ordered], "What was captured")
+        )
 
     if len(data.speakers) > 1 and data.transcript:
         roster = _roster(data.speakers)
@@ -543,7 +580,9 @@ def _figures(data: BriefingData) -> str:
 def _tags(bits: list[tuple[str, str]]) -> str:
     if not bits:
         return ""
-    spans = "".join(f'<span class="tag {klass}">{_e(text)}</span>' for klass, text in bits)
+    spans = "".join(
+        f'<span class="tag {klass}">{_e(text)}</span>' for klass, text in bits
+    )
     return f'<div class="tags">{spans}</div>'
 
 
@@ -556,7 +595,9 @@ def _evidence(quote: str, label: str = "What was said") -> str:
     )
 
 
-def _record(index: int, title: str, tags: str, body: str, why: str, evidence: str) -> str:
+def _record(
+    index: int, title: str, tags: str, body: str, why: str, evidence: str
+) -> str:
     """One run in a section. An empty title is legal and deliberate: the
     standfirst above may already be this item's heading, and repeating it
     reads as a bug rather than as emphasis."""
@@ -571,13 +612,17 @@ def _record(index: int, title: str, tags: str, body: str, why: str, evidence: st
     )
 
 
-def _section(title: str, inner: str, count: int | None = None, empty: str = "Nothing captured.") -> str:
+def _section(
+    title: str, inner: str, count: int | None = None, empty: str = "Nothing captured."
+) -> str:
     tally = f'<span class="n">{count}</span>' if count is not None else ""
     body = inner or f'<p class="empty">{_e(empty)}</p>'
     return f"<section><h2>{_e(title)}{tally}</h2>{body}</section>"
 
 
-def _synthesis_section(title: str, items, *, heading_in_standfirst: bool = False) -> str:
+def _synthesis_section(
+    title: str, items, *, heading_in_standfirst: bool = False
+) -> str:
     """A synthesis section.
 
     ``heading_in_standfirst`` drops the first item's heading, for the one
@@ -597,12 +642,16 @@ def _synthesis_section(title: str, items, *, heading_in_standfirst: bool = False
         if status := _text(item.get("status")):
             tags.append(("open", status))
         records.append(
-            _record(index, heading, _tags(tags), summary, _text(item.get("rationale")), "")
+            _record(
+                index, heading, _tags(tags), summary, _text(item.get("rationale")), ""
+            )
         )
     return _section(title, "".join(records), len(valid))
 
 
-def _insight_records(questions: list, roster: dict[str, str], limit: int | None = None) -> str:
+def _insight_records(
+    questions: list, roster: dict[str, str], limit: int | None = None
+) -> str:
     records = []
     for index, q in enumerate(questions if limit is None else questions[:limit], 1):
         tags: list[tuple[str, str]] = []
@@ -610,7 +659,11 @@ def _insight_records(questions: list, roster: dict[str, str], limit: int | None 
             tags.append(("flag", "Starred"))
         item_type = _text(getattr(q, "item_type", ""))
         if item_type == "question":
-            tags.append(("done", "Answered") if getattr(q, "answered", False) else ("open", "Unanswered"))
+            tags.append(
+                ("done", "Answered")
+                if getattr(q, "answered", False)
+                else ("open", "Unanswered")
+            )
         elif item_type == "action_item" and getattr(q, "answered", False):
             tags.append(("done", "Closed"))
         if who := _attributed(q, roster):
@@ -630,7 +683,14 @@ def _insight_records(questions: list, roster: dict[str, str], limit: int | None 
         if followup := _text(getattr(q, "followup_question", "")):
             extra += f'<p class="why">Next: {_e(followup)}</p>'
         records.append(
-            _record(index, _text(q.question), _tags(tags), "", why, extra + _evidence(_text(getattr(q, "source_context", ""))))
+            _record(
+                index,
+                _text(q.question),
+                _tags(tags),
+                "",
+                why,
+                extra + _evidence(_text(getattr(q, "source_context", ""))),
+            )
         )
     return "".join(records)
 
@@ -641,7 +701,9 @@ def _going_in(data: BriefingData) -> str:
     if not lines:
         return ""
     items = "".join(f"<li>{_e(line)}</li>" for line in lines)
-    return _section("What we went in for", f'<ul class="plain">{items}</ul>', len(lines))
+    return _section(
+        "What we went in for", f'<ul class="plain">{items}</ul>', len(lines)
+    )
 
 
 def _appendix(data: BriefingData) -> str:
@@ -665,7 +727,7 @@ def _appendix(data: BriefingData) -> str:
 
 
 def _colophon(session) -> str:
-    generated = datetime.now(timezone.utc).strftime("%d %B %Y, %H:%M UTC")
+    generated = datetime.now(UTC).strftime("%d %B %Y, %H:%M UTC")
     return (
         '<div class="colophon"><span>Prepared by Debate AI</span>'
         f"<span>{_e(generated)}</span></div>"
@@ -691,11 +753,15 @@ def _document(title: str, body: str) -> str:
 def render_briefing(data: BriefingData) -> str:
     """The synthesized briefing: the arbiter's read, then the evidence."""
     synthesis = data.synthesis
-    labels = section_labels(_text(getattr(data.session, "meeting_type", "")) or "general")
+    labels = section_labels(
+        _text(getattr(data.session, "meeting_type", "")) or "general"
+    )
     actions = _section_items(getattr(synthesis, "action_plan", None))
     opportunities = _section_items(getattr(synthesis, "top_opportunities", None))
     risks = _section_items(getattr(synthesis, "risks_blockers", None))
-    open_questions = _section_items(getattr(synthesis, "unresolved_discovery_questions", None))
+    open_questions = _section_items(
+        getattr(synthesis, "unresolved_discovery_questions", None)
+    )
     outcomes = _section_items(getattr(synthesis, "top_outcomes", None))
 
     masthead = _masthead(
@@ -727,7 +793,7 @@ def render_briefing(data: BriefingData) -> str:
     )
     if _text(getattr(synthesis, "status", "")) == "partial":
         notes_line += " / partial synthesis: one lens did not complete"
-    note = f'<p class="standfirst-note">{_e(notes_line)}</p>' 
+    note = f'<p class="standfirst-note">{_e(notes_line)}</p>'
 
     roster = _roster(data.speakers)
     starred = [q for q in data.questions if getattr(q, "starred", False)]
@@ -736,13 +802,23 @@ def render_briefing(data: BriefingData) -> str:
         _synthesis_section(
             "Where this landed",
             getattr(synthesis, "top_outcomes", None),
-            heading_in_standfirst=bool(outcomes) and lede == _text(outcomes[0].get("title")),
+            heading_in_standfirst=bool(outcomes)
+            and lede == _text(outcomes[0].get("title")),
         ),
         _synthesis_section("What to do next", getattr(synthesis, "action_plan", None)),
-        _synthesis_section(labels["objectives"], getattr(synthesis, "client_objectives", None)),
-        _synthesis_section(labels["opportunities"], getattr(synthesis, "top_opportunities", None)),
-        _synthesis_section("Risks and blockers", getattr(synthesis, "risks_blockers", None)),
-        _synthesis_section(labels["questions"], getattr(synthesis, "unresolved_discovery_questions", None)),
+        _synthesis_section(
+            labels["objectives"], getattr(synthesis, "client_objectives", None)
+        ),
+        _synthesis_section(
+            labels["opportunities"], getattr(synthesis, "top_opportunities", None)
+        ),
+        _synthesis_section(
+            "Risks and blockers", getattr(synthesis, "risks_blockers", None)
+        ),
+        _synthesis_section(
+            labels["questions"],
+            getattr(synthesis, "unresolved_discovery_questions", None),
+        ),
     ]
 
     clusters = getattr(synthesis, "clusters", None) or []
@@ -751,15 +827,25 @@ def render_briefing(data: BriefingData) -> str:
             _record(
                 index,
                 _text(getattr(cluster, "title", "")),
-                _tags([("plain", f"{_text(getattr(cluster, 'confidence', ''))} confidence")])
-                if _text(getattr(cluster, "confidence", "")) else "",
+                _tags(
+                    [
+                        (
+                            "plain",
+                            f"{_text(getattr(cluster, 'confidence', ''))} confidence",
+                        )
+                    ]
+                )
+                if _text(getattr(cluster, "confidence", ""))
+                else "",
                 _text(getattr(cluster, "summary", "")),
                 "",
                 "",
             )
             for index, cluster in enumerate(clusters, 1)
         ]
-        sections.append(_section("Threads running through it", "".join(records), len(clusters)))
+        sections.append(
+            _section("Threads running through it", "".join(records), len(clusters))
+        )
 
     if starred:
         sections.append(
@@ -774,7 +860,9 @@ def render_briefing(data: BriefingData) -> str:
         sections.append(going_in)
 
     if notes := _text(getattr(synthesis, "arbiter_notes", "")):
-        sections.append(_section("Reconciliation notes", f'<div class="note">{_e(notes)}</div>'))
+        sections.append(
+            _section("Reconciliation notes", f'<div class="note">{_e(notes)}</div>')
+        )
 
     body = (
         masthead
@@ -786,7 +874,9 @@ def render_briefing(data: BriefingData) -> str:
         + _colophon(data.session)
         + "</div>"
     )
-    return _document(f"{_text(getattr(data.session, 'name', '')) or 'Call'} briefing", body)
+    return _document(
+        f"{_text(getattr(data.session, 'name', '')) or 'Call'} briefing", body
+    )
 
 
 def render_record(data: BriefingData) -> str:
@@ -799,10 +889,14 @@ def render_record(data: BriefingData) -> str:
     roster = _roster(data.speakers)
     by_type: dict[str, list] = {}
     for q in data.questions:
-        by_type.setdefault(_text(getattr(q, "item_type", "")) or "question", []).append(q)
+        by_type.setdefault(_text(getattr(q, "item_type", "")) or "question", []).append(
+            q
+        )
 
     actions = by_type.get("action_item", [])
-    unanswered = [q for q in by_type.get("question", []) if not getattr(q, "answered", False)]
+    unanswered = [
+        q for q in by_type.get("question", []) if not getattr(q, "answered", False)
+    ]
     starred = [q for q in data.questions if getattr(q, "starred", False)]
 
     masthead = _masthead(
@@ -837,7 +931,9 @@ def render_record(data: BriefingData) -> str:
     # Custom lens types keep their own slug and would otherwise vanish.
     for slug, rows in by_type.items():
         if slug not in dict(_TYPE_SECTIONS):
-            sections.append(_section(_label(slug), _insight_records(rows, roster), len(rows)))
+            sections.append(
+                _section(_label(slug), _insight_records(rows, roster), len(rows))
+            )
 
     if going_in := _going_in(data):
         sections.append(going_in)
@@ -852,4 +948,6 @@ def render_record(data: BriefingData) -> str:
         + _colophon(data.session)
         + "</div>"
     )
-    return _document(f"{_text(getattr(data.session, 'name', '')) or 'Call'} record", body)
+    return _document(
+        f"{_text(getattr(data.session, 'name', '')) or 'Call'} record", body
+    )

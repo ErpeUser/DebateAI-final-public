@@ -186,7 +186,9 @@ class DossierRuntimeIntegrationTests(unittest.IsolatedAsyncioTestCase):
             ),
             mock.patch(
                 "app.services.agents.orchestrator.get_local_dossier_context",
-                mock.AsyncMock(side_effect=AssertionError("cloud route must not retrieve dossier")),
+                mock.AsyncMock(
+                    side_effect=AssertionError("cloud route must not retrieve dossier")
+                ),
             ) as retrieve,
         ):
             context = await orchestrator._debate_support_context_async(

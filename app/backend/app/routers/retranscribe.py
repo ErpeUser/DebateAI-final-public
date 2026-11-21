@@ -2,25 +2,29 @@ import asyncio
 import logging
 import uuid
 
+from app.database import async_session, get_db
+from app.models import CallSegment, Session, TranscriptEntry
+from app.routers.imports import (
+    _transcribe_audio_diarized,
+    _transcribe_split_audio_diarized,
+)
+from app.services import runtime_activity, transcription_jobs
+from app.services.diarizer_runtime import get_diarizer_runtime_config
+from app.services.llm import registry_entry
+from app.services.privacy import get_local_only, is_local_model
+from app.services.secrets import data_dir
+from app.services.speaker_diarizer import SpeakerRegistry
+from app.services.transcription_readiness import local_asr_status
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy import delete, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import async_session, get_db
-from app.models import CallSegment, Session, TranscriptEntry
-from app.routers.imports import _transcribe_audio_diarized, _transcribe_split_audio_diarized
-from app.services.diarizer_runtime import get_diarizer_runtime_config
-from app.services.llm import registry_entry
-from app.services.privacy import get_local_only, is_local_model
-from app.services.secrets import data_dir
-from app.services.transcription_readiness import local_asr_status
-from app.services.speaker_diarizer import SpeakerRegistry
-from app.services import runtime_activity, transcription_jobs
-
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/api/sessions/{session_id}/retranscribe", tags=["retranscribe"])
+router = APIRouter(
+    prefix="/api/sessions/{session_id}/retranscribe", tags=["retranscribe"]
+)
 
 
 class RetranscribeIn(BaseModel):
@@ -42,8 +46,12 @@ async def _transcribe_stored_segments(
     job: transcription_jobs.TranscriptionJob | None = None,
 ) -> int:
     runtime_config = await get_diarizer_runtime_config(db)
-    mic_registry = SpeakerRegistry(threshold=runtime_config.speaker_similarity_threshold)
-    remote_registry = SpeakerRegistry(threshold=runtime_config.speaker_similarity_threshold)
+    mic_registry = SpeakerRegistry(
+        threshold=runtime_config.speaker_similarity_threshold
+    )
+    remote_registry = SpeakerRegistry(
+        threshold=runtime_config.speaker_similarity_threshold
+    )
     mic_speaker_map: dict[str, str] = {}
     remote_speaker_map: dict[str, str] = {}
     total = 0
@@ -54,10 +62,14 @@ async def _transcribe_stored_segments(
         segment_start = total
         job_kwargs = {"commit": False, "fail_on_transcription_error": True}
         if job:
-            job_kwargs.update({
-                "cancel_check": job.check_canceled,
-                "entry_callback": lambda count, start=segment_start: job.update_entries(start + count),
-            })
+            job_kwargs.update(
+                {
+                    "cancel_check": job.check_canceled,
+                    "entry_callback": lambda count, start=segment_start: (
+                        job.update_entries(start + count)
+                    ),
+                }
+            )
         mic_path = _stored_audio_path(segment.mic_audio_path)
         system_path = _stored_audio_path(segment.system_audio_path)
         if mic_path and system_path:
@@ -122,7 +134,9 @@ async def _transcribe_stored_segments(
     return total
 
 
-async def _stored_segments(session_id: uuid.UUID, db: AsyncSession) -> list[CallSegment]:
+async def _stored_segments(
+    session_id: uuid.UUID, db: AsyncSession
+) -> list[CallSegment]:
     result = await db.execute(
         select(CallSegment)
         .where(
@@ -170,7 +184,11 @@ async def _run_retranscription_job(
                 segments = _available_segments(await _stored_segments(session_id, db))
                 if not segments:
                     raise FileNotFoundError("No stored audio for this session")
-                await db.execute(delete(TranscriptEntry).where(TranscriptEntry.session_id == session_id))
+                await db.execute(
+                    delete(TranscriptEntry).where(
+                        TranscriptEntry.session_id == session_id
+                    )
+                )
                 total = await _transcribe_stored_segments(
                     segments,
                     session_id,
@@ -222,9 +240,13 @@ async def retranscribe_session(
     entry = registry_entry(body.model_id)
     supports_batch = (entry or {}).get("supports_batch_audio", False)
     if not supports_batch:
-        raise HTTPException(400, f"Model {body.model_id} does not support batch transcription")
+        raise HTTPException(
+            400, f"Model {body.model_id} does not support batch transcription"
+        )
     if not is_local_model(body.model_id) and await get_local_only(db):
-        raise HTTPException(400, "Privacy First mode is on: only local transcription models can be used")
+        raise HTTPException(
+            400, "Privacy First mode is on: only local transcription models can be used"
+        )
     # Prove the transcriber can run before starting the replacement. The job
     # also keeps deletion and replacement in one transaction, so cancellation
     # or failure leaves the existing transcript intact (ALP-376).

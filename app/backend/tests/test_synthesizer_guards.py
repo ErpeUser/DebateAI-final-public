@@ -8,14 +8,14 @@ is exactly the kind that reaches production unnoticed.
 
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
 from app.services import insight_refiner
 from app.services.agents.synthesizer import _truncate, _truncate_tail
 
-NOW = datetime(2026, 8, 12, 12, 0, 0, tzinfo=timezone.utc)
+NOW = datetime(2026, 8, 12, 12, 0, 0, tzinfo=UTC)
 
 
 def question(**overrides):
@@ -68,7 +68,12 @@ class SelfMergeTests(unittest.IsolatedAsyncioTestCase):
         applied = await insight_refiner._apply_merge_operation(
             _Db([row]),
             uuid.uuid4(),
-            {"op": "merge", "keep_id": rid, "remove_id": rid, "merged_text": "combined"},
+            {
+                "op": "merge",
+                "keep_id": rid,
+                "remove_id": rid,
+                "merged_text": "combined",
+            },
             {rid: row},
             "synthesizer",
             False,

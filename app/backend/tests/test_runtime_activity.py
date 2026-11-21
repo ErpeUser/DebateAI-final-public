@@ -32,7 +32,9 @@ def _dependencies_by_path(routes) -> dict:
             for path, own in _dependencies_by_path(original.routes).items():
                 found[path] = inherited + own
         else:
-            found[getattr(route, "path", "")] = list(getattr(route, "dependencies", None) or [])
+            found[getattr(route, "path", "")] = list(
+                getattr(route, "dependencies", None) or []
+            )
     return found
 
 
@@ -55,7 +57,9 @@ class RuntimeActivityTests(unittest.TestCase):
                 self.fail("reserved shutdown accepted new work")
 
     def test_reservation_expires_without_a_timer_thread(self):
-        with patch.object(runtime_activity.time, "monotonic", side_effect=[100.0, 161.0, 161.0]):
+        with patch.object(
+            runtime_activity.time, "monotonic", side_effect=[100.0, 161.0, 161.0]
+        ):
             self.assertTrue(runtime_activity.reserve_shutdown(timeout_seconds=60))
             self.assertEqual(runtime_activity.busy_reason(), "")
             with runtime_activity.track("briefing"):
@@ -127,9 +131,11 @@ class RuntimeActivityTests(unittest.TestCase):
         model_id = "local-whisper-base"
         local_transcriber._loaded.pop(model_id, None)
         fake_onnx = SimpleNamespace(load_model=lambda *_, **__: object())
-        with tempfile.TemporaryDirectory() as temp_dir, patch.dict(
-            sys.modules, {"onnx_asr": fake_onnx}
-        ), patch.object(local_transcriber, "data_dir", return_value=Path(temp_dir)):
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            patch.dict(sys.modules, {"onnx_asr": fake_onnx}),
+            patch.object(local_transcriber, "data_dir", return_value=Path(temp_dir)),
+        ):
             self.assertTrue(runtime_activity.reserve_shutdown())
             with self.assertRaises(runtime_activity.ShutdownReserved):
                 local_transcriber._load_model(model_id)

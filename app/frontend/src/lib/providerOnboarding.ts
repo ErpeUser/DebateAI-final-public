@@ -38,7 +38,7 @@ export interface ReadinessModelSource {
 
 export function toReadinessAgentModels(
   agents: ReadinessAgentSource[],
-  models: ReadinessModelSource[]
+  models: ReadinessModelSource[],
 ): ReadinessAgentModel[] {
   return agents.map((a) => {
     const model = models.find((m) => m.id === a.model_id);
@@ -61,7 +61,7 @@ export interface SetupReadiness {
 }
 
 export function webProviderStartupNeedsAttention(
-  providers: { available: boolean; ready: boolean }[]
+  providers: { available: boolean; ready: boolean }[],
 ): boolean {
   return providers.some((provider) => provider.available && !provider.ready);
 }
@@ -96,7 +96,7 @@ export function setupReadiness(input: {
   }
 
   const unavailable = input.agentModels.filter(
-    (a) => a.enabled && a.modelId && !a.available
+    (a) => a.enabled && a.modelId && !a.available,
   );
   if (unavailable.length > 0) {
     return {
@@ -108,7 +108,7 @@ export function setupReadiness(input: {
   }
 
   const privacyBlocked = input.agentModels.filter(
-    (a) => a.enabled && input.localOnly && !a.runsLocally
+    (a) => a.enabled && input.localOnly && !a.runsLocally,
   );
   if (privacyBlocked.length > 0) {
     return {
@@ -120,7 +120,7 @@ export function setupReadiness(input: {
   }
 
   const blocked = input.agentModels.filter(
-    (a) => a.enabled && !a.runsLocally && !a.keyAvailable
+    (a) => a.enabled && !a.runsLocally && !a.keyAvailable,
   );
   if (blocked.length > 0) {
     const names = blocked
@@ -141,8 +141,13 @@ export function setupReadiness(input: {
 }
 
 function agentNames(agents: ReadinessAgentModel[]): string {
-  const names = agents.slice(0, 3).map((agent) => agent.agentName).join(", ");
-  return agents.length > 3 ? `${names} und ${agents.length - 3} weitere` : names;
+  const names = agents
+    .slice(0, 3)
+    .map((agent) => agent.agentName)
+    .join(", ");
+  return agents.length > 3
+    ? `${names} und ${agents.length - 3} weitere`
+    : names;
 }
 
 // Which contextual state the onboarding setup card is in. "choose" shows the

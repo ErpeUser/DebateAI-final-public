@@ -1,0 +1,26 @@
+target-version = "py311"
+line-length = 88
+
+[lint]
+# Intentional project patterns. FastAPI evaluates dependency defaults itself,
+# broad exception boundaries protect optional providers and shutdown paths,
+# and several subprocess/file handles intentionally outlive one function call.
+ignore = [
+  "ASYNC210",
+  "ASYNC220",
+  "B008",
+  "B017",
+  "B023",
+  "BLE001",
+  "PLC0206",
+  "PLC0414",
+  "PLW1510",
+  "PERF402",
+  "RUF012",
+  "S102",
+  "S110",
+  "SIM102",
+  "SIM115",
+  "SIM117",
+  "TRY004",
+]

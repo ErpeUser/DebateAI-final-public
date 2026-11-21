@@ -1,7 +1,7 @@
 import json
 import unittest
 import uuid
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, patch
 
@@ -75,9 +75,7 @@ class ConsolidatedAnalystStructuredOutputTests(unittest.IsolatedAsyncioTestCase)
 
         with patch(
             "app.services.agents.consolidated_analyst.generate_json",
-            new=AsyncMock(
-                side_effect=json.JSONDecodeError("bad reply", "not-json", 0)
-            ),
+            new=AsyncMock(side_effect=json.JSONDecodeError("bad reply", "not-json", 0)),
         ):
             self.assertEqual([], await agent.run_cycle("Transcript", [], "", []))
         self.assertEqual("parse_failed", agent.last_outcome["kind"])
@@ -157,7 +155,7 @@ class SynthesizerStructuredOutputTests(unittest.IsolatedAsyncioTestCase):
             # The working-set split (ALP-283) reads both stamps to decide
             # whether an insight is still live; a real Question row always
             # carries them, and updated_at is nullable.
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             updated_at=None,
         )
 
@@ -197,7 +195,7 @@ class SynthesizerStructuredOutputTests(unittest.IsolatedAsyncioTestCase):
             # The working-set split (ALP-283) reads both stamps to decide
             # whether an insight is still live; a real Question row always
             # carries them, and updated_at is nullable.
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             updated_at=None,
         )
         output = SynthesizerOutput(
@@ -238,7 +236,6 @@ class SynthesizerStructuredOutputTests(unittest.IsolatedAsyncioTestCase):
             apply_operations.await_args.args[1][0]["question"],
         )
 
-
     async def test_failed_persistence_does_not_suppress_retry(self):
         """A failed commit must leave the same corpus eligible for retry."""
         session_id = uuid.uuid4()
@@ -255,7 +252,7 @@ class SynthesizerStructuredOutputTests(unittest.IsolatedAsyncioTestCase):
             starred=False,
             enrichment_notes="",
             agent_source="observer",
-            created_at=datetime.now(timezone.utc),
+            created_at=datetime.now(UTC),
             updated_at=None,
         )
         output = SynthesizerOutput(

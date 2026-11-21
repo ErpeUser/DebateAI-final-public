@@ -7,21 +7,21 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.services.secrets import MasterKeyUnavailable, master_key_recovery_message
 from app.services.identity import env_value
+from app.services.secrets import MasterKeyUnavailable, master_key_recovery_message
 from app.services.subscription_bridge import (
     cleanup_gemini_web_cookie,
     gemini_web_models,
     get_endpoint,
     materialize_gemini_web_cookie,
     save_gemini_web_cookie,
-    sync_gemini_web_bridge,
     stored_gemini_web_cookie_configured,
+    sync_gemini_web_bridge,
 )
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from sqlalchemy.ext.asyncio import AsyncSession
 
 router = APIRouter(prefix="/api/gemini-web", tags=["gemini-web"])
 
@@ -77,20 +77,14 @@ async def _status(
     selected_model = preferred_web_model(models)
     pro_available = bool(selected_model)
     return {
-        "available": bool(
-            _setting("URL")
-            and _setting("KEY")
-        ),
+        "available": bool(_setting("URL") and _setting("KEY")),
         "configured": configured,
         "ready": configured and bool(models),
         "pro_available": pro_available,
         "models": models,
         "model": selected_model,
         "thinking": "High wird angefordert; die Antwort weist das tatsaechliche Modell aus.",
-        "login_available": bool(
-            _setting("LOGIN_COMMAND")
-            and _setting("LOGIN_RESULT")
-        ),
+        "login_available": bool(_setting("LOGIN_COMMAND") and _setting("LOGIN_RESULT")),
         "login_state": login_state,
         "message": (
             login_message
@@ -153,9 +147,13 @@ def _login_configuration() -> tuple[list[str], Path]:
     try:
         command = json.loads(raw_command)
     except json.JSONDecodeError as exc:
-        raise ValueError("Das lokale Gemini-Anmeldemodul ist ungueltig konfiguriert.") from exc
-    if not isinstance(command, list) or not command or not all(
-        isinstance(part, str) and part for part in command
+        raise ValueError(
+            "Das lokale Gemini-Anmeldemodul ist ungueltig konfiguriert."
+        ) from exc
+    if (
+        not isinstance(command, list)
+        or not command
+        or not all(isinstance(part, str) and part for part in command)
     ):
         raise ValueError("Das lokale Gemini-Anmeldemodul ist ungueltig konfiguriert.")
     return command, Path(raw_result)
@@ -207,7 +205,11 @@ async def start_login(db: AsyncSession = Depends(get_db)):
         else:
             result_path.parent.mkdir(parents=True, exist_ok=True)
             result_path.unlink(missing_ok=True)
-            flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if sys.platform == "win32" else 0
+            flags = (
+                getattr(subprocess, "CREATE_NO_WINDOW", 0)
+                if sys.platform == "win32"
+                else 0
+            )
             try:
                 _login_process = subprocess.Popen(
                     [*command, "--gemini-web-login", str(result_path)],
@@ -219,7 +221,8 @@ async def start_login(db: AsyncSession = Depends(get_db)):
             except OSError as exc:
                 _login_process = None
                 raise HTTPException(
-                    status_code=503, detail="Das Gemini-Anmeldefenster konnte nicht gestartet werden."
+                    status_code=503,
+                    detail="Das Gemini-Anmeldefenster konnte nicht gestartet werden.",
                 ) from exc
     if already_open:
         return await _status(
@@ -255,7 +258,9 @@ async def poll_login(db: AsyncSession = Depends(get_db)):
         await save_gemini_web_cookie(db, normalized)
         await db.commit()
     except MasterKeyUnavailable as exc:
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     materialize_gemini_web_cookie(normalized)
     await sync_gemini_web_bridge(db)
     await db.commit()
@@ -282,7 +287,9 @@ async def import_cookie(
         await save_gemini_web_cookie(db, normalized)
         await db.commit()
     except MasterKeyUnavailable as exc:
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     materialize_gemini_web_cookie(normalized)
     await sync_gemini_web_bridge(db)
     await db.commit()
@@ -295,7 +302,9 @@ async def delete_cookie(db: AsyncSession = Depends(get_db)):
         await save_gemini_web_cookie(db, "")
         await db.commit()
     except MasterKeyUnavailable as exc:
-        raise HTTPException(status_code=503, detail=master_key_recovery_message(exc)) from exc
+        raise HTTPException(
+            status_code=503, detail=master_key_recovery_message(exc)
+        ) from exc
     cleanup_gemini_web_cookie()
     await sync_gemini_web_bridge(db)
     await db.commit()

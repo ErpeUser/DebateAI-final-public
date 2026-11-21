@@ -9,7 +9,6 @@ from unittest import mock
 
 from desktop.scripts.build_release_manifest import build_manifest
 
-
 ROOT = Path(__file__).resolve().parents[2]
 SCRIPT = ROOT / "desktop" / "scripts" / "build_release_manifest.py"
 TAG = "v1.2.3"
@@ -70,7 +69,7 @@ class ReleaseManifestTests(unittest.TestCase):
         if current_latest is not None:
             command.extend(("--current-latest", str(current_latest)))
         return subprocess.run(
-            command, cwd=ROOT, capture_output=True, text=True
+            command, check=False, cwd=ROOT, capture_output=True, text=True
         )
 
     def test_exact_three_assets_have_deterministic_fields_and_order(self):
@@ -179,9 +178,11 @@ class ReleaseManifestTests(unittest.TestCase):
             ({"published_at": "2026-02-30T18:00:00Z"}, "timestamp"),
         )
         for arguments, message in invalid:
-            with self.subTest(arguments=arguments):
-                with self.assertRaisesRegex(ValueError, message):
-                    self.manifest(**arguments)
+            with (
+                self.subTest(arguments=arguments),
+                self.assertRaisesRegex(ValueError, message),
+            ):
+                self.manifest(**arguments)
 
     def test_version_length_boundary_applies_to_helper_and_cli(self):
         accepted = f"v{'1' * 10}.{'2' * 9}.{'3' * 10}"
@@ -259,9 +260,10 @@ class ReleaseManifestTests(unittest.TestCase):
         result = self.run_cli(manifest_out=manifest_out, latest_out=latest_out)
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        expected = json.dumps(
-            self.manifest(), sort_keys=True, separators=(",", ":")
-        ).encode() + b"\n"
+        expected = (
+            json.dumps(self.manifest(), sort_keys=True, separators=(",", ":")).encode()
+            + b"\n"
+        )
         self.assertEqual(manifest_out.read_bytes(), expected)
         self.assertEqual(latest_out.read_bytes(), b'{"version":"v1.2.3"}\n')
 

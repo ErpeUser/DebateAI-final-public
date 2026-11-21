@@ -3,7 +3,6 @@ import json
 import unittest
 
 import numpy as np
-
 from app.services.openai_realtime import (
     COMMIT_INTERVAL_BYTES,
     DEFAULT_TRANSCRIBE_MODEL,
@@ -79,7 +78,10 @@ class ParseEventTests(unittest.TestCase):
         self.assertEqual("hello there everyone", _parse_event(event))
 
     def test_delta_ignored(self):
-        event = {"type": "conversation.item.input_audio_transcription.delta", "delta": "hel"}
+        event = {
+            "type": "conversation.item.input_audio_transcription.delta",
+            "delta": "hel",
+        }
         self.assertIsNone(_parse_event(event))
 
     def test_hallucination_filtered(self):
@@ -95,14 +97,26 @@ class ParseEventTests(unittest.TestCase):
 
 class TranscribeModelSelectionTests(unittest.TestCase):
     def test_registry_ids_pass_through(self):
-        self.assertEqual("gpt-live-transcribe", resolve_transcribe_model("gpt-live-transcribe"))
-        self.assertEqual("gpt-4o-transcribe", resolve_transcribe_model("gpt-4o-transcribe"))
-        self.assertEqual("gpt-4o-mini-transcribe", resolve_transcribe_model("gpt-4o-mini-transcribe"))
+        self.assertEqual(
+            "gpt-live-transcribe", resolve_transcribe_model("gpt-live-transcribe")
+        )
+        self.assertEqual(
+            "gpt-4o-transcribe", resolve_transcribe_model("gpt-4o-transcribe")
+        )
+        self.assertEqual(
+            "gpt-4o-mini-transcribe", resolve_transcribe_model("gpt-4o-mini-transcribe")
+        )
 
     def test_legacy_aliases_resolve(self):
-        self.assertEqual("gpt-4o-transcribe", resolve_transcribe_model("openai-realtime"))
-        self.assertEqual("gpt-4o-mini-transcribe", resolve_transcribe_model("openai-realtime-mini"))
-        self.assertEqual("gpt-live-transcribe", resolve_transcribe_model("openai-realtime-whisper"))
+        self.assertEqual(
+            "gpt-4o-transcribe", resolve_transcribe_model("openai-realtime")
+        )
+        self.assertEqual(
+            "gpt-4o-mini-transcribe", resolve_transcribe_model("openai-realtime-mini")
+        )
+        self.assertEqual(
+            "gpt-live-transcribe", resolve_transcribe_model("openai-realtime-whisper")
+        )
 
     def test_the_retired_whisper_id_still_resolves(self):
         # gpt-realtime-whisper was the registry id until gpt-live-transcribe
@@ -111,7 +125,9 @@ class TranscribeModelSelectionTests(unittest.TestCase):
         # id on disk. Without this alias the audio gateway would fail at call
         # time rather than at startup -- the same quiet failure mode seen when
         # a removed custom endpoint was left referenced.
-        self.assertEqual("gpt-live-transcribe", resolve_transcribe_model("gpt-realtime-whisper"))
+        self.assertEqual(
+            "gpt-live-transcribe", resolve_transcribe_model("gpt-realtime-whisper")
+        )
 
     def test_session_honors_model_override(self):
         session = OpenAIRealtimeSession(model_override="gpt-live-transcribe")

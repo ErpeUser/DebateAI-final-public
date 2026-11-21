@@ -7,8 +7,7 @@ import unittest
 from contextlib import nullcontext
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import MagicMock
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.main import (
     _add_missing_columns,
@@ -92,7 +91,9 @@ class FakeRecoveryConnection:
 
 
 class StartupSchemaPatchTests(unittest.IsolatedAsyncioTestCase):
-    async def test_recovers_fsynced_open_segment_and_repairs_wav_before_orphan_cleanup(self):
+    async def test_recovers_fsynced_open_segment_and_repairs_wav_before_orphan_cleanup(
+        self,
+    ):
         session_id = "session-1"
         row = SimpleNamespace(
             id="segment-1",
@@ -305,7 +306,10 @@ class AlembicTrackPathRevisionTests(unittest.TestCase):
                 (("call_segments", "system_audio_path"), {}),
                 (("call_segments", "mic_audio_path"), {}),
             ],
-            [(call.args, call.kwargs) for call in revision.op.drop_column.call_args_list],
+            [
+                (call.args, call.kwargs)
+                for call in revision.op.drop_column.call_args_list
+            ],
         )
 
 
@@ -439,7 +443,12 @@ class AlembicRevalidationModelsRevisionTests(unittest.TestCase):
 
 class ProvisionalTranscriptMigrationTests(unittest.TestCase):
     def _revision(self):
-        path = Path(__file__).parents[1] / "alembic" / "versions" / "030_provisional_transcript_revisions.py"
+        path = (
+            Path(__file__).parents[1]
+            / "alembic"
+            / "versions"
+            / "030_provisional_transcript_revisions.py"
+        )
         spec = importlib.util.spec_from_file_location("alembic_revision_030", path)
         revision = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(revision)
@@ -470,7 +479,12 @@ class ProvisionalTranscriptMigrationTests(unittest.TestCase):
 
 class TranscriptRevisionMigrationTests(unittest.TestCase):
     def _revision(self):
-        path = Path(__file__).parents[1] / "alembic" / "versions" / "031_transcript_entry_revisions.py"
+        path = (
+            Path(__file__).parents[1]
+            / "alembic"
+            / "versions"
+            / "031_transcript_entry_revisions.py"
+        )
         spec = importlib.util.spec_from_file_location("alembic_revision_031", path)
         revision = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(revision)

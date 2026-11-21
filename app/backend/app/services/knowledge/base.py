@@ -9,11 +9,10 @@ import json
 import logging
 from typing import Protocol
 
-from sqlalchemy.ext.asyncio import AsyncSession
-
 from app.config import settings
 from app.models import KnowledgeSource
 from app.services.adapter_contracts import AdapterContract
+from sqlalchemy.ext.asyncio import AsyncSession
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +38,9 @@ def char_budget(source: KnowledgeSource | None) -> int:
             if isinstance(override, int) and override > 0:
                 return override
         except (json.JSONDecodeError, AttributeError):
-            logger.warning(f"[knowledge] invalid config JSON on source '{source.name}', using default budget")
+            logger.warning(
+                f"[knowledge] invalid config JSON on source '{source.name}', using default budget"
+            )
     return settings.KNOWLEDGE_CONTEXT_CHAR_BUDGET
 
 

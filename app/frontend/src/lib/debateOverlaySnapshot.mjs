@@ -8,11 +8,24 @@ export function shouldAcceptDebateOverlaySnapshot(current, next) {
   const incoming = next.recommendation;
   if (!previous || !incoming) return true;
 
-  const number = (value) => Number.isFinite(Number(value)) ? Number(value) : 0;
+  const number = (value) =>
+    Number.isFinite(Number(value)) ? Number(value) : 0;
   const ordered = [
-    ["transcript_revision", number(incoming.transcript_revision), number(previous.transcript_revision)],
-    ["claim_revision", number(incoming.claim_revision), number(previous.claim_revision)],
-    ["recommendation_revision", number(incoming.recommendation_revision), number(previous.recommendation_revision)],
+    [
+      "transcript_revision",
+      number(incoming.transcript_revision),
+      number(previous.transcript_revision),
+    ],
+    [
+      "claim_revision",
+      number(incoming.claim_revision),
+      number(previous.claim_revision),
+    ],
+    [
+      "recommendation_revision",
+      number(incoming.recommendation_revision),
+      number(previous.recommendation_revision),
+    ],
     ["revision", number(incoming.revision), number(previous.revision)],
   ];
   for (const [, nextValue, currentValue] of ordered) {
@@ -22,7 +35,11 @@ export function shouldAcceptDebateOverlaySnapshot(current, next) {
 
   const nextTime = Date.parse(incoming.generated_at || "");
   const currentTime = Date.parse(previous.generated_at || "");
-  if (Number.isFinite(nextTime) && Number.isFinite(currentTime) && nextTime < currentTime) {
+  if (
+    Number.isFinite(nextTime) &&
+    Number.isFinite(currentTime) &&
+    nextTime < currentTime
+  ) {
     return false;
   }
   return true;

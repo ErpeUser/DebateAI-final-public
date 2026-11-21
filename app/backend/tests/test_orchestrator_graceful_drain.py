@@ -1,5 +1,6 @@
 import asyncio
 import unittest
+from datetime import UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
@@ -25,9 +26,9 @@ class FakeSessionContext:
 
     async def refresh(self, item):
         if item.created_at is None:
-            from datetime import datetime, timezone
+            from datetime import datetime
 
-            item.created_at = datetime.now(timezone.utc)
+            item.created_at = datetime.now(UTC)
 
 
 class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
@@ -38,7 +39,10 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         consolidated_agent.run_cycle = AsyncMock()
 
         with (
-            patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
+            patch(
+                "app.services.agents.orchestrator.GeminiLiveSession",
+                return_value=AsyncMock(),
+            ),
             patch(
                 "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
                 return_value=consolidated_agent,
@@ -61,12 +65,20 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                         sub_types="question,opportunity",
                         lenses="",
                     ),
-                    "synthesizer": MagicMock(enabled=True, model_id="synth-model", prompt=""),
-                    "opportunity_specialist": MagicMock(enabled=True, model_id="opp-model", prompt=""),
+                    "synthesizer": MagicMock(
+                        enabled=True, model_id="synth-model", prompt=""
+                    ),
+                    "opportunity_specialist": MagicMock(
+                        enabled=True, model_id="opp-model", prompt=""
+                    ),
                 },
             )
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
-        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
+        orchestrator._load_complete_transcript = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
         orchestrator.consolidated_agent.run_cycle = AsyncMock(
             return_value=[
                 {
@@ -109,18 +121,31 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_final_pass_reloads_same_durable_source_after_refinement(self):
         orchestrator = self._build_orchestrator(include_briefing=False)
-        orchestrator._load_complete_transcript = AsyncMock(side_effect=["Before refinement", "After refinement"])
-        orchestrator._get_complete_transcript = AsyncMock(side_effect=AssertionError("divergent transcript loader"))
+        orchestrator._load_complete_transcript = AsyncMock(
+            side_effect=["Before refinement", "After refinement"]
+        )
+        orchestrator._get_complete_transcript = AsyncMock(
+            side_effect=AssertionError("divergent transcript loader")
+        )
         orchestrator._save_and_send_insight = AsyncMock(return_value=True)
         with (
-            patch("app.services.agents.orchestrator.run_synthesizer_cycle", new=AsyncMock(return_value=[])),
-            patch("app.services.agents.orchestrator.run_opportunity_specialist_cycle", new=AsyncMock(return_value=[])),
+            patch(
+                "app.services.agents.orchestrator.run_synthesizer_cycle",
+                new=AsyncMock(return_value=[]),
+            ),
+            patch(
+                "app.services.agents.orchestrator.run_opportunity_specialist_cycle",
+                new=AsyncMock(return_value=[]),
+            ),
         ):
             result = await orchestrator.graceful_drain()
         self.assertTrue(result["transcript_available"])
         self.assertEqual(2, orchestrator._load_complete_transcript.await_count)
         orchestrator._get_complete_transcript.assert_not_awaited()
-        self.assertIn("After refinement", str(orchestrator.consolidated_agent.run_cycle.await_args))
+        self.assertIn(
+            "After refinement",
+            str(orchestrator.consolidated_agent.run_cycle.await_args),
+        )
 
     async def test_a_failing_stage_degrades_and_is_named_in_the_result(self):
         """The ALP-103 acceptance failure, pinned.
@@ -136,7 +161,10 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         consolidated_agent.run_cycle = AsyncMock(return_value=[])
 
         with (
-            patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
+            patch(
+                "app.services.agents.orchestrator.GeminiLiveSession",
+                return_value=AsyncMock(),
+            ),
             patch(
                 "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
                 return_value=consolidated_agent,
@@ -159,12 +187,20 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                         sub_types="question",
                         lenses="",
                     ),
-                    "synthesizer": MagicMock(enabled=True, model_id="synth-model", prompt=""),
-                    "opportunity_specialist": MagicMock(enabled=True, model_id="opp-model", prompt=""),
+                    "synthesizer": MagicMock(
+                        enabled=True, model_id="synth-model", prompt=""
+                    ),
+                    "opportunity_specialist": MagicMock(
+                        enabled=True, model_id="opp-model", prompt=""
+                    ),
                 },
             )
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: Hello.")
-        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: Hello.")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="Speaker 1: Hello."
+        )
+        orchestrator._load_complete_transcript = AsyncMock(
+            return_value="Speaker 1: Hello."
+        )
         orchestrator._save_and_send_insight = AsyncMock(return_value=True)
 
         output_limit = RuntimeError(
@@ -201,7 +237,10 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         consolidated_agent.run_cycle = AsyncMock(return_value=[])
 
         with (
-            patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
+            patch(
+                "app.services.agents.orchestrator.GeminiLiveSession",
+                return_value=AsyncMock(),
+            ),
             patch(
                 "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
                 return_value=consolidated_agent,
@@ -224,13 +263,21 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                         sub_types="question,opportunity",
                         lenses="",
                     ),
-                    "synthesizer": MagicMock(enabled=True, model_id="synth-model", prompt=""),
-                    "opportunity_specialist": MagicMock(enabled=True, model_id="opp-model", prompt=""),
+                    "synthesizer": MagicMock(
+                        enabled=True, model_id="synth-model", prompt=""
+                    ),
+                    "opportunity_specialist": MagicMock(
+                        enabled=True, model_id="opp-model", prompt=""
+                    ),
                 },
             )
 
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
-        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
+        orchestrator._load_complete_transcript = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
 
         progress_events = []
 
@@ -253,7 +300,9 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
             ["final_insights", "insight_reconciliation", "opportunity_matching"],
             [event["stage"] for event in progress_events],
         )
-        self.assertEqual([2, 3, 4], [event["current_step"] for event in progress_events])
+        self.assertEqual(
+            [2, 3, 4], [event["current_step"] for event in progress_events]
+        )
         self.assertTrue(all(event["total_steps"] == 5 for event in progress_events))
 
     def _build_orchestrator(self, include_briefing: bool = False) -> AgentOrchestrator:
@@ -272,13 +321,20 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 lenses="",
             ),
             "synthesizer": MagicMock(enabled=True, model_id="synth-model", prompt=""),
-            "opportunity_specialist": MagicMock(enabled=True, model_id="opp-model", prompt=""),
+            "opportunity_specialist": MagicMock(
+                enabled=True, model_id="opp-model", prompt=""
+            ),
         }
         if include_briefing:
-            agent_configs["brief_arbiter"] = MagicMock(enabled=True, model_id="brief-model", prompt="")
+            agent_configs["brief_arbiter"] = MagicMock(
+                enabled=True, model_id="brief-model", prompt=""
+            )
 
         with (
-            patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
+            patch(
+                "app.services.agents.orchestrator.GeminiLiveSession",
+                return_value=AsyncMock(),
+            ),
             patch(
                 "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
                 return_value=consolidated_agent,
@@ -294,15 +350,24 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 meeting_type="client_sales",
                 agent_configs=agent_configs,
             )
-        orchestrator.transcript_buffer.get_window = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
-        orchestrator._load_complete_transcript = AsyncMock(return_value="Speaker 1: We need EDR coverage.")
+        orchestrator.transcript_buffer.get_window = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
+        orchestrator._load_complete_transcript = AsyncMock(
+            return_value="Speaker 1: We need EDR coverage."
+        )
         return orchestrator
 
     async def test_drain_stage_plans_reflect_mode(self):
         orchestrator = self._build_orchestrator(include_briefing=True)
 
         self.assertEqual(
-            ["final_insights", "insight_reconciliation", "opportunity_matching", "call_briefing"],
+            [
+                "final_insights",
+                "insight_reconciliation",
+                "opportunity_matching",
+                "call_briefing",
+            ],
             orchestrator.drain_stages("full"),
         )
         self.assertEqual(6, orchestrator.drain_total_steps("full"))
@@ -340,9 +405,7 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         with (
             patch(
                 "app.services.agents.orchestrator.asyncio.sleep",
-                new=AsyncMock(
-                    side_effect=[None, asyncio.CancelledError()]
-                ),
+                new=AsyncMock(side_effect=[None, asyncio.CancelledError()]),
             ),
             patch(
                 "app.services.agents.orchestrator.run_strategic_signals_cycle",
@@ -352,9 +415,9 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 "app.services.agents.orchestrator.run_session_synthesis",
                 new=AsyncMock(),
             ) as briefing,
+            self.assertRaises(asyncio.CancelledError),
         ):
-            with self.assertRaises(asyncio.CancelledError):
-                await orchestrator._strategic_signals_loop()
+            await orchestrator._strategic_signals_loop()
 
         signals.assert_awaited_once()
         briefing.assert_not_awaited()
@@ -442,26 +505,46 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
                 new=AsyncMock(return_value=None),
             ) as briefing,
         ):
-            result = await orchestrator.graceful_drain(progress_callback=record_progress)
+            result = await orchestrator.graceful_drain(
+                progress_callback=record_progress
+            )
 
         briefing.assert_awaited_once()
         self.assertIs(False, result["synthesis_generated"])
         self.assertEqual(
-            ["final_insights", "insight_reconciliation", "opportunity_matching", "call_briefing"],
+            [
+                "final_insights",
+                "insight_reconciliation",
+                "opportunity_matching",
+                "call_briefing",
+            ],
             [event["stage"] for event in progress_events],
         )
-        self.assertEqual([2, 3, 4, 5], [event["current_step"] for event in progress_events])
+        self.assertEqual(
+            [2, 3, 4, 5], [event["current_step"] for event in progress_events]
+        )
         self.assertTrue(all(event["total_steps"] == 6 for event in progress_events))
 
-    async def test_save_and_send_insight_keeps_saved_result_when_websocket_is_closed(self):
+    async def test_save_and_send_insight_keeps_saved_result_when_websocket_is_closed(
+        self,
+    ):
         websocket = AsyncMock()
         websocket.send_json.side_effect = RuntimeError("Cannot call send once closed")
         fake_session = FakeSessionContext()
 
         with (
-            patch("app.services.agents.orchestrator.GeminiLiveSession", return_value=AsyncMock()),
-            patch("app.services.agents.orchestrator.ConsolidatedAnalystAgent", return_value=MagicMock(enabled_types={"question"})),
-            patch("app.services.agents.orchestrator.async_session", return_value=fake_session),
+            patch(
+                "app.services.agents.orchestrator.GeminiLiveSession",
+                return_value=AsyncMock(),
+            ),
+            patch(
+                "app.services.agents.orchestrator.ConsolidatedAnalystAgent",
+                return_value=MagicMock(enabled_types={"question"}),
+            ),
+            patch(
+                "app.services.agents.orchestrator.async_session",
+                return_value=fake_session,
+            ),
         ):
             orchestrator = AgentOrchestrator(
                 session_id=uuid4(),
@@ -487,13 +570,15 @@ class AgentOrchestratorGracefulDrainTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(1, fake_session.commits)
         self.assertEqual(1, len(fake_session.added))
         self.assertEqual(
-            [{
-                "id": str(fake_session.added[0].id),
-                "question": "Who owns the final approval?",
-                # Carried so _format_insights labels the entry correctly instead
-                # of defaulting every one of them to "question".
-                "item_type": "question",
-            }],
+            [
+                {
+                    "id": str(fake_session.added[0].id),
+                    "question": "Who owns the final approval?",
+                    # Carried so _format_insights labels the entry correctly instead
+                    # of defaulting every one of them to "question".
+                    "item_type": "question",
+                }
+            ],
             orchestrator.active_questions,
         )
         websocket.send_json.assert_awaited_once()

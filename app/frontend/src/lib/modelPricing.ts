@@ -43,7 +43,8 @@ export type UsageCounts = Omit<TokenCostRow, "model_id">;
 
 export type PricingMap = Record<string, ModelPricing | null | undefined>;
 
-const perMillion = (tokens: number, rate: number) => (tokens / 1_000_000) * rate;
+const perMillion = (tokens: number, rate: number) =>
+  (tokens / 1_000_000) * rate;
 
 // Estimated USD cost for one model's usage, or null when nothing about the
 // row can be priced (unknown model, or rates the provider does not publish).
@@ -61,17 +62,32 @@ export function estimateCostUsd(
   const thinkingTokens = Math.max(0, usage.thinking_tokens ?? 0);
   const audioSeconds = Math.max(0, usage.audio_seconds ?? 0);
   // Slices can never exceed the side they belong to, whatever the row says.
-  const cachedInput = Math.min(inputTokens, Math.max(0, usage.cached_input_tokens ?? 0));
-  const audioInput = Math.min(inputTokens - cachedInput, Math.max(0, usage.audio_input_tokens ?? 0));
-  const audioOutput = Math.min(outputTokens, Math.max(0, usage.audio_output_tokens ?? 0));
+  const cachedInput = Math.min(
+    inputTokens,
+    Math.max(0, usage.cached_input_tokens ?? 0),
+  );
+  const audioInput = Math.min(
+    inputTokens - cachedInput,
+    Math.max(0, usage.audio_input_tokens ?? 0),
+  );
+  const audioOutput = Math.min(
+    outputTokens,
+    Math.max(0, usage.audio_output_tokens ?? 0),
+  );
 
   let total: number | null = null;
-  if (pricing.input_per_million !== null && pricing.output_per_million !== null) {
+  if (
+    pricing.input_per_million !== null &&
+    pricing.output_per_million !== null
+  ) {
     const textInput = inputTokens - cachedInput - audioInput;
     const textOutput = outputTokens - audioOutput;
-    const cachedRate = pricing.cached_input_per_million ?? pricing.input_per_million;
-    const audioInRate = pricing.audio_input_per_million ?? pricing.input_per_million;
-    const audioOutRate = pricing.audio_output_per_million ?? pricing.output_per_million;
+    const cachedRate =
+      pricing.cached_input_per_million ?? pricing.input_per_million;
+    const audioInRate =
+      pricing.audio_input_per_million ?? pricing.input_per_million;
+    const audioOutRate =
+      pricing.audio_output_per_million ?? pricing.output_per_million;
     total =
       perMillion(textInput, pricing.input_per_million) +
       perMillion(cachedInput, cachedRate) +
@@ -82,7 +98,11 @@ export function estimateCostUsd(
   // Only recorded seconds make a duration-billed row priceable: a token-shaped
   // payload from a model with no token rates stays unknown ("-") rather than
   // reading as free.
-  if (pricing.per_minute !== null && pricing.per_minute !== undefined && audioSeconds > 0) {
+  if (
+    pricing.per_minute !== null &&
+    pricing.per_minute !== undefined &&
+    audioSeconds > 0
+  ) {
     total = (total ?? 0) + (audioSeconds / 60) * pricing.per_minute;
   }
   return total;
@@ -90,7 +110,10 @@ export function estimateCostUsd(
 
 // Session total across the by-model rows. Rows without pricing are excluded;
 // null when no row could be priced (so the UI shows "-" instead of $0.00).
-export function estimateSessionCostUsd(rows: TokenCostRow[], pricing: PricingMap): number | null {
+export function estimateSessionCostUsd(
+  rows: TokenCostRow[],
+  pricing: PricingMap,
+): number | null {
   let total: number | null = null;
   for (const row of rows) {
     const cost = estimateCostUsd(pricing[row.model_id], row);

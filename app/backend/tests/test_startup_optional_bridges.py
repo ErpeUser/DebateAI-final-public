@@ -1,4 +1,5 @@
 """Core startup and shutdown must not depend on optional account discovery."""
+
 import asyncio
 import os
 import unittest
@@ -18,8 +19,10 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
         @asynccontextmanager
         async def session():
             db = SimpleNamespace(commits=0, closed=False)
+
             async def commit():
                 db.commits += 1
+
             db.commit = commit
             self.sessions.append(db)
             try:
@@ -34,7 +37,9 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
         engine = SimpleNamespace(begin=connection, dispose=mock.AsyncMock())
         self.stack.enter_context(mock.patch.object(main, "engine", engine))
         self.stack.enter_context(mock.patch("app.database.async_session", session))
-        self.stack.enter_context(mock.patch.dict(os.environ, {"DEBATEAI_INSTANCE_TOKEN": ""}))
+        self.stack.enter_context(
+            mock.patch.dict(os.environ, {"DEBATEAI_INSTANCE_TOKEN": ""})
+        )
         for target in (
             "app.main._run_schema_migrations",
             "app.main._recover_interrupted_audio",
@@ -49,9 +54,12 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
             "app.services.debate_research.close_research_client",
         ):
             self.stack.enter_context(mock.patch(target, mock.AsyncMock()))
-        self.stack.enter_context(mock.patch(
-            "app.services.pii.vault.migrate_legacy_entries", mock.AsyncMock(return_value=0)
-        ))
+        self.stack.enter_context(
+            mock.patch(
+                "app.services.pii.vault.migrate_legacy_entries",
+                mock.AsyncMock(return_value=0),
+            )
+        )
         for target in (
             "app.main.ai_config._ensure_static_prompts",
             "app.main.updates.start_background_check",
@@ -80,9 +88,11 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
             finally:
                 cancelled.set()
 
-        self.stack.enter_context(mock.patch(
-            "app.services.subscription_bridge.sync_subscription_bridge", pending
-        ))
+        self.stack.enter_context(
+            mock.patch(
+                "app.services.subscription_bridge.sync_subscription_bridge", pending
+            )
+        )
         context = await self.enter_without_waiting_for_bridge()
         try:
             await asyncio.wait_for(started.wait(), timeout=1)
@@ -103,9 +113,11 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
             attempted.set()
             raise RuntimeError("optional provider unavailable")
 
-        self.stack.enter_context(mock.patch(
-            "app.services.subscription_bridge.sync_subscription_bridge", unavailable
-        ))
+        self.stack.enter_context(
+            mock.patch(
+                "app.services.subscription_bridge.sync_subscription_bridge", unavailable
+            )
+        )
         context = await self.enter_without_waiting_for_bridge()
         try:
             await asyncio.wait_for(attempted.wait(), timeout=1)
@@ -121,9 +133,11 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
             bridge_sessions.append(db)
             completed.set()
 
-        self.stack.enter_context(mock.patch(
-            "app.services.subscription_bridge.sync_subscription_bridge", discovered
-        ))
+        self.stack.enter_context(
+            mock.patch(
+                "app.services.subscription_bridge.sync_subscription_bridge", discovered
+            )
+        )
         context = await self.enter_without_waiting_for_bridge()
         try:
             await asyncio.wait_for(completed.wait(), timeout=1)
@@ -144,12 +158,16 @@ class OptionalBridgeStartupTests(unittest.IsolatedAsyncioTestCase):
             finally:
                 cancelled.set()
 
-        self.stack.enter_context(mock.patch(
-            "app.services.subscription_bridge.sync_subscription_bridge", pending
-        ))
+        self.stack.enter_context(
+            mock.patch(
+                "app.services.subscription_bridge.sync_subscription_bridge", pending
+            )
+        )
         context = await self.enter_without_waiting_for_bridge()
         await asyncio.wait_for(started.wait(), timeout=1)
-        suppressed = await context.__aexit__(RuntimeError, RuntimeError("lifespan consumer failed"), None)
+        suppressed = await context.__aexit__(
+            RuntimeError, RuntimeError("lifespan consumer failed"), None
+        )
         self.assertFalse(suppressed)
         self.assertTrue(cancelled.is_set())
 

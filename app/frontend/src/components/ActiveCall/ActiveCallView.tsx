@@ -1,6 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { SILENT_AUDIO_LEVEL, type AudioLevelSource } from "../../hooks/useAudioCapture";
-import type { AgentActivitySnapshot, AudioSendStats, DebateRecommendation, DebateResearchCategory, ModelInfo, PostProcessingProgress as PostProcessingProgressState, Question, Session, SessionSynthesis, Speaker, StopDrainMode, TranscriptEntry } from "../../types";
+import {
+  SILENT_AUDIO_LEVEL,
+  type AudioLevelSource,
+} from "../../hooks/useAudioCapture";
+import type {
+  AgentActivitySnapshot,
+  AudioSendStats,
+  DebateRecommendation,
+  DebateResearchCategory,
+  ModelInfo,
+  PostProcessingProgress as PostProcessingProgressState,
+  Question,
+  Session,
+  SessionSynthesis,
+  Speaker,
+  StopDrainMode,
+  TranscriptEntry,
+} from "../../types";
 import AgentActivityPanel, { activityEmptyMessage } from "./AgentActivityPanel";
 import AudioIndicator from "./AudioIndicator";
 import DirectiveBar from "./DirectiveBar";
@@ -51,7 +67,11 @@ interface ActiveCallViewProps {
   onDebateResearch: (category: DebateResearchCategory) => void;
   onDebateAnalysisCancel: () => void;
   onDebateAnswerGood: (claimId: string, recommendationRevision: number) => void;
-  onExperimentalOptionSelected: (claimId: string, recommendationRevision: number, optionId: string) => void;
+  onExperimentalOptionSelected: (
+    claimId: string,
+    recommendationRevision: number,
+    optionId: string,
+  ) => void;
   debateResearchEnabled: boolean;
   onDebateResearchEnabledChange: (enabled: boolean) => void;
 }
@@ -147,10 +167,14 @@ export default function ActiveCallView({
   const backendDisconnected =
     !ending && (status === "disconnected" || status === "error");
   const audioSeconds = Math.round(audioStats.bytesSent / 32000);
-  const lastAudioAge =
-    audioStats.lastSentAt
-      ? Math.max(0, Math.round((Date.now() - new Date(audioStats.lastSentAt).getTime()) / 1000))
-      : null;
+  const lastAudioAge = audioStats.lastSentAt
+    ? Math.max(
+        0,
+        Math.round(
+          (Date.now() - new Date(audioStats.lastSentAt).getTime()) / 1000,
+        ),
+      )
+    : null;
   const captureStatus = ending
     ? null
     : isStarting
@@ -174,13 +198,16 @@ export default function ActiveCallView({
         dismissed: q.dismissed ?? false,
         created_at: q.created_at ?? new Date().toISOString(),
       })),
-    [questions]
+    [questions],
   );
 
   useEffect(() => {
     if (!endMenuOpen) return;
     function handlePointerDown(event: MouseEvent) {
-      if (endMenuRef.current && !endMenuRef.current.contains(event.target as Node)) {
+      if (
+        endMenuRef.current &&
+        !endMenuRef.current.contains(event.target as Node)
+      ) {
         setEndMenuOpen(false);
       }
     }
@@ -191,7 +218,10 @@ export default function ActiveCallView({
   useEffect(() => {
     if (!debugOpen) return;
     function handlePointerDown(event: MouseEvent) {
-      if (debugRef.current && !debugRef.current.contains(event.target as Node)) {
+      if (
+        debugRef.current &&
+        !debugRef.current.contains(event.target as Node)
+      ) {
         setDebugOpen(false);
       }
     }
@@ -209,10 +239,16 @@ export default function ActiveCallView({
       {/* Top bar */}
       <header className="flex flex-wrap items-center justify-between gap-3 border-b border-brand-light-gray-1 bg-surface px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] md:px-6">
         <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-          <AudioIndicator isCapturing={isCapturing} level={audioLevel} label="Mikrofonpegel" />
+          <AudioIndicator
+            isCapturing={isCapturing}
+            level={audioLevel}
+            label="Mikrofonpegel"
+          />
           {systemAudioActive && (
             <span className="flex items-center gap-1">
-              <span className="font-body text-[10px] text-brand-mid-gray">Gespräch</span>
+              <span className="font-body text-[10px] text-brand-mid-gray">
+                Gespräch
+              </span>
               <AudioIndicator
                 isCapturing={isCapturing}
                 level={systemAudioLevel ?? SILENT_AUDIO_LEVEL}
@@ -222,17 +258,24 @@ export default function ActiveCallView({
             </span>
           )}
           {systemAudioWarning && (
-            <span role="status" className="rounded-md bg-amber-50 px-2 py-1 font-body text-xs text-amber-800">
+            <span
+              role="status"
+              className="rounded-md bg-amber-50 px-2 py-1 font-body text-xs text-amber-800"
+            >
               {systemAudioWarning}
             </span>
           )}
           {/* Only when it says something the meters do not: the mic meter
               already reads "Listening..." on a healthy call. */}
           {captureStatus && captureStatus !== "Hört zu" && (
-            <span className="font-body text-xs text-brand-mid-gray">{captureStatus}</span>
+            <span className="font-body text-xs text-brand-mid-gray">
+              {captureStatus}
+            </span>
           )}
           {captureError && (
-            <span className="font-body text-xs text-red-600">{captureError}</span>
+            <span className="font-body text-xs text-red-600">
+              {captureError}
+            </span>
           )}
         </div>
 
@@ -252,8 +295,19 @@ export default function ActiveCallView({
                   : "text-brand-light-gray-1 hover:bg-brand-light-gray-2 hover:text-brand-mid-gray"
               }`}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={1.75} aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={1.75}
+                aria-hidden="true"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6.75 7.5l3 2.25-3 2.25m4.5 0h3m-9 8.25h13.5A2.25 2.25 0 0 0 21 18V6a2.25 2.25 0 0 0-2.25-2.25H5.25A2.25 2.25 0 0 0 3 6v12a2.25 2.25 0 0 0 2.25 2.25Z"
+                />
               </svg>
             </button>
             {debugOpen && (
@@ -263,8 +317,12 @@ export default function ActiveCallView({
                 </p>
                 <p className="mt-1 font-body text-xs text-brand-gray">
                   Audio: {audioSeconds}s / {audioStats.chunksSent} Blöcke
-                  {audioStats.chunksDropped > 0 ? `, verworfen ${audioStats.chunksDropped}` : ""}
-                  {lastAudioAge !== null ? `, zuletzt vor ${lastAudioAge}s` : ""}
+                  {audioStats.chunksDropped > 0
+                    ? `, verworfen ${audioStats.chunksDropped}`
+                    : ""}
+                  {lastAudioAge !== null
+                    ? `, zuletzt vor ${lastAudioAge}s`
+                    : ""}
                 </p>
                 {backendAudioStatus && (
                   <p className="mt-1 break-words font-body text-xs text-brand-mid-gray">
@@ -280,11 +338,20 @@ export default function ActiveCallView({
               disabled={postProcessingActive || isStarting}
               className="rounded-lg border border-brand-teal px-2.5 py-2 font-body text-sm font-semibold text-brand-teal transition-colors hover:bg-brand-teal/10 disabled:cursor-not-allowed disabled:opacity-60 sm:px-3"
             >
-              {isStarting ? "Startet..." : <><span className="hidden sm:inline">Aufnahme fortsetzen</span><span className="sm:hidden">Fortsetzen</span></>}
+              {isStarting ? (
+                "Startet..."
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Aufnahme fortsetzen</span>
+                  <span className="sm:hidden">Fortsetzen</span>
+                </>
+              )}
             </button>
           )}
           {/* Session timer */}
-          <div className={`flex items-center gap-2 ${backendDisconnected ? "opacity-40" : ""}`}>
+          <div
+            className={`flex items-center gap-2 ${backendDisconnected ? "opacity-40" : ""}`}
+          >
             <span className="font-mono text-lg font-semibold tabular-nums text-brand-dark-gray">
               {timerDisplay}
             </span>
@@ -309,14 +376,27 @@ export default function ActiveCallView({
                   : "bg-red-500 hover:bg-red-600"
               }`}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+              >
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   d="M15.75 3.75L18 6m0 0l2.25 2.25M18 6l2.25-2.25M18 6l-2.25 2.25m-10.5 6v3.75a.75.75 0 01-.75.75H3a.75.75 0 01-.75-.75V15a9.75 9.75 0 019.75-9.75h2.25"
                 />
               </svg>
-              {postProcessingActive ? "Wird beendet..." : <><span className="hidden sm:inline">Beenden</span><span className="sm:hidden">Ende</span></>}
+              {postProcessingActive ? (
+                "Wird beendet..."
+              ) : (
+                <>
+                  <span className="hidden sm:inline">Beenden</span>
+                  <span className="sm:hidden">Ende</span>
+                </>
+              )}
             </button>
             <button
               onClick={() => setEndMenuOpen((open) => !open)}
@@ -330,8 +410,18 @@ export default function ActiveCallView({
                   : "border-red-400 bg-red-500 hover:bg-red-600"
               }`}
             >
-              <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5" />
+              <svg
+                className="h-4 w-4"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M19.5 8.25l-7.5 7.5-7.5-7.5"
+                />
               </svg>
             </button>
             {endMenuOpen && !postProcessingActive && (
@@ -351,7 +441,8 @@ export default function ActiveCallView({
                     Ohne Auswertung beenden
                   </span>
                   <span className="mt-0.5 block font-body text-xs text-brand-mid-gray">
-                    Speichert das Transkript und beendet ohne Abschlussauswertung.
+                    Speichert das Transkript und beendet ohne
+                    Abschlussauswertung.
                   </span>
                 </button>
               </div>
@@ -361,21 +452,30 @@ export default function ActiveCallView({
       </header>
 
       <AgentActivityPanel snapshot={activity} />
-      {postProcessing && postProcessingActive && <PostProcessingProgress progress={postProcessing} />}
+      {postProcessing && postProcessingActive && (
+        <PostProcessingProgress progress={postProcessing} />
+      )}
       <SynthesisSignals session={session} synthesis={synthesis} />
       {ending ? (
         <div className="border-b border-brand-teal/30 bg-brand-teal/10 px-4 py-3 font-body text-sm font-medium text-brand-dark-gray md:px-6">
-          Gespräch wird abgeschlossen. Ergebnisse werden gespeichert und die Auswertung geladen...
+          Gespräch wird abgeschlossen. Ergebnisse werden gespeichert und die
+          Auswertung geladen...
         </div>
       ) : backendDisconnected ? (
-        <div role="alert" className="border-b border-red-200 bg-red-50 px-4 py-3 font-body text-sm font-medium text-red-700 md:px-6">
+        <div
+          role="alert"
+          className="border-b border-red-200 bg-red-50 px-4 py-3 font-body text-sm font-medium text-red-700 md:px-6"
+        >
           <span className="font-semibold">Aufnahme pausiert.</span>{" "}
           {status === "error"
             ? "Debate AI konnte keine Verbindung herstellen. Aufnahme fortsetzen und erneut versuchen."
             : "Die Verbindung wurde unterbrochen. Aufnahme fortsetzen, um neu zu verbinden."}
         </div>
       ) : activity?.call.degraded ? (
-        <div role="status" className="border-b border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm font-medium text-amber-900 md:px-6">
+        <div
+          role="status"
+          className="border-b border-amber-200 bg-amber-50 px-4 py-3 font-body text-sm font-medium text-amber-900 md:px-6"
+        >
           <span className="font-semibold">
             {isCapturing ? "Aufnahme läuft weiter." : "Aufnahme ist pausiert."}
           </span>{" "}
@@ -384,13 +484,19 @@ export default function ActiveCallView({
       ) : null}
 
       {/* Two-column on desktop, stacked on mobile */}
-      <div className={`flex flex-1 flex-col overflow-hidden md:flex-row ${postProcessingActive ? "pointer-events-none opacity-60" : ""}`}>
+      <div
+        className={`flex flex-1 flex-col overflow-hidden md:flex-row ${postProcessingActive ? "pointer-events-none opacity-60" : ""}`}
+      >
         {/* Left column: Questions */}
         <div className="flex flex-1 flex-col overflow-hidden pt-3">
           <DebateCoachPanel
             sessionId={session.id}
             recommendation={debateRecommendation}
-            activity={activity?.agents.find((agent) => agent.slug === "objection_handler") ?? null}
+            activity={
+              activity?.agents.find(
+                (agent) => agent.slug === "objection_handler",
+              ) ?? null
+            }
             onResearch={onDebateResearch}
             onCancelAnalysis={onDebateAnalysisCancel}
             onGoodAnswer={onDebateAnswerGood}
@@ -415,7 +521,9 @@ export default function ActiveCallView({
                   {pendingAsk}
                 </p>
                 {askError ? (
-                  <p className="mt-1 font-body text-xs text-red-600">{askError}</p>
+                  <p className="mt-1 font-body text-xs text-red-600">
+                    {askError}
+                  </p>
                 ) : (
                   <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-brand-gray">
                     Gespräch wird ausgewertet...

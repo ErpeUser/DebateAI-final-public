@@ -5,17 +5,17 @@ Run in app/scripts:
 
 Uses only temporary local Git repositories, no GitHub access or real user data.
 """
+
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
-from sync_final_workspace import sync, SyncError
+
+from sync_final_workspace import SyncError, sync
 
 
 def git(repo, *args):
-    p = subprocess.run(
-        ["git", "-C", str(repo), *args], text=True, capture_output=True
-    )
+    p = subprocess.run(["git", "-C", str(repo), *args], text=True, capture_output=True)
     if p.returncode:
         raise AssertionError((args, p.stderr))
     return p.stdout.strip()
@@ -31,13 +31,18 @@ class FinalSyncTests(unittest.TestCase):
         self.local = self.root / "local"
         subprocess.run(
             ["git", "init", "--bare", "--initial-branch=master", str(self.origin)],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
         subprocess.run(
             ["git", "clone", str(self.origin), str(self.author)],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
-        for key, value in [("user.email", "test@example.org"), ("user.name", "Test User")]:
+        for key, value in [
+            ("user.email", "test@example.org"),
+            ("user.name", "Test User"),
+        ]:
             git(self.author, "config", key, value)
         (self.author / "app.py").write_text("stable=1\n")
         git(self.author, "add", "app.py")
@@ -45,9 +50,13 @@ class FinalSyncTests(unittest.TestCase):
         git(self.author, "push", "origin", "master")
         subprocess.run(
             ["git", "clone", str(self.origin), str(self.local)],
-            check=True, capture_output=True,
+            check=True,
+            capture_output=True,
         )
-        for key, value in [("user.email", "test@example.org"), ("user.name", "Test User")]:
+        for key, value in [
+            ("user.email", "test@example.org"),
+            ("user.name", "Test User"),
+        ]:
             git(self.local, "config", key, value)
 
     def advance_remote(self, file="app.py", content="stable=2\n"):

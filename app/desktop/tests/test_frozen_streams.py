@@ -103,7 +103,9 @@ class SpecMetadataTests(unittest.TestCase):
         if spec is None or not spec.origin:
             self.skipTest("onnx-asr is not installed in this environment")
         data = Path(spec.origin).parent / "data"
-        self.assertTrue((data / "fbanks.npz").is_file(), f"fbanks.npz missing under {data}")
+        self.assertTrue(
+            (data / "fbanks.npz").is_file(), f"fbanks.npz missing under {data}"
+        )
 
     def test_onnx_asr_reads_its_own_version_at_import(self):
         """Guards the reason the metadata has to ship.

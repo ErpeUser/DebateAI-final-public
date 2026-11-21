@@ -1,15 +1,17 @@
+from app.config import DEFAULT_MODEL_RECOMMENDATION_ROLES, MODEL_REGISTRY
+from app.database import get_db
+from app.services import chatgpt_web
+from app.services.custom_endpoints import endpoint_models
+from app.services.llm_endpoint import (
+    OPENAI_COMPATIBLE_MODEL,
+    legacy_endpoint_configured,
+)
+from app.services.local_fit import local_model_recommendations
+from app.services.model_pricing import MODEL_PRICING, PRICING_AS_OF
+from app.services.provider_health import provider_key_availability
 from fastapi import APIRouter, Depends
 from pydantic import BaseModel, Field
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from app.config import DEFAULT_MODEL_RECOMMENDATION_ROLES, MODEL_REGISTRY
-from app.database import get_db
-from app.services.custom_endpoints import endpoint_models
-from app.services.llm_endpoint import OPENAI_COMPATIBLE_MODEL, legacy_endpoint_configured
-from app.services.model_pricing import MODEL_PRICING, PRICING_AS_OF
-from app.services.local_fit import local_model_recommendations
-from app.services.provider_health import provider_key_availability
-from app.services import chatgpt_web
 
 router = APIRouter(prefix="/api/models", tags=["models"])
 
@@ -103,16 +105,16 @@ async def list_models(db: AsyncSession = Depends(get_db)):
         }
         for model in MODEL_REGISTRY
         if (model["id"] != OPENAI_COMPATIBLE_MODEL or show_legacy)
-        and (model["id"] != chatgpt_web.MODEL_ID or (
-            chatgpt_web.runtime_available() and chatgpt_web.configured()
-        ))
+        and (
+            model["id"] != chatgpt_web.MODEL_ID
+            or (chatgpt_web.runtime_available() and chatgpt_web.configured())
+        )
     ]
     endpoints = await endpoint_models(db)
     for model in registry + endpoints:
-        model["recommendations"] = (
-            model.get("recommendations", [])
-            + local_recommendations.get(model["id"], [])
-        )
+        model["recommendations"] = model.get(
+            "recommendations", []
+        ) + local_recommendations.get(model["id"], [])
     return registry + endpoints
 
 

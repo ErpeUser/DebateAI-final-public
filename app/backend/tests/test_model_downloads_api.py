@@ -15,10 +15,10 @@ from fastapi.testclient import TestClient
 
 os.environ.setdefault("CREDENTIALS_MASTER_KEY", Fernet.generate_key().decode())
 
-from app.routers import model_downloads as router_module  # noqa: E402
-from app.routers import pii_shield  # noqa: E402
-from app.services import model_downloads  # noqa: E402
-from app.services.pii import ner  # noqa: E402
+from app.routers import model_downloads as router_module
+from app.routers import pii_shield
+from app.services import model_downloads
+from app.services.pii import ner
 
 
 def _client() -> TestClient:
@@ -66,7 +66,9 @@ class RetryTests(unittest.TestCase):
         model_downloads.claim(ner.DOWNLOAD_KEY, "Name recognition model")
         model_downloads.fail(ner.DOWNLOAD_KEY, "offline")
         with patch.object(ner, "install") as install:
-            response = self.client.post(f"/api/model-downloads/{ner.DOWNLOAD_KEY}/retry")
+            response = self.client.post(
+                f"/api/model-downloads/{ner.DOWNLOAD_KEY}/retry"
+            )
         self.assertEqual(202, response.status_code)
         install.assert_called_once()
 
@@ -74,12 +76,16 @@ class RetryTests(unittest.TestCase):
         model_downloads.claim(ner.DOWNLOAD_KEY, "Name recognition model")
         model_downloads.begin(ner.DOWNLOAD_KEY)
         with patch.object(ner, "install") as install:
-            response = self.client.post(f"/api/model-downloads/{ner.DOWNLOAD_KEY}/retry")
+            response = self.client.post(
+                f"/api/model-downloads/{ner.DOWNLOAD_KEY}/retry"
+            )
         self.assertEqual(202, response.status_code)
         install.assert_not_called()
 
     def test_unknown_key_is_a_404(self):
-        self.assertEqual(404, self.client.post("/api/model-downloads/nope/retry").status_code)
+        self.assertEqual(
+            404, self.client.post("/api/model-downloads/nope/retry").status_code
+        )
 
     def test_an_asr_download_is_not_retryable_from_here(self):
         """Nothing sensible to kick off: the transcription that needs it fetches it."""
@@ -96,13 +102,17 @@ class DismissTests(unittest.TestCase):
     def test_dismiss_forgets_a_failed_entry(self):
         model_downloads.claim("pii-ner", "Name recognition model")
         model_downloads.fail("pii-ner", "offline")
-        self.assertEqual(204, self.client.delete("/api/model-downloads/pii-ner").status_code)
+        self.assertEqual(
+            204, self.client.delete("/api/model-downloads/pii-ner").status_code
+        )
         self.assertIsNone(model_downloads.get("pii-ner"))
 
     def test_a_running_download_cannot_be_dismissed(self):
         model_downloads.claim("pii-ner", "Name recognition model")
         model_downloads.begin("pii-ner")
-        self.assertEqual(409, self.client.delete("/api/model-downloads/pii-ner").status_code)
+        self.assertEqual(
+            409, self.client.delete("/api/model-downloads/pii-ner").status_code
+        )
 
 
 class InstallEndpointTests(unittest.TestCase):
@@ -112,8 +122,10 @@ class InstallEndpointTests(unittest.TestCase):
         self.client = _client()
 
     def test_install_returns_without_waiting_for_the_download(self):
-        with patch.object(ner, "is_installed", return_value=False), \
-                patch.object(ner, "install") as install:
+        with (
+            patch.object(ner, "is_installed", return_value=False),
+            patch.object(ner, "install") as install,
+        ):
             response = self.client.post("/api/pii-shield/ner/install")
         self.assertEqual(202, response.status_code)
         self.assertEqual("queued", response.json()["state"])
@@ -122,8 +134,10 @@ class InstallEndpointTests(unittest.TestCase):
     def test_install_does_not_stack_a_second_fetch(self):
         model_downloads.claim(ner.DOWNLOAD_KEY, ner.DOWNLOAD_LABEL)
         model_downloads.begin(ner.DOWNLOAD_KEY)
-        with patch.object(ner, "is_installed", return_value=False), \
-                patch.object(ner, "install") as install:
+        with (
+            patch.object(ner, "is_installed", return_value=False),
+            patch.object(ner, "install") as install,
+        ):
             response = self.client.post("/api/pii-shield/ner/install")
         self.assertEqual(202, response.status_code)
         install.assert_not_called()
