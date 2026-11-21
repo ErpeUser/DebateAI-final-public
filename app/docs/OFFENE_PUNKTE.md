@@ -274,6 +274,7 @@ Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal 
 
 - **Status:** F-Fehler und vulture sind bereinigt; breite Style-/jscpd-Last bleibt.
 - **Benötigt:** priorisierte, produktionskritische Triage mit begründeten Ausnahmen, ohne ungezielte Massenformatierung während Releasearbeit.
+- **Aktueller Nachweis (22.11.2026):** `ruff check app/backend/app app/backend/tests` ist in der Ausführungsumgebung nicht verfügbar (`ruff: command not found`); `python -m vulture ...` scheitert an der fehlenden Installation (`No module named vulture`). Der verfügbare `npx jscpd app/backend/app --min-lines 8 --min-tokens 50`-Lauf meldet 50 Python-Klone, 727 duplizierte Zeilen beziehungsweise 1,20 %; die größten Gruppen liegen in `models.py`, den Listenroutern und den Agenten-/LLM-Diensten. Diese Ergebnisse rechtfertigen keine ungezielte Sammelformatter-Änderung. Nächster ausführbarer Schritt ist ein gepinnter CI-/Toolchain-Lauf mit Ruff- und Vulture-Versionen, danach die Triage je produktionskritischem Modul.
 
 ### P2.2 Reproduzierbarkeit des vollständigen Builds
 
