@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `e2b8fa93e1b9418a1d2ddbb3b13294138725f00a` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10 und Migrations-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `6aa9be935cfdd90c57d64e2f3be1fcee8286a096` (GitHub-Branch-Readback nach Backend-/Frontend-P2.10 und Migrations-Cleanup). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), der Migrations-Lock-/Retry-Lauf (2/2), der Alembic-Transaktionslauf (2/2), der Startup-/Legacy-Pfadtest (20 Tests, 1 Windows-Skip), der echte SQLite-Migrationsmatrixlauf (3/3), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und die neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -437,17 +437,17 @@ Zwei Prozesse starten gleichzeitig. Einer führt die Migration aus, der andere w
 - `app/backend/app/main.py::_run_schema_migrations` hält die PostgreSQL-Lock-Session für den gesamten Ablauf offen; `_schema_startup_action` unterscheidet `bootstrap`, `adopt` und `upgrade`.
 - `app/backend/alembic/env.py` führt DDL und Alembic-Schritte transaktional aus. Die neue Cleanup-Struktur schließt die Lock-Session auch dann, wenn `pg_advisory_unlock` selbst fehlschlägt.
 - `app/backend/tests/test_schema_migration_lock_retry.py` deckt einen fehlgeschlagenen Lauf mit anschließendem Retry sowie den Unlock-Fehler mit garantiertem `close()` ab.
-- `app/backend/tests/test_alembic_transaction.py` prüft Commit/Rollback eines echten isolierten SQLite-Transaktionslaufs; `test_main_schema.py` deckt die drei Startup-Pfade ab. Der echte PostgreSQL-Zwei-Worker-Lauf bleibt über `DEBATEAI_TEST_POSTGRES_URL`, `DEBATEAI_TEST_POSTGRES_RUN_ID` und `DEBATEAI_TEST_POSTGRES_ALLOW_SHARED=true` zuschaltbar.
+- `app/backend/tests/test_alembic_transaction.py` prüft Commit/Rollback eines echten isolierten SQLite-Transaktionslaufs; `test_main_schema.py` deckt die drei Startup-Pfade ab; `test_schema_migration_sqlite.py` führt den echten frischen und unversionierten Legacy-Pfad aus, prüft den migration-only Index-Tail, resequenziert doppelte Transcript-Sequenzen und wiederholt beide Starts idempotent. Der echte PostgreSQL-Zwei-Worker-Lauf bleibt über `DEBATEAI_TEST_POSTGRES_URL`, `DEBATEAI_TEST_POSTGRES_RUN_ID` und `DEBATEAI_TEST_POSTGRES_ALLOW_SHARED=true` zuschaltbar.
 
 **4. Genaue Abweichung**
 
-Die lokale Fehler-/Retry- und Legacy-Pfadmatrix ist reproduzierbar grün. Ein autorisierter isolierter PostgreSQL-Runner mit zwei echten Prozessen, ein frisches Legacy-Schema mit allen historischen Zwischenständen und der Nachweis eines sichtbaren Startup-Fehlers in der Desktop-UI fehlen in dieser Umgebung. Deshalb bleibt das Ziel `PARTIAL`.
+Die lokale Fehler-/Retry- und Legacy-Pfadmatrix ist reproduzierbar grün, einschließlich echter SQLite-Adoption eines unversionierten Schemas mit doppelten Transcript-Sequenzen, Constraint-Rebuild und sicherem Retry. Ein autorisierter isolierter PostgreSQL-Runner mit zwei echten Prozessen, die vollständige historische Legacy-Datenbankmatrix und der Nachweis eines sichtbaren Startup-Fehlers in der Desktop-UI fehlen in dieser Umgebung. Deshalb bleibt das Ziel `PARTIAL`.
 
 **5. Unabhängige Abnahmetests**
 
 - **Test A – funktionale Failure-/Retry-Abnahme:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_schema_migration_lock_retry.py' -v`; erzwingt zuerst einen echten Runner-Fehler und anschließend einen Retry (2/2 Lock-/Cleanup-Fälle), einschließlich eines fehlschlagenden Unlocks, bei dem die Session trotzdem geschlossen wird. **Bestanden: 2/2.**
 - **Test B – unabhängige Transaktions-/Legacy-Abnahme:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_alembic_transaction.py' -v` plus `... -p 'test_main_schema.py' -v`; prüft Rollback/Commit und `bootstrap`/`adopt`/`upgrade` getrennt. **Bestanden: 2/2 Transaktionsfälle und 20 Startup-/Schemafälle, ein Windows-only Skip.**
-- Zusätzlich: `compileall` und `git diff --check` **bestanden**. Der autorisierte PostgreSQL-Integrationstest ist ohne isolierte Zugangsdaten nicht ausführbar.
+- Zusätzlich: SQLite-Migrationsmatrix **3/3**, `compileall` und `git diff --check` **bestanden**. Der autorisierte PostgreSQL-Integrationstest ist ohne isolierte Zugangsdaten nicht ausführbar.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -471,9 +471,9 @@ Die bestehende SQLAlchemy-/Alembic-Integration und PostgreSQL `pg_advisory_lock`
 
 **9. Implementierungsnachweise**
 
-- Änderungen: `app/backend/app/main.py`, `app/backend/tests/test_schema_migration_lock_retry.py`.
-- Commit-SHA: `e2b8fa93e1b9418a1d2ddbb3b13294138725f00a`; Branch-Readback von `main` bestätigt.
-- Ausgeführt: Lock-/Retry 2/2, Alembic-Transaktion 2/2, Startup-/Schemafälle 20 (1 Windows-Skip), `compileall`, `git diff --check`.
+- Änderungen: `app/backend/app/main.py`, `app/backend/alembic/versions/029_unique_transcript_sequence.py`, `app/backend/tests/test_schema_migration_lock_retry.py`, `app/backend/tests/test_schema_migration_sqlite.py`.
+- Commit-SHAs: `e2b8fa93e1b9418a1d2ddbb3b13294138725f00a` (Lock-Cleanup), `4ad315a41758fa9064420fadd0a97e34a3bf1eb1` (fresh/Legacy-Matrix) und `6aa9be935cfdd90c57d64e2f3be1fcee8286a096` (idempotente SQLite-Retry-Reparatur); Branch-Readback von `main` bestätigt.
+- Ausgeführt: Lock-/Retry 2/2, SQLite-Migrationsmatrix 3/3, Alembic-Transaktion 2/2, Startup-/Schemafälle 20 (1 Windows-Skip), `compileall`, `git diff --check`.
 - Einschränkung: PostgreSQL-Integration und echte Desktop-Fehleranzeige benötigen autorisierte externe Umgebung.
 
 **10. Codex-Desktop-Handoff bei Blockern**
