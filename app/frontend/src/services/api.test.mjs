@@ -24,6 +24,11 @@ const {
   getDebateSettings,
   getSynthesis,
   importAudio,
+  listDirectives,
+  listDocuments,
+  listKnowledgeRecords,
+  listKnowledgeSources,
+  listQuestions,
   retranscribeSession,
   enhanceInsights,
   pollChatGPTWebLogin,
@@ -34,6 +39,90 @@ const {
 
 after(async () => {
   await rm(outputDir, { recursive: true, force: true });
+});
+
+function page(items, nextCursor = null) {
+  return {
+    ok: true,
+    status: 200,
+    headers: {
+      get(name) {
+        return name === "X-Next-Cursor" ? nextCursor : null;
+      },
+    },
+    json: async () => items,
+  };
+}
+
+test("collection clients follow opaque cursors and preserve item order", async () => {
+  const urls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return urls.length === 1
+      ? page([{ id: "q-1" }], "opaque+/=")
+      : page([{ id: "q-2" }]);
+  };
+
+  try {
+    const questions = await listQuestions("session-1");
+    assert.deepEqual(questions, [{ id: "q-1" }, { id: "q-2" }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.deepEqual(urls, [
+    "/api/sessions/session-1/questions?limit=200",
+    "/api/sessions/session-1/questions?limit=200&cursor=opaque%2B%2F%3D",
+  ]);
+});
+
+test("all cursor-backed screens stop at a missing cursor and retain API errors", async () => {
+  const urls = [];
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (url) => {
+    urls.push(String(url));
+    return page([{ id: urls.length }], "");
+  };
+
+  try {
+    const [directives, documents, questions, sources, records] =
+      await Promise.all([
+        listDirectives("session-1"),
+        listDocuments("session-1"),
+        listQuestions("session-1"),
+        listKnowledgeSources(),
+        listKnowledgeRecords("source-1"),
+      ]);
+    assert.deepEqual(directives, [{ id: 1 }]);
+    assert.deepEqual(documents, [{ id: 2 }]);
+    assert.deepEqual(questions, [{ id: 3 }]);
+    assert.deepEqual(sources, [{ id: 4 }]);
+    assert.deepEqual(records, [{ id: 5 }]);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+
+  assert.equal(urls.length, 5);
+  assert.ok(urls.includes("/api/sessions/session-1/directives?limit=200"));
+  assert.ok(urls.includes("/api/sessions/session-1/documents?limit=200"));
+  assert.ok(urls.includes("/api/sessions/session-1/questions?limit=200"));
+  assert.ok(urls.includes("/api/knowledge?limit=200"));
+  assert.ok(urls.includes("/api/knowledge/source-1/records?limit=500"));
+
+  globalThis.fetch = async () => ({
+    ok: false,
+    status: 400,
+    text: async () => JSON.stringify({ detail: "Invalid cursor" }),
+  });
+  try {
+    await assert.rejects(
+      () => listDocuments("session-1"),
+      /API-Fehler 400: Invalid cursor/,
+    );
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 // The client passes the opt-in through verbatim. The live call view gets its

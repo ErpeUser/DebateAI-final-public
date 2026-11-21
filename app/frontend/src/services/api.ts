@@ -253,6 +253,77 @@ export async function request<T>(
   return res.json();
 }
 
+/**
+ * A page returned by one of the cursor-based collection endpoints.
+ *
+ * The collection helpers below intentionally keep returning arrays to their
+ * existing callers.  They follow the opaque response cursor until the full
+ * collection has been read, so screens do not accidentally render only the
+ * first page when a collection grows beyond the API page size.
+ */
+export interface CursorPage<T> {
+  items: T[];
+  nextCursor: string | null;
+}
+
+const CURSOR_PAGE_LIMIT = 200;
+const KNOWLEDGE_RECORD_PAGE_LIMIT = 500;
+const MAX_CURSOR_PAGES = 10_000;
+
+function withCursorQuery(
+  path: string,
+  limit: number,
+  cursor: string | null,
+): string {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) params.set("cursor", cursor);
+  return `${path}${path.includes("?") ? "&" : "?"}${params.toString()}`;
+}
+
+async function requestCursorPage<T>(path: string): Promise<CursorPage<T>> {
+  const res = await desktopFetch(`${BASE}${path}`, {
+    headers: desktopHeaders(),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    let detail = text;
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed && typeof parsed.detail === "string") detail = parsed.detail;
+    } catch {
+      // Non-JSON error body (e.g. a bare proxy error page); show it as-is.
+    }
+    throw new Error(`API-Fehler ${res.status}: ${detail}`);
+  }
+  const items = (await res.json()) as T[];
+  const nextCursor = res.headers?.get("X-Next-Cursor")?.trim() || null;
+  return { items, nextCursor };
+}
+
+async function requestAllCursorPages<T>(
+  path: string,
+  limit = CURSOR_PAGE_LIMIT,
+): Promise<T[]> {
+  const items: T[] = [];
+  const seenCursors = new Set<string>();
+  let cursor: string | null = null;
+
+  for (let page = 0; page < MAX_CURSOR_PAGES; page += 1) {
+    const result: CursorPage<T> = await requestCursorPage<T>(
+      withCursorQuery(path, limit, cursor),
+    );
+    items.push(...result.items);
+    if (!result.nextCursor) return items;
+    if (seenCursors.has(result.nextCursor)) {
+      throw new Error("API-Seitenfolge enthält einen wiederholten Cursor");
+    }
+    seenCursors.add(result.nextCursor);
+    cursor = result.nextCursor;
+  }
+
+  throw new Error("API-Seitenlimit überschritten");
+}
+
 // Sessions
 export const createSession = (
   name: string,
@@ -409,7 +480,7 @@ export const createDirective = (sessionId: string, text: string) =>
   });
 
 export const listDirectives = (sessionId: string) =>
-  request<Directive[]>(`/sessions/${sessionId}/directives`);
+  requestAllCursorPages<Directive>(`/sessions/${sessionId}/directives`);
 
 export const updateDirective = (
   sessionId: string,
@@ -450,7 +521,7 @@ export const uploadDocument = async (
 };
 
 export const listDocuments = (sessionId: string) =>
-  request<Document[]>(`/sessions/${sessionId}/documents`);
+  requestAllCursorPages<Document>(`/sessions/${sessionId}/documents`);
 
 export const deleteDocument = (sessionId: string, id: string) =>
   request<void>(`/sessions/${sessionId}/documents/${id}`, { method: "DELETE" });
@@ -508,7 +579,7 @@ export const deleteDossier = (sessionId: string) =>
 
 // Questions
 export const listQuestions = (sessionId: string) =>
-  request<Question[]>(`/sessions/${sessionId}/questions`);
+  requestAllCursorPages<Question>(`/sessions/${sessionId}/questions`);
 
 export const updateQuestion = (
   sessionId: string,
@@ -1101,7 +1172,7 @@ export const listOfferingTags = () => request<string[]>("/offerings/tags");
 
 // Knowledge Sources
 export const listKnowledgeSources = () =>
-  request<KnowledgeSource[]>("/knowledge");
+  requestAllCursorPages<KnowledgeSource>("/knowledge");
 
 export const createKnowledgeSource = (data: {
   name: string;
@@ -1126,7 +1197,10 @@ export const deleteKnowledgeSource = (id: string) =>
   request<{ ok: boolean }>(`/knowledge/${id}`, { method: "DELETE" });
 
 export const listKnowledgeRecords = (sourceId: string) =>
-  request<KnowledgeRecord[]>(`/knowledge/${sourceId}/records`);
+  requestAllCursorPages<KnowledgeRecord>(
+    `/knowledge/${sourceId}/records`,
+    KNOWLEDGE_RECORD_PAGE_LIMIT,
+  );
 
 export const createKnowledgeRecord = (
   sourceId: string,
