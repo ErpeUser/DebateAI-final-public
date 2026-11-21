@@ -2,7 +2,7 @@
 
 Stand: 2026-11-21. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Erledigte und veraltete Einträge wurden in dieser Fortschreibung entfernt; historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `9f49a54da21f67aeca8a151c15ce1d9ea136d8f1` (GitHub-Branch-Readback nach Cursor-Code und Dokumentations-Commit). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-Gesamtsuite (382/382), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Cursor-Vertragstest (5/5), der Session-Router-Test (4/4), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard; der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und SHA unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Aktueller geprüfter Code-/CI-Stand:** Der direkt von `main` geklonte und geprüfte Stand ist `47d45acb16e8a5ae879e3a1657ba58f33a94bebb` (GitHub-Branch-Readback nach Backend- und Frontend-P2.10-Commits). Für die bisher umgesetzten Pakete bestanden der gezielte Backend-Vertragstest (2/2), der erweiterte Cursor-Abnahmetest (3/3), der gezielte Antwort-UI-Abnahmetest (19/19), der gezielte Modus-UI-Abnahmetest (4/4), die Frontend-API-Abnahme (10/10), die Frontend-Gesamtsuite (384/384), der bestehende Response-Vertrag (7/7), der Audio-Handler-Vertrag (63/63), der ActiveCall-Abnahmetest (21/21), der Kern-Cursor-Vertrag (5/5), der Session-Router-Test (4/4), der Knowledge-Mutationsschutz (41/41), `npm run build`, der Docs-Site-Test/-Build und der Repository-Layout-Guard. Der Frontend-Build meldet weiterhin nur die bekannte Vite-Chunk-Warnung. Der lokale `github_sync.py --pull --strict`-Nachweis ist wegen fehlender `gh`-Authentifizierung blockiert (`gh auth login`/`GH_TOKEN` erforderlich); der verbundene GitHub-Connector konnte Repository, `main` und beide neuen SHAs unabhängig lesen. Die öffentliche Quellenstrategie bleibt unverändert: Dieses Repository bleibt ein reproduzierbarer, secretsfreier Source-/Test-Stand; Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 21.11.2026)
 
@@ -118,7 +118,7 @@ Die lokale Browserpersistenz und SSR-Vertragsprüfung sind implementiert. Ein re
 
 - **Test A – funktionale Wiederherstellung:** `TMPDIR="$PWD/.tmp" node --test src/components/NewSessionModal.test.mjs`; setzt den Speicherwert `debate_forceful`, rendert den Dialog und prüft, dass „Hart / brutal-sachlich“ aktiv und „Überzeugend“ inaktiv ist. **Bestanden: 1/1 Fall.**
 - **Test B – kritischer Fallback:** derselbe Testlauf setzt `client_sales` als fremden Wert und prüft, dass `readLastDebateMode()` exakt `debate_persuasive` liefert. **Bestanden: 1/1 Fall.**
-- Zusätzlich: vollständige Frontend-Suite **381/381** und `npm run build` **bestanden**. Windows-WebView-/manuelle Pre-Call-Abnahme **nicht ausführbar**.
+- Zusätzlich: vollständige Frontend-Suite **384/384** und `npm run build` **bestanden**. Windows-WebView-/manuelle Pre-Call-Abnahme **nicht ausführbar**.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -145,7 +145,7 @@ Der vorhandene `NewSessionModal`-Selector und die Browser-Storage-Muster der Fro
 
 - Änderungen: `app/frontend/src/components/NewSessionModal.tsx`, `app/frontend/src/components/NewSessionModal.test.mjs`.
 - Commit-SHA: `68b783d6124cb09157a5c72696ff66f8582652d0` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Zieltest 4/4, Frontend 381/381, Vite/TypeScript-Build grün.
+- Ausgeführt: Zieltest 4/4, Frontend 384/384, Vite/TypeScript-Build grün.
 - Einschränkung: GitHub-CLI-Synchronisation und realer Windows-/WebView-Lauf bleiben mangels Authentifizierung beziehungsweise Hardware offen.
 
 **10. Codex-Desktop-Handoff bei Blockern**
@@ -181,7 +181,7 @@ Der lokale Codepfad und die Vertragsprüfungen sind vorhanden. Es fehlt der echt
 
 - **Test A – Backend-Funktion und Grenzfall:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_audio_handler.py' -v`; prüft, dass nur der explizite `minimal`-Stop angenommen wird, unbekannte Werte weiter sicher auf `full` fallen und der Minimal-Finalizer keine Analyse-Drain-Stufen startet. **Bestanden: relevante Audio-Handler-Suite 63/63.**
 - **Test B – kritische UI-Prüfung:** `TMPDIR="$PWD/.tmp" node --test src/components/ActiveCall/ActiveCallView.test.mjs`; prüft getrennte Full-/Skip-/Minimal-Aktionen sowie die sichtbare Erklärung, dass Transkript, Aufnahme und Sitzungsdaten gelöscht werden. **Bestanden: 21/21.**
-- Zusätzlich: Frontend-Gesamtsuite **382/382**, `npm run build` und Repository-Layout-Guard **bestanden**. Reale Provider-/Windows-/Audio-Abnahme **nicht ausführbar**.
+- Zusätzlich: Frontend-Gesamtsuite **384/384**, `npm run build` und Repository-Layout-Guard **bestanden**. Reale Provider-/Windows-/Audio-Abnahme **nicht ausführbar**.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -208,7 +208,7 @@ Der vorhandene `minimal`-Finalizer und die bestehende `DELETE /api/sessions/{id}
 
 - Änderungen: `app/backend/app/ws/audio_handler.py`, `app/backend/tests/test_audio_handler.py`, `app/frontend/src/types/index.ts`, `app/frontend/src/components/ActiveCall/ActiveCallView.tsx`, `app/frontend/src/components/ActiveCall/ActiveCallView.test.mjs`, `app/frontend/src/App.tsx`.
 - Commit-SHA: `7a149b0b60261dace3cb4cd0376b6751c6faa9ff` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Audio-Handler 63/63, ActiveCallView 21/21, Frontend 382/382, Vite/TypeScript-Build grün, Layout-Guard grün.
+- Ausgeführt: Audio-Handler 63/63, ActiveCallView 21/21, Frontend 384/384, Vite/TypeScript-Build grün, Layout-Guard grün.
 - Einschränkung: Provider-Delete bleibt extern; der lokale `gh`-Pull ist weiterhin wegen fehlender CLI-Authentifizierung blockiert.
 
 **10. Codex-Desktop-Handoff bei Blockern**
@@ -287,8 +287,8 @@ Auf einem autorisierten Windows-Gerät eine kurze echte Sitzung starten, einmal 
 
 ### P2.10 Listen-, Transcript- und Knowledge-APIs
 
-- **Status:** PARTIAL. Die drei Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` akzeptieren jetzt einen versionsbehafteten, endpointgebundenen Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Fragen, Direktiven, Dokumente, Knowledge-Records, UI-Seitenabruf und vollständige SQL-seitige Chat-Priorisierung bleiben offen.
-- **Benötigt:** Cursorvertrag für alle weiteren betroffenen Endpunkte, UI-Weiterblättern, Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie und ein begrenzter Lastnachweis.
+- **Status:** PARTIAL. Die Kernlisten `GET /api/sessions`, `/api/sessions/{id}/segments` und `/api/sessions/{id}/transcripts` sowie jetzt Fragen, Direktiven, Dokumente, Knowledge-Quellen und Knowledge-Records akzeptieren versionsbehaftete, endpointgebundene Cursor und liefern bei weiteren Seiten `X-Next-Cursor`, ohne das bisherige Array-Format zu brechen. Die bestehenden Frontend-Consumer für die fünf erweiterten Sammlungen folgen den opaken Cursorn automatisch und liefern weiterhin vollständige Arrays an `useSession` und `KnowledgeManager`. Vollständige Cursor-Consumer für die Kernlisten, SQL-seitige Chat-Priorisierung und ein begrenzter Last-/Multiworker-Nachweis bleiben offen.
+- **Benötigt:** Cursor-Regressionen über alle Sortierungen, eine definierte Provisional-Transcript-Strategie für weitere UI-Consumer, ein begrenzter Lastnachweis und die noch fehlende SQL-seitige Chat-Priorisierung.
 
 #### P2.10a – Opaque-Cursor-Grundvertrag für Sitzungslisten
 
@@ -317,9 +317,9 @@ Die API-Grundlage ist implementiert, aber weitere Listenendpunkte und ein UI-Wei
 
 **5. Unabhängige Abnahmetests**
 
-- **Test A – Vertrags- und Robustheitsprüfung:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination.py' -v`; prüft Versions-/Endpointbindung, Roundtrip und `X-Next-Cursor` nur bei tatsächlich weiteren Datensätzen. **Bestanden: 3/3.**
+- **Test A – Vertrags- und Robustheitsprüfung:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination.py' -v`; prüft Versions-/Endpointbindung, Roundtrip und `X-Next-Cursor` nur bei tatsächlich weiteren Datensätzen. **Bestanden: 5/5.**
 - **Test B – Regression der bestehenden Session-Router:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_sessions_router.py' -v`; prüft weiterhin Start-, Ende-, Resume- und Delete-Verträge nach Einbau der Response-/Cursorparameter. **Bestanden: 4/4.**
-- Zusätzlich: Backend-`compileall` **bestanden**. Weitere Listen-/UI-/Lasttests bleiben offen.
+- Zusätzlich: Backend-`compileall` **bestanden**. Die erweiterten Listen-/UI-/Lasttests sind als P2.10b dokumentiert.
 
 **6. Recherche vorhandener Lösungen**
 
@@ -346,12 +346,77 @@ Der Bestand verwendet bereits stabile Composite-Sortierungen und Limits. Die neu
 
 - Änderungen: `app/backend/app/services/cursor_pagination.py`, `app/backend/app/routers/sessions.py`, `app/backend/app/routers/transcripts.py`, `app/backend/tests/test_cursor_pagination.py`.
 - Commit-SHA: `c101be8a800ea6a06a67cbeb7186c4beb5626314` (GitHub `main`, Branch-Readback verifiziert).
-- Ausgeführt: Cursor 3/3, Sessions-Router 4/4, bestehende Transcript-/Backend-Regressionen und `compileall` grün.
-- Einschränkung: UI-Paging, weitere Listen, Provider-/Lastabnahme fehlen.
+- Ausgeführt: Cursor 5/5, Sessions-Router 4/4, bestehende Transcript-/Backend-Regressionen und `compileall` grün.
+- Einschränkung: Die Frontend-Consumer für Sessions/Segmente/Transkripte und ein begrenzter Last-/Multiworker-Nachweis fehlen weiterhin.
 
 **10. Codex-Desktop-Handoff bei Blockern**
 
 Für die nächste Ausbaustufe zuerst die echten Frontend-API-Consumer für Sessions, Fragen, Direktiven, Dokumente und Knowledge-Records auf `X-Next-Cursor` umstellen; danach pro Route zwei Seiten mit künstlichen Gleichständen und gelöschten Zwischenzeilen prüfen. Die Provisional-Transcript-Anzeige muss dabei entweder einen eigenen Cursorteil erhalten oder ausdrücklich live-only bleiben.
+
+#### P2.10b – Cursor-Fortsetzung für Fragen, Direktiven, Dokumente und Knowledge
+
+**Priorität:** P2
+**Status:** IMPLEMENTED_UNVERIFIED
+**Vision-Referenz:** § 18, ergänzt durch §§ 9, 12 und 16
+
+**1. Verbindliches Ziel**
+
+Die fünf großen Sammlungen `questions`, `directives`, `documents`, `knowledge_sources` und `knowledge_records` müssen mit demselben undurchsichtigen Cursorvertrag wie die Kernlisten fortsetzbar sein. Sortierung und Tie-Breaker müssen stabil bleiben, ein Cursor darf nur am vorgesehenen Endpunkt akzeptiert werden, und bestehende Array-Clients dürfen ohne API-Formatwechsel weiterarbeiten. Die Frontend-Consumer müssen `X-Next-Cursor` URL-sicher zurücksenden und alle Seiten bis zum Ende zusammenführen.
+
+**2. Konkretes Nutzungsbeispiel**
+
+Eine Sitzung enthält mehr als 200 Fragen, Direktiven oder Dokumente; eine Wissensquelle enthält mehr als 500 Records. Die bestehende Session- beziehungsweise Knowledge-Oberfläche ruft die erste Seite ab, folgt dem zurückgegebenen Cursor automatisch, fügt die nächste Seite in der bestehenden Reihenfolge an und rendert dadurch die vollständige Sammlung. Ein Cursor einer anderen Route oder ein beschädigter Wert führt zu `400`, statt eine falsche Seite oder Duplikate zu liefern.
+
+**3. Tatsächlicher Ist-Zustand**
+
+- Backend: `app/backend/app/routers/questions.py::list_questions`, `directives.py::list_directives`, `documents.py::list_documents` sowie `knowledge.py::list_sources` und `list_records` verwenden `limit + 1`, `X-Next-Cursor`, `decode_cursor`/`encode_cursor` und stabile Composite-Sortierungen. Fragen sortieren `created_at DESC, id`; die übrigen vier Listen sortieren aufsteigend, Records zusätzlich `title, created_at, id`.
+- Frontend: `app/frontend/src/services/api.ts::requestCursorPage` und `requestAllCursorPages` lesen den Header, setzen den Cursor per `URLSearchParams`, erkennen wiederholte Cursor und begrenzen die Seitenfolge. `listQuestions`, `listDirectives`, `listDocuments`, `listKnowledgeSources` und `listKnowledgeRecords` behalten ihre Array-Rückgabetypen; dadurch erhalten `useSession.ts` und `KnowledgeManager.tsx` ohne parallele UI-Architektur vollständige Daten.
+- Testpfade: `app/backend/tests/test_cursor_pagination_extended.py` und `app/frontend/src/services/api.test.mjs`.
+
+**4. Genaue Abweichung**
+
+Die Funktion ist lokal und synthetisch nachgewiesen. Der vollständige Backend-Gesamtlauf ist in dieser Umgebung wegen unabhängiger fehlender optionaler Abhängigkeiten/Modelle nicht als Gesamtgate verwendbar; reale Windows-WebView-Nutzung, 10.000+-Seitenlast, Multiworker-Konsistenz und Provider-/Datenbank-Lastmessung fehlen. Die bereits implementierten Kernlisten haben noch keine gleichwertige automatische Frontend-Seitenfolge.
+
+**5. Unabhängige Abnahmetests**
+
+- **Test A – funktionale Backend-/SQL-Abnahme:** `PYTHONPATH=app/backend .venv/bin/python -m unittest discover -s app/backend/tests -p 'test_cursor_pagination_extended.py' -v`; prüft Header-/Marker-Verträge für alle fünf Routen, falsche und beschädigte Cursor sowie mit `aiosqlite` zwei echte Seiten mit identischen Zeitstempeln, stabilen ID-Tie-Breakern, exakter Reihenfolge, keinen Überschneidungen und keinem Cursor am Ende. **Bestanden: 3/3.**
+- **Test B – unabhängige Frontend-Consumer-Abnahme:** `TMPDIR="$PWD/.tmp" node --test src/services/api.test.mjs`; prüft eine mehrseitige opake Cursorfolge inklusive URL-Encoding und Reihenhalt sowie separat alle fünf Consumer, korrektes Ende ohne Header und Weitergabe eines HTTP-Fehlers. **Bestanden: 10/10, davon 2 neue Cursorfälle.**
+- Zusätzlich: `npm test` im Frontend **384/384**, `npm run build`, Backend-`compileall`, Knowledge-Mutationsschutz **41/41**, `git diff --check` und Repository-Layout-Guard **bestanden**. Der unabhängige Gesamt-Backendlauf bleibt wegen externer Testumgebungsfehlern offen; seine konkreten Blocker sind `socksio`/SOCKS, ein fehlendes ONNX-`ecapa`-Modell und ein Subprozess ohne `PYTHONPATH`.
+
+**6. Recherche vorhandener Lösungen**
+
+Der bestehende `app/backend/app/services/cursor_pagination.py`-Helper und die bereits eingeführten SQL-Tie-Breaker wurden wiederverwendet. Für das Frontend reichen die vorhandene Fetch-Schicht, `Response.headers` und die Web-Standardklasse `URLSearchParams`; ein neues Paging-Framework oder ein JSON-Wrapper hätte die bestehenden Array-Verträge unnötig gebrochen. Eine externe Bibliothek wurde deshalb nicht ergänzt.
+
+**7. Exakter Umsetzungsplan**
+
+1. Die fünf Router-Listen um Cursorparameter, `limit + 1`, endpointgebundene Marker und `X-Next-Cursor` ergänzen.
+2. Je Sortierung den letzten Datensatz inklusive ID als Marker codieren und den nächsten SQL-Bereich strikt danach filtern.
+3. Die gemeinsame Frontend-Fetch-Schicht so erweitern, dass sie Cursor URL-sicher sendet, Seiten in Reihenfolge zusammenführt und bei Wiederholungen beziehungsweise endlosen Sequenzen fail-closed abbricht.
+4. Die bestehenden `useSession`- und `KnowledgeManager`-Aufrufer unverändert über die Array-Kompatibilität integrieren.
+5. Route-nahe SQL-/Robustheitstests und unabhängige Frontend-Consumer-Tests ausführen; danach Regressionen, Build und Layout-Guard prüfen.
+
+**8. Erfüllungskriterien**
+
+- [x] Alle fünf erweiterten Endpunkte akzeptieren einen versionierten, endpointgebundenen Cursor.
+- [x] `limit + 1` und `X-Next-Cursor` verhindern fehlende oder doppelte Seiten.
+- [x] Alle Sortierungen besitzen dokumentierte stabile Tie-Breaker.
+- [x] Falsche und beschädigte Cursor werden mit `400` abgewiesen.
+- [x] Bestehende Array-Clients und die vorhandenen UI-Consumer bleiben kompatibel.
+- [x] Test A und Test B bestehen unabhängig voneinander.
+- [x] Frontend-Build, relevante Regressionen und Layout-Guard bestehen.
+- [ ] Kernlisten-Consumer, echte Windows-/WebView-Abnahme, Last- und Multiworker-Nachweis bestehen.
+
+**9. Implementierungsnachweise**
+
+- Änderungen Backend: `questions.py`, `directives.py`, `documents.py`, `knowledge.py`, `test_cursor_pagination_extended.py`.
+- Backend-Commit: `4687dc718b876d77138e0b396b6baa660e6eff75`; Branch-Readback von `main` bestätigt.
+- Änderungen Frontend: `app/frontend/src/services/api.ts`, `app/frontend/src/services/api.test.mjs`.
+- Frontend-Commit: `47d45acb16e8a5ae879e3a1657ba58f33a94bebb`; Branch-Readback von `main` bestätigt.
+- Ausgeführte Nachweise: erweiterter Cursor 3/3, Kerncursor 5/5, Frontend-API 10/10, Frontend 384/384, `npm run build`, `compileall`, Knowledge-Guards, `git diff --check`, Layout-Guard.
+
+**10. Codex-Desktop-Handoff bei Blockern**
+
+Auf einem autorisierten Windows-/WebView2-Checkout zuerst `python app/scripts/github_sync.py --pull --strict` nach erfolgreicher CLI-Authentifizierung ausführen. Danach die Sitzungslisten-, Segment- und Transkript-Consumer auf dieselbe automatische Cursorfolge umstellen, eine Sitzung mit mindestens zwei Seiten je Liste laden und die Provisional-Transcript-Strategie prüfen. Anschließend einen 10.000+-Eintrags-Lastlauf, einen Zwei-Worker-Lauf mit identischer Datenbank und einen echten Knowledge-/Dokument-Upload-/Löschdurchlauf ausführen; Ergebnisse mit Route, Sortierung, Cursor, Commit-SHA und Laufzeit dokumentieren.
 
 ### P2.11 Parallele Migrationsstarts
 
