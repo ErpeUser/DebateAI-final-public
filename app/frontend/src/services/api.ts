@@ -1324,6 +1324,9 @@ export interface QualityLabRun {
   run_id: string;
   dataset_id: string;
   holdout: boolean;
+  holdout_verified: boolean;
+  can_apply: boolean;
+  can_rollback: boolean;
   created_at: string;
   input: { claim: string; context: string; allowed_sources: string[] };
   candidates: QualityLabCandidate[];

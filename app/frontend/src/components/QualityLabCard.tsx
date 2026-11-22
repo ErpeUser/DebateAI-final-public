@@ -226,6 +226,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
     if (
       !run ||
       !candidate ||
+      !run.can_apply ||
       preferred !== side ||
       ratings.A.both_unsuitable ||
       ratings.B.both_unsuitable
@@ -256,7 +257,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
   };
 
   const rollback = async () => {
-    if (!run) return;
+    if (!run || !run.can_rollback) return;
     setBusy(true);
     setError(null);
     try {
@@ -374,7 +375,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
             onChange={(event) => setHoldout(event.target.checked)}
             className="accent-brand-teal"
           />
-          Unabhängigen Holdout verwenden
+          Unabhängigen Holdout anfordern
         </label>
         <label className="inline-flex items-center gap-2">
           <input
@@ -528,7 +529,11 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
             <div className="flex flex-wrap items-center gap-2 rounded bg-brand-light-gray-2 px-3 py-2 font-body text-xs text-brand-gray">
               <span>
                 Runde {run.run_id} · Datensatz {run.dataset_id} ·{" "}
-                {run.holdout ? "Holdout" : "Entwicklung"}
+                {run.holdout
+                  ? run.holdout_verified
+                    ? "Holdout"
+                    : "Holdout angefordert · nicht verifiziert"
+                  : "Entwicklung"}
               </span>
               <span>·</span>
               <span>
@@ -555,6 +560,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
                 type="button"
                 disabled={
                   busy ||
+                  !run.can_apply ||
                   (preferred !== "A" && preferred !== "B") ||
                   ratings.A.both_unsuitable ||
                   ratings.B.both_unsuitable
@@ -569,12 +575,23 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !run.can_rollback}
                 onClick={() => void rollback()}
+                title={
+                  run.can_rollback
+                    ? "Vorherige aktivierte Promptversion wiederherstellen"
+                    : "Für Modellvergleiche nicht verfügbar"
+                }
                 className="min-h-9 rounded border border-brand-light-gray-1 px-3"
               >
                 Rollback
               </button>
+              {!run.can_apply && (
+                <span className="basis-full text-[11px] text-brand-mid-gray">
+                  Der Modellvergleich ändert keine Live-Promptversion; Aktivierung und Rollback
+                  werden erst nach einer separaten Prompt-Evaluation angeboten.
+                </span>
+              )}
             </div>
           )}
         </div>

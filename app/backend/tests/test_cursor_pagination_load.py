@@ -6,12 +6,11 @@ from datetime import UTC, datetime
 from unittest.mock import patch
 from uuid import uuid4
 
-from fastapi import Response
-from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
-
 from app.models import Base, CallSegment, Session, TranscriptEntry
 from app.routers.sessions import list_segments, list_sessions
 from app.routers.transcripts import list_transcripts
+from fastapi import Response
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 @unittest.skipUnless(

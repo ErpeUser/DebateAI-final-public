@@ -27,7 +27,9 @@ test("quality lab shows identities by default and keeps blind rating optional", 
 });
 
 test("quality lab exposes repeatable holdout, export, apply, and rollback controls", () => {
-  assert.match(component, /Unabhängigen Holdout verwenden/);
+  assert.match(component, /Unabhängigen Holdout anfordern/);
+  assert.match(component, /!run\.can_apply/);
+  assert.match(component, /!run\.can_rollback/);
   assert.match(component, /exportRun/);
   assert.match(component, /applyQualityLabVariant/);
   assert.match(component, /rollbackQualityLab/);

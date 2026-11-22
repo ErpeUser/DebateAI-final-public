@@ -41,6 +41,7 @@ from app.routers import (
     offerings,
     pii_shield,
     privacy,
+    quality_lab,
     questions,
     retranscribe,
     sessions,
@@ -805,6 +806,7 @@ app.include_router(ask.router)
 app.include_router(diagnostics.router)
 app.include_router(calibration.router)
 app.include_router(privacy.router)
+app.include_router(quality_lab.router)
 app.include_router(debate_settings.router)
 app.include_router(dossiers.router)
 app.include_router(debate_review.router)
