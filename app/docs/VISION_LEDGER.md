@@ -138,6 +138,7 @@ Die lokale Implementierung wurde wegen fehlender lokaler `gh`-Authentifizierung 
 | `486198c21a2a4015beb69ffbcea4e4979314110d` | `1e386a43198d6efce20a016cb9bf565b743a6014` | Ledger-CI-Felder |
 | `6c161fa1d22edb96b7fdfaa194b6e1c747a579e3` | `f00653c505642ce8cb20970e2efaea763789d141` | Provenienz-Nachweis |
 | mode-only correction | `8805b0c65d9d260f24b28a9f990610c82d435124` | Executable-Bit des Zählskripts |
+| `d93bec28d887cb6280380147e9cb2d25a0724cda` | `bb0e49ad7e647102d4a7657cfee6dd2eaf64a717` | Remote-CI-Nachweis und Backlog-Synchronisierung |
 
 Für den Remote-Zielstand `8805b0c…` sind `tests` und `security` grün; `Structure` bleibt wegen geerbter `max_cc`-/`max_fn_lines`-Befunde rot. Der Docs-Site-Lauf `44986669045` war auf dem inhaltlich identischen `f00653c…`-Tree grün; der anschließende mode-only Commit änderte keine Docs-Datei und löste den pfadgefilterten Docs-Workflow nicht erneut aus.
 
