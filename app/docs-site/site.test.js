@@ -360,7 +360,14 @@ test("active docs use only checked-in pages and the canonical repository layout"
   );
   assert.deepEqual(
     [...docs].sort(),
-    ["HANDBUCH", "HISTORIE", "OFFENE_PUNKTE", "VISION", "VISION_LEDGER"].sort(),
+    [
+      "ABNAHMESTATUS",
+      "HANDBUCH",
+      "HISTORIE",
+      "OFFENE_PUNKTE",
+      "VISION",
+      "VISION_LEDGER",
+    ].sort(),
   );
   const sourceFiles = [
     "../README.md",

@@ -20,6 +20,7 @@ cpSync(join(root, "dist"), join(out, "docs"), { recursive: true });
 // Sidebar reading order first (matches astro.config.mjs), then any new docs.
 const DOCS_ORDER = [
   "HANDBUCH",
+  "ABNAHMESTATUS",
   "VISION",
   "OFFENE_PUNKTE",
   "VISION_LEDGER",
