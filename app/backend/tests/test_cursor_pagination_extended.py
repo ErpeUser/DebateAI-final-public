@@ -5,12 +5,6 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock
 from uuid import uuid4
 
-from fastapi import HTTPException, Response
-
-from app.routers.directives import list_directives
-from app.routers.documents import list_documents
-from app.routers.knowledge import list_records, list_sources
-from app.routers.questions import list_questions
 from app.models import (
     Base,
     Directive,
@@ -20,7 +14,12 @@ from app.models import (
     Question,
     Session,
 )
+from app.routers.directives import list_directives
+from app.routers.documents import list_documents
+from app.routers.knowledge import list_records, list_sources
+from app.routers.questions import list_questions
 from app.services.cursor_pagination import decode_cursor
+from fastapi import HTTPException, Response
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 

@@ -4,11 +4,10 @@ from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import uuid4
 
-from fastapi import HTTPException, Response
-
 from app.routers.sessions import list_segments, list_sessions
 from app.routers.transcripts import list_transcripts
 from app.services.cursor_pagination import InvalidCursor, decode_cursor, encode_cursor
+from fastapi import HTTPException, Response
 
 
 class CursorEnvelopeTests(unittest.TestCase):
