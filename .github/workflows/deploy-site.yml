@@ -36,6 +36,11 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: app/docs-site/package-lock.json
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
       - run: npm ci
       - run: npm test
       - run: npm run build
+      - name: Audit assembled local routes and assets
+        run: python ../scripts/audit_docs_site_assets.py dist-site

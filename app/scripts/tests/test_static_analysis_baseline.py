@@ -28,6 +28,9 @@ class StaticAnalysisBaselineTests(unittest.TestCase):
             "deptry==0.25.1",
             (APP / "scripts/static-analysis/requirements-lock.txt").read_text(),
         )
+        quality_lock = (APP / "scripts/static-analysis/requirements-quality-lock.txt").read_text()
+        self.assertIn("ruff==0.17.6", quality_lock)
+        self.assertIn("vulture==2.16", quality_lock)
         config = (
             APP / "scripts/static-analysis/dependency-cruiser.config.cjs"
         ).read_text()
@@ -58,6 +61,21 @@ class StaticAnalysisBaselineTests(unittest.TestCase):
         self.assertEqual(1, cruiser["modules"])
         self.assertEqual(1, len(cruiser["violations"]))
         self.assertNotIn("modules", cruiser["violations"][0])
+
+    def test_quality_analyzers_are_optional_and_report_findings(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            with mock.patch.object(baseline, "_quality_binary", return_value=None):
+                ruff = baseline._run_quality(root, "ruff")
+                vulture = baseline._run_quality(root, "vulture")
+            self.assertEqual("not_installed", ruff["status"])
+            self.assertEqual("not_installed", vulture["status"])
+            compact = baseline._compact("ruff", [{"code": "F401"}])
+            self.assertEqual(1, compact["issue_count"])
+            self.assertTrue(baseline._has_findings("ruff", {"result": compact}))
+            compact = baseline._compact("vulture", ["unused function"])
+            self.assertEqual(1, compact["issue_count"])
+            self.assertTrue(baseline._has_findings("vulture", {"result": compact}))
 
     def test_default_mode_is_non_gating_and_never_installs_tools(self):
         with tempfile.TemporaryDirectory() as temp:

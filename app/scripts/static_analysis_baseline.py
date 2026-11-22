@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -108,6 +109,17 @@ def _compact(tool: str, payload: Any) -> dict[str, Any]:
     if tool == "deptry":
         issues = payload if isinstance(payload, list) else []
         return {"issues": issues, "issue_count": len(issues)}
+    if tool == "ruff":
+        issues = payload if isinstance(payload, list) else []
+        return {"issues": issues, "issue_count": len(issues)}
+    if tool == "vulture":
+        if isinstance(payload, dict):
+            issues = payload.get("issues", [])
+        elif isinstance(payload, list):
+            issues = payload
+        else:
+            issues = []
+        return {"issues": issues, "issue_count": len(issues)}
     return {"payload": payload}
 
 
@@ -119,6 +131,8 @@ def _has_findings(tool: str, result: dict[str, Any]) -> bool:
         return bool(compact.get("issues"))
     if tool == "dependency-cruiser":
         return bool(compact.get("violations") or compact.get("tool_issues"))
+    if tool in {"ruff", "vulture"}:
+        return bool(compact.get("issues"))
     return False
 
 
@@ -167,6 +181,71 @@ def _record(
 def _node_binary(root: Path, name: str) -> Path | None:
     candidate = root / "app/scripts/static-analysis/node_modules/.bin" / name
     return candidate if candidate.is_file() else None
+
+
+def _quality_binary(root: Path, name: str) -> Path | None:
+    """Resolve a pinned quality tool without installing or mutating the repo."""
+    candidates = (
+        root / "app/scripts/static-analysis/.venv/bin" / name,
+        root / "DebateAI_Generated/static-analysis/bin" / name,
+    )
+    for candidate in candidates:
+        if candidate.is_file():
+            return candidate
+    located = shutil.which(name)
+    return Path(located) if located else None
+
+
+def _run_quality(root: Path, tool: str) -> dict[str, Any]:
+    binary = _quality_binary(root, tool)
+    if tool == "ruff":
+        command = [
+            str(binary or (root / "app/scripts/static-analysis/.venv/bin/ruff")),
+            "check",
+            "app/backend/app",
+            "app/backend/tests",
+            "--config",
+            "ruff.toml",
+            "--output-format",
+            "json",
+        ]
+    else:
+        command = [
+            str(binary or (root / "app/scripts/static-analysis/.venv/bin/vulture")),
+            "app/backend/app",
+            "app/backend/tests",
+            "--min-confidence",
+            "80",
+        ]
+    if binary is None:
+        return _record(tool=tool, binary=None, command=command, cwd=root, root=root)
+    try:
+        completed = _run(command, cwd=root)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return _record(
+            tool=tool,
+            binary=binary,
+            command=command,
+            cwd=root,
+            root=root,
+            error=str(exc),
+        )
+    output = completed.stdout or completed.stderr
+    parsed = (
+        _parse_json(completed.stdout or completed.stderr)
+        if tool == "ruff"
+        else [line.strip() for line in output.splitlines() if line.strip()]
+    )
+    return _record(
+        tool=tool,
+        binary=binary,
+        command=command,
+        cwd=root,
+        root=root,
+        output=output,
+        parsed=parsed,
+        returncode=completed.returncode,
+    )
 
 
 def _run_knip(root: Path, directory: str, config: str) -> dict[str, Any]:
@@ -378,6 +457,8 @@ def build_report(root: Path, *, deptry_python: str | None = None) -> dict[str, A
         },
         "gating": "baseline_only",
         "tools": [
+            _run_quality(root, "ruff"),
+            _run_quality(root, "vulture"),
             _run_knip(
                 root, "app/frontend", "../scripts/static-analysis/knip.frontend.json"
             ),

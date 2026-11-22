@@ -1,0 +1,3 @@
+# Generated with Python 3.12 / pip freeze for the pinned quality analyzers.
+ruff==0.17.6
+vulture==2.16

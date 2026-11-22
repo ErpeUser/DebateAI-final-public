@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 const SRC = join(import.meta.dirname, "..", "docs");
 const OUT = join(import.meta.dirname, "src", "content", "docs");
+const PUBLIC = join(import.meta.dirname, "public");
 const REPO_URL = "https://github.com/ErpeUser/DebateAI-final-public";
 
 rmSync(OUT, { recursive: true, force: true });
@@ -87,6 +88,12 @@ for (const file of readdirSync(SRC).filter((f) => f.endsWith(".md"))) {
 
 // Referenced by HANDBUCH.md; stored with versioned docs at app/docs.
 copyFileSync(join(SRC, "architecture.svg"), join(OUT, "architecture.svg"));
+// The handbook links the static-analysis report from /docs/; copy it into
+// public/ so Astro emits it at the /docs/ root after site assembly.
+copyFileSync(
+  join(SRC, "static-analysis-baseline.json"),
+  join(PUBLIC, "static-analysis-baseline.json"),
+);
 
 // Screenshots and other images referenced by the docs as assets/<file>.
 const ASSETS = join(SRC, "assets");

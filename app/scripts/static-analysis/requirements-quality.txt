@@ -1,0 +1,3 @@
+# Pinned read-only quality analyzers. Install into the disposable static-analysis venv.
+ruff==0.17.6
+vulture==2.16
