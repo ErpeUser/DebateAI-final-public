@@ -22,6 +22,7 @@ const DOCS_ORDER = [
   "HANDBUCH",
   "VISION",
   "OFFENE_PUNKTE",
+  "VISION_LEDGER",
   "HISTORIE",
 ];
 const docsSrc = join(root, "..", "docs");

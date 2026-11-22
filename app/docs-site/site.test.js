@@ -360,7 +360,7 @@ test("active docs use only checked-in pages and the canonical repository layout"
   );
   assert.deepEqual(
     [...docs].sort(),
-    ["HANDBUCH", "HISTORIE", "OFFENE_PUNKTE", "VISION"].sort(),
+    ["HANDBUCH", "HISTORIE", "OFFENE_PUNKTE", "VISION", "VISION_LEDGER"].sort(),
   );
   const sourceFiles = [
     "../README.md",
@@ -390,7 +390,7 @@ test("active docs use only checked-in pages and the canonical repository layout"
       const docName =
         target === "index"
           ? "HANDBUCH"
-          : target === "offene_punkte" || target === "vision" || target === "historie"
+          : target === "offene_punkte" || target === "vision" || target === "historie" || target === "vision_ledger"
             ? target.toUpperCase()
             : target;
       assert.ok(

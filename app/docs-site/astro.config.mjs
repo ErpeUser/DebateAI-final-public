@@ -43,7 +43,7 @@ export default defineConfig({
         },
         {
           label: "Produktvertrag",
-          items: ["vision", "offene_punkte", "historie"],
+          items: ["vision", "offene_punkte", "vision_ledger", "historie"],
         },
       ],
       customCss: ["./src/styles/custom.css"],

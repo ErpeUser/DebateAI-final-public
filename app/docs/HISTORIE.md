@@ -6,6 +6,23 @@ Stand: 2026-11-20. Diese Datei bündelt frühere Visionen, Forschungsentscheidun
 
 Ein historischer Status wird nicht durch seine Aufnahme in dieses Dokument zu einem aktuellen Testergebnis. Alte Pfade, Branch-Namen, Commitstände und Releaseaussagen bleiben Provenienzangaben. Für den heutigen Zustand gelten der aktuelle Quellbaum, frische Tests und die aktuelle Vision.
 
+## Aktueller Implementierungsnachweis – 2026-11-22
+
+Der frische GitHub-Readback für `main` war
+`0024b0c930390916a07bc00c869b92b77d56f599`. Darauf aufbauend wurden im
+lokalen Checkout zwei Gate-Korrekturen nachgewiesen: `6faabf734c9ee6c4adefdf01175dd58c6185250a`
+beschränkt die Docs-Asset-Prüfung auf echte `.css`-Quellen (HTML-Codebeispiele
+mit `url(...)` sind kein Asset), und `18b3574` prüft PWA-Metadaten semantisch
+statt von einer einzeiligen HTML-Serialisierung abzuhängen. Lokal bestanden die
+Docs-Asset-Regression **3/3**, `npm test` im Docs-Site-Projekt, der Clean-Build
+und der Snapshot-Audit; der PWA-Lauf bestand mit **6/6**.
+
+Diese Nachweise gelten für die lokalen Commits auf Basis des genannten SHA.
+Eine aktuelle GitHub-CI-Abnahme für einen nachfolgenden Ziel-SHA stand zum
+Zeitpunkt dieses Eintrags noch aus; die historischen roten Runs
+`44967192464`, `44967192422` und `44967192373` bleiben deshalb offen und
+werden nicht rückwirkend als grün interpretiert.
+
 ## Historische V6-Vision – 2026-11-10
 
 Die folgende Fassung ist der frühere verbindliche V6-Zielstand. Die noch gültigen Zielbestandteile sind in [VISION.md](VISION.md) zusammengeführt.
