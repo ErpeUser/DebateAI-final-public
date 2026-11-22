@@ -23,6 +23,24 @@ Zeitpunkt dieses Eintrags noch aus; die historischen roten Runs
 `44967192464`, `44967192422` und `44967192373` bleiben deshalb offen und
 werden nicht rückwirkend als grün interpretiert.
 
+## Weitere lokale Korrekturen – 2026-11-22
+
+`0a03e27c15e5cbcf34ef6f4f265ee5d123455a89` korrigiert den Vision-Widerspruch
+in §11: `QualityLabCard` zeigt den normalen Modellvergleich samt Modell-,
+Prompt-, Latenz-, Quellen- und Kostenmetadaten sofort; Blind-Rating ist ein
+expliziter optionaler Modus. `fe60072216b161f47de6c070d0afbdf9b3ce5914`
+verlagert die Update-Service-Auflösung auf einen importlib-basierten
+Einwegpfad, damit die Sentrux-Zyklusmeldung zwischen
+`debateai_update_channel.py` und `update_service.py` nicht mehr durch zwei
+gegenseitige Modulimporte entsteht; die Update-Verträge bleiben unverändert.
+
+`b66ca35030e19fc01cea49aefbb07653b4b102bd` und
+`486198c21a2a4015beb69ffbcea4e4979314110d` ergänzen den atomaren
+Vision-Ledger mit 116 Vision-/P0–P3-Einträgen, Status-/Evidence-Feldern,
+Commit-/CI-Feldern und einem maschinellen Zähler. Diese lokalen Nachweise
+ändern den Status der noch offenen Windows-, Provider-, Multiworker-,
+Cloud- und Release-Gates nicht.
+
 ## Historische V6-Vision – 2026-11-10
 
 Die folgende Fassung ist der frühere verbindliche V6-Zielstand. Die noch gültigen Zielbestandteile sind in [VISION.md](VISION.md) zusammengeführt.
