@@ -164,6 +164,87 @@ async def _resolve_models(model_ids: list[str], db: AsyncSession) -> list[dict[s
     return entries
 
 
+async def _generate_candidate(
+    request: QualityLabRunRequest,
+    index: int,
+    entry: dict[str, Any],
+    prompt: str,
+    run_id: str,
+) -> dict[str, Any]:
+    started = time.perf_counter()
+    try:
+        answer = await generate_text(
+            request.model_ids[index],
+            prompt,
+            system="Du bist ein nüchterner Evaluator für DebateAI. Antworte auf Deutsch.",
+            source=LAB_SOURCE,
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc)) from exc
+    except PROVIDER_ERROR_TYPES as exc:
+        raise provider_error_to_http(
+            provider_for(request.model_ids[index]),
+            exc,
+            context="Quality-Lab-Lauf fehlgeschlagen",
+        ) from exc
+    return _candidate(
+        run_id=run_id,
+        index=index,
+        model_id=request.model_ids[index],
+        entry=entry,
+        answer=answer,
+        elapsed_ms=(time.perf_counter() - started) * 1000,
+        prompt=prompt,
+        source_status="sources_provided" if request.allowed_sources else "no_sources",
+    )
+
+
+async def _generate_candidates(
+    request: QualityLabRunRequest,
+    entries: list[dict[str, Any]],
+    prompts: list[str],
+    run_id: str,
+) -> list[dict[str, Any]]:
+    tasks = [
+        asyncio.create_task(
+            _generate_candidate(request, index, entries[index], prompts[index], run_id)
+        )
+        for index in range(2)
+    ]
+    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    failure = next(
+        (
+            task.exception()
+            for task in done
+            if not task.cancelled() and task.exception() is not None
+        ),
+        None,
+    )
+    if failure is not None:
+        for task in pending:
+            task.cancel()
+        await asyncio.gather(*pending, return_exceptions=True)
+        raise failure
+    await asyncio.gather(*pending)
+    return [task.result() for task in tasks]
+
+
+def _validate_rating_side(side: str, rating: dict[str, int | bool | None]) -> None:
+    allowed_keys = RATING_DIMENSIONS | {"both_unsuitable"}
+    if set(rating) - allowed_keys:
+        raise HTTPException(422, f"Unbekannte Bewertungsdimension für Antwort {side}.")
+    both_unsuitable = rating.get("both_unsuitable", False)
+    if not isinstance(both_unsuitable, bool):
+        raise HTTPException(422, f"both_unsuitable für Antwort {side} muss boolesch sein.")
+    if not both_unsuitable and set(rating) != allowed_keys:
+        raise HTTPException(422, f"Bewertung für Antwort {side} ist unvollständig.")
+    for name, value in rating.items():
+        if name == "both_unsuitable":
+            continue
+        if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 5:
+            raise HTTPException(422, f"{name} muss zwischen 1 und 5 liegen.")
+
+
 @router.post("/runs")
 async def run_quality_lab(
     request: QualityLabRunRequest,
@@ -172,47 +253,7 @@ async def run_quality_lab(
     entries = await _resolve_models(request.model_ids, db)
     run_id = uuid.uuid4().hex
     prompts = [_prompt_for(request, index) for index in range(2)]
-
-    async def generate(index: int) -> dict[str, Any]:
-        started = time.perf_counter()
-        try:
-            answer = await generate_text(
-                request.model_ids[index],
-                prompts[index],
-                system="Du bist ein nüchterner Evaluator für DebateAI. Antworte auf Deutsch.",
-                source=LAB_SOURCE,
-            )
-        except ValueError as exc:
-            raise HTTPException(400, str(exc)) from exc
-        except PROVIDER_ERROR_TYPES as exc:
-            raise provider_error_to_http(
-                provider_for(request.model_ids[index]), exc, context="Quality-Lab-Lauf fehlgeschlagen"
-            ) from exc
-        return _candidate(
-            run_id=run_id,
-            index=index,
-            model_id=request.model_ids[index],
-            entry=entries[index],
-            answer=answer,
-            elapsed_ms=(time.perf_counter() - started) * 1000,
-            prompt=prompts[index],
-            source_status="sources_provided" if request.allowed_sources else "no_sources",
-        )
-
-    tasks = [asyncio.create_task(generate(index)) for index in range(2)]
-    done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
-    failure = None
-    for task in done:
-        if not task.cancelled() and task.exception() is not None:
-            failure = task.exception()
-            break
-    if failure is not None:
-        for task in pending:
-            task.cancel()
-        await asyncio.gather(*pending, return_exceptions=True)
-        raise failure
-    await asyncio.gather(*pending)
-    candidates = [task.result() for task in tasks]
+    candidates = await _generate_candidates(request, entries, prompts, run_id)
     if any(not candidate["available"] for candidate in candidates):
         raise HTTPException(502, "Mindestens ein ausgewähltes Modell lieferte keine Antwort.")
     created_at = datetime.now(UTC).isoformat()
@@ -249,26 +290,7 @@ async def submit_quality_lab_rating(run_id: str, payload: QualityLabRating):
         rating = payload.ratings.get(side)
         if not isinstance(rating, dict):
             raise HTTPException(422, f"Bewertung für Antwort {side} fehlt.")
-        if set(rating) - (RATING_DIMENSIONS | {"both_unsuitable"}):
-            raise HTTPException(
-                422, f"Unbekannte Bewertungsdimension für Antwort {side}."
-            )
-        both_unsuitable = rating.get("both_unsuitable", False)
-        if not isinstance(both_unsuitable, bool):
-            raise HTTPException(
-                422, f"both_unsuitable für Antwort {side} muss boolesch sein."
-            )
-        if not both_unsuitable and set(rating) != RATING_DIMENSIONS | {"both_unsuitable"}:
-            raise HTTPException(
-                422, f"Bewertung für Antwort {side} ist unvollständig."
-            )
-        for name, value in rating.items():
-            if name == "both_unsuitable":
-                continue
-            if not both_unsuitable and (
-                isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 5
-            ):
-                raise HTTPException(422, f"{name} muss zwischen 1 und 5 liegen.")
+        _validate_rating_side(side, rating)
     if payload.dataset_id != record["dataset_id"] or payload.holdout != record["holdout"]:
         raise HTTPException(409, "Bewertung gehört zu einer anderen Laborrunde.")
     record["ratings"] = payload.model_dump()

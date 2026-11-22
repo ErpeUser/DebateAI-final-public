@@ -193,6 +193,31 @@ def test_quality_lab_rejects_incomplete_rating():
     assert response.status_code == 422
 
 
+def test_quality_lab_rejects_invalid_dimension_even_when_both_unsuitable():
+    async def generate(model_id, prompt, **kwargs):
+        return "Antwort"
+
+    with (
+        patch.object(quality_lab, "generate_text", side_effect=generate),
+        patch.object(quality_lab, "is_local_only", new=AsyncMock(return_value=False)),
+    ):
+        client = TestClient(_app())
+        run = client.post("/api/quality-lab/runs", json=_payload()).json()
+        response = client.post(
+            f"/api/quality-lab/runs/{run['run_id']}/ratings",
+            json={
+                "ratings": {
+                    "A": {"naturalness": 99, "both_unsuitable": True},
+                    "B": {"both_unsuitable": True},
+                },
+                "preferred": "tie",
+                "holdout": True,
+                "dataset_id": "contract",
+            },
+        )
+    assert response.status_code == 422
+
+
 def test_quality_lab_cancels_the_other_provider_call_after_failure():
     cancelled = asyncio.Event()
 
