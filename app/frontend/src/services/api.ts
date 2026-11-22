@@ -1311,6 +1311,7 @@ export const deleteGroup = (id: string) =>
 export interface QualityLabCandidate {
   variant_id: string;
   model_id: string;
+  model_name?: string;
   prompt_version: string;
   prompt_hash: string;
   answer: string;

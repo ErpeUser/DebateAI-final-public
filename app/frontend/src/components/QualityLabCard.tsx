@@ -443,7 +443,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
                     </h3>
                     {(!blindRating || revealed) && candidate && (
                       <span className="font-mono text-[10px] text-brand-mid-gray">
-                        {candidate.model_id} · Prompt {candidate.prompt_version}
+                        {candidate.model_name || candidate.model_id} · Prompt {candidate.prompt_version}
                       </span>
                     )}
                   </div>

@@ -16,6 +16,7 @@ test("quality lab shows identities by default and keeps blind rating optional", 
   assert.match(component, /Antwort \{side\}/);
   assert.match(component, /Optional blind bewerten/);
   assert.match(component, /!blindRating \|\| revealed/);
+  assert.match(component, /candidate\.model_name/);
   assert.match(component, /candidate\.prompt_version/);
   assert.match(component, /candidate\.latency_ms/);
   assert.match(component, /setRevealed\(true\)/);
