@@ -1,6 +1,6 @@
 # DebateAI-Handbuch
 
-Diese Datei enthält die laufenden technischen Verträge für Einrichtung, Architektur, Konfiguration, API, Deployment, Release und Workspace. Produktziel und Prioritäten stehen in [VISION.md](VISION.md). Nicht belegte oder noch nicht abgenommene Punkte stehen in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md). Datiertes Wissen und abgelöste Arbeitsstände stehen in [HISTORIE.md](HISTORIE.md).
+Diese Datei enthält die laufenden technischen Verträge für Einrichtung, Architektur, Konfiguration, API, Deployment, Release und Workspace. Produktziel und Prioritäten stehen in [VISION.md](VISION.md). Der aktuelle Abnahmestatus steht in [ABNAHMESTATUS.md](ABNAHMESTATUS.md). Nicht belegte oder noch nicht abgenommene Punkte stehen in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md). Datiertes Wissen und abgelöste Arbeitsstände stehen in [HISTORIE.md](HISTORIE.md).
 
 ## Schnellzugriff
 

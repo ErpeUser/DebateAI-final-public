@@ -1,6 +1,6 @@
 # DebateAI – Verbindliche Gesamtvision
 
-**Stand:** 21.11.2026  
+**Stand:** 22.11.2026  
 **Dokumenttyp:** Vollständiges Produktziel und fachlicher Anforderungskatalog, **kein Nachweis einer fertigen Implementierung**.  
 **Geltung:** Zielvision für DebateAI; konsolidiert aus der bisherigen VISION.md vom 19.11.2026 und den Eigentümerentscheidungen aus sechs Grill-Me-Runden bis zum 21.11.2026.
 
@@ -383,6 +383,56 @@ Diese Datei **VISION.md** ist die **zentrale, ausführliche und verbindliche Ges
 - Bereits bekannte ältere Zielkonflikte sind hier soweit durch die Eigentümerentscheidungen lösbar **entschieden**: **Hart/Überzeugend** mit Wahl vor jeder neuen Sitzung und letztem Modus als Vorauswahl; **sichtbarer Modellvergleich statt Pflicht-Blindtest**; **beste Antwort plus maximal zwei Alternativen**; **gezielte Perfektionierung der bestehenden UI**; **lokaler Erstpfad mit ergänzenden Web-Agenten**; **manueller Teststart mit autonomer interner Optimierung und abschließender Freigabe**.
 
 **Noch zu verifizieren, aber nicht als neue Grill-Me-Entscheidung offen:** Anbieterfähigkeit und Zulässigkeit von Web-Steuerungen, echte Windows-Zielhardware, konkrete Modell-/Provider-Matrix, Kosten und technische Grenzen der Cloud-Testinstanz, Windows-/Provider-Abnahme, rechtliche Besonderheiten der jeweiligen Aufnahmenutzung sowie noch nicht erfüllte Release-Gates. Diese Aufgaben gehören in die technische Bestandsaufnahme und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md).
+
+## 22. Infrastruktur-Abnahme und überprüfbare Betriebsgrenzen
+
+Variante 3 der Abnahme verbindet lokale Produktarbeit mit einer getrennten
+externen Betriebsabnahme. Die Anwendung darf einen lokalen Vertrag als
+implementiert markieren, wenn Code und reproduzierbare Tests ihn belegen. Eine
+vollständige Produkt- oder Releasefreigabe benötigt zusätzlich den passenden
+aktuellen Commit, das konkrete Artefakt und die reale Betriebsumgebung.
+
+### Gemeinsamer Zustand
+
+Runs, Ratings, Replay-Journale und Jobs müssen nach ihrer jeweiligen
+Schutzklasse ausdrücklich als lokal, prozessweit oder workerübergreifend
+gekennzeichnet sein. Ein Prozesscache darf keinen persistenten oder
+workerübergreifenden Zustand vortäuschen. Quality-Lab-Runs und Ratings werden
+deshalb in einem gemeinsamen Datenbank-Store gehalten; Apply und Rollback
+bleiben bis zu einem geprüften Holdout und einer kontrollierten Promptversion
+fail-closed.
+
+Für WebSocket-Replay, Transkriptionsjobs und PII-Indizes gilt weiterhin die
+stärkere Multiworker-Anforderung. Ein geteilter Adapter muss Cursor-, Epoch-,
+TTL- und Löschverträge über Workerwechsel und Neustarts erhalten, ohne
+Duplikate oder veraltete Snapshots zu erzeugen. Prozesslokale Bounds bleiben
+ein Schutz, ersetzen diesen Nachweis aber nicht.
+
+### CI, Cloud und Release
+
+Jeder Abnahmenachweis bindet sich an Repository, Branch, Commit-SHA,
+Workflow-Run, Artefakt-Hash und Zeitpunkt. Ein grüner Testlauf auf einem
+anderen Tree bestätigt keinen aktuellen Releasezustand. Cloud-Testinstanzen
+dürfen Quellcode, Sitzungsdaten und Credentials nur über ausdrücklich
+freigegebene Pfade erhalten. Fehlerberichte werden dedupliziert,
+secretbereinigt und reproduzierbar abgelegt.
+
+Ein signiertes Windows-Release benötigt einen frischen Build, eine verifizierte
+Authenticode- oder autorisierte Remote-Signatur, ein Manifest mit Hashes und
+einen getesteten Update-/Rollbackpfad. Ein vorhandener Runtime-Smoke darf
+diesen Nachweis nicht ersetzen. Echte Audio-, Provider-, LAN- und
+DNS-Rebinding-Abnahmen bleiben externe Gates mit autorisierter Hardware,
+Konten und Netzwerkumgebung.
+
+### Statusregeln
+
+`PARTIAL_VERIFICATION` ist der zulässige Gesamtstatus, solange ein absolutes
+Structure-Gate oder ein externer Produktnachweis offen ist. `DONE` darf erst
+verwendet werden, wenn Structure, Tests, Security, Docs-Site, Releasepfad und
+die für die jeweilige Produktbehauptung erforderlichen Windows-, Audio-,
+Provider- und Multiworker-Nachweise auf demselben überprüften Stand grün sind.
+Dokumentationsänderungen dürfen keinen offenen Nachweis in einen grünen Status
+umbenennen.
 
 ---
 
