@@ -58,6 +58,7 @@ from app.services.audio_store import (
     repair_wav_file,
 )
 from app.services.diagnostic_upload_limit import DiagnosticUploadLimitMiddleware
+from app.services.gemini_files import retry_pending_file_deletions
 from app.services.llm import LLMModelNotSelected
 from app.services.pii.egress import PiiEgressBlocked
 from app.services.pii.reveal_middleware import PiiRevealMiddleware
@@ -74,6 +75,22 @@ redaction.install_log_redaction()
 # even if the root level is lowered for debugging.
 for _name in ("httpx", "httpcore", "websockets", "websockets.client"):
     logging.getLogger(_name).setLevel(logging.INFO)
+
+
+async def _retry_gemini_file_deletions():
+    # Provider deletion is deliberately outside the session transaction. Keep
+    # retrying bounded, due items so a transient provider outage does not turn
+    # a successful local delete into a permanent remote orphan.
+    while True:
+        try:
+            await retry_pending_file_deletions(max_items=16)
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            logger.warning(
+                "Retry of pending Gemini file deletions failed", exc_info=True
+            )
+        await asyncio.sleep(30)
 
 
 def _add_revalidation_model_columns(connection, inspector, tables):
@@ -661,6 +678,9 @@ async def lifespan(app: FastAPI):
     from app.services.provider_health import verify_untested_provider_keys
 
     verify_task = asyncio.create_task(verify_untested_provider_keys())
+    delete_retry_task = asyncio.create_task(
+        _retry_gemini_file_deletions(), name="gemini-file-delete-retry"
+    )
     update_task = updates.start_background_check()
     # With the PII Shield on, have the on-device NER model ready before the
     # first transcript segment rather than downloading it mid-call.
@@ -712,6 +732,8 @@ async def lifespan(app: FastAPI):
     await close_research_client()
     verify_task.cancel()
     ner_task.cancel()
+    delete_retry_task.cancel()
+    await asyncio.gather(delete_retry_task, return_exceptions=True)
     updates.stop_background_check(update_task)
     await engine.dispose()
 

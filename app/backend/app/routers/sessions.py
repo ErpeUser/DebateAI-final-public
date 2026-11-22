@@ -316,15 +316,19 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     if not session:
         raise HTTPException(404, "Session not found")
     remote_files = list(
-        (
-            await db.execute(
-                select(Document.gemini_file_uri).where(
-                    Document.session_id == session_id
+        dict.fromkeys(
+            uri
+            for uri in (
+                await db.execute(
+                    select(Document.gemini_file_uri).where(
+                        Document.session_id == session_id
+                    )
                 )
             )
+            .scalars()
+            .all()
+            if uri
         )
-        .scalars()
-        .all()
     )
     await db.execute(
         delete(DebateClaimRecord).where(DebateClaimRecord.session_id == session_id)

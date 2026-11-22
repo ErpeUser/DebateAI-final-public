@@ -68,6 +68,8 @@ class DeleteSessionTests(unittest.IsolatedAsyncioTestCase):
         document_result.scalars.return_value.all.return_value = [
             "files/one",
             "files/two",
+            "files/one",
+            None,
         ]
         db.execute.side_effect = [document_result, MagicMock()]
 
