@@ -31,6 +31,20 @@ class DocsSiteAssetAuditTests(unittest.TestCase):
     def test_built_snapshot_accepts_local_routes_assets_and_external_urls(self):
         self.assertEqual([], MODULE.audit(self.make_snapshot()))
 
+    def test_worker_asset_aliases_resolve_to_private_snapshot_assets(self):
+        root = self.make_snapshot()
+        (root / "admin").mkdir()
+        (root / "admin" / "admin.css").write_text("body {}", encoding="utf-8")
+        (root / "admin" / "admin.js").write_text("", encoding="utf-8")
+        (root / "admin" / "admin-core.js").write_text("", encoding="utf-8")
+        (root / "index.html").write_text(
+            '<link rel="stylesheet" href="/admin.css?v=1">'
+            '<script src="/admin.js#route"></script>'
+            '<script src="/admin-core.js"></script>',
+            encoding="utf-8",
+        )
+        self.assertEqual([], MODULE.audit(root))
+
     def test_missing_local_reference_is_reported_without_reading_content(self):
         root = self.make_snapshot()
         (root / "index.html").write_text(
