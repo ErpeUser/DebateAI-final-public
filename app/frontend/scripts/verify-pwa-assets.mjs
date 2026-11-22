@@ -184,6 +184,26 @@ function artworkRadiusRatio(image) {
   return maxRadius / image.width;
 }
 
+function htmlTagAttributes(html, tagName) {
+  const tags = html.match(new RegExp(`<${tagName}\\b[^>]*>`, "gi")) || [];
+  return tags.map((tag) => {
+    const attributes = {};
+    const attributePattern = /([:\w-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/g;
+    for (const match of tag.matchAll(attributePattern)) {
+      attributes[match[1].toLowerCase()] = match[2] ?? match[3] ?? match[4] ?? "";
+    }
+    return attributes;
+  });
+}
+
+function hasHtmlTag(html, tagName, expected) {
+  return htmlTagAttributes(html, tagName).some((attributes) =>
+    Object.entries(expected).every(
+      ([name, value]) => attributes[name] === value,
+    ),
+  );
+}
+
 test("PWA manifest declares the DebateAI install target", async () => {
   assert.deepEqual(await json(file(target, "manifest.webmanifest")), {
     name: "DebateAI",
@@ -242,14 +262,43 @@ test("PNG validation rejects truncation, CRC errors, and missing IEND", async ()
 
 test("HTML links install metadata from origin-root URLs", async () => {
   const html = await readFile(file(htmlPath), "utf8");
-  assert.match(html, /<link rel="manifest" href="\/manifest\.webmanifest" \/>/);
-  assert.match(html, /<meta name="theme-color" content="#0f172a" \/>/);
-  assert.match(
-    html,
-    /<meta name="description" content="DebateAI: lokaler Live-Debattenassistent/,
+  assert.equal(
+    hasHtmlTag(html, "link", {
+      rel: "manifest",
+      href: "/manifest.webmanifest",
+    }),
+    true,
   );
-  assert.match(
-    html,
-    /<link rel="apple-touch-icon" href="\/icons\/icon-192\.png" \/>/,
+  assert.equal(
+    hasHtmlTag(html, "meta", {
+      name: "theme-color",
+      content: expectedThemeColor,
+    }),
+    true,
+  );
+  assert.equal(
+    hasHtmlTag(html, "meta", {
+      name: "description",
+      content: expectedDescription,
+    }),
+    true,
+  );
+  assert.equal(
+    hasHtmlTag(html, "link", {
+      rel: "apple-touch-icon",
+      href: "/icons/icon-192.png",
+    }),
+    true,
+  );
+});
+
+test("HTML metadata parsing accepts multiline and reordered attributes", () => {
+  const html = `<meta\n    content="${expectedDescription}"\n    name="description"\n  />`;
+  assert.equal(
+    hasHtmlTag(html, "meta", {
+      name: "description",
+      content: expectedDescription,
+    }),
+    true,
   );
 });
