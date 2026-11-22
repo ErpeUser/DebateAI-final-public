@@ -1,6 +1,7 @@
 import asyncio
 import pathlib
 import sys
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, patch
 
 from fastapi import FastAPI
@@ -10,7 +11,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from app.database import get_db
+from app.models import Base
 from app.routers import quality_lab
+from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 
 
 async def _fake_db():
@@ -35,6 +38,38 @@ def _payload(**overrides):
     }
     value.update(overrides)
     return value
+
+
+def test_quality_lab_run_survives_cache_clear_and_new_session():
+    async def exercise():
+        engine = create_async_engine("sqlite+aiosqlite:///:memory:")
+        async with engine.begin() as connection:
+            await connection.run_sync(Base.metadata.create_all)
+        sessions = async_sessionmaker(engine, expire_on_commit=False)
+        run_id = "2f8f65ad0a054f6d9b6c2b4d6f3c8a10"
+        record = {
+            "run_id": run_id,
+            "dataset_id": "persisted",
+            "holdout": True,
+            "holdout_verified": False,
+            "can_apply": False,
+            "can_rollback": False,
+            "created_at": datetime.now(UTC).isoformat(),
+            "input": {"claim": "persist this", "context": "", "allowed_sources": []},
+            "candidates": [{"variant_id": f"{run_id}:0"}],
+            "blind_order": ["A", "B"],
+            "ratings": None,
+        }
+        async with sessions() as db:
+            await quality_lab._persist_run(db, record)
+        quality_lab._RUNS.clear()
+        async with sessions() as db:
+            loaded = await quality_lab._get_run(run_id, db)
+            assert loaded["dataset_id"] == "persisted"
+            assert loaded["candidates"][0]["variant_id"] == f"{run_id}:0"
+        await engine.dispose()
+
+    asyncio.run(exercise())
 
 
 def test_quality_lab_runs_two_real_generation_calls_and_returns_metadata():

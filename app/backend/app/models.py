@@ -270,6 +270,26 @@ class TokenUsage(Base):
     session = relationship("Session", back_populates="token_usage")
 
 
+class QualityLabRun(Base):
+    """Persist one model-comparison round for shared-worker and restart safety."""
+
+    __tablename__ = "quality_lab_runs"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    dataset_id: Mapped[str] = mapped_column(String(120))
+    holdout: Mapped[bool] = mapped_column(Boolean, default=False)
+    holdout_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_apply: Mapped[bool] = mapped_column(Boolean, default=False)
+    can_rollback: Mapped[bool] = mapped_column(Boolean, default=False)
+    input_payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    candidates: Mapped[list] = mapped_column(JSON, default=list)
+    blind_order: Mapped[list] = mapped_column(JSON, default=list)
+    ratings: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class Document(Base):
     __tablename__ = "documents"
 

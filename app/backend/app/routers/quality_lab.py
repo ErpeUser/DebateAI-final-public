@@ -20,6 +20,7 @@ from hashlib import sha256
 from typing import Any, Literal
 
 from app.database import get_db
+from app.models import QualityLabRun
 from app.services.custom_endpoints import endpoint_model_entry
 from app.services.llm import generate_text, provider_for, registry_entry
 from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
@@ -140,12 +141,79 @@ def _remember(run_id: str, record: dict[str, Any]) -> None:
         _RUNS.popitem(last=False)
 
 
-def _get_run(run_id: str) -> dict[str, Any]:
+def _record_from_model(run: QualityLabRun) -> dict[str, Any]:
+    return {
+        "run_id": run.id.hex,
+        "dataset_id": run.dataset_id,
+        "holdout": run.holdout,
+        "holdout_verified": run.holdout_verified,
+        "can_apply": run.can_apply,
+        "can_rollback": run.can_rollback,
+        "created_at": run.created_at.isoformat(),
+        "input": run.input_payload,
+        "candidates": run.candidates,
+        "blind_order": run.blind_order,
+        "ratings": run.ratings,
+    }
+
+
+async def _persist_run(
+    db: AsyncSession | object, record: dict[str, Any]
+) -> None:
+    if not isinstance(db, AsyncSession):
+        return
+    run = QualityLabRun(
+        id=uuid.UUID(record["run_id"]),
+        dataset_id=record["dataset_id"],
+        holdout=record["holdout"],
+        holdout_verified=record["holdout_verified"],
+        can_apply=record["can_apply"],
+        can_rollback=record["can_rollback"],
+        input_payload=record["input"],
+        candidates=record["candidates"],
+        blind_order=record["blind_order"],
+        ratings=record["ratings"],
+        created_at=datetime.fromisoformat(record["created_at"]),
+    )
+    db.add(run)
+    await db.commit()
+
+
+async def _get_run(run_id: str, db: AsyncSession | object) -> dict[str, Any]:
+    if isinstance(db, AsyncSession):
+        try:
+            parsed_id = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.") from exc
+        run = await db.get(QualityLabRun, parsed_id)
+        if run is None:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.")
+        return _record_from_model(run)
     record = _RUNS.get(run_id)
     if record is None:
         raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.")
     _RUNS.move_to_end(run_id)
     return record
+
+
+async def _save_rating(
+    run_id: str,
+    payload: QualityLabRating,
+    record: dict[str, Any],
+    db: AsyncSession | object,
+) -> None:
+    if isinstance(db, AsyncSession):
+        try:
+            parsed_id = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.") from exc
+        run = await db.get(QualityLabRun, parsed_id)
+        if run is None:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.")
+        run.ratings = payload.model_dump()
+        await db.commit()
+        return
+    record["ratings"] = payload.model_dump()
 
 
 async def _resolve_models(model_ids: list[str], db: AsyncSession) -> list[dict[str, Any]]:
@@ -280,12 +348,17 @@ async def run_quality_lab(
         "ratings": None,
     }
     _remember(run_id, record)
+    await _persist_run(db, record)
     return {key: value for key, value in record.items() if key != "ratings"}
 
 
 @router.post("/runs/{run_id}/ratings")
-async def submit_quality_lab_rating(run_id: str, payload: QualityLabRating):
-    record = _get_run(run_id)
+async def submit_quality_lab_rating(
+    run_id: str,
+    payload: QualityLabRating,
+    db: AsyncSession = Depends(get_db),
+):
+    record = await _get_run(run_id, db)
     if set(payload.ratings) != {"A", "B"}:
         raise HTTPException(422, "Bewertungen für genau die Antworten A und B sind erforderlich.")
     for side in ("A", "B"):
@@ -295,13 +368,17 @@ async def submit_quality_lab_rating(run_id: str, payload: QualityLabRating):
         _validate_rating_side(side, rating)
     if payload.dataset_id != record["dataset_id"] or payload.holdout != record["holdout"]:
         raise HTTPException(409, "Bewertung gehört zu einer anderen Laborrunde.")
-    record["ratings"] = payload.model_dump()
+    await _save_rating(run_id, payload, record, db)
     return {"saved": True, "agreement": None}
 
 
 @router.post("/runs/{run_id}/apply")
-async def apply_quality_lab_variant(run_id: str, payload: QualityLabApply):
-    record = _get_run(run_id)
+async def apply_quality_lab_variant(
+    run_id: str,
+    payload: QualityLabApply,
+    db: AsyncSession = Depends(get_db),
+):
+    record = await _get_run(run_id, db)
     if not any(item["variant_id"] == payload.variant_id for item in record["candidates"]):
         raise HTTPException(404, "Variante gehört nicht zu dieser Laborrunde.")
     raise HTTPException(
@@ -312,8 +389,11 @@ async def apply_quality_lab_variant(run_id: str, payload: QualityLabApply):
 
 
 @router.post("/runs/{run_id}/rollback")
-async def rollback_quality_lab(run_id: str):
-    _get_run(run_id)
+async def rollback_quality_lab(
+    run_id: str,
+    db: AsyncSession = Depends(get_db),
+):
+    await _get_run(run_id, db)
     raise HTTPException(
         409,
         "Für diese Modellvergleichsrunde existiert keine aktivierte Promptvariante.",
