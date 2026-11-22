@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import importlib
 import os
 import string
 import threading
@@ -69,7 +70,12 @@ def get_update_service():
     A changed channel configuration takes effect after an application restart.
     """
     global _service
-    from app.services.update_service import UpdateService
+    # Resolve the implementation at call time.  The update service keeps a
+    # backwards-compatible facade to this channel, so a top-level import in
+    # either module would create an avoidable structural cycle.
+    UpdateService = importlib.import_module(
+        "app.services.update_service"
+    ).UpdateService
 
     with _lock:
         if _service is None:

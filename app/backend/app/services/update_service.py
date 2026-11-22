@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import importlib
 import json
 import math
 import os
@@ -934,6 +935,5 @@ def get_update_service() -> UpdateService:
     integrations can override one dependency while the channel policy remains
     the sole production owner of enablement and trust configuration.
     """
-    from app.services.debateai_update_channel import get_update_service as channel_get
-
-    return channel_get()
+    channel = importlib.import_module("app.services.debateai_update_channel")
+    return channel.get_update_service()
