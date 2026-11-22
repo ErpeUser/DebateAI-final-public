@@ -32,7 +32,7 @@ class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_update_rejects_builtin_offerings_source(self):
         source = SimpleNamespace(source_type="offerings", updated_at=None)
         db = FakeDB(source)
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"name": "Changed"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"name": "Changed"})
         with self.assertRaises(HTTPException) as error:
             await update_source(uuid.uuid4(), body, db)
         self.assertEqual(400, error.exception.status_code)
@@ -50,7 +50,7 @@ class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
             updated_at=None,
         )
         db = FakeDB(source)
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"name": "After"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"name": "After"})
         result = await update_source(uuid.uuid4(), body, db)
         self.assertEqual(source.id, result.id)
         self.assertEqual("After", result.name)
@@ -60,7 +60,7 @@ class KnowledgeSourceMutationGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_update_rejects_missing_source(self):
         db = FakeDB(None)
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"name": "Changed"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"name": "Changed"})
         with self.assertRaises(HTTPException) as error:
             await update_source(uuid.uuid4(), body, db)
         self.assertEqual(404, error.exception.status_code)

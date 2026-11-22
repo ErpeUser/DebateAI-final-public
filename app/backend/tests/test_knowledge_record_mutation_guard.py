@@ -43,7 +43,7 @@ def _record():
 class KnowledgeRecordMutationGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_update_rejects_builtin_offerings_source(self):
         db = FakeDB(_record(), SimpleNamespace(source_type="offerings"))
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"body": "After"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"body": "After"})
         with self.assertRaises(HTTPException) as error:
             await update_record(uuid.uuid4(), body, db)
         self.assertEqual(400, error.exception.status_code)
@@ -59,7 +59,7 @@ class KnowledgeRecordMutationGuardTests(unittest.IsolatedAsyncioTestCase):
     async def test_update_and_delete_allow_user_managed_sources(self):
         record = _record()
         db = FakeDB(record, SimpleNamespace(source_type="files"))
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"body": "After"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"body": "After"})
         updated = await update_record(uuid.uuid4(), body, db)
         self.assertIs(updated, record)
         self.assertEqual("After", record.body)
@@ -71,7 +71,7 @@ class KnowledgeRecordMutationGuardTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_unknown_source_is_not_mutable(self):
         db = FakeDB(_record(), None)
-        body = SimpleNamespace(model_dump=lambda exclude_unset: {"body": "After"})
+        body = SimpleNamespace(model_dump=lambda **_kwargs: {"body": "After"})
         with self.assertRaises(HTTPException) as error:
             await update_record(uuid.uuid4(), body, db)
         self.assertEqual(404, error.exception.status_code)

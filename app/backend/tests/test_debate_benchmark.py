@@ -49,8 +49,9 @@ class SlowFixtureClient:
 
 class FailingFixtureClient:
     async def stream(self, _turns):
+        if _turns is None:  # pragma: no cover - keeps an async generator
+            yield ""
         raise TimeoutError("fixture timeout")
-        yield ""  # pragma: no cover - keeps this an async generator
 
 
 class FinalProbeFailureClient:

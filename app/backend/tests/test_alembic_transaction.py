@@ -67,7 +67,7 @@ class MigrationTransactionTests(unittest.TestCase):
                 def is_offline_mode(self):
                     return False
 
-                def configure(self, connection, target_metadata):
+                def configure(self, connection, **_kwargs):
                     self.connection = connection.connection
                     self.migration = MigrationContext.configure(
                         self.connection, opts={"transactional_ddl": True}

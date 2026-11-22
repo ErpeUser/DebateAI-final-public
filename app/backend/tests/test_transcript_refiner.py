@@ -161,7 +161,7 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         db.flush = AsyncMock()
         calls = []
 
-        async def fake_batch(db_, sid_, model, batch, context, *, source):
+        async def fake_batch(_db, _sid, model, batch, context, *, source):
             calls.append(([e.sequence for e in batch], [c.sequence for c in context]))
             if batch[0].sequence == 2:
                 raise RuntimeError("provider down")
@@ -189,7 +189,7 @@ class BatchTests(unittest.IsolatedAsyncioTestCase):
         db.flush = AsyncMock()
         seen = []
 
-        async def fake_batch(db_, sid_, model, batch, context, *, source):
+        async def fake_batch(_db, _sid, model, batch, context, *, source):
             seen.extend(e.sequence for e in batch)
             return []
 

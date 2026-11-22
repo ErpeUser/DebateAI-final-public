@@ -164,7 +164,7 @@ class PipelineProvisionalIntegrationTests(unittest.IsolatedAsyncioTestCase):
         )
         queue = MagicMock(add_result=AsyncMock())
 
-        async def worker(frames, diarizer, create, on_segment, *rest):
+        async def worker(frames, diarizer, create, on_segment, *_rest):
             while (item := await frames.get()) is not None:
                 await on_segment(item, SimpleNamespace(speaker_id="s", pcm_bytes=b"00"))
 

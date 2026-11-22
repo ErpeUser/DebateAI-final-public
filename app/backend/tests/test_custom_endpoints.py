@@ -571,8 +571,9 @@ class ProbeTests(unittest.IsolatedAsyncioTestCase):
         )
 
         async def chunks(*, chunk_size):
+            if chunk_size is None:  # pragma: no cover - keeps an async generator
+                yield b""
             raise ce.httpx.ConnectError("refused")
-            yield  # Async generator with the same interface as httpx.
 
         response.aiter_bytes = chunks
         stream = mock.AsyncMock()

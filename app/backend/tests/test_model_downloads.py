@@ -266,7 +266,7 @@ class NerLoaderTests(unittest.TestCase):
         """The fetch must report progress, and must not use real tqdm."""
         seen = {}
 
-        def fake_download(repo, name, local_dir=None, tqdm_class=None, revision=None):
+        def fake_download(_repo, name, local_dir=None, tqdm_class=None, revision=None):
             seen[name] = tqdm_class
             target = Path(local_dir) / name
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -310,7 +310,7 @@ class NerLoaderTests(unittest.TestCase):
         """
         files = {name: b"weights" for name in ner._MODEL_FILES}
 
-        def fake_download(repo, name, local_dir=None, tqdm_class=None, revision=None):
+        def fake_download(_repo, name, local_dir=None, tqdm_class=None, revision=None):
             target = Path(local_dir) / name
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(files[name])

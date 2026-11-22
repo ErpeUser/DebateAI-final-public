@@ -97,7 +97,7 @@ class ProvisionalRetirementTests(unittest.IsolatedAsyncioTestCase):
             AsyncMock(), AsyncMock(), emit_with_identity=emit
         )
 
-        async def worker(frames, diarizer, create, on_segment, on_error, *rest):
+        async def worker(frames, diarizer, create, on_segment, on_error, *_rest):
             while (item := await frames.get()) is not None:
                 try:
                     await on_segment(
