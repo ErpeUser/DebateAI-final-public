@@ -12,14 +12,18 @@ const api = await readFile(
   "utf8",
 );
 
-test("quality lab keeps both sides blind until a complete rating is saved", () => {
+test("quality lab shows identities by default and keeps blind rating optional", () => {
   assert.match(component, /Antwort \{side\}/);
+  assert.match(component, /Optional blind bewerten/);
+  assert.match(component, /!blindRating \|\| revealed/);
+  assert.match(component, /candidate\.prompt_version/);
+  assert.match(component, /candidate\.latency_ms/);
   assert.match(component, /setRevealed\(true\)/);
   assert.match(
     component,
     /disabled=\{!ratingComplete \|\| busy \|\| revealed\}/,
   );
-  assert.match(component, /Modell- und Promptdetails sind jetzt sichtbar/);
+  assert.match(component, /sichtbare Modellvergleich bleibt exportierbar/);
 });
 
 test("quality lab exposes repeatable holdout, export, apply, and rollback controls", () => {

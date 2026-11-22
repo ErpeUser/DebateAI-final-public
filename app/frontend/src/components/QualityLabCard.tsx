@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import type { ModelInfo } from "../types";
 import * as api from "../services/api";
 import {
-  blindOrder,
   isRatingComplete,
   type LabSide,
   type QualityRating,
@@ -79,6 +78,7 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
     B: blankRating(),
   });
   const [preferred, setPreferred] = useState<LabSide | "tie" | null>(null);
+  const [blindRating, setBlindRating] = useState(false);
   const [revealed, setRevealed] = useState(false);
   const [agreement, setAgreement] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -100,14 +100,14 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
   const candidateBySide = useMemo(() => {
     const result: Partial<Record<LabSide, api.QualityLabCandidate>> = {};
     const order =
-      run?.blind_order?.length === 2
+      blindRating && run?.blind_order?.length === 2
         ? run.blind_order
-        : blindOrder(run?.run_id || "pending");
+        : (["A", "B"] as const);
     run?.candidates.slice(0, 2).forEach((candidate, index) => {
       result[order[index]] = candidate;
     });
     return result;
-  }, [run]);
+  }, [blindRating, run]);
 
   const ratingComplete =
     isRatingComplete(ratings.A) &&
@@ -186,7 +186,9 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
       setAgreement(saved.agreement);
       setRevealed(true);
       setNotice(
-        "Bewertung gespeichert. Die Modell- und Promptdetails sind jetzt sichtbar.",
+        blindRating
+          ? "Bewertung gespeichert. Die Modell- und Promptdetails sind jetzt sichtbar."
+          : "Bewertung gespeichert. Der sichtbare Modellvergleich bleibt exportierbar.",
       );
     } catch (err) {
       setError(
@@ -282,7 +284,8 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
           </h2>
           <p className="mt-1 max-w-2xl font-body text-xs leading-5 text-brand-mid-gray">
             Gleiche Eingabe, gleicher Kontext, zwei verfügbare Modelle oder
-            Promptvarianten. Die Reihenfolge bleibt bis zur Bewertung blind.
+            Promptvarianten. Im normalen Vergleich bleiben Identität, Prompt,
+            Quellenstatus und Latenz direkt sichtbar.
           </p>
         </div>
         <span className="rounded-full bg-brand-light-gray-2 px-2 py-1 font-body text-[10px] text-brand-mid-gray">
@@ -373,6 +376,16 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
           />
           Unabhängigen Holdout verwenden
         </label>
+        <label className="inline-flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={blindRating}
+            disabled={Boolean(run)}
+            onChange={(event) => setBlindRating(event.target.checked)}
+            className="accent-brand-teal"
+          />
+          Optional blind bewerten
+        </label>
         <button
           type="button"
           disabled={
@@ -427,15 +440,35 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
                     <h3 className="font-display text-sm font-bold text-brand-dark-gray">
                       Antwort {side}
                     </h3>
-                    {revealed && candidate && (
+                    {(!blindRating || revealed) && candidate && (
                       <span className="font-mono text-[10px] text-brand-mid-gray">
-                        {candidate.model_id}
+                        {candidate.model_id} · Prompt {candidate.prompt_version}
                       </span>
                     )}
                   </div>
                   <p className="mt-3 whitespace-pre-wrap font-body text-sm leading-6 text-brand-dark-gray">
                     {candidate?.answer || "Keine Antwort geliefert."}
                   </p>
+                  {candidate && (!blindRating || revealed) && (
+                    <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-1 font-body text-[11px] text-brand-mid-gray">
+                      <dt>Prompt-Hash</dt>
+                      <dd className="truncate text-right font-mono">
+                        {candidate.prompt_hash}
+                      </dd>
+                      <dt>Latenz</dt>
+                      <dd className="text-right">{candidate.latency_ms} ms</dd>
+                      <dt>Kosten</dt>
+                      <dd className="text-right">
+                        {candidate.cost_usd == null
+                          ? "nicht angegeben"
+                          : `$${candidate.cost_usd.toFixed(4)}`}
+                      </dd>
+                      <dt>Quellenstatus</dt>
+                      <dd className="text-right">
+                        {candidate.source_status ?? "nicht angegeben"}
+                      </dd>
+                    </dl>
+                  )}
                   <div className="mt-4 space-y-1.5">
                     {DIMENSIONS.map((dimension) => (
                       <Score

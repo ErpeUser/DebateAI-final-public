@@ -1316,6 +1316,7 @@ export interface QualityLabCandidate {
   answer: string;
   latency_ms: number;
   cost_usd: number | null;
+  source_status?: string | null;
   available: boolean;
 }
 
