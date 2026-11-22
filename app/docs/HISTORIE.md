@@ -23,6 +23,9 @@ Zeitpunkt dieses Eintrags noch aus; die historischen roten Runs
 `44967192464`, `44967192422` und `44967192373` bleiben deshalb offen und
 werden nicht rückwirkend als grün interpretiert.
 
+
+Der autorisierte GitHub-Readback steht nach der Fast-Forward-Replay-Kette auf `8805b0c65d9d260f24b28a9f990610c82d435124`; der lokale und der Remote-Tree sind byte- und mode-genau identisch. Auf diesem Zielstand bestanden `tests` (`44986744914`) und `security` (`44986744920`); `Structure` (`44986744929`) bleibt wegen geerbter Sentrux-`max_cc`-/`max_fn_lines`-Befunde offen. Der Docs-Site-Lauf `44986669045` war auf dem inhaltlich identischen `f00653c505642ce8cb20970e2efaea763789d141`-Tree erfolgreich. Die lokale→Remote-SHA-Zuordnung ist im `VISION_LEDGER.md` dauerhaft dokumentiert.
+
 ## Weitere lokale Korrekturen – 2026-11-22
 
 `0a03e27c15e5cbcf34ef6f4f265ee5d123455a89` korrigiert den Vision-Widerspruch
