@@ -241,6 +241,8 @@ def _validate_rating_side(side: str, rating: dict[str, int | bool | None]) -> No
     for name, value in rating.items():
         if name == "both_unsuitable":
             continue
+        if both_unsuitable and value is None:
+            continue
         if isinstance(value, bool) or not isinstance(value, int) or not 1 <= value <= 5:
             raise HTTPException(422, f"{name} muss zwischen 1 und 5 liegen.")
 
