@@ -74,7 +74,13 @@ def audit(snapshot: Path) -> list[dict[str, str]]:
             if source.suffix.lower() == ".html"
             else []
         )
-        values.extend(("css", value) for value in _CSS_URL_RE.findall(text))
+        # CSS ``url(...)`` references are meaningful only in stylesheets.  Do
+        # not scan HTML prose/code for the same pattern: documentation often
+        # discusses the syntax literally (for example ``url(...)``), and
+        # treating the placeholder as a path creates a false missing-asset
+        # finding in the assembled docs snapshot.
+        if source.suffix.lower() == ".css":
+            values.extend(("css", value) for value in _CSS_URL_RE.findall(text))
         for attribute, value in values:
             path = _local_reference(value, attribute=attribute)
             if path is None:

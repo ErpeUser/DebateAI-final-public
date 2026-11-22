@@ -18,7 +18,8 @@ class DocsSiteAssetAuditTests(unittest.TestCase):
         (root / "assets" / "logo.svg").write_text("<svg />", encoding="utf-8")
         (root / "index.html").write_text(
             '<link href="/assets/site.css"><img src="/assets/logo.svg">'
-            '<a href="/docs/">Docs</a><a href="https://example.com">External</a>',
+            '<a href="/docs/">Docs</a><a href="https://example.com">External</a>'
+            '<code>CSS url(...)</code>',
             encoding="utf-8",
         )
         (root / "docs").mkdir()
