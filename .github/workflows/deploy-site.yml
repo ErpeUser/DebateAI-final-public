@@ -7,12 +7,16 @@ on:
       - "app/docs-site/**"
       - "app/docs/**"
       - "app/site/**"
+      - "app/scripts/audit_docs_site_assets.py"
+      - "app/scripts/tests/test_audit_docs_site_assets.py"
       - ".github/workflows/deploy-site.yml"
   pull_request:
     paths:
       - "app/docs-site/**"
       - "app/docs/**"
       - "app/site/**"
+      - "app/scripts/audit_docs_site_assets.py"
+      - "app/scripts/tests/test_audit_docs_site_assets.py"
       - ".github/workflows/deploy-site.yml"
   workflow_dispatch:
 
