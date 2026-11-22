@@ -19,6 +19,7 @@ verifiziert.
 | PR-Commit | `71042c1` – geprüfter Cherry-Pick von PR #1 |
 | Kompatibilitätsfix | `4ff69c4` – `pytest-asyncio==1.5.0` für `pytest==9.0.3` |
 | Lokaler Integrationsstand | `084096d` – persistente Quality-Lab-Runs und Ratings |
+| Veröffentlichter SHA nach Docs-Site-Korrektur | `0720607` |
 | Lokaler Arbeitsbaum | sauber vor der Dokumentationsänderung |
 | PR #1 | geschlossen als superseded nach kompatibler Integration |
 | Dependabot-Branch | entfernt |
@@ -60,6 +61,15 @@ keinen offenen externen Nachweis automatisch auf `VERIFIED`.
 | Repository-Layout | 1106 Dateien, `Repository layout OK` | lokaler Checkout |
 | `git diff --check` | bestanden | lokaler Diff |
 | Runtime Health | HTTP 200, `{"status":"ok"}` | laufendes Windows-Bundle |
+
+### GitHub-Actions auf `0720607`
+
+| Workflow | Run | Ergebnis |
+|---|---:|---|
+| Tests | [45015260211](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260211) | `success` – backend, frontend, workspace-windows, postgres-boundaries und calibration-browser grün |
+| Security | [45015260255](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260255) | `success` |
+| Docs-Site | [45015260258](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260258) | `success` |
+| Structure | [45015260168](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260168) | `failure` wegen bestehender `max_cc`, `max_fn_lines` und `max_file_lines`-Findings; Quality 6127 |
 
 Ein früherer kompletter Backend-Lauf bestand mit 2246 Tests und 12 Skips,
 wies aber zwei unabhängige Baseline-/Umgebungsfälle auf. Diese bleiben als
