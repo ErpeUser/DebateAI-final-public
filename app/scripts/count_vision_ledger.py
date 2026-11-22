@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-EXPECTED_COLUMNS = 13
+EXPECTED_COLUMNS = 15
 
 def rows(path: Path):
     for line in path.read_text(encoding="utf-8").splitlines():
