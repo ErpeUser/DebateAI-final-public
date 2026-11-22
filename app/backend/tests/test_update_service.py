@@ -774,7 +774,10 @@ assert 'x-debateai-instance' not in response.headers.get(
 """
         environment = {
             **os.environ,
-            "PYTHONPATH": str(Path.cwd() / "backend"),
+            # The suite may run from either the repository root or app/backend.
+            # Resolve the package directory from this test file so the
+            # subprocess exercises the same application as the parent test.
+            "PYTHONPATH": str(Path(__file__).resolve().parents[1]),
             "DEBATEAI_DESKTOP": "1",
             "DEBATEAI_INSTANCE_TOKEN": "instance-secret",
         }
