@@ -2,7 +2,7 @@
 
 Stand: 2026-11-23. Diese Datei enthält nur Punkte, für die der aktuelle Tree oder ein erreichbarer Nachweis noch keinen vollständigen Abschluss belegt. Historische Belege und alte Zielstände bleiben in [HISTORIE.md](HISTORIE.md).
 
-**Aktueller geprüfter Code-/CI-Stand:** `main` steht auf `ce541ce547e75e006c30f29f7319307bfafab15b`. Tests ([45122240925](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240925)) und Security ([45122240971](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240971)) sind grün. Structure ([45122240928](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240928)) bleibt wegen der geerbten absoluten Sentrux-Regeln rot. Der lokale `github_sync.py --pull --strict`-Nachweis lief mit Exit-Code 0. PR #1 ist geschlossen, der Dependabot-Branch entfernt, weitere Branches und PRs sind nicht offen. Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
+**Geprüfte Code-/CI-Abnahmebasis:** `ce541ce547e75e006c30f29f7319307bfafab15b`. Tests ([45122240925](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240925)) und Security ([45122240971](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240971)) sind grün. Structure ([45122240928](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240928)) bleibt wegen der geerbten absoluten Sentrux-Regeln rot. Danach folgten ausschließlich redaktionelle Matrixnachträge. Der lokale `github_sync.py --pull --strict`-Nachweis lief mit Exit-Code 0. PR #1 ist geschlossen, der Dependabot-Branch entfernt, weitere Branches und PRs sind nicht offen. Produktfreigabe, Signierung und externe Hardware-/Provider-Gates bleiben getrennte externe Nachweise.
 
 ## Vision-Abdeckungsmatrix (Bestandsaufnahme 22.11.2026)
 
@@ -686,5 +686,5 @@ Auf einem autorisierten Zwei-Worker-System denselben Live-Call über Workerwechs
 
 ### P3.2 Repository-/Projekt-Inventar
 
-- **Status:** frischer Readback am 23.11.2026: `main` steht auf `ce541ce547e75e006c30f29f7319307bfafab15b`; Tests und Security sind grün, Structure bleibt wegen der absoluten Sentrux-Schulden rot. PR #1 ist nach geprüfter Integration geschlossen, der Dependabot-Branch entfernt, und es existieren keine offenen Nicht-`main`-Branches oder PRs. Der Strict-Sync lief mit Exit-Code 0. `pytest==9.0.3` und `pytest-asyncio==1.5.0` bleiben kompatibel.
+- **Status:** frischer Readback am 23.11.2026: Die Code-/CI-Abnahmebasis ist `ce541ce547e75e006c30f29f7319307bfafab15b`; danach folgten redaktionelle Nachträge auf `main`. Tests und Security sind grün, Structure bleibt wegen der absoluten Sentrux-Schulden rot. PR #1 ist nach geprüfter Integration geschlossen, der Dependabot-Branch entfernt, und es existieren keine offenen Nicht-`main`-Branches oder PRs. Der Strict-Sync lief mit Exit-Code 0. `pytest==9.0.3` und `pytest-asyncio==1.5.0` bleiben kompatibel.
 - **Benötigt:** Für die vollständige externe Inventarabnahme bleiben GitHub-Branch-Protection/Rulesets, private Projects/Tags und produktive Releaseberechtigungen separat zu prüfen. Der lokale Repository-/Branch-/PR-Abgleich ist abgeschlossen.
