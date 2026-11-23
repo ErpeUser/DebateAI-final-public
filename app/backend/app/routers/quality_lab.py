@@ -25,6 +25,12 @@ from app.services.custom_endpoints import endpoint_model_entry
 from app.services.llm import generate_text, provider_for, registry_entry
 from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
 from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_to_http
+from app.services.quality_lab_holdout import (
+    HOLDOUT_DATASET_ID,
+    HOLDOUT_VERSION,
+    get_case,
+    list_cases,
+)
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -48,6 +54,7 @@ class QualityLabRunRequest(BaseModel):
     allowed_sources: list[str] = Field(default_factory=list, max_length=MAX_SOURCES)
     dataset_id: str = Field(default="interactive", min_length=1, max_length=120)
     holdout: bool = False
+    holdout_case_id: str | None = Field(default=None, max_length=120)
     model_ids: list[str] = Field(min_length=2, max_length=2)
     prompt_variants: list[str] = Field(default_factory=list, max_length=2)
 
@@ -85,6 +92,15 @@ class QualityLabRating(BaseModel):
 
 class QualityLabApply(BaseModel):
     variant_id: str = Field(min_length=1, max_length=160)
+
+
+@router.get("/holdouts")
+async def list_quality_lab_holdouts():
+    return {
+        "dataset_id": HOLDOUT_DATASET_ID,
+        "version": HOLDOUT_VERSION,
+        "cases": list_cases(),
+    }
 
 
 def _prompt_for(request: QualityLabRunRequest, index: int) -> str:
@@ -320,28 +336,40 @@ async def run_quality_lab(
     request: QualityLabRunRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    entries = await _resolve_models(request.model_ids, db)
+    holdout_case = get_case(request.holdout_case_id) if request.holdout_case_id else None
+    effective_request = request
+    if holdout_case is not None:
+        effective_request = request.model_copy(
+            update={
+                "dataset_id": HOLDOUT_DATASET_ID,
+                "claim": holdout_case["claim"],
+                "context": holdout_case["context"],
+                "allowed_sources": holdout_case["allowed_sources"],
+            }
+        )
+    entries = await _resolve_models(effective_request.model_ids, db)
     run_id = uuid.uuid4().hex
-    prompts = [_prompt_for(request, index) for index in range(2)]
-    candidates = await _generate_candidates(request, entries, prompts, run_id)
+    prompts = [_prompt_for(effective_request, index) for index in range(2)]
+    candidates = await _generate_candidates(effective_request, entries, prompts, run_id)
     if any(not candidate["available"] for candidate in candidates):
         raise HTTPException(502, "Mindestens ein ausgewähltes Modell lieferte keine Antwort.")
     created_at = datetime.now(UTC).isoformat()
     record = {
         "run_id": run_id,
-        "dataset_id": request.dataset_id.strip() or "interactive",
-        "holdout": request.holdout,
+        "dataset_id": effective_request.dataset_id.strip() or "interactive",
+        "holdout": effective_request.holdout,
         # The current source tree has no registered immutable dataset/holdout
         # catalog. Keep the requested flag for the UI, but never label it as a
         # scientific holdout until such a dataset is actually loaded.
-        "holdout_verified": False,
+        "holdout_verified": bool(holdout_case),
         "can_apply": False,
         "can_rollback": False,
         "created_at": created_at,
         "input": {
-            "claim": request.claim.strip(),
-            "context": request.context.strip(),
-            "allowed_sources": request.allowed_sources,
+            "claim": effective_request.claim.strip(),
+            "context": effective_request.context.strip(),
+            "allowed_sources": effective_request.allowed_sources,
+            "holdout_case_id": holdout_case["case_id"] if holdout_case else None,
         },
         "candidates": candidates,
         "blind_order": ["B", "A"] if secrets.randbelow(2) else ["A", "B"],

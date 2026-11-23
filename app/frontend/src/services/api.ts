@@ -1340,9 +1340,27 @@ export interface QualityLabRunRequest {
   allowed_sources: string[];
   dataset_id?: string;
   holdout?: boolean;
+  holdout_case_id?: string;
   model_ids: string[];
   prompt_variants?: string[];
 }
+
+export interface QualityLabHoldoutCase {
+  case_id: string;
+  title: string;
+  claim: string;
+  context: string;
+  allowed_sources: string[];
+}
+
+export interface QualityLabHoldoutCatalog {
+  dataset_id: string;
+  version: string;
+  cases: QualityLabHoldoutCase[];
+}
+
+export const listQualityLabHoldouts = () =>
+  request<QualityLabHoldoutCatalog>("/quality-lab/holdouts");
 
 export const runQualityLab = (payload: QualityLabRunRequest) =>
   request<QualityLabRun>("/quality-lab/runs", {

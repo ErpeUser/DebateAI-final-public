@@ -72,6 +72,41 @@ def test_quality_lab_run_survives_cache_clear_and_new_session():
     asyncio.run(exercise())
 
 
+def test_quality_lab_exposes_versioned_holdout_catalog():
+    client = TestClient(_app())
+    response = client.get("/api/quality-lab/holdouts")
+    assert response.status_code == 200
+    body = response.json()
+    assert body["dataset_id"] == "de-debate-holdout-v1"
+    assert body["version"] == "1"
+    assert len(body["cases"]) == 3
+    assert body["cases"][0]["claim"]
+
+
+def test_quality_lab_marks_catalog_case_as_verified_and_uses_its_claim():
+    async def generate(model_id, prompt, **kwargs):
+        return "Antwort"
+
+    with (
+        patch.object(quality_lab, "generate_text", side_effect=generate),
+        patch.object(quality_lab, "is_local_only", new=AsyncMock(return_value=False)),
+    ):
+        client = TestClient(_app())
+        response = client.post(
+            "/api/quality-lab/runs",
+            json=_payload(
+                holdout=True,
+                holdout_case_id="public-transit-001",
+                claim="Dieser Claim wird durch den Katalog ersetzt.",
+            ),
+        )
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["dataset_id"] == "de-debate-holdout-v1"
+    assert body["holdout_verified"] is True
+    assert body["input"]["claim"] == "Soll eine Stadt den öffentlichen Nahverkehr ausbauen?"
+
+
 def test_quality_lab_runs_two_real_generation_calls_and_returns_metadata():
     calls = []
 
