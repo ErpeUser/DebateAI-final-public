@@ -3,7 +3,7 @@
 **Stand:** 23.11.2026
 **Gesamtstatus:** `PARTIAL_VERIFICATION`
 
-`DONE` bleibt unzulässig. Tests und Security sind auf dem aktuellen `main`-SHA grün. Das Structure-Gate bleibt wegen geerbter absoluter Sentrux-Regeln rot. Quality-Lab-Apply/Rollback, der versionierte Holdout-Katalog und der DB-basierte WebSocket-Replay sind implementiert und lokal verifiziert. Externe Windows-, Audio-, Provider-, LAN- und Release-Nachweise bleiben offen.
+`DONE` bleibt unzulässig. Tests, Security und Docs-Site sind auf dem dokumentierten Abnahme-SHA grün. Das Structure-Gate bleibt wegen geerbter absoluter Sentrux-Regeln rot. Quality-Lab-Apply/Rollback, der versionierte Holdout-Katalog und der DB-basierte WebSocket-Replay sind implementiert und lokal verifiziert. Externe Windows-, Audio-, Provider-, LAN- und Release-Nachweise bleiben offen.
 
 ## Repository, Branch, PR und Synchronisierung
 
@@ -76,4 +76,4 @@ Der aktuelle Lauf [45122240928](https://github.com/ErpeUser/DebateAI-final-publi
 | P2 | Reproduzierbare Gesamtbuilds | Docs-Site ist reproduzierbar. Vollständige Linux-/Windows-Toolchain-, Lizenz- und Artefakt-Hashes fehlen. |
 | P2 | jscpd-Duplikatsschuld | Die bestehende Duplikatsschuld ist noch nicht gezielt abgebaut. |
 
-Diese Punkte sind im [Vision-Ledger](VISION_LEDGER.md) und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) mit Owner, Evidenzmodus und nächstem Nachweis geführt. Historische SHA- und Run-Belege bleiben in `HISTORIE.md`; aktuelle Matrixzeilen verwenden den Abnahme-SHA `05dd1cf` und die aktuellen Tests-/Security-/Structure-Runs.
+Diese Punkte sind im [Vision-Ledger](VISION_LEDGER.md) und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) mit Owner, Evidenzmodus und nächstem Nachweis geführt. Historische SHA- und Run-Belege bleiben in `HISTORIE.md`; aktuelle Matrixzeilen verwenden den Abnahme-SHA `ce541ce` und die zugehörigen Tests-/Security-/Structure-Runs.
