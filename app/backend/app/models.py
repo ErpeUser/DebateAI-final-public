@@ -290,6 +290,23 @@ class QualityLabRun(Base):
     )
 
 
+class SharedSessionState(Base):
+    """Durable replay state shared by backend workers for one live session."""
+
+    __tablename__ = "shared_session_state"
+
+    session_id: Mapped[uuid.UUID] = mapped_column(Uuid(), primary_key=True)
+    server_epoch: Mapped[str] = mapped_column(String(64))
+    sequence: Mapped[int] = mapped_column(Integer, default=0)
+    generation: Mapped[int] = mapped_column(Integer, default=0)
+    active_connections: Mapped[int] = mapped_column(Integer, default=0)
+    events: Mapped[list] = mapped_column(JSON, default=list)
+    state: Mapped[list] = mapped_column(JSON, default=list)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(UTC)
+    )
+
+
 class Document(Base):
     __tablename__ = "documents"
 

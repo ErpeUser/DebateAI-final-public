@@ -43,6 +43,7 @@ from app.services.speaker_revalidation import (
 )
 from app.services.token_usage import summarize_usage
 from app.services.ws_event_stream import forget_session as forget_event_journal
+from app.services.shared_session_state import forget_session as forget_shared_session
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
 from fastapi.concurrency import run_in_threadpool
 from fastapi.responses import FileResponse
@@ -338,6 +339,7 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     shield.forget_session(session_id)
     transcription_jobs.forget_session(session_id)
     forget_event_journal(session_id)
+    await forget_shared_session(session_id)
     audio_root = (data_dir() / "audio").resolve()
     session_audio = (audio_root / str(session_id)).resolve()
     try:

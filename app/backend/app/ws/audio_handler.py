@@ -814,7 +814,7 @@ async def _audio_websocket(websocket: WebSocket, session_id: uuid.UUID):
     await websocket.accept()
     # Everything sent from here on - transcript lines, insights, briefings -
     # passes through the shield's decode path on its way to the interface.
-    websocket = RevealingWebSocket(websocket, session_id)
+    websocket = await RevealingWebSocket.create(websocket, session_id)
 
     after_sequence, after_epoch = _reconnect_cursor(websocket.query_params)
     capture_id = _capture_id(websocket.query_params)

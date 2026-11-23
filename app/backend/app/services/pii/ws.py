@@ -21,6 +21,11 @@ import uuid
 from app.services.pii import shield, vault
 from app.services.provisional_transcripts import persist_provisional_revision
 from app.services.ws_event_stream import ClientSendBuffer, event_journal
+from app.services.shared_session_state import (
+    close_generation as close_shared_generation,
+    open_generation as open_shared_generation,
+    save_snapshot as save_shared_snapshot,
+)
 
 AUDIT_FLUSH_SECONDS = 60.0
 
@@ -40,6 +45,32 @@ class RevealingWebSocket:
         self._sender_error: Exception | None = None
         self._sender_task = asyncio.create_task(self._sender_loop())
         self._transcript_retention_enabled = False
+        self._shared = False
+
+    @classmethod
+    async def create(cls, inner, session_id: uuid.UUID) -> "RevealingWebSocket":
+        """Create the production socket with a worker-shared replay generation."""
+        socket = cls(inner, session_id)
+        snapshot = await open_shared_generation(
+            session_id,
+            server_epoch=socket._journal.server_epoch,
+            events=[],
+            state=[],
+            sequence=0,
+        )
+        socket._journal.restore_state(
+            {
+                "server_epoch": snapshot.server_epoch,
+                "sequence": snapshot.sequence,
+                "events": snapshot.events,
+                "state": snapshot.state,
+            }
+        )
+        socket._journal._generation = snapshot.generation
+        socket._journal._active_connections = snapshot.active_connections
+        socket._generation = snapshot.generation
+        socket._shared = True
+        return socket
 
     def __getattr__(self, name):
         return getattr(self._inner, name)
@@ -90,6 +121,8 @@ class RevealingWebSocket:
                 await self._maybe_flush()
         if isinstance(data, dict):
             data = self._journal.record(data)
+            if self._shared:
+                await self._persist_shared()
         if self._sender_error is not None:
             raise self._sender_error
         self._drained.clear()
@@ -144,7 +177,21 @@ class RevealingWebSocket:
         if not self._generation_closed:
             self._generation_closed = True
             self._journal.close_generation(self._generation)
+            if self._shared:
+                await self._persist_shared()
+                await close_shared_generation(self._session_id, self._generation)
         return await self._inner.close(*args, **kwargs)
+
+    async def _persist_shared(self) -> None:
+        exported = self._journal.export_state()
+        await save_shared_snapshot(
+            self._session_id,
+            self._generation,
+            server_epoch=exported["server_epoch"],
+            events=exported["events"],
+            state=exported["state"],
+            sequence=exported["sequence"],
+        )
 
     async def _sender_loop(self) -> None:
         try:

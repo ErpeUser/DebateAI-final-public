@@ -136,6 +136,40 @@ class SessionEventJournal:
     def is_current_generation(self, generation: int) -> bool:
         return generation == self._generation
 
+    def export_state(self) -> dict[str, Any]:
+        """Return JSON-safe replay state for the shared worker store."""
+        return {
+            "server_epoch": self.server_epoch,
+            "sequence": self._sequence,
+            "events": copy.deepcopy(list(self._events)),
+            "state": [
+                {
+                    "event_type": key[0],
+                    "state_key": key[1],
+                    "event": copy.deepcopy(event),
+                }
+                for key, event in self._state.items()
+            ],
+        }
+
+    def restore_state(self, payload: dict[str, Any]) -> None:
+        """Restore a bounded replay snapshot loaded from shared storage."""
+        self.server_epoch = str(payload.get("server_epoch") or self.server_epoch)
+        self._sequence = max(0, int(payload.get("sequence") or 0))
+        self._events.clear()
+        self._state.clear()
+        for event in payload.get("events") or []:
+            if isinstance(event, dict):
+                self._events.append(copy.deepcopy(event))
+        for item in payload.get("state") or []:
+            if not isinstance(item, dict) or not isinstance(item.get("event"), dict):
+                continue
+            key = (str(item.get("event_type") or "unknown"), str(item.get("state_key") or "latest"))
+            self._state[key] = copy.deepcopy(item["event"])
+        while len(self._state) > self.max_state_events:
+            self._state.popitem(last=False)
+        self._enforce_byte_budget()
+
     def record(self, payload: dict[str, Any]) -> dict[str, Any]:
         self._sequence += 1
         event = copy.deepcopy(payload)
