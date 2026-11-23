@@ -11,7 +11,7 @@
 |---|---|
 | Repository | `ErpeUser/DebateAI-final-public` |
 | Branch | `main` |
-| Abnahme-SHA | `05dd1cf0a04cde33d8fe5c3f75116898a78f1220` |
+| Abnahme-SHA | `ce541ce547e75e006c30f29f7319307bfafab15b` |
 | Verhaltensändernder Commit | `775815a` – kontrollierte Prompt-Evaluierung mit Apply/Rollback und UI-Vertrag |
 | Vorherige Produkt-Commits | `82c2703` Holdout-Katalog, `fdf10b7` Shared-Session-State, `08b7698` Testbarkeit und Cleanup |
 | PR #1 | geschlossen als superseded nach geprüftem Cherry-Pick |
@@ -44,7 +44,7 @@ Die PR-Änderung wurde nicht blind übernommen. `pytest==9.0.3` wird mit `pytest
 
 ### Structure-Gate
 
-Der aktuelle Lauf [45121716527](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716527) ist rot. Die unveränderten Befunde sind sechs `max_cc`-, fünf `max_fn_lines`- und acht `max_file_lines`-Verstöße, unter anderem in `orchestrator.py`, `audio_pipeline.py`, `capture.mjs`, `useWebSocket.ts`, `useAudioCapture.ts`, großen Dokumenten und generierten Manifests. Die Gate-Regel wurde nicht abgeschwächt und keine Datei wurde allowlisted. Der Vergleich meldet keine neue Verschlechterung durch die Quality-Lab- oder Shared-State-Änderungen.
+Der aktuelle Lauf [45122240928](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240928) ist rot. Die unveränderten Befunde sind sechs `max_cc`-, fünf `max_fn_lines`- und acht `max_file_lines`-Verstöße, unter anderem in `orchestrator.py`, `audio_pipeline.py`, `capture.mjs`, `useWebSocket.ts`, `useAudioCapture.ts`, großen Dokumenten und generierten Manifests. Die Gate-Regel wurde nicht abgeschwächt und keine Datei wurde allowlisted. Der Vergleich meldet keine neue Verschlechterung durch die Quality-Lab- oder Shared-State-Änderungen.
 
 ## Verifikation auf aktuellem SHA
 
@@ -57,9 +57,10 @@ Der aktuelle Lauf [45121716527](https://github.com/ErpeUser/DebateAI-final-publi
 | Frontend-Produktionsbuild | erfolgreich, 2146 Module |
 | Python-Compileall | bestanden |
 | `git diff --check` | bestanden |
-| GitHub Tests | [45121716554](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716554), `success` |
-| GitHub Security | [45121716501](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716501), `success` |
-| GitHub Structure | [45121716527](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716527), `failure` wegen bestehender absoluter Regeln |
+| GitHub Tests | [45122240925](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240925), `success` |
+| GitHub Security | [45122240971](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240971), `success` |
+| GitHub Docs-Site | [45122240923](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240923), `success` |
+| GitHub Structure | [45122240928](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45122240928), `failure` wegen bestehender absoluter Regeln |
 
 ## Offene Punkte nach dem Vision-Abgleich
 
