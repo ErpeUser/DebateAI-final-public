@@ -11,7 +11,7 @@
 |---|---|
 | Repository | `ErpeUser/DebateAI-final-public` |
 | Branch | `main` |
-| Aktueller Remote-/lokaler SHA | `775815aeb81decea6dd56be2f058678c9a57348a` |
+| Abnahme-SHA | `05dd1cf0a04cde33d8fe5c3f75116898a78f1220` |
 | Verhaltensändernder Commit | `775815a` – kontrollierte Prompt-Evaluierung mit Apply/Rollback und UI-Vertrag |
 | Vorherige Produkt-Commits | `82c2703` Holdout-Katalog, `fdf10b7` Shared-Session-State, `08b7698` Testbarkeit und Cleanup |
 | PR #1 | geschlossen als superseded nach geprüftem Cherry-Pick |
@@ -44,7 +44,7 @@ Die PR-Änderung wurde nicht blind übernommen. `pytest==9.0.3` wird mit `pytest
 
 ### Structure-Gate
 
-Der aktuelle Lauf [45120718086](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718086) ist rot. Die unveränderten Befunde sind sechs `max_cc`-, fünf `max_fn_lines`- und acht `max_file_lines`-Verstöße, unter anderem in `orchestrator.py`, `audio_pipeline.py`, `capture.mjs`, `useWebSocket.ts`, `useAudioCapture.ts`, großen Dokumenten und generierten Manifests. Die Gate-Regel wurde nicht abgeschwächt und keine Datei wurde allowlisted. Der Vergleich meldet keine neue Verschlechterung durch die Quality-Lab- oder Shared-State-Änderungen.
+Der aktuelle Lauf [45121716527](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716527) ist rot. Die unveränderten Befunde sind sechs `max_cc`-, fünf `max_fn_lines`- und acht `max_file_lines`-Verstöße, unter anderem in `orchestrator.py`, `audio_pipeline.py`, `capture.mjs`, `useWebSocket.ts`, `useAudioCapture.ts`, großen Dokumenten und generierten Manifests. Die Gate-Regel wurde nicht abgeschwächt und keine Datei wurde allowlisted. Der Vergleich meldet keine neue Verschlechterung durch die Quality-Lab- oder Shared-State-Änderungen.
 
 ## Verifikation auf aktuellem SHA
 
@@ -57,9 +57,9 @@ Der aktuelle Lauf [45120718086](https://github.com/ErpeUser/DebateAI-final-publi
 | Frontend-Produktionsbuild | erfolgreich, 2146 Module |
 | Python-Compileall | bestanden |
 | `git diff --check` | bestanden |
-| GitHub Tests | [45120718051](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718051), `success` |
-| GitHub Security | [45120718251](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718251), `success` |
-| GitHub Structure | [45120718086](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718086), `failure` wegen bestehender absoluter Regeln |
+| GitHub Tests | [45121716554](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716554), `success` |
+| GitHub Security | [45121716501](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716501), `success` |
+| GitHub Structure | [45121716527](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45121716527), `failure` wegen bestehender absoluter Regeln |
 
 ## Offene Punkte nach dem Vision-Abgleich
 
@@ -75,4 +75,4 @@ Der aktuelle Lauf [45120718086](https://github.com/ErpeUser/DebateAI-final-publi
 | P2 | Reproduzierbare Gesamtbuilds | Docs-Site ist reproduzierbar. Vollständige Linux-/Windows-Toolchain-, Lizenz- und Artefakt-Hashes fehlen. |
 | P2 | jscpd-Duplikatsschuld | Die bestehende Duplikatsschuld ist noch nicht gezielt abgebaut. |
 
-Diese Punkte sind im [Vision-Ledger](VISION_LEDGER.md) und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) mit Owner, Evidenzmodus und nächstem Nachweis geführt. Historische SHA- und Run-Belege bleiben in `HISTORIE.md`; aktuelle Matrixzeilen verwenden den SHA `775815a` und die aktuellen Tests-/Security-/Structure-Runs.
+Diese Punkte sind im [Vision-Ledger](VISION_LEDGER.md) und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) mit Owner, Evidenzmodus und nächstem Nachweis geführt. Historische SHA- und Run-Belege bleiben in `HISTORIE.md`; aktuelle Matrixzeilen verwenden den Abnahme-SHA `05dd1cf` und die aktuellen Tests-/Security-/Structure-Runs.
