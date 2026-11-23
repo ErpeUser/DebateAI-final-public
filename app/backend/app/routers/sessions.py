@@ -339,7 +339,8 @@ async def delete_session(session_id: uuid.UUID, db: AsyncSession = Depends(get_d
     shield.forget_session(session_id)
     transcription_jobs.forget_session(session_id)
     forget_event_journal(session_id)
-    await forget_shared_session(session_id)
+    if isinstance(db, AsyncSession):
+        await forget_shared_session(session_id)
     audio_root = (data_dir() / "audio").resolve()
     session_audio = (audio_root / str(session_id)).resolve()
     try:
