@@ -1319,6 +1319,7 @@ export interface QualityLabCandidate {
   cost_usd: number | null;
   source_status?: string | null;
   available: boolean;
+  prompt_variant?: string | null;
 }
 
 export interface QualityLabRun {
@@ -1329,7 +1330,13 @@ export interface QualityLabRun {
   can_apply: boolean;
   can_rollback: boolean;
   created_at: string;
-  input: { claim: string; context: string; allowed_sources: string[] };
+  input: {
+    claim: string;
+    context: string;
+    allowed_sources: string[];
+    holdout_case_id?: string | null;
+    prompt_name?: string | null;
+  };
   candidates: QualityLabCandidate[];
   blind_order: ("A" | "B")[];
 }
@@ -1341,6 +1348,7 @@ export interface QualityLabRunRequest {
   dataset_id?: string;
   holdout?: boolean;
   holdout_case_id?: string;
+  prompt_name?: string;
   model_ids: string[];
   prompt_variants?: string[];
 }
@@ -1372,7 +1380,7 @@ export const submitQualityLabRating = (
   runId: string,
   payload: Record<string, unknown>,
 ) =>
-  request<{ saved: boolean; agreement: number | null }>(
+  request<{ saved: boolean; agreement: number | null; can_apply: boolean }>(
     `/quality-lab/runs/${encodeURIComponent(runId)}/ratings`,
     {
       method: "POST",

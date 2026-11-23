@@ -21,8 +21,10 @@ from typing import Any, Literal
 
 from app.database import get_db
 from app.models import QualityLabRun
+from app.services.ai_config import ai_directory
 from app.services.custom_endpoints import endpoint_model_entry
 from app.services.llm import generate_text, provider_for, registry_entry
+from app.services.prompt_optimization import EvaluationResult, PromptOptimizationStore
 from app.services.privacy import LocalOnlyModeError, allows_local_only, is_local_only
 from app.services.provider_errors import PROVIDER_ERROR_TYPES, provider_error_to_http
 from app.services.quality_lab_holdout import (
@@ -55,6 +57,11 @@ class QualityLabRunRequest(BaseModel):
     dataset_id: str = Field(default="interactive", min_length=1, max_length=120)
     holdout: bool = False
     holdout_case_id: str | None = Field(default=None, max_length=120)
+    prompt_name: str | None = Field(
+        default=None,
+        max_length=120,
+        pattern=r"^[a-z0-9][a-z0-9_.-]{0,119}$",
+    )
     model_ids: list[str] = Field(min_length=2, max_length=2)
     prompt_variants: list[str] = Field(default_factory=list, max_length=2)
 
@@ -129,6 +136,7 @@ def _candidate(
     elapsed_ms: float,
     prompt: str,
     source_status: str,
+    prompt_variant: str | None,
 ) -> dict[str, Any]:
     variant_id = f"{run_id}:{index}"
     return {
@@ -144,6 +152,7 @@ def _candidate(
         "source_status": source_status,
         "available": bool(answer.strip()),
         "model_name": entry.get("name") or model_id,
+        "prompt_variant": prompt_variant,
     }
 
 
@@ -218,6 +227,8 @@ async def _save_rating(
     record: dict[str, Any],
     db: AsyncSession | object,
 ) -> None:
+    record["ratings"] = payload.model_dump()
+    record["can_apply"] = _can_apply(record, payload)
     if isinstance(db, AsyncSession):
         try:
             parsed_id = uuid.UUID(run_id)
@@ -227,9 +238,55 @@ async def _save_rating(
         if run is None:
             raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.")
         run.ratings = payload.model_dump()
+        run.can_apply = record["can_apply"]
         await db.commit()
         return
-    record["ratings"] = payload.model_dump()
+
+
+def _can_apply(record: dict[str, Any], payload: QualityLabRating) -> bool:
+    if not record.get("holdout_verified"):
+        return False
+    if not str(record.get("input", {}).get("prompt_name") or "").strip():
+        return False
+    if payload.preferred not in {"A", "B"}:
+        return False
+    if any(bool(rating.get("both_unsuitable")) for rating in payload.ratings.values()):
+        return False
+    return all(
+        isinstance(candidate.get("prompt_variant"), str)
+        and bool(candidate["prompt_variant"].strip())
+        for candidate in record.get("candidates", [])
+    )
+
+
+def _evaluation_results(
+    record: dict[str, Any], payload: QualityLabRating, selected_side: str
+) -> tuple[list[EvaluationResult], list[EvaluationResult]]:
+    if selected_side not in {"A", "B"}:
+        raise ValueError("Eine Promptvariante muss als bevorzugte Antwort ausgewählt sein.")
+    baseline_side = "B" if selected_side == "A" else "A"
+    case_id = str(record.get("input", {}).get("holdout_case_id") or record["run_id"])
+    split = "holdout" if record.get("holdout_verified") else "fixed"
+    side_candidates = {"A": record["candidates"][0], "B": record["candidates"][1]}
+
+    def make(side: str) -> EvaluationResult:
+        rating = payload.ratings[side]
+        candidate = side_candidates[side]
+        return EvaluationResult(
+            case_id=case_id,
+            split=split,
+            metrics={
+                "naturalness": rating["naturalness"],
+                "argument_strength": rating["strength"],
+                "factuality": rating["precision"],
+                "source_honesty": rating["source_honesty"],
+                "usability": rating["usability"],
+                "latency_ms": candidate.get("latency_ms", 0.0),
+                "cost_usd": candidate.get("cost_usd") or 0.0,
+            },
+        )
+
+    return [make(baseline_side)], [make(selected_side)]
 
 
 async def _resolve_models(model_ids: list[str], db: AsyncSession) -> list[dict[str, Any]]:
@@ -280,6 +337,11 @@ async def _generate_candidate(
         elapsed_ms=(time.perf_counter() - started) * 1000,
         prompt=prompt,
         source_status="sources_provided" if request.allowed_sources else "no_sources",
+        prompt_variant=(
+            request.prompt_variants[index]
+            if index < len(request.prompt_variants)
+            else None
+        ),
     )
 
 
@@ -370,6 +432,7 @@ async def run_quality_lab(
             "context": effective_request.context.strip(),
             "allowed_sources": effective_request.allowed_sources,
             "holdout_case_id": holdout_case["case_id"] if holdout_case else None,
+            "prompt_name": effective_request.prompt_name,
         },
         "candidates": candidates,
         "blind_order": ["B", "A"] if secrets.randbelow(2) else ["A", "B"],
@@ -397,7 +460,11 @@ async def submit_quality_lab_rating(
     if payload.dataset_id != record["dataset_id"] or payload.holdout != record["holdout"]:
         raise HTTPException(409, "Bewertung gehört zu einer anderen Laborrunde.")
     await _save_rating(run_id, payload, record, db)
-    return {"saved": True, "agreement": None}
+    return {
+        "saved": True,
+        "agreement": None,
+        "can_apply": record["can_apply"],
+    }
 
 
 @router.post("/runs/{run_id}/apply")
@@ -407,13 +474,50 @@ async def apply_quality_lab_variant(
     db: AsyncSession = Depends(get_db),
 ):
     record = await _get_run(run_id, db)
-    if not any(item["variant_id"] == payload.variant_id for item in record["candidates"]):
-        raise HTTPException(404, "Variante gehört nicht zu dieser Laborrunde.")
-    raise HTTPException(
-        409,
-        "Ein Modellvergleich ist noch keine freigegebene Promptvariante. "
-        "Übernehmen ist erst nach einer kontrollierten Prompt-Evaluation möglich.",
+    candidate = next(
+        (item for item in record["candidates"] if item["variant_id"] == payload.variant_id),
+        None,
     )
+    if candidate is None:
+        raise HTTPException(404, "Variante gehört nicht zu dieser Laborrunde.")
+    ratings = record.get("ratings")
+    if not record.get("can_apply") or not isinstance(ratings, dict):
+        raise HTTPException(
+            409,
+            "Übernehmen ist erst nach einer verifizierten Holdout-Bewertung "
+            "mit Promptvariante und ausdrücklicher Auswahl möglich.",
+        )
+    preferred = ratings.get("preferred")
+    selected = record["candidates"][0 if preferred == "A" else 1]
+    if preferred not in {"A", "B"} or selected["variant_id"] != payload.variant_id:
+        raise HTTPException(409, "Nur die bevorzugte Antwort darf übernommen werden.")
+    try:
+        rating_payload = QualityLabRating.model_validate(ratings)
+        baseline_results, candidate_results = _evaluation_results(
+            record, rating_payload, preferred
+        )
+        result = PromptOptimizationStore(ai_directory()).apply(
+            str(record["input"]["prompt_name"]),
+            str(candidate.get("prompt_variant") or ""),
+            "Kontrollierte Quality-Lab-Evaluierung mit verifiziertem Holdout.",
+            baseline_results,
+            candidate_results,
+            approved_by_user=True,
+            sources=record["input"].get("allowed_sources", []),
+        )
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, f"Promptübernahme abgelehnt: {exc}") from exc
+    if result.get("status") != "applied":
+        raise HTTPException(409, "Promptübernahme wurde wegen der Evaluationsregeln abgelehnt.")
+    record["can_apply"] = False
+    record["can_rollback"] = True
+    await _update_flags(run_id, record, db)
+    return {
+        "applied": True,
+        "run_id": run_id,
+        "variant_id": payload.variant_id,
+        "prompt_name": record["input"]["prompt_name"],
+    }
 
 
 @router.post("/runs/{run_id}/rollback")
@@ -421,8 +525,30 @@ async def rollback_quality_lab(
     run_id: str,
     db: AsyncSession = Depends(get_db),
 ):
-    await _get_run(run_id, db)
-    raise HTTPException(
-        409,
-        "Für diese Modellvergleichsrunde existiert keine aktivierte Promptvariante.",
-    )
+    record = await _get_run(run_id, db)
+    prompt_name = str(record.get("input", {}).get("prompt_name") or "")
+    if not record.get("can_rollback") or not prompt_name:
+        raise HTTPException(409, "Für diese Laborrunde existiert keine aktivierte Promptvariante.")
+    try:
+        result = PromptOptimizationStore(ai_directory()).rollback(prompt_name)
+    except (ValueError, OSError) as exc:
+        raise HTTPException(409, f"Rollback abgelehnt: {exc}") from exc
+    record["can_rollback"] = False
+    await _update_flags(run_id, record, db)
+    return {"rolled_back": True, "run_id": run_id, **result}
+
+
+async def _update_flags(
+    run_id: str, record: dict[str, Any], db: AsyncSession | object
+) -> None:
+    if isinstance(db, AsyncSession):
+        try:
+            parsed_id = uuid.UUID(run_id)
+        except ValueError as exc:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.") from exc
+        run = await db.get(QualityLabRun, parsed_id)
+        if run is None:
+            raise HTTPException(404, "Laborrunde nicht gefunden oder bereits abgelaufen.")
+        run.can_apply = bool(record.get("can_apply"))
+        run.can_rollback = bool(record.get("can_rollback"))
+        await db.commit()

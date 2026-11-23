@@ -186,10 +186,8 @@ def test_quality_lab_ratings_are_bound_to_run_and_apply_is_explicitly_blocked():
             "holdout": True,
             "dataset_id": "contract",
         }
-        assert client.post(f"/api/quality-lab/runs/{run_id}/ratings", json=rating).json() == {
-            "saved": True,
-            "agreement": None,
-        }
+        saved = client.post(f"/api/quality-lab/runs/{run_id}/ratings", json=rating)
+        assert saved.json() == {"saved": True, "agreement": None, "can_apply": False}
         apply_response = client.post(
             f"/api/quality-lab/runs/{run_id}/apply",
             json={"variant_id": run["candidates"][0]["variant_id"]},
@@ -197,7 +195,7 @@ def test_quality_lab_ratings_are_bound_to_run_and_apply_is_explicitly_blocked():
         rollback_response = client.post(f"/api/quality-lab/runs/{run_id}/rollback")
 
     assert apply_response.status_code == 409
-    assert "keine freigegebene Promptvariante" in apply_response.json()["detail"]
+    assert "verifizierten Holdout" in apply_response.json()["detail"]
     assert rollback_response.status_code == 409
     assert "keine aktivierte Promptvariante" in rollback_response.json()["detail"]
 
@@ -316,7 +314,7 @@ def test_quality_lab_accepts_null_dimensions_when_both_unsuitable():
             },
         )
     assert response.status_code == 200, response.text
-    assert response.json() == {"saved": True, "agreement": None}
+    assert response.json() == {"saved": True, "agreement": None, "can_apply": False}
 
 
 def test_quality_lab_cancels_the_other_provider_call_after_failure():
@@ -340,3 +338,66 @@ def test_quality_lab_cancels_the_other_provider_call_after_failure():
 
     assert response.status_code == 400
     assert cancelled.is_set()
+
+
+def test_quality_lab_applies_and_rolls_back_a_verified_prompt_variant(tmp_path):
+    async def generate(model_id, prompt, **kwargs):
+        return f"Antwort von {model_id}"
+
+    rating = {
+        "ratings": {
+            "A": {
+                "naturalness": 5,
+                "strength": 5,
+                "precision": 5,
+                "source_honesty": 5,
+                "usability": 5,
+                "both_unsuitable": False,
+            },
+            "B": {
+                "naturalness": 3,
+                "strength": 3,
+                "precision": 3,
+                "source_honesty": 3,
+                "usability": 3,
+                "both_unsuitable": False,
+            },
+        },
+        "preferred": "A",
+        "holdout": True,
+        "dataset_id": "de-debate-holdout-v1",
+    }
+    with (
+        patch.object(quality_lab, "generate_text", side_effect=generate),
+        patch.object(quality_lab, "is_local_only", new=AsyncMock(return_value=False)),
+        patch.object(quality_lab, "ai_directory", return_value=tmp_path),
+    ):
+        client = TestClient(_app())
+        run = client.post(
+            "/api/quality-lab/runs",
+            json=_payload(
+                holdout=True,
+                holdout_case_id="public-transit-001",
+                prompt_name="answer",
+                prompt_variants=["baseline prompt", "candidate prompt"],
+            ),
+        )
+        assert run.status_code == 200, run.text
+        run_body = run.json()
+        saved = client.post(
+            f"/api/quality-lab/runs/{run_body['run_id']}/ratings", json=rating
+        )
+        assert saved.status_code == 200, saved.text
+        assert saved.json()["can_apply"] is True
+        applied = client.post(
+            f"/api/quality-lab/runs/{run_body['run_id']}/apply",
+            json={"variant_id": run_body["candidates"][0]["variant_id"]},
+        )
+        assert applied.status_code == 200, applied.text
+        assert (tmp_path / "answer.txt").read_text(encoding="utf-8").strip() == "baseline prompt"
+        rolled_back = client.post(
+            f"/api/quality-lab/runs/{run_body['run_id']}/rollback"
+        )
+
+    assert rolled_back.status_code == 200, rolled_back.text
+    assert not (tmp_path / "answer.txt").exists()

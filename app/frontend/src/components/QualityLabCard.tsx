@@ -72,6 +72,11 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
   const [sources, setSources] = useState("");
   const [datasetId, setDatasetId] = useState("interactive");
   const [holdout, setHoldout] = useState(false);
+  const [holdoutCaseId, setHoldoutCaseId] = useState("");
+  const [holdoutCatalog, setHoldoutCatalog] =
+    useState<api.QualityLabHoldoutCatalog | null>(null);
+  const [promptName, setPromptName] = useState("");
+  const [promptVariants, setPromptVariants] = useState<[string, string]>(["", ""]);
   const [run, setRun] = useState<api.QualityLabRun | null>(null);
   const [ratings, setRatings] = useState<Record<LabSide, QualityRating>>({
     A: blankRating(),
@@ -84,6 +89,13 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    void api
+      .listQualityLabHoldouts()
+      .then(setHoldoutCatalog)
+      .catch(() => setHoldoutCatalog(null));
+  }, []);
 
   useEffect(() => {
     if (!eligible.length) return;
@@ -149,7 +161,10 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
           .filter(Boolean),
         dataset_id: datasetId.trim() || "interactive",
         holdout,
+        holdout_case_id: holdout ? holdoutCaseId || undefined : undefined,
         model_ids: modelIds,
+        prompt_name: promptName.trim() || undefined,
+        prompt_variants: promptVariants.map((value) => value.trim()),
       });
       if (
         result.candidates.length < 2 ||
@@ -184,6 +199,9 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
         dataset_id: run.dataset_id,
       });
       setAgreement(saved.agreement);
+      setRun((previous) =>
+        previous ? { ...previous, can_apply: saved.can_apply } : previous,
+      );
       setRevealed(true);
       setNotice(
         blindRating
@@ -242,6 +260,9 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
     setError(null);
     try {
       await api.applyQualityLabVariant(run.run_id, candidate.variant_id);
+      setRun((previous) =>
+        previous ? { ...previous, can_apply: false, can_rollback: true } : previous,
+      );
       setNotice(
         "Variante atomar übernommen. Die vorherige Version bleibt per Rollback verfügbar.",
       );
@@ -262,6 +283,9 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
     setError(null);
     try {
       await api.rollbackQualityLab(run.run_id);
+      setRun((previous) =>
+        previous ? { ...previous, can_rollback: false } : previous,
+      );
       setNotice("Vorherige Promptversion wiederhergestellt.");
     } catch (err) {
       setError(err instanceof Error ? err.message : "Rollback fehlgeschlagen.");
@@ -358,6 +382,38 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
             placeholder="Eine URL oder Quellen-ID je Zeile"
           />
         </label>
+        <label className="font-body text-xs font-semibold text-brand-dark-gray">
+          Promptname für kontrollierte Aktivierung
+          <input
+            value={promptName}
+            onChange={(event) => setPromptName(event.target.value)}
+            className="mt-1 block min-h-10 w-full rounded border border-brand-light-gray-1 px-3 py-2 font-normal"
+            placeholder="z. B. debate_deep_v1"
+            pattern="[a-z0-9][a-z0-9_.-]{0,119}"
+          />
+        </label>
+        <div className="font-body text-xs text-brand-dark-gray sm:col-span-2">
+          <span className="font-semibold">Promptvarianten für Aktivierung</span>
+          <div className="mt-1 grid gap-2 sm:grid-cols-2">
+            {promptVariants.map((value, index) => (
+              <textarea
+                key={index}
+                value={value}
+                onChange={(event) =>
+                  setPromptVariants((previous) => {
+                    const next: [string, string] = [...previous];
+                    next[index] = event.target.value;
+                    return next;
+                  })
+                }
+                rows={3}
+                maxLength={2000}
+                className="block w-full resize-y rounded border border-brand-light-gray-1 px-3 py-2 font-normal"
+                placeholder={`Vollständiger Prompt für Variante ${index === 0 ? "A" : "B"}`}
+              />
+            ))}
+          </div>
+        </div>
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-3 font-body text-xs text-brand-gray">
         <label className="inline-flex items-center gap-2">
@@ -377,6 +433,23 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
           />
           Unabhängigen Holdout anfordern
         </label>
+        {holdout && holdoutCatalog && (
+          <label className="inline-flex items-center gap-2">
+            <span>Holdout-Fall</span>
+            <select
+              value={holdoutCaseId}
+              onChange={(event) => setHoldoutCaseId(event.target.value)}
+              className="min-h-9 max-w-64 rounded border border-brand-light-gray-1 bg-surface px-2"
+            >
+              <option value="">Fall auswählen</option>
+              {holdoutCatalog.cases.map((item) => (
+                <option key={item.case_id} value={item.case_id}>
+                  {item.title}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="inline-flex items-center gap-2">
           <input
             type="checkbox"
@@ -588,8 +661,8 @@ export default function QualityLabCard({ models }: { models: ModelInfo[] }) {
               </button>
               {!run.can_apply && (
                 <span className="basis-full text-[11px] text-brand-mid-gray">
-                  Der Modellvergleich ändert keine Live-Promptversion; Aktivierung und Rollback
-                  werden erst nach einer separaten Prompt-Evaluation angeboten.
+                  Eine Aktivierung wird nur nach verifiziertem Holdout, vollständiger
+                  Bewertung, Promptname und zwei vollständigen Promptvarianten angeboten.
                 </span>
               )}
             </div>
