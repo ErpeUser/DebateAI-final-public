@@ -172,7 +172,8 @@ def sweep_jobs(
             session_id
             for session_id, job in _jobs.items()
             if job.status in terminal
-            and now - (job._finished_at or job._last_touched) >= terminal_ttl_seconds
+            and now - (job._finished_at if job._finished_at is not None else job._last_touched)
+            >= terminal_ttl_seconds
         ]
         for session_id in expired:
             _jobs.pop(session_id, None)
