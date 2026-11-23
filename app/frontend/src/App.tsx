@@ -12,7 +12,7 @@ import DebateOverlay from "./components/DebateOverlay";
 import type { AdminTab } from "./components/ManagementView";
 import WelcomeView from "./components/WelcomeView";
 import PreCallView from "./components/PreCall/PreCallView";
-import ActiveCallView from "./components/ActiveCall/ActiveCallView";
+
 import {
   SILENT_AUDIO_LEVEL,
   startSingleFlight,
@@ -56,6 +56,7 @@ import type {
 
 const embeddedDesktop =
   new URLSearchParams(window.location.search).get("desktop") === "1";
+const ActiveCallView = lazy(() => import("./components/ActiveCall/ActiveCallView"));
 const ManagementView = lazy(() => import("./components/ManagementView"));
 const PostCallView = lazy(() => import("./components/PostCall/PostCallView"));
 
