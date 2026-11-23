@@ -1,92 +1,78 @@
 # Abnahmestatus
 
-**Stand:** 22.11.2026  
+**Stand:** 23.11.2026
 **Gesamtstatus:** `PARTIAL_VERIFICATION`
 
-`DONE` ist nicht zulässig. Das Structure-Gate bleibt wegen bestehender
-absoluter Sentrux-Regeln rot. Die Quality-Lab-Verbindungen, die Rating-
-Grenzfälle, die UI-Vertragskorrektur, die PR-Bereinigung und die lokale
-Persistenz der Laborrunden sind dagegen auf dem lokalen Integrationsstand
-verifiziert.
+`DONE` bleibt unzulässig. Tests und Security sind auf dem aktuellen `main`-SHA grün. Das Structure-Gate bleibt wegen geerbter absoluter Sentrux-Regeln rot. Quality-Lab-Apply/Rollback, der versionierte Holdout-Katalog und der DB-basierte WebSocket-Replay sind implementiert und lokal verifiziert. Externe Windows-, Audio-, Provider-, LAN- und Release-Nachweise bleiben offen.
 
-## Repository, Branch und Synchronisierung
+## Repository, Branch, PR und Synchronisierung
 
 | Nachweis | Ergebnis |
 |---|---|
 | Repository | `ErpeUser/DebateAI-final-public` |
-| Arbeitsbranch | `main` |
-| Remote-Stand vor dieser Integration | `4ff69c4` |
-| PR-Commit | `71042c1` – geprüfter Cherry-Pick von PR #1 |
-| Kompatibilitätsfix | `4ff69c4` – `pytest-asyncio==1.5.0` für `pytest==9.0.3` |
-| Lokaler Integrationsstand | `084096d` – persistente Quality-Lab-Runs und Ratings |
-| Veröffentlichter SHA nach Docs-Site-Korrektur | `0720607` |
-| Lokaler Arbeitsbaum | sauber vor der Dokumentationsänderung |
-| PR #1 | geschlossen als superseded nach kompatibler Integration |
+| Branch | `main` |
+| Aktueller Remote-/lokaler SHA | `775815aeb81decea6dd56be2f058678c9a57348a` |
+| Verhaltensändernder Commit | `775815a` – kontrollierte Prompt-Evaluierung mit Apply/Rollback und UI-Vertrag |
+| Vorherige Produkt-Commits | `82c2703` Holdout-Katalog, `fdf10b7` Shared-Session-State, `08b7698` Testbarkeit und Cleanup |
+| PR #1 | geschlossen als superseded nach geprüftem Cherry-Pick |
 | Dependabot-Branch | entfernt |
 | Offene Nicht-`main`-Branches | keine |
 | Offene Pull Requests | keine |
-| Strict-Sync | zuletzt erfolgreich, Exit-Code 0 |
+| Strict-Sync | `python app/scripts/github_sync.py --pull --strict`, Exit-Code 0 |
+| Arbeitsbaum | sauber nach Dokumentationscommit |
 
-Die ursprüngliche Dependabot-Änderung wurde nicht blind gemergt. Die
-Paketauflösung zeigte, dass `pytest-asyncio==0.25.3` `pytest<9` verlangt.
-Der kompatible Teststand hebt `pytest-asyncio` auf 1.5.0 an.
+Die PR-Änderung wurde nicht blind übernommen. `pytest==9.0.3` wird mit `pytest-asyncio==1.5.0` betrieben, weil die vorherige `pytest-asyncio==0.25.3`-Vorgabe pytest 9 nicht unterstützt.
 
-## Verifizierte Änderungen
+## Implementierte Änderungen
 
-### Quality Lab
+### Kontrollierte Prompt-Evaluierung
 
-- `/api/quality-lab/runs`, Ratings, Apply und Rollback bleiben registriert.
-- Runs und Ratings werden in `quality_lab_runs` persistiert.
-- Die Migration `034_quality_lab_runs` ist retry-idempotent.
-- Eine Runde bleibt nach dem Leeren des Prozesscaches und in einer neuen
-  Datenbanksession verfügbar.
-- Holdout bleibt bis zu einem echten versionierten Datensatz unverifiziert.
-- Apply und Rollback bleiben bis zu einer kontrollierten Prompt-Evaluation
-  fail-closed.
+- `QualityLabRunRequest` akzeptiert einen validierten Promptnamen und zwei vollständige Promptvarianten.
+- Der Holdout-Katalog `de-debate-holdout-v1` liefert drei versionierte Fälle. Ein ausgewählter Katalogfall setzt `holdout_verified=true` und überschreibt freie Claims mit dem unveränderlichen Kataloginhalt.
+- Runs und Ratings bleiben in `quality_lab_runs` persistent.
+- `can_apply` wird erst nach verifiziertem Holdout, vollständiger Bewertung, bevorzugter Seite, zwei geeigneten Antworten und zwei Promptvarianten wahr.
+- Apply ruft `PromptOptimizationStore.apply` mit gemappten Human-Rating-Metriken und ausdrücklicher Nutzerfreigabe auf. Rejected Decisions werden als `409` sichtbar.
+- Rollback ruft `PromptOptimizationStore.rollback` auf und aktualisiert den persistenten Laufstatus.
+- Die UI kann Holdout-Fall, Promptnamen und Varianten erfassen und aktualisiert Apply-/Rollback-Zustände nach dem Serverergebnis.
 
-### Vision-Abgleich
+### Gemeinsamer Multiworker-State
 
-Die Vision wurde auf den Stand 22.11.2026 aktualisiert und um einen Abschnitt
-zu Infrastruktur-Abnahme, gemeinsamem Zustand, CI-/Cloud-/Release-Nachweisen
-und Statusregeln erweitert. Die Vision beschreibt Zielverhalten. Sie hebt
-keinen offenen externen Nachweis automatisch auf `VERIFIED`.
+- `SharedSessionState` und Migration `035_shared_session_state` speichern aktive Generationen und Replay-Snapshots in der Datenbank.
+- `RevealingWebSocket.create` hydratisiert den Zustand vor dem Upgrade und persistiert Snapshot-/Close-Ereignisse.
+- Stale Generationen werden beim Öffnen, Speichern und Schließen abgewiesen.
+- Transkriptionsjobs und PII-Indizes bleiben prozesslokal. Ein vollständiger gemeinsamer Job-/PII-Adapter ist ein offener Punkt.
 
-## Test- und Qualitätsnachweise
+### Structure-Gate
 
-| Prüfung | Ergebnis | Geltungsbereich |
+Der aktuelle Lauf [45120718086](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718086) ist rot. Die unveränderten Befunde sind sechs `max_cc`-, fünf `max_fn_lines`- und acht `max_file_lines`-Verstöße, unter anderem in `orchestrator.py`, `audio_pipeline.py`, `capture.mjs`, `useWebSocket.ts`, `useAudioCapture.ts`, großen Dokumenten und generierten Manifests. Die Gate-Regel wurde nicht abgeschwächt und keine Datei wurde allowlisted. Der Vergleich meldet keine neue Verschlechterung durch die Quality-Lab- oder Shared-State-Änderungen.
+
+## Verifikation auf aktuellem SHA
+
+| Prüfung | Ergebnis |
+|---|---|
+| Backend Quality-Lab | `12 passed` |
+| Shared-State-Tests | bestanden |
+| SQLite-Migrationsmatrix | `3/3` |
+| Frontend-Gesamtsuite | `386/386` |
+| Frontend-Produktionsbuild | erfolgreich, 2146 Module |
+| Python-Compileall | bestanden |
+| `git diff --check` | bestanden |
+| GitHub Tests | [45120718051](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718051), `success` |
+| GitHub Security | [45120718251](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718251), `success` |
+| GitHub Structure | [45120718086](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45120718086), `failure` wegen bestehender absoluter Regeln |
+
+## Offene Punkte nach dem Vision-Abgleich
+
+| Priorität | Punkt | Aktueller Zustand |
 |---|---|---|
-| Quality-Lab-Contract und Persistenz | 9/9 bestanden | lokale SQLite-/Mock-Abnahme |
-| SQLite-Migrationsmatrix | 3/3 bestanden | frische, Legacy- und Retry-Pfade |
-| Backend-Compileall | bestanden | `app/backend/app` und `app/backend/tests` |
-| Repository-Layout | 1106 Dateien, `Repository layout OK` | lokaler Checkout |
-| `git diff --check` | bestanden | lokaler Diff |
-| Runtime Health | HTTP 200, `{"status":"ok"}` | laufendes Windows-Bundle |
+| P0 | Structure-Gesamtgate | Refactor der sechs komplexen, fünf überlangen Funktionen und der acht großen Dateien fehlt. |
+| P0 | Signiertes Windows-Release | Authenticode/Zertifikatskette, frischer Installer, Update und Rollback fehlen. |
+| P0 | Reale Windows-/Audio-/Provider-Abnahme | Current-SHA-Desktoplauf, echte Aufnahme, ASR-WER/CER/RTF und Providerkosten fehlen. |
+| P1 | Unabhängiger Human-Rating-Holdout | Der Katalog ist versioniert und technisch gebunden. Unabhängige Bewertung und produktive Freigabe fehlen. |
+| P1 | Multiworker | WebSocket-Replay ist DB-geteilt. Jobstatus, PII-Indizes und Zwei-Worker-Produktionslauf fehlen. |
+| P1 | LAN-/Proxy-/DNS-Rebinding | Lokale Guard-Tests bestehen. Der autorisierte reale Netzwerktest fehlt. |
+| P2 | Cursor-Last | Lokale Cursorverträge bestehen. Zwei-Worker-Replay und 10.000-Einträge-Last fehlen. |
+| P2 | Reproduzierbare Gesamtbuilds | Docs-Site ist reproduzierbar. Vollständige Linux-/Windows-Toolchain-, Lizenz- und Artefakt-Hashes fehlen. |
+| P2 | jscpd-Duplikatsschuld | Die bestehende Duplikatsschuld ist noch nicht gezielt abgebaut. |
 
-### GitHub-Actions auf `0720607`
-
-| Workflow | Run | Ergebnis |
-|---|---:|---|
-| Tests | [45015260211](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260211) | `success` – backend, frontend, workspace-windows, postgres-boundaries und calibration-browser grün |
-| Security | [45015260255](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260255) | `success` |
-| Docs-Site | [45015260258](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260258) | `success` |
-| Structure | [45015260168](https://github.com/ErpeUser/DebateAI-final-public/actions/runs/45015260168) | `failure` wegen bestehender `max_cc`, `max_fn_lines` und `max_file_lines`-Findings; Quality 6127 |
-
-Ein früherer kompletter Backend-Lauf bestand mit 2246 Tests und 12 Skips,
-wies aber zwei unabhängige Baseline-/Umgebungsfälle auf. Diese bleiben als
-separate offene Tests dokumentiert und wurden nicht durch Statusänderungen
-versteckt.
-
-## Weiterhin offene Gates
-
-- Sentrux-Structure mit sechs `max_cc`-, fünf `max_fn_lines`- und acht
-  `max_file_lines`-Befunden.
-- Gemeinsamer WebSocket-/Transkriptions-/PII-State über echte Workergrenzen.
-- Versionierter Holdout-Datensatz und unabhängige Human-Ratings.
-- Vollständige Cloud-Testinstanz mit Replay, Messung und secretbereinigten
-  Bugberichten.
-- Frischer signierter Windows-Build mit Artefakt-Hash, Update und Rollback.
-- Autorisierte echte Audio-, Provider-, LAN- und DNS-Rebinding-Abnahme.
-- Frische GitHub-Actions-Nachweise auf dem endgültigen Veröffentlichungs-SHA.
-
-Diese Punkte bleiben `PARTIAL`, `EXTERNAL_BLOCKED` oder `UNVERIFIED`, bis der
-jeweilige technische oder externe Nachweis auf demselben Commit vorliegt.
+Diese Punkte sind im [Vision-Ledger](VISION_LEDGER.md) und in [OFFENE_PUNKTE.md](OFFENE_PUNKTE.md) mit Owner, Evidenzmodus und nächstem Nachweis geführt. Historische SHA- und Run-Belege bleiben in `HISTORIE.md`; aktuelle Matrixzeilen verwenden den SHA `775815a` und die aktuellen Tests-/Security-/Structure-Runs.
